@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate .env file without heredoc to avoid line-ending issues
+# Generate .env file using printf (avoids heredoc CRLF issues)
 printf 'APP_NAME="World Choice Perfumes"\n' > /var/www/html/.env
 printf 'APP_ENV=production\n' >> /var/www/html/.env
 printf 'APP_KEY=%s\n' "$APP_KEY" >> /var/www/html/.env
@@ -25,8 +25,13 @@ printf 'CLOUDINARY_API_KEY=%s\n' "$CLOUDINARY_API_KEY" >> /var/www/html/.env
 printf 'CLOUDINARY_API_SECRET=%s\n' "$CLOUDINARY_API_SECRET" >> /var/www/html/.env
 printf 'SUPER_ADMIN_SECRET=%s\n' "$SUPER_ADMIN_SECRET" >> /var/www/html/.env
 
-echo "=== Verifying .env ==="
-head -5 /var/www/html/.env
+echo "=== Verifying APP_KEY ==="
+if grep -q "APP_KEY=base64:" /var/www/html/.env; then
+    echo "APP_KEY is set"
+else
+    echo "APP_KEY is EMPTY - generating one..."
+    php artisan key:generate --force
+fi
 
 echo "=== Setting up database ==="
 rm -f /var/www/html/database/database.sqlite
