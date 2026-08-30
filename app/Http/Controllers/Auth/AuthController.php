@@ -64,6 +64,17 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been rejected. Please contact support.']);
         }
 
+        // Ensure branch exists in SQLite before creating user
+        if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
+            $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
+            if ($sbBranch) {
+                Branch::updateOrCreate(
+                    ['id' => $sbBranch['id']],
+                    ['name' => $sbBranch['name'], 'address' => $sbBranch['address'] ?? null, 'is_active' => $sbBranch['is_active'] ?? true]
+                );
+            }
+        }
+
         // Ensure user exists in SQLite for Auth::login()
         $localUser = User::where('email', $credentials['email'])->first();
         if (!$localUser) {
