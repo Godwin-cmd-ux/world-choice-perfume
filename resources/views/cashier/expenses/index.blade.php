@@ -1,9 +1,7 @@
 @extends('layouts.app')
 @section('title', 'My Expenses')
 @section('header', 'My Expenses')
-@section('header-actions')
-    <a href="{{ route('cashier.expenses.create') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Expense</a>
-@endsection
+
 
 @section('content')
 <div class="bg-white rounded-xl shadow p-4 mb-6">
