@@ -28,6 +28,7 @@
                 <th class="text-right px-4">Selling Price</th>
                 <th class="text-right px-4">Stock Value</th>
                 <th class="text-left px-4">Supplier</th>
+                <th class="text-left px-4">Category</th>
                 <th class="text-left px-4">Last Received</th>
             </tr></thead>
             <tbody>
@@ -41,10 +42,11 @@
                         <td class="px-4 text-right">TZS {{ number_format($stock->selling_price) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($stock->quantity * $stock->buying_cost) }}</td>
                         <td class="px-4 text-gray-500">{{ $stock->supplier ?? '-' }}</td>
+                        <td class="px-4">@if(!empty($stock->category))<span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">{{ $stock->category }}</span>@else <span class="text-gray-400">—</span> @endif</td>
                         <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->format('M d, Y') : '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
+                    <tr><td colspan="8" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
             </tbody>
         </table>

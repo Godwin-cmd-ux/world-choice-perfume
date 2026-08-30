@@ -84,36 +84,42 @@ class SaleController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'customer_id' => 'nullable|integer',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'customer_email' => 'nullable|email',
-            'customer_whatsapp' => 'nullable|string|max:20',
+            'supplier' => 'nullable|string|max:255',
+            'payment_mode' => 'required|in:single,multi',
+            'payments' => 'required|array|min:1',
+            'payments.*.method' => 'required|in:cash,bank_transfer,mobile_payment',
+            'payments.*.amount' => 'required_if:payment_mode,multi|nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.custom_price' => 'nullable|numeric|min:0',
+            'sale_type' => 'required|in:retail,wholesale',
         ]);
 
         $branchId = auth()->user()->branch_id;
 
         try {
-            // 1. Create or find customer in Supabase
+            // 1. Determine customer
             $customerId = null;
-            if ($validated['customer_phone'] || $validated['customer_name']) {
+            if (!empty($validated['customer_id'])) {
+                $customerId = $validated['customer_id'];
+            } elseif (!empty($validated['customer_name']) || !empty($validated['customer_phone'])) {
                 $existingCustomer = null;
                 if (!empty($validated['customer_phone'])) {
                     $existingCustomer = $this->supabase->findOne('customers', [
                         'phone' => $validated['customer_phone'],
                     ]);
                 }
-
                 if ($existingCustomer) {
                     $customerId = $existingCustomer['id'];
                 } else {
                     $customer = $this->supabase->insert('customers', [
                         'name' => $validated['customer_name'] ?? null,
                         'phone' => $validated['customer_phone'] ?? null,
-                        'email' => $validated['customer_email'] ?? null,
-                        'whatsapp' => $validated['customer_whatsapp'] ?? $validated['customer_phone'] ?? null,
+                        'whatsapp' => $validated['customer_phone'] ?? null,
                     ]);
                     $customerId = $customer['id'] ?? null;
                 }
@@ -150,15 +156,19 @@ class SaleController extends Controller
                     ])->withInput();
                 }
 
-                $lineTotal = ($stock['selling_price'] ?? 0) * $item['quantity'];
+                // Use custom price for wholesale, fixed price for retail
+                $unitPrice = ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price']))
+                    ? $item['custom_price']
+                    : ($stock['selling_price'] ?? 0);
+                $lineTotal = $unitPrice * $item['quantity'];
                 $subtotal += $lineTotal;
                 $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];
 
                 $saleItems[] = [
-                    'sale_id' => null, // will be set after sale creation
+                    'sale_id' => null,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
-                    'unit_price' => $stock['selling_price'],
+                    'unit_price' => $unitPrice,
                     'unit_cost' => $stock['buying_cost'],
                     'total' => $lineTotal,
                     'created_at' => now()->toIso8601String(),
@@ -186,7 +196,21 @@ class SaleController extends Controller
                 ];
             }
 
-            // 5. Create sale (1 HTTP call)
+            // 5. Build payment summary
+            $payments = $validated['payments'] ?? [];
+            $paymentParts = [];
+            foreach ($payments as $p) {
+                $methodLabel = str_replace('_', ' ', ucfirst($p['method']));
+                if ($validated['payment_mode'] === 'multi') {
+                    $paymentParts[] = $methodLabel . ' ' . number_format($p['amount'] ?? 0);
+                } else {
+                    $paymentParts[] = $methodLabel . ' ' . number_format($subtotal);
+                }
+            }
+            $paymentSummary = implode(', ', $paymentParts);
+            $primaryMethod = $payments[0]['method'] ?? 'cash';
+
+            // 6. Create sale (1 HTTP call)
             $sale = $this->supabase->insert('sales', [
                 'sale_number' => $saleNumber,
                 'branch_id' => $branchId,
@@ -194,6 +218,10 @@ class SaleController extends Controller
                 'customer_id' => $customerId,
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
+                'supplier' => $validated['supplier'] ?? null,
+                'payment_method' => $primaryMethod,
+                'payment_summary' => $paymentSummary,
+                'sale_type' => $validated['sale_type'] ?? 'retail',
                 'payment_status' => 'paid',
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),

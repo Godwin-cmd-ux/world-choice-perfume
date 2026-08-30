@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'branch.access' => \App\Http\Middleware\BranchAccessMiddleware::class,
             'cashier.approved' => \App\Http\Middleware\EnsureCashierApproved::class,
+            'staff.access' => \App\Http\Middleware\EnsureStaffAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -30,22 +30,74 @@ Route::prefix('orders')->name('customer.orders.')->group(function () {
 // Twende Dukani — Navigate to branch
 Route::get('/twende-dukani/{branch}', [\App\Http\Controllers\Customer\NavigationController::class, 'show'])->name('customer.twende-dukani');
 
+// Customer search API (for sales)
+Route::get('/api/customers/search', function(\Illuminate\Http\Request $request) {
+    $q = $request->q ?? '';
+    if (strlen($q) < 2) return response()->json([]);
+    $sb = new \App\Services\SupabaseService();
+
+    // Search by name first
+    $byName = $sb->query('customers', [
+        'select' => '*',
+        'name' => 'ilike.*' . urlencode($q) . '*',
+        'limit' => 10,
+        'order' => 'name.asc',
+    ]);
+
+    // Search by phone
+    $byPhone = $sb->query('customers', [
+        'select' => '*',
+        'phone' => 'ilike.*' . urlencode($q) . '*',
+        'limit' => 10,
+        'order' => 'name.asc',
+    ]);
+
+    // Merge and deduplicate by id
+    $merged = [];
+    foreach (array_merge($byName, $byPhone) as $c) {
+        $merged[$c['id']] = $c;
+    }
+    ksort($merged);
+
+    return response()->json(array_values(array_slice($merged, 0, 10)));
+})->name('api.customers.search');
+
+Route::post('/api/customers', function(\Illuminate\Http\Request $request) {
+    $request->validate([
+        'name' => 'nullable|string|max:255',
+        'phone' => 'nullable|string|max:20',
+    ]);
+    $sb = new \App\Services\SupabaseService();
+    $customer = $sb->insert('customers', [
+        'name' => $request->name ?? null,
+        'phone' => $request->phone ?? null,
+        'whatsapp' => $request->phone ?? null,
+        'created_at' => now()->toIso8601String(),
+        'updated_at' => now()->toIso8601String(),
+    ]);
+    return response()->json($customer);
+})->name('api.customers.store');
+
 // ========================
 // AUTH ROUTES
 // ========================
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::post('/verify-staff-access', [AuthController::class, 'verifyStaffAccess'])->name('verify-staff-access');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 
-    // Registration
-    Route::get('/register/super-admin', [AuthController::class, 'showSuperAdminRegistration'])->name('register.super-admin');
-    Route::post('/register/super-admin', [AuthController::class, 'registerSuperAdmin']);
-    Route::get('/register/branch-admin', [AuthController::class, 'showBranchAdminRegistration'])->name('register.branch-admin');
-    Route::post('/register/branch-admin', [AuthController::class, 'registerBranchAdmin']);
-    Route::get('/register/cashier', [AuthController::class, 'showCashierRegistration'])->name('register.cashier');
-    Route::post('/register/cashier', [AuthController::class, 'registerCashier']);
+    // Registration — protected by staff access secret code
+    Route::middleware('staff.access')->group(function () {
+        Route::get('/register/super-admin', [AuthController::class, 'showSuperAdminRegistration'])->name('register.super-admin');
+        Route::post('/register/super-admin', [AuthController::class, 'registerSuperAdmin']);
+        Route::get('/register/branch-admin', [AuthController::class, 'showBranchAdminRegistration'])->name('register.branch-admin');
+        Route::post('/register/branch-admin', [AuthController::class, 'registerBranchAdmin']);
+        Route::get('/register/cashier', [AuthController::class, 'showCashierRegistration'])->name('register.cashier');
+        Route::post('/register/cashier', [AuthController::class, 'registerCashier']);
+    });
 
     // OTP
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp');
@@ -88,6 +140,12 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/cashiers/{cashier}', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'show'])->name('cashiers.show');
         Route::post('/cashiers/{cashier}/approve', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'approve'])->name('cashiers.approve');
         Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'reject'])->name('cashiers.reject');
+
+        // Staff Management
+        Route::get('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
+        Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
+        Route::post('/staff/{user}/toggle-status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
+        Route::delete('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'destroy'])->name('staff.destroy');
     });
 
     // ========================
@@ -114,6 +172,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         // Sales
         Route::get('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'show'])->name('sales.show');
 
         // Orders
@@ -123,6 +183,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         // Expenses
         Route::get('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/create', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'store'])->name('expenses.store');
         Route::get('/expenses/{expense}', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'show'])->name('expenses.show');
 
         // Cashier Management
@@ -157,10 +219,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [\App\Http\Controllers\Cashier\SaleController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [\App\Http\Controllers\Cashier\SaleController::class, 'show'])->name('sales.show');
 
-        // Expenses
+        // Expenses (view only — creation moved to branch admin)
         Route::get('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'index'])->name('expenses.index');
-        Route::get('/expenses/create', [\App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
-        Route::post('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
 
         // Orders
         Route::get('/orders', [\App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');

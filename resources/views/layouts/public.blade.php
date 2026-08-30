@@ -61,13 +61,16 @@
                 </a>
 
                 <!-- Desktop Nav -->
-                <div class="hidden md:flex items-center gap-8">
-                    <a href="{{ route('home') }}" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">Home</a>
-                    <a href="{{ route('customer.products.index') }}" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">Shop</a>
-                    <a href="{{ route('customer.orders.track') }}" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">Track Order</a>
-                    <a href="#about" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">About</a>
-                    <a href="#branches" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">Branches</a>
-                    <a href="#contact" class="nav-link text-sm font-medium text-gray-300 hover:text-gold-400 transition">Contact</a>
+                <div class="hidden md:flex items-center gap-2">
+                    <a href="{{ route('home') }}"
+                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('home') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Home</a>
+                    <a href="{{ route('customer.products.index') }}"
+                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.products.*') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Shop</a>
+                    <a href="{{ route('customer.orders.track') }}"
+                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.orders.track') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Track Order</a>
+                    <a href="#about" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">About</a>
+                    <a href="#branches" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Branches</a>
+                    <a href="#contact" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Contact</a>
                 </div>
 
                 <!-- Auth Buttons -->
@@ -88,26 +91,9 @@
                         @endif
                         <a href="{{ route('logout') }}" class="text-sm text-gray-400 hover:text-white transition">Logout</a>
                     @else
-                        <div class="relative group">
-                            <button class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
-                                <i class="fas fa-user-lock"></i> Staff Login <i class="fas fa-chevron-down text-xs"></i>
-                            </button>
-                            <div class="absolute right-0 mt-2 w-56 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 overflow-hidden">
-                                <a href="{{ route('login') }}" class="block px-4 py-3 text-sm text-gray-300 hover:bg-dark-700 hover:text-gold-400 transition">
-                                    <i class="fas fa-sign-in-alt mr-2 text-gold-500"></i> Staff Login
-                                </a>
-                                <div class="border-t border-dark-600"></div>
-                                <a href="{{ route('register.branch-admin') }}" class="block px-4 py-3 text-sm text-gray-300 hover:bg-dark-700 hover:text-gold-400 transition">
-                                    <i class="fas fa-user-tie mr-2 text-blue-400"></i> Branch Admin Register
-                                </a>
-                                <a href="{{ route('register.cashier') }}" class="block px-4 py-3 text-sm text-gray-300 hover:bg-dark-700 hover:text-gold-400 transition">
-                                    <i class="fas fa-user mr-2 text-green-400"></i> Cashier Register
-                                </a>
-                                <a href="{{ route('register.super-admin') }}" class="block px-4 py-3 text-sm text-gray-300 hover:bg-dark-700 hover:text-gold-400 transition">
-                                    <i class="fas fa-crown mr-2 text-yellow-400"></i> Super Admin Register
-                                </a>
-                            </div>
-                        </div>
+                        <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
+                            <i class="fas fa-user-lock"></i> Staff Login
+                        </button>
                     @endauth
                 </div>
 
@@ -129,9 +115,7 @@
                 @auth
                     <a href="{{ route(auth()->user()->role === 'super_admin' ? 'super-admin.dashboard' : (auth()->user()->role === 'branch_admin' ? 'branch-admin.dashboard' : 'cashier.dashboard')) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
                 @else
-                    <a href="{{ route('login') }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-sign-in-alt mr-2"></i> Staff Login</a>
-                    <a href="{{ route('register.cashier') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800"><i class="fas fa-user mr-2"></i> Cashier Register</a>
-                    <a href="{{ route('register.branch-admin') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800"><i class="fas fa-user-tie mr-2"></i> Branch Admin Register</a>
+                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="block w-full text-left px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-sign-in-alt mr-2"></i> Staff Login</button>
                 @endauth
             </div>
         </div>
@@ -208,6 +192,52 @@
         window.dispatchEvent(new Event('scroll'));
     </script>
     @yield('modals')
+
+    <!-- Staff Login Secret Code Modal -->
+    <div id="staffLoginModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-dark-800 border border-dark-600 rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-lock text-gold-400 text-2xl"></i>
+                </div>
+                <h3 class="font-display text-xl font-bold text-white mb-2">Staff Access</h3>
+                <p class="text-gray-400 text-sm mb-6">Enter the company secret code to access staff pages</p>
+
+                @if($errors->has('secret_code'))
+                    <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2 rounded-xl mb-4 text-sm">
+                        {{ $errors->first('secret_code') }}
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('verify-staff-access') }}">
+                    @csrf
+                    <input type="text" name="secret_code" required autofocus
+                        class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none text-center text-lg tracking-widest"
+                        placeholder="Enter code">
+                    <button type="submit" class="w-full mt-4 py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition-all duration-300 shadow-lg shadow-gold-500/25">
+                        <i class="fas fa-unlock mr-2"></i> Verify
+                    </button>
+                </form>
+
+                <button onclick="document.getElementById('staffLoginModal').classList.add('hidden')" class="mt-4 text-sm text-gray-500 hover:text-gray-300 transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Home
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Show modal if session flag is set
+        @if(session('show_staff_modal'))
+            document.getElementById('staffLoginModal').classList.remove('hidden');
+        @endif
+
+        // Click outside modal to close
+        document.getElementById('staffLoginModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

@@ -12,8 +12,13 @@
         </div>
         <div class="border-t border-b py-3 mb-4 text-sm">
             <div class="flex justify-between"><span>Sale #:</span><strong>{{ $sale->sale_number }}</strong></div>
+            <div class="flex justify-between"><span>Type:</span><span class="px-2 py-0.5 rounded-full text-xs @if(($sale->sale_type ?? '') === 'wholesale') bg-blue-100 text-blue-800 @else bg-amber-100 text-amber-800 @endif">{{ ucfirst($sale->sale_type ?? 'retail') }}</span></div>
             <div class="flex justify-between"><span>Date:</span><span>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</span></div>
             <div class="flex justify-between"><span>Cashier:</span><span>{{ $sale->cashier->name }}</span></div>
+            @if(!empty($sale->supplier))
+                <div class="flex justify-between"><span>Supplier:</span><span>{{ $sale->supplier }}</span></div>
+            @endif
+            <div class="flex justify-between"><span>Payment:</span><span class="text-sm">{{ $sale->payment_summary ?? str_replace('_', ' ', ucfirst($sale->payment_method ?? 'N/A')) }}</span></div>
             @if($sale->customer)
                 <div class="flex justify-between"><span>Customer:</span><span>{{ $sale->customer->name }}</span></div>
                 <div class="flex justify-between"><span>Phone:</span><span>{{ $sale->customer->phone }}</span></div>

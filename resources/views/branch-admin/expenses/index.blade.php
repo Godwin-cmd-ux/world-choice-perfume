@@ -16,8 +16,11 @@
         <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
-<div class="bg-white rounded-xl shadow p-4 mb-6">
+<div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between">
     <p class="text-sm text-gray-500">Total: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
+    <a href="{{ route('branch-admin.expenses.create') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <i class="fas fa-plus mr-1"></i> Record Expense
+    </a>
 </div>
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">

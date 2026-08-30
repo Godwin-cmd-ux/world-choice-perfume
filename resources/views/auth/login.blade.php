@@ -73,12 +73,18 @@
         <div class="mt-6 space-y-3">
             <p class="text-center text-sm text-gray-500">Don't have an account?</p>
             <div class="grid grid-cols-2 gap-3">
-                <a href="{{ route('register.cashier') }}" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
-                    <i class="fas fa-user mr-1"></i> Cashier Sign Up
-                </a>
-                <a href="{{ route('register.branch-admin') }}" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
-                    <i class="fas fa-user-tie mr-1"></i> Admin Sign Up
-                </a>
+                @if(session('staff_access_verified'))
+                    <a href="{{ route('register.cashier') }}" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
+                        <i class="fas fa-user mr-1"></i> Cashier Sign Up
+                    </a>
+                    <a href="{{ route('register.branch-admin') }}" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
+                        <i class="fas fa-user-tie mr-1"></i> Admin Sign Up
+                    </a>
+                @else
+                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="col-span-2 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
+                        <i class="fas fa-user-lock mr-1"></i> Enter Staff Code to Register
+                    </button>
+                @endif
             </div>
         </div>
 

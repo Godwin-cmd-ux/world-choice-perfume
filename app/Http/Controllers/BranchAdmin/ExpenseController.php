@@ -64,4 +64,41 @@ class ExpenseController extends Controller
 
         return view('branch-admin.expenses.show', ['expense' => (object) $expense]);
     }
+
+    public function create()
+    {
+        return view('branch-admin.expenses.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'category' => 'required|in:electricity,water,transport,cleaning,packaging,other',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'required|string|min:10',
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
+
+        $this->supabase->insert('expenses', [
+            'branch_id' => $branchId,
+            'user_id' => $supabaseUserId,
+            'category' => $validated['category'],
+            'amount' => $validated['amount'],
+            'description' => $validated['description'],
+            'date' => now()->toDateString(),
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        $this->supabase->insert('audit_logs', [
+            'user_id' => $supabaseUserId,
+            'action' => 'expense_created',
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        return redirect()->route('branch-admin.expenses.index')->with('success', 'Expense recorded successfully.');
+    }
 }

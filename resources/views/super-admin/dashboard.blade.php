@@ -22,12 +22,13 @@
         </div>
     </div>
 
-    {{-- Today's Sales --}}
+    {{-- Today's Sales Revenue --}}
     <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-500">Today's Sales</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">TZS {{ number_format($totalSales) }}</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1">TZS {{ number_format($todayTotalRevenue) }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ $totalSalesCount }} transactions</p>
             </div>
             <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
                 <i class="fas fa-money-bill-wave text-emerald-600 text-xl"></i>
@@ -41,6 +42,7 @@
             <div>
                 <p class="text-sm font-medium text-gray-500">Pending Orders</p>
                 <p class="text-3xl font-bold text-gray-900 mt-1">{{ $pendingOrders }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Awaiting pickup</p>
             </div>
             <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                 <i class="fas fa-shopping-cart text-blue-600 text-xl"></i>
@@ -89,6 +91,56 @@
     </div>
 </div>
 
+{{-- Pending Orders Per Branch --}}
+@if($pendingOrders > 0)
+<div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+    <div class="flex items-center justify-between mb-5">
+        <h3 class="text-base font-semibold text-gray-800"><i class="fas fa-clock text-red-500 mr-2"></i>Pending Orders — Staff Pickup Monitor</h3>
+        <span class="text-xs text-gray-400">Orders awaiting pickup by cashiers</span>
+    </div>
+
+    @foreach($branches as $branch)
+        @if($branch->pending_count > 0)
+            <div class="mb-4 last:mb-0 border border-red-100 rounded-xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 bg-red-50">
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-800">{{ $branch->name }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ $branch->pending_count }} pending</span>
+                        @if($branch->in_progress_count > 0)
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500 text-white">{{ $branch->in_progress_count }} in progress</span>
+                        @endif
+                    </div>                        @if($branch->pending_count > 0)
+                        @php
+                            $oldestMinutes = $branch->pending_orders->min('minutes_ago') ?? 0;
+                        @endphp
+                        <span class="text-xs {{ $oldestMinutes > 1440 ? 'text-red-600 font-bold' : ($oldestMinutes > 60 ? 'text-amber-600 font-bold' : 'text-gray-500') }}">
+                            Oldest: {{ $oldestMinutes < 60 ? $oldestMinutes . 'm' : ($oldestMinutes < 1440 ? floor($oldestMinutes / 60) . 'h ' . ($oldestMinutes % 60) . 'm' : floor($oldestMinutes / 1440) . 'd ' . floor(($oldestMinutes % 1440) / 60) . 'h') }}
+                        </span>
+                    @endif
+                </div>
+                <div class="divide-y divide-gray-100">
+                    @foreach($branch->pending_orders as $order)
+                        @php
+                            $dur = $order->minutes_ago;
+                            $colorClass = $dur > 1440 ? 'bg-red-100 text-red-700 border-red-300' : ($dur > 60 ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-gray-100 text-gray-600 border-gray-200');
+                        @endphp
+                        <div class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50">
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-medium text-gray-700">{{ $order->order_number }}</span>
+                                <span class="text-xs text-gray-500">{{ $order->customer_name }}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold border {{ $colorClass }}">
+                                {{ $order->duration_label }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    @endforeach
+</div>
+@endif
+
 {{-- Branches Overview --}}
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -116,7 +168,7 @@
                         <td class="py-3.5 px-6 text-right">
                             <span class="inline-flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full text-xs font-semibold text-gray-700">{{ $branch->cashiers_count }}</span>
                         </td>
-                        <td class="py-3.5 px-6 text-right font-medium text-gray-900">TZS {{ number_format($branch->sales->where('created_at', '>=', \Carbon\Carbon::today())->sum('total')) }}</td>
+                        <td class="py-3.5 px-6 text-right font-medium text-gray-900">TZS {{ number_format($branch->today_sales) }}</td>
                         <td class="py-3.5 px-6 text-center">
                             @if($branch->is_active)
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">

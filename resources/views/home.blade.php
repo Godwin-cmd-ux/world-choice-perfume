@@ -23,7 +23,7 @@
                 </div>
 
                 <h1 class="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-                    <span class="text-white">World Choice Perfumes</span><br>
+                    <span class="text-white">World Choice</span><br>
                     <span class="gold-text">Perfume</span>
                 </h1>
 

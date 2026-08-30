@@ -12,6 +12,7 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Sale #</th>
                 <th class="text-left px-4">Customer</th>
+                <th class="text-left px-4">Payment</th>
                 <th class="text-right px-4">Items</th>
                 <th class="text-right px-4">Total</th>
                 <th class="text-left px-4">Date</th>
@@ -22,6 +23,7 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $sale->sale_number }}</td>
                         <td class="px-4 text-gray-500">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
+                        <td class="px-4 text-xs text-gray-600">{{ $sale->payment_summary ?? $sale->payment_method ?? 'N/A' }}</td>
                         <td class="px-4 text-right">{{ $sale->items->sum('quantity') }}</td>
                         <td class="px-4 text-right font-bold text-green-700">TZS {{ number_format($sale->total) }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>

@@ -50,35 +50,21 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Branch Name</label>
-                        <input type="text" name="branch_name" value="{{ old('branch_name') }}" required
-                            class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
-                            placeholder="e.g. Lekki Main Store">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Branch Address <span class="text-gray-500">(optional)</span></label>
-                        <input type="text" name="branch_address" value="{{ old('branch_address') }}"
-                            class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
-                            placeholder="15 Posta Road, Dar es Salaam, Tanzania">
-                    </div>
-
-                    <!-- Spot Branch Location -->
-                    <div class="p-4 bg-dark-700/50 border border-dark-500 rounded-xl">
                         <label class="block text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-map-marker-alt text-gold-400 mr-1"></i> Branch Location <span class="text-gray-500">(optional)</span>
+                            <i class="fas fa-store text-gold-400 mr-1"></i> Select Your Branch
                         </label>
-                        <p class="text-xs text-gray-400 mb-3">Set your branch location so customers can navigate to your shop using "Twende Dukani".</p>
-                        <input type="hidden" name="latitude" id="reg-latitude" value="{{ old('latitude') }}">
-                        <input type="hidden" name="longitude" id="reg-longitude" value="{{ old('longitude') }}">
-                        <div id="reg-location-status" class="text-xs text-gray-400 mb-2"></div>
-                        <button type="button" onclick="openLocationModal()" id="reg-spot-btn"
-                            class="px-4 py-2 bg-gold-500/10 border border-gold-500/30 text-gold-400 text-sm font-medium rounded-xl hover:bg-gold-500/20 transition-all">
-                            <i class="fas fa-crosshairs mr-1"></i> Spot Branch Location
-                        </button>
-                        <div id="reg-location-saved" class="hidden mt-2 text-xs text-green-400">
-                            <i class="fas fa-check-circle mr-1"></i> Location saved successfully!
-                        </div>
+                        <select name="branch_id" required
+                            class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
+                            <option value="">-- Select Branch --</option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
+                                    {{ $branch->name }}{{ $branch->address ? " ({$branch->address})" : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @if($branches->isEmpty())
+                            <p class="text-xs text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> No branches available yet. Please contact the super admin to create a branch first.</p>
+                        @endif
                     </div>
 
                     <div>
@@ -120,92 +106,3 @@
     </div>
 </section>
 @endsection
-
-@section('modals')
-<!-- Location Modal -->
-<div id="locationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-dark-800 border border-dark-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-        <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-map-marker-alt text-gold-400 text-2xl"></i>
-            </div>
-            <h3 class="font-display text-xl font-bold text-white mb-2">Twende Dukani</h3>
-            <p class="text-gray-400 text-sm mb-6">Are you at the office right now?</p>
-            <div class="flex gap-3">
-                <button type="button" onclick="closeLocationModal()"
-                    class="flex-1 px-4 py-3 border border-dark-500 text-gray-400 rounded-xl text-sm font-medium hover:bg-dark-700 transition">
-                    No, Cancel
-                </button>
-                <button type="button" onclick="captureLocation()" id="yesLocationBtn"
-                    class="flex-1 px-4 py-3 bg-gold-500 text-dark-900 rounded-xl text-sm font-semibold hover:bg-gold-400 transition">
-                    Yes, I'm Here
-                </button>
-            </div>
-            <div id="location-loading" class="hidden mt-4">
-                <i class="fas fa-spinner fa-spin text-gold-400 text-xl"></i>
-                <p class="text-xs text-gray-400 mt-2">Getting your location...</p>
-            </div>
-            <div id="location-error" class="hidden mt-4 text-xs text-red-400"></div>
-        </div>
-    </div>
-</div>
-@endsection
-
-@push('scripts')
-<script>
-    function openLocationModal() {
-        document.getElementById('locationModal').classList.remove('hidden');
-        document.getElementById('location-loading').classList.add('hidden');
-        document.getElementById('location-error').classList.add('hidden');
-    }
-
-    function closeLocationModal() {
-        document.getElementById('locationModal').classList.add('hidden');
-    }
-
-    function captureLocation() {
-        if (!navigator.geolocation) {
-            document.getElementById('location-error').textContent = 'Geolocation is not supported by your browser.';
-            document.getElementById('location-error').classList.remove('hidden');
-            return;
-        }
-
-        document.getElementById('yesLocationBtn').disabled = true;
-        document.getElementById('location-loading').classList.remove('hidden');
-        document.getElementById('location-error').classList.add('hidden');
-
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-
-                document.getElementById('reg-latitude').value = lat;
-                document.getElementById('reg-longitude').value = lng;
-
-                document.getElementById('location-loading').classList.add('hidden');
-                document.getElementById('yesLocationBtn').disabled = false;
-
-                // Show success
-                document.getElementById('reg-location-status').innerHTML =
-                    '<span class="text-green-400"><i class="fas fa-check-circle mr-1"></i> Lat: ' + lat.toFixed(6) + ', Lng: ' + lng.toFixed(6) + '</span>';
-                document.getElementById('reg-location-saved').classList.remove('hidden');
-                document.getElementById('reg-spot-btn').innerHTML =
-                    '<i class="fas fa-check-circle mr-1"></i> Update Location';
-
-                closeLocationModal();
-            },
-            function(error) {
-                document.getElementById('location-loading').classList.add('hidden');
-                document.getElementById('yesLocationBtn').disabled = false;
-                let msg = 'Unable to get your location.';
-                if (error.code === 1) msg = 'Location access denied. Please allow location access in your browser.';
-                else if (error.code === 2) msg = 'Location unavailable. Please try again.';
-                else if (error.code === 3) msg = 'Location request timed out. Please try again.';
-                document.getElementById('location-error').textContent = msg;
-                document.getElementById('location-error').classList.remove('hidden');
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    }
-</script>
-@endpush

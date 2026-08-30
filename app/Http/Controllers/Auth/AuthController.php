@@ -25,6 +25,23 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    public function verifyStaffAccess(Request $request)
+    {
+        $request->validate([
+            'secret_code' => 'required|string',
+        ]);
+
+        $validCode = config('app.staff_secret_code', 'WCP-STAFF-2026');
+
+        if ($request->secret_code !== $validCode) {
+            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+        }
+
+        session(['staff_access_verified' => true]);
+
+        return redirect()->route('login');
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -105,8 +122,9 @@ class AuthController extends Controller
 
     public function logout()
     {
+        session()->forget('staff_access_verified');
         Auth::logout();
-        return redirect()->route('login');
+        return redirect()->route('home');
     }
 
     // ========================
@@ -196,10 +214,7 @@ class AuthController extends Controller
             'phone' => 'required|string|max:20',
             'password' => 'required|string|min:8|confirmed',
             'secret_code' => 'required|string',
-            'branch_name' => 'required|string|max:255',
-            'branch_address' => 'nullable|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'branch_id' => 'required|integer',
         ]);
 
         if ($validated['secret_code'] !== config('app.super_admin_secret', 'WCP-SUPER-2026')) {
@@ -212,29 +227,13 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'This email is already registered.']);
         }
 
+        // Verify branch exists
+        $branch = $this->supabase->find('branches', $validated['branch_id']);
+        if (!$branch) {
+            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+        }
+
         $hashedPassword = Hash::make($validated['password']);
-
-        // Create branch in Supabase first (inactive until admin is approved)
-        $branchData = $this->supabase->insert('branches', [
-            'name' => $validated['branch_name'],
-            'address' => $validated['branch_address'] ?? null,
-            'latitude' => $validated['latitude'] ?? null,
-            'longitude' => $validated['longitude'] ?? null,
-            'is_active' => false,
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        // Create branch in SQLite for auth foreign key
-        $branch = Branch::updateOrCreate(
-            ['name' => $validated['branch_name']],
-            [
-                'address' => $validated['branch_address'] ?? null,
-                'latitude' => $validated['latitude'] ?? null,
-                'longitude' => $validated['longitude'] ?? null,
-                'is_active' => false,
-            ]
-        );
 
         // Create user in Supabase (primary)
         $this->supabase->insert('users', [
@@ -244,7 +243,7 @@ class AuthController extends Controller
             'password' => $hashedPassword,
             'role' => 'branch_admin',
             'status' => 'pending',
-            'branch_id' => $branchData['id'] ?? null,
+            'branch_id' => (int) $validated['branch_id'],
             'otp_verified' => false,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
@@ -259,10 +258,18 @@ class AuthController extends Controller
                 'password' => $hashedPassword,
                 'role' => 'branch_admin',
                 'status' => 'pending',
-                'branch_id' => $branch->id,
+                'branch_id' => $validated['branch_id'],
                 'otp_verified' => false,
             ]
         );
+
+        // Sync branch to SQLite
+        if (!Branch::find($validated['branch_id'])) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
 
         $otpService = new OtpService();
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);

@@ -50,7 +50,7 @@ class OtpMail extends Mailable
                     <tr>
                         <td style="background-color:#1a1a1a;padding:30px;text-align:center;border-bottom:2px solid #d4a853;">
                             <h1 style="color:#d4a853;font-size:24px;margin:0;letter-spacing:2px;">WORLD CHOICE PERFUMES</h1>
-                            <p style="color:#999;font-size:12px;margin:5px 0 0 0;letter-spacing:1px;">AUTHENTIC & PREMIUM FRAGRANCES</p>
+                            <p style="color:#999;font-size:12px;margin:5px 0 0 0;letter-spacing:1px;">BE SMART, NUKIA KIJANJA</p>
                         </td>
                     </tr>
                     <!-- Body -->

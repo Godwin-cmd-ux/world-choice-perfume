@@ -73,6 +73,7 @@ class StockController extends Controller
             'buying_cost' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'supplier' => 'nullable|string|max:255',
+            'category' => 'nullable|in:Oil Fragrance,Brand Perfume',
             'date_received' => 'required|date',
         ]);
 
@@ -91,6 +92,7 @@ class StockController extends Controller
                 'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
                 'supplier' => $validated['supplier'] ?? null,
+                'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
                 'updated_at' => now()->toIso8601String(),
@@ -103,6 +105,7 @@ class StockController extends Controller
                 'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
                 'supplier' => $validated['supplier'] ?? null,
+                'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
