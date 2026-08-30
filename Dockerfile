@@ -23,11 +23,13 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-# Copy the rest of the application
+# Copy the rest of the application (fresh copy — .dockerignore excludes database.sqlite)
 COPY . .
 
-# Setup — create fresh SQLite, generate autoload, set permissions
-RUN composer dump-autoload --optimize \
+# Force cache bust — always create fresh SQLite database
+ARG BUILD_TIME=unset
+RUN echo "Building at $BUILD_TIME" \
+    && composer dump-autoload --optimize \
     && rm -f database/database.sqlite \
     && touch database/database.sqlite \
     && mkdir -p storage/framework/{sessions,views,cache} \

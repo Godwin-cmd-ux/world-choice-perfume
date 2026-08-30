@@ -23,7 +23,7 @@ services:
         value: sqlite
       - key: DB_DATABASE
         value: /var/www/html/database/database.sqlite
-    buildCommand: ""
+    buildCommand: "--build-arg BUILD_TIME=$(date +%s)"
     startCommand: "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
     healthCheckPath: /
     disk:
