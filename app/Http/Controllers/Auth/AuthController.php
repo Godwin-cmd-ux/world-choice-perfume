@@ -75,7 +75,7 @@ class AuthController extends Controller
                 'phone' => $sbUser['phone'] ?? null,
                 'role' => $sbUser['role'],
                 'status' => $sbUser['status'],
-                'branch_id' => null,
+                'branch_id' => $sbUser['branch_id'] ?? null,
                 'otp_verified' => $sbUser['otp_verified'] ?? false,
                 'supabase_id' => $sbUser['id'],
             ]);
@@ -435,6 +435,8 @@ class AuthController extends Controller
                 'password' => $sbUser['password'],
                 'role' => $sbUser['role'],
                 'status' => $sbUser['status'],
+                'branch_id' => $sbUser['branch_id'] ?? null,
+                'supabase_id' => $sbUser['id'] ?? null,
             ]
         );
 
