@@ -26,7 +26,7 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 # Copy the rest of the application
 COPY . .
 
-# Setup autoload and directories
+# Setup
 RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
@@ -36,5 +36,5 @@ RUN composer dump-autoload --optimize \
 
 EXPOSE 8000
 
-# Always recreate SQLite fresh, then migrate, then serve
-CMD ["sh", "-c", "rm -f database/database.sqlite && touch database/database.sqlite && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+# Start: generate key if missing, migrate, then serve
+CMD ["sh", "-c", "php artisan key:generate --force 2>/dev/null; rm -f database/database.sqlite; touch database/database.sqlite; php artisan migrate --force; php artisan config:cache; php artisan route:cache; php artisan view:cache; php -S 0.0.0.0:${PORT:-8000} -t public"]
