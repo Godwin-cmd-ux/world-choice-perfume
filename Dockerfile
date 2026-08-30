@@ -34,7 +34,7 @@ RUN composer dump-autoload --optimize \
     && chmod -R 775 storage \
     && chmod -R 775 bootstrap/cache
 
-# Safe production defaults
+# Safe production defaults — these are OVERRIDDEN by Render env vars
 ENV APP_ENV=production \
     APP_DEBUG=false \
     LOG_CHANNEL=stderr \
@@ -44,12 +44,13 @@ ENV APP_ENV=production \
 
 EXPOSE 8000
 
-# Fresh DB, migrate, clear caches, serve
+# Start: fresh DB, clear caches, run migrations, serve via router
 CMD ["sh", "-c", "\
     rm -f database/database.sqlite; \
     touch database/database.sqlite; \
+    php artisan config:clear; \
+    php artisan route:clear; \
+    php artisan view:clear; \
+    php artisan cache:clear; \
     php artisan migrate --force; \
-    php artisan config:clear 2>/dev/null; \
-    php artisan route:clear 2>/dev/null; \
-    php artisan view:clear 2>/dev/null; \
-    php -S 0.0.0.0:${PORT:-8000} -t public"]
+    php -S 0.0.0.0:${PORT:-8000} -t public public/index.php"]
