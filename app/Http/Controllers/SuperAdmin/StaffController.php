@@ -32,7 +32,6 @@ class StaffController extends Controller
 
         $users = $this->supabase->query('users', $params);
 
-        // Apply search filter in PHP
         if ($request->search) {
             $search = strtolower($request->search);
             $users = array_filter($users, function ($u) use ($search) {
@@ -44,7 +43,6 @@ class StaffController extends Controller
 
         $users = array_values($users);
 
-        // Cast for views
         $users = collect($users)->map(function ($u) {
             if (isset($u['branch']) && is_array($u['branch'])) $u['branch'] = (object) $u['branch'];
             return (object) $u;
@@ -60,7 +58,6 @@ class StaffController extends Controller
 
         if (isset($user['branch']) && is_array($user['branch'])) $user['branch'] = (object) $user['branch'];
 
-        // Fetch this user's recent sales
         $sales = $this->supabase->query('sales', [
             'select' => 'id,sale_number,total,payment_method,payment_summary,created_at,customer:customers(name,phone)',
             'cashier_id' => "eq.{$userId}",
@@ -68,7 +65,6 @@ class StaffController extends Controller
             'limit' => 20,
         ]);
 
-        // Fetch this user's expenses
         $expenses = $this->supabase->query('expenses', [
             'select' => 'id,category,amount,description,created_at',
             'user_id' => "eq.{$userId}",
@@ -76,7 +72,6 @@ class StaffController extends Controller
             'limit' => 20,
         ]);
 
-        // Fetch this user's audit logs
         $auditLogs = $this->supabase->query('audit_logs', [
             'select' => 'id,action,created_at',
             'user_id' => "eq.{$userId}",
@@ -84,7 +79,6 @@ class StaffController extends Controller
             'limit' => 20,
         ]);
 
-        // Cast nested objects
         $sales = collect($sales)->map(function ($s) {
             if (isset($s['customer']) && is_array($s['customer'])) $s['customer'] = (object) $s['customer'];
             return (object) $s;
@@ -113,18 +107,26 @@ class StaffController extends Controller
         $currentStatus = $user['status'] ?? 'active';
         $newStatus = $currentStatus === 'blocked' ? 'active' : 'blocked';
 
-        $this->supabase->update('users', [
+        // Update user status in Supabase
+        $result = $this->supabase->update('users', [
             'status' => $newStatus,
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $userId]);
 
-        // Audit log
-        $this->supabase->insert('audit_logs', [
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
-            'action' => $newStatus === 'blocked' ? "blocked_user_{$userId}" : "unblocked_user_{$userId}",
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
+        // Audit log — wrapped in try/catch so failure doesn't block the action
+        try {
+            $adminUserId = auth()->user()->supabase_id ?? auth()->id();
+            if ($adminUserId) {
+                $this->supabase->insert('audit_logs', [
+                    'user_id' => $adminUserId,
+                    'action' => $newStatus === 'blocked' ? "blocked_user_{$userId}" : "unblocked_user_{$userId}",
+                    'created_at' => now()->toIso8601String(),
+                    'updated_at' => now()->toIso8601String(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
 
         return back()->with('success', "User has been {$newStatus}.");
     }
@@ -133,12 +135,19 @@ class StaffController extends Controller
     {
         $this->supabase->delete('users', ['id' => $userId]);
 
-        $this->supabase->insert('audit_logs', [
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
-            'action' => "deleted_user_{$userId}",
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
+        try {
+            $adminUserId = auth()->user()->supabase_id ?? auth()->id();
+            if ($adminUserId) {
+                $this->supabase->insert('audit_logs', [
+                    'user_id' => $adminUserId,
+                    'action' => "deleted_user_{$userId}",
+                    'created_at' => now()->toIso8601String(),
+                    'updated_at' => now()->toIso8601String(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
 
         return redirect()->route('super-admin.staff.index')->with('success', 'User deleted successfully.');
     }
