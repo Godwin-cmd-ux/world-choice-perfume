@@ -8,12 +8,16 @@ use Illuminate\Support\Facades\Route;
 // PUBLIC / CUSTOMER ROUTES
 // ========================
 Route::get('/', function() {
-    $supabase = new \App\Services\SupabaseService();
-    $branches = collect($supabase->query('branches', [
-        'select' => 'id,name,address,latitude,longitude,is_active',
-        'is_active' => 'eq.true',
-        'order' => 'name.asc',
-    ]))->map(fn($b) => (object) $b);
+    try {
+        $supabase = new \App\Services\SupabaseService();
+        $branches = collect($supabase->query('branches', [
+            'select' => 'id,name,address,latitude,longitude,is_active',
+            'is_active' => 'eq.true',
+            'order' => 'name.asc',
+        ]))->map(fn($b) => (object) $b);
+    } catch (\Exception $e) {
+        $branches = collect();
+    }
     return view('home', compact('branches'));
 })->name('home');
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
