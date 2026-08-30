@@ -8,32 +8,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('orders', function (Blueprint $table) {
-            $table->id();
-            $table->string('order_number')->unique(); // e.g., ORD-000001
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('cashier_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
-            $table->enum('status', ['pending', 'assigned', 'ready', 'completed', 'cancelled'])->default('pending');
-            $table->decimal('total', 12, 2)->default(0);
-            $table->text('delivery_notes')->nullable();
-            $table->timestamp('assigned_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
-            $table->timestamp('cancelled_at')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('orders')) {
+            Schema::create('orders', function (Blueprint $table) {
+                $table->id();
+                $table->string('order_number')->unique();
+                $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('cashier_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
+                $table->string('status')->default('pending');
+                $table->decimal('total', 12, 2)->default(0);
+                $table->text('delivery_notes')->nullable();
+                $table->timestamp('assigned_at')->nullable();
+                $table->timestamp('completed_at')->nullable();
+                $table->timestamp('cancelled_at')->nullable();
+                $table->timestamps();
+            });
+        }
 
-            $table->index(['branch_id', 'status']);
-        });
-
-        Schema::create('order_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->integer('quantity');
-            $table->decimal('unit_price', 12, 2);
-            $table->decimal('total', 12, 2);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('order_items')) {
+            Schema::create('order_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+                $table->integer('quantity');
+                $table->decimal('unit_price', 12, 2);
+                $table->decimal('total', 12, 2);
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
