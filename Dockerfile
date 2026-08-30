@@ -23,23 +23,18 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-# Copy the rest of the application (fresh copy — .dockerignore excludes database.sqlite)
+# Copy the rest of the application
 COPY . .
 
-# Force cache bust — always create fresh SQLite database
-ARG BUILD_TIME=unset
-RUN echo "Building at $BUILD_TIME" \
-    && composer dump-autoload --optimize \
-    && rm -f database/database.sqlite \
-    && touch database/database.sqlite \
+# Setup autoload and directories
+RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && chmod -R 775 storage \
-    && chmod -R 775 bootstrap/cache \
-    && chmod 664 database/database.sqlite
+    && chmod -R 775 bootstrap/cache
 
 EXPOSE 8000
 
-# Start: migrate fresh DB then serve
-CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+# Always recreate SQLite fresh, then migrate, then serve
+CMD ["sh", "-c", "rm -f database/database.sqlite && touch database/database.sqlite && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
