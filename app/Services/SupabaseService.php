@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 
 class SupabaseService
@@ -37,7 +38,7 @@ class SupabaseService
 
     private function request(): \Illuminate\Http\Client\PendingRequest
     {
-        return Http::withHeaders($this->headers())->timeout(10)->retry(1, 1000);
+        return Http::withHeaders($this->headers())->timeout(30)->retry(2, 1000);
     }
 
     /**
@@ -66,10 +67,12 @@ class SupabaseService
         try {
             $response = $this->request()->get($url, $queryParams);
         } catch (\Exception $e) {
+            Log::error("Supabase query failed for table {$table}: " . $e->getMessage());
             return [];
         }
 
         if ($response->failed()) {
+            Log::warning("Supabase query returned error for table {$table}: " . $response->body());
             return [];
         }
 
@@ -90,6 +93,7 @@ class SupabaseService
         try {
             $response = $this->request()->get($url, $queryParams);
         } catch (\Exception $e) {
+            Log::error("Supabase queryFresh failed for table {$table}: " . $e->getMessage());
             return [];
         }
 
@@ -108,9 +112,14 @@ class SupabaseService
         $url = "{$this->url}/rest/v1/{$table}";
         $queryParams = $this->buildQueryParams($params);
 
-        $response = $this->request()->withHeaders([
-            'Prefer' => 'return=representation,count=exact',
-        ])->get($url, $queryParams);
+        try {
+            $response = $this->request()->withHeaders([
+                'Prefer' => 'return=representation,count=exact',
+            ])->get($url, $queryParams);
+        } catch (\Exception $e) {
+            Log::error("Supabase queryWithCount failed for table {$table}: " . $e->getMessage());
+            return ['data' => [], 'count' => 0];
+        }
 
         if ($response->failed()) {
             return ['data' => [], 'count' => 0];
@@ -161,9 +170,15 @@ class SupabaseService
      */
     public function insert(string $table, array|object $data): ?array
     {
-        $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
+        try {
+            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
+        } catch (\Exception $e) {
+            Log::error("Supabase insert failed for table {$table}: " . $e->getMessage());
+            return null;
+        }
 
         if ($response->failed()) {
+            Log::warning("Supabase insert error for table {$table}: " . $response->body());
             return null;
         }
 
@@ -179,7 +194,12 @@ class SupabaseService
      */
     public function insertMany(string $table, array $records): ?array
     {
-        $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $records);
+        try {
+            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $records);
+        } catch (\Exception $e) {
+            Log::error("Supabase insertMany failed for table {$table}: " . $e->getMessage());
+            return null;
+        }
 
         if ($response->failed()) {
             return null;
@@ -197,7 +217,12 @@ class SupabaseService
     {
         $queryParams = $this->buildFilterParams($conditions);
 
-        $response = $this->request()->patch("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams), $data);
+        try {
+            $response = $this->request()->patch("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams), $data);
+        } catch (\Exception $e) {
+            Log::error("Supabase update failed for table {$table}: " . $e->getMessage());
+            return [];
+        }
 
         $this->invalidateCache($table);
 
@@ -211,9 +236,14 @@ class SupabaseService
     {
         $queryParams = $this->buildFilterParams($conditions);
 
-        $response = $this->request()->withHeaders([
-            'Prefer' => '',
-        ])->delete("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams));
+        try {
+            $response = $this->request()->withHeaders([
+                'Prefer' => '',
+            ])->delete("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams));
+        } catch (\Exception $e) {
+            Log::error("Supabase delete failed for table {$table}: " . $e->getMessage());
+            return false;
+        }
 
         $this->invalidateCache($table);
 
@@ -235,9 +265,14 @@ class SupabaseService
         $queryParams = $this->buildFilterParams($conditions);
         $queryParams['select'] = 'id';
 
-        $response = $this->request()->withHeaders([
-            'Prefer' => 'count=exact',
-        ])->head($url, $queryParams);
+        try {
+            $response = $this->request()->withHeaders([
+                'Prefer' => 'count=exact',
+            ])->head($url, $queryParams);
+        } catch (\Exception $e) {
+            Log::error("Supabase count failed for table {$table}: " . $e->getMessage());
+            return 0;
+        }
 
         $header = $response->header('Content-Range');
         $count = 0;
@@ -255,7 +290,12 @@ class SupabaseService
      */
     public function rpc(string $functionName, array $params = []): mixed
     {
-        $response = $this->request()->post("{$this->url}/rest/v1/rpc/{$functionName}", $params);
+        try {
+            $response = $this->request()->post("{$this->url}/rest/v1/rpc/{$functionName}", $params);
+        } catch (\Exception $e) {
+            Log::error("Supabase rpc failed for function {$functionName}: " . $e->getMessage());
+            return null;
+        }
 
         if ($response->failed()) {
             return null;
@@ -267,26 +307,13 @@ class SupabaseService
     /**
      * Run multiple queries in parallel using Laravel's pool.
      * Returns an array of results in the same order as the queries.
-     *
-     * Usage:
-     *   $results = $this->parallel([
-     *       fn() => $this->query('sales', [...]),
-     *       fn() => $this->query('expenses', [...]),
-     *       fn() => $this->count('orders', [...]),
-     *   ]);
-     *   [$sales, $expenses, $pendingCount] = $results;
      */
     public function parallel(array $callbacks): array
     {
-        // Since Supabase HTTP is stateless, we can use Laravel's Pool
-        // But Pool requires Guzzle pool which may not be available.
-        // Fallback: use async promises via Laravel Http::pool()
         try {
             $pool = Http::pool(function ($pool) use ($callbacks) {
                 $results = [];
                 foreach ($callbacks as $i => $callback) {
-                    // We can't pool Supabase calls directly since they need headers
-                    // Instead, execute them sequentially but with cached results
                     $results[$i] = $callback();
                 }
                 return $results;
