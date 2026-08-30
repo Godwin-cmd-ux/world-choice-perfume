@@ -34,7 +34,22 @@ RUN composer dump-autoload --optimize \
     && chmod -R 775 storage \
     && chmod -R 775 bootstrap/cache
 
+# Set safe production defaults (override via Render env vars)
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr \
+    CACHE_STORE=file \
+    QUEUE_CONNECTION=sync \
+    SESSION_DRIVER=file
+
 EXPOSE 8000
 
-# Start: generate key if missing, migrate, then serve
-CMD ["sh", "-c", "php artisan key:generate --force 2>/dev/null; rm -f database/database.sqlite; touch database/database.sqlite; php artisan migrate --force; php artisan config:cache; php artisan route:cache; php artisan view:cache; php -S 0.0.0.0:${PORT:-8000} -t public"]
+# Start: fresh DB, migrate, cache config, serve
+CMD ["sh", "-c", "\
+    php artisan key:generate --force 2>/dev/null; \
+    rm -f database/database.sqlite; \
+    touch database/database.sqlite; \
+    php artisan migrate --force; \
+    php artisan config:cache 2>/dev/null; \
+    php artisan route:cache 2>/dev/null; \
+    php -S 0.0.0.0:${PORT:-8000} -t public"]
