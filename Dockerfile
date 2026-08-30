@@ -26,9 +26,8 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 # Copy the rest of the application
 COPY . .
 
-# Make entrypoint executable and setup
-RUN chmod +x docker-entrypoint.sh \
-    && composer dump-autoload --optimize \
+# Setup
+RUN composer dump-autoload --optimize \
     && mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
