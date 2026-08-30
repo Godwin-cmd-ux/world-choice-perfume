@@ -3,8 +3,16 @@
 printf 'APP_NAME="World Choice Perfumes"\n' > /var/www/html/.env
 printf 'APP_ENV=production\n' >> /var/www/html/.env
 printf 'APP_KEY=%s\n' "$APP_KEY" >> /var/www/html/.env
-printf 'APP_DEBUG=true\n' >> /var/www/html/.env
-printf 'APP_URL=%s\n' "$APP_URL" >> /var/www/html/.env
+printf 'APP_DEBUG=false\n' >> /var/www/html/.env
+
+# Force HTTPS in APP_URL
+if [ -n "$APP_URL" ]; then
+    SAFE_URL=$(echo "$APP_URL" | sed 's|^http://|https://|')
+else
+    SAFE_URL="https://world-choice-perfume-production.up.railway.app"
+fi
+printf 'APP_URL=%s\n' "$SAFE_URL" >> /var/www/html/.env
+
 printf 'LOG_CHANNEL=stderr\n' >> /var/www/html/.env
 printf 'LOG_LEVEL=debug\n' >> /var/www/html/.env
 printf 'DB_CONNECTION=sqlite\n' >> /var/www/html/.env
