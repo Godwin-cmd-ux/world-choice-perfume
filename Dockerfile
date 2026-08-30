@@ -26,16 +26,18 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 # Copy the rest of the application
 COPY . .
 
-# Setup
+# Setup — create fresh SQLite, generate autoload, set permissions
 RUN composer dump-autoload --optimize \
+    && rm -f database/database.sqlite \
+    && touch database/database.sqlite \
     && mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
-    && touch database/database.sqlite \
     && chmod -R 775 storage \
-    && chmod -R 775 bootstrap/cache
+    && chmod -R 775 bootstrap/cache \
+    && chmod 664 database/database.sqlite
 
 EXPOSE 8000
 
-# Start command: migrate then serve
+# Start: migrate fresh DB then serve
 CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
