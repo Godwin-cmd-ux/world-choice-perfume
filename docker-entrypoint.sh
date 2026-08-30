@@ -28,11 +28,20 @@ CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
 SUPER_ADMIN_SECRET=${SUPER_ADMIN_SECRET}
 EOF
 
+echo "=== Verifying .env ==="
+cat /var/www/html/.env | head -5
+
+echo "=== Verifying APP_KEY ==="
+echo "APP_KEY length: $(echo -n "$APP_KEY" | wc -c)"
+
 echo "=== Setting up database ==="
 rm -f /var/www/html/database/database.sqlite
 touch /var/www/html/database/database.sqlite
 
 echo "=== Running migrations ==="
-php artisan migrate --force 2>&1 || echo "Migration done (some may already exist)"
+php artisan migrate --force 2>&1 || echo "Migration warning"
+
+echo "=== Testing app boot ==="
+php artisan route:list --columns=method,uri,name 2>&1 | head -5 || echo "Route list failed"
 
 echo "=== Done ==="
