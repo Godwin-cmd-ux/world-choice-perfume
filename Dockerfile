@@ -26,31 +26,15 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 # Copy the rest of the application
 COPY . .
 
-# Setup
-RUN composer dump-autoload --optimize \
+# Make entrypoint executable and setup
+RUN chmod +x docker-entrypoint.sh \
+    && composer dump-autoload --optimize \
     && mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && chmod -R 775 storage \
     && chmod -R 775 bootstrap/cache
 
-# Safe production defaults — these are OVERRIDDEN by Render env vars
-ENV APP_ENV=production \
-    APP_DEBUG=false \
-    LOG_CHANNEL=stderr \
-    CACHE_STORE=file \
-    QUEUE_CONNECTION=sync \
-    SESSION_DRIVER=file
-
 EXPOSE 8000
 
-# Start: fresh DB, clear caches, run migrations, serve via router
-CMD ["sh", "-c", "\
-    rm -f database/database.sqlite; \
-    touch database/database.sqlite; \
-    php artisan config:clear; \
-    php artisan route:clear; \
-    php artisan view:clear; \
-    php artisan cache:clear; \
-    php artisan migrate --force; \
-    php -S 0.0.0.0:${PORT:-8000} -t public public/index.php"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
