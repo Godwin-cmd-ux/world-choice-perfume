@@ -3,13 +3,13 @@
 printf 'APP_NAME="World Choice Perfumes"\n' > /var/www/html/.env
 printf 'APP_ENV=production\n' >> /var/www/html/.env
 printf 'APP_KEY=%s\n' "$APP_KEY" >> /var/www/html/.env
-printf 'APP_DEBUG=false\n' >> /var/www/html/.env
+printf 'APP_DEBUG=true\n' >> /var/www/html/.env
 
 # Force HTTPS in APP_URL
 if [ -n "$APP_URL" ]; then
     SAFE_URL=$(echo "$APP_URL" | sed 's|^http://|https://|')
 else
-    SAFE_URL="https://world-choice-perfume-production.up.railway.app"
+    SAFE_URL="https://world-choice-perfume.onrender.com"
 fi
 printf 'APP_URL=%s\n' "$SAFE_URL" >> /var/www/html/.env
 
@@ -34,6 +34,18 @@ printf 'CLOUDINARY_CLOUD_NAME=%s\n' "$CLOUDINARY_CLOUD_NAME" >> /var/www/html/.e
 printf 'CLOUDINARY_API_KEY=%s\n' "$CLOUDINARY_API_KEY" >> /var/www/html/.env
 printf 'CLOUDINARY_API_SECRET=%s\n' "$CLOUDINARY_API_SECRET" >> /var/www/html/.env
 printf 'SUPER_ADMIN_SECRET=%s\n' "$SUPER_ADMIN_SECRET" >> /var/www/html/.env
+
+echo "=== ENV VAR CHECK ==="
+echo "SUPABASE_URL: ${SUPABASE_URL:-(NOT SET!)}"
+echo "SUPABASE_ANON_KEY length: $(echo -n "$SUPABASE_ANON_KEY" | wc -c)"
+echo "SUPABASE_SERVICE_ROLE_KEY length: $(echo -n "$SUPABASE_SERVICE_ROLE_KEY" | wc -c)"
+echo "APP_KEY: ${APP_KEY:-(NOT SET!)}"
+echo "APP_URL: ${APP_URL:-(NOT SET!)}"
+
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+    echo "!!! WARNING: Critical Supabase env vars are missing! Database will not work!"
+    echo "!!! Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Render env vars!"
+fi
 
 echo "=== Verifying APP_KEY ==="
 if grep -q "APP_KEY=base64:" /var/www/html/.env; then
