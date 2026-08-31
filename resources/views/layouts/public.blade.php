@@ -62,15 +62,18 @@
 
                 <!-- Desktop Nav -->
                 <div class="hidden md:flex items-center gap-2">
-                    <a href="{{ route('home') }}"
-                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('home') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Home</a>
-                    <a href="{{ route('customer.products.index') }}"
-                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.products.*') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Shop</a>
-                    <a href="{{ route('customer.orders.track') }}"
-                       class="nav-link text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.orders.track') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Track Order</a>
-                    <a href="#about" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">About</a>
-                    <a href="#branches" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Branches</a>
-                    <a href="#contact" class="nav-link text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Contact</a>
+                    <a href="{{ route('home') }}" data-nav="home"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('home') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Home</a>
+                    <a href="{{ route('customer.products.index') }}" data-nav="shop"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.products.*') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Shop</a>
+                    <a href="{{ route('customer.orders.track') }}" data-nav="track-order"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.orders.track') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Track Order</a>
+                    <a href="#about" data-nav="about" data-scroll="true"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">About</a>
+                    <a href="#branches" data-nav="branches" data-scroll="true"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Branches</a>
+                    <a href="#contact" data-nav="contact" data-scroll="true"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Contact</a>
                 </div>
 
                 <!-- Auth Buttons -->
@@ -190,6 +193,110 @@
         });
         // Trigger scroll check on load
         window.dispatchEvent(new Event('scroll'));
+
+        // Scroll-spy for nav active states
+        (function() {
+            const isHomePage = document.querySelector('section#about') !== null;
+            if (!isHomePage) return;
+
+            const navItems = document.querySelectorAll('.nav-item');
+            const sections = [];
+
+            // Map sections to nav items
+            // Hero (top of page) → Home
+            // #categories, #featured-brands (between hero and about) → Home
+            // #about → About
+            // #branches → Branches
+            // #contact (footer) → Contact
+            const sectionMap = [
+                { id: 'hero', nav: 'home' },
+                { id: 'about', nav: 'about' },
+                { id: 'branches', nav: 'branches' },
+                { id: 'contact', nav: 'contact' }
+            ];
+
+            // Get or create hero section reference
+            const heroSection = document.querySelector('.hero-gradient');
+
+            function setActiveNav(navKey) {
+                navItems.forEach(item => {
+                    const key = item.getAttribute('data-nav');
+                    if (key === navKey) {
+                        item.classList.add('text-gold-400', 'bg-gold-500/10');
+                        item.classList.remove('text-gray-300');
+                    } else {
+                        item.classList.remove('text-gold-400', 'bg-gold-500/10');
+                        item.classList.add('text-gray-300');
+                    }
+                });
+            }
+
+            function onScroll() {
+                const scrollY = window.scrollY + 100; // offset for fixed nav
+                let currentSection = 'home';
+
+                // Check about section
+                const aboutEl = document.getElementById('about');
+                if (aboutEl && scrollY >= aboutEl.offsetTop) {
+                    currentSection = 'about';
+                }
+
+                // Check branches section
+                const branchesEl = document.getElementById('branches');
+                if (branchesEl && scrollY >= branchesEl.offsetTop) {
+                    currentSection = 'branches';
+                }
+
+                // Check contact (footer)
+                const contactEl = document.getElementById('contact');
+                if (contactEl && scrollY >= contactEl.offsetTop - 200) {
+                    currentSection = 'contact';
+                }
+
+                setActiveNav(currentSection);
+            }
+
+            // Use IntersectionObserver for smoother detection
+            const observerOptions = {
+                root: null,
+                rootMargin: '-100px 0px -60% 0px',
+                threshold: 0
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        if (id === 'about') setActiveNav('about');
+                        else if (id === 'branches') setActiveNav('branches');
+                        else if (id === 'contact') setActiveNav('contact');
+                    }
+                });
+            }, observerOptions);
+
+            // Observe sections
+            ['about', 'branches', 'contact'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) observer.observe(el);
+            });
+
+            // Also handle hero area (top of page)
+            const heroObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        setActiveNav('home');
+                    }
+                });
+            }, { root: null, rootMargin: '-100px 0px -60% 0px', threshold: 0 });
+
+            if (heroSection) heroObserver.observe(heroSection);
+
+            // Fallback scroll listener for edge cases
+            window.addEventListener('scroll', onScroll, { passive: true });
+
+            // Set initial state
+            onScroll();
+        })();
     </script>
     @yield('modals')
 
