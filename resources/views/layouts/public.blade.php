@@ -68,11 +68,11 @@
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.products.*') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Shop</a>
                     <a href="{{ route('customer.orders.track') }}" data-nav="track-order"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.orders.track') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Track Order</a>
-                    <a href="#about" data-nav="about" data-scroll="true"
+                    <a href="{{ request()->routeIs('home') ? '#about' : route('home').'#about' }}" data-nav="about" data-scroll="true"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">About</a>
-                    <a href="#branches" data-nav="branches" data-scroll="true"
+                    <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" data-nav="branches" data-scroll="true"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Branches</a>
-                    <a href="#contact" data-nav="contact" data-scroll="true"
+                    <a href="{{ request()->routeIs('home') ? '#contact' : route('home').'#contact' }}" data-nav="contact" data-scroll="true"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">Contact</a>
                 </div>
 
@@ -113,7 +113,7 @@
                 <a href="{{ route('home') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-home mr-2"></i> Home</a>
                 <a href="{{ route('customer.products.index') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-shopping-bag mr-2"></i> Shop</a>
                 <a href="{{ route('customer.orders.track') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-truck mr-2"></i> Track Order</a>
-                <a href="#branches" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
+                <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
                 <div class="border-t border-dark-700 my-3"></div>
                 @auth
                     <a href="{{ route(auth()->user()->role === 'super_admin' ? 'super-admin.dashboard' : (auth()->user()->role === 'branch_admin' ? 'branch-admin.dashboard' : 'cashier.dashboard')) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
@@ -154,7 +154,7 @@
                         <li><a href="{{ route('home') }}" class="text-sm text-gray-400 hover:text-gold-400 transition">Home</a></li>
                         <li><a href="{{ route('customer.products.index') }}" class="text-sm text-gray-400 hover:text-gold-400 transition">Shop All</a></li>
                         <li><a href="{{ route('customer.orders.track') }}" class="text-sm text-gray-400 hover:text-gold-400 transition">Track Order</a></li>
-                        <li><a href="#about" class="text-sm text-gray-400 hover:text-gold-400 transition">About Us</a></li>
+                        <li><a href="{{ request()->routeIs('home') ? '#about' : route('home').'#about' }}" class="text-sm text-gray-400 hover:text-gold-400 transition">About Us</a></li>
                     </ul>
                 </div>
 
