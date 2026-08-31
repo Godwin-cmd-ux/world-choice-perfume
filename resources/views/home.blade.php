@@ -95,7 +95,7 @@
                         <p class="text-[10px] text-gray-400 mt-1">Trusted by 10,000+ customers</p>
                     </div>
                     <div class="absolute -bottom-4 -left-4 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
-                        <p class="text-xs font-semibold text-gold-400">5 Locations</p>
+                        <p class="text-xs font-semibold text-gold-400">{{ $branches->count() }} Location{{ $branches->count() !== 1 ? 's' : '' }}</p>
                         <p class="text-[10px] text-gray-400">Across Tanzania</p>
                     </div>
                 </div>
@@ -237,8 +237,8 @@
                         <p class="text-xs text-gray-500 mt-1">Fragrances</p>
                     </div>
                     <div class="text-center">
-                        <p class="font-display text-3xl font-bold gold-text">5</p>
-                        <p class="text-xs text-gray-500 mt-1">Locations</p>
+                        <p class="font-display text-3xl font-bold gold-text">{{ $branches->count() }}</p>
+                        <p class="text-xs text-gray-500 mt-1">Location{{ $branches->count() !== 1 ? 's' : '' }}</p>
                     </div>
                     <div class="text-center">
                         <p class="font-display text-3xl font-bold gold-text">10K+</p>
