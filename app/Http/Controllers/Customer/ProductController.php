@@ -26,6 +26,7 @@ class ProductController extends Controller
 
         $products = collect();
         $selectedBranch = null;
+        $showAllBranches = false;
 
         if ($request->branch_id) {
             // Get the selected branch
@@ -43,50 +44,30 @@ class ProductController extends Controller
                     'order' => 'created_at.desc',
                 ];
 
-                // Search filter
-                if ($request->search) {
-                    $search = $request->search;
-                    // PostgREST doesn't support OR across tables easily, so we fetch all then filter
-                }
-
-                // Category filter
-                if ($request->category) {
-                    // We need to filter by product.category after fetching
-                }
-
                 $rawStock = $this->supabase->query('branch_stock', $params);
 
-                // Apply search and category filters on the PHP side
                 $stockCollection = collect($rawStock);
 
-                if ($request->search) {
-                    $search = strtolower($request->search);
-                    $stockCollection = $stockCollection->filter(function ($item) use ($search) {
-                        $product = $item['product'] ?? [];
-                        return str_contains(strtolower($product['name'] ?? ''), $search)
-                            || str_contains(strtolower($product['brand'] ?? ''), $search)
-                            || str_contains(strtolower($product['category'] ?? ''), $search);
-                    });
-                }
-
-                if ($request->category) {
-                    $category = $request->category;
-                    $stockCollection = $stockCollection->filter(function ($item) use ($category) {
-                        return ($item['product']['category'] ?? '') === $category;
-                    });
-                }
-
-                $products = $stockCollection->values()->map(fn($item) => (object) [
-                    'id' => $item['id'],
-                    'branch_id' => $item['branch_id'],
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'selling_price' => $item['selling_price'],
-                    'product' => (object) array_merge($item['product'] ?? [], [
-                        'images' => collect($item['product']['images'] ?? []),
-                    ]),
-                ]);
+                $products = $this->applyFilters($stockCollection, $request);
             }
+        } else {
+            // All Branches — fetch all branch_stock with quantity > 0
+            $showAllBranches = true;
+
+            $params = [
+                'select' => '*, product:products(*, images:product_images(*))',
+                'quantity' => 'gt.0',
+                'order' => 'created_at.desc',
+            ];
+
+            $rawStock = $this->supabase->query('branch_stock', $params);
+
+            $stockCollection = collect($rawStock);
+
+            // Deduplicate by product_id — keep only one entry per product
+            $stockCollection = $stockCollection->unique('product_id')->values();
+
+            $products = $this->applyFilters($stockCollection, $request);
         }
 
         return view('customer.products.index', compact('branches', 'products', 'selectedBranch'));
@@ -151,5 +132,38 @@ class ProductController extends Controller
         }
 
         return view('customer.products.show', compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'));
+    }
+
+    private function applyFilters($stockCollection, Request $request)
+    {
+        // Search filter
+        if ($request->search) {
+            $search = strtolower($request->search);
+            $stockCollection = $stockCollection->filter(function ($item) use ($search) {
+                $product = $item['product'] ?? [];
+                return str_contains(strtolower($product['name'] ?? ''), $search)
+                    || str_contains(strtolower($product['brand'] ?? ''), $search)
+                    || str_contains(strtolower($product['category'] ?? ''), $search);
+            });
+        }
+
+        // Category filter
+        if ($request->category) {
+            $category = $request->category;
+            $stockCollection = $stockCollection->filter(function ($item) use ($category) {
+                return ($item['product']['category'] ?? '') === $category;
+            });
+        }
+
+        return $stockCollection->values()->map(fn($item) => (object) [
+            'id' => $item['id'],
+            'branch_id' => $item['branch_id'],
+            'product_id' => $item['product_id'],
+            'quantity' => $item['quantity'],
+            'selling_price' => $item['selling_price'],
+            'product' => (object) array_merge($item['product'] ?? [], [
+                'images' => collect($item['product']['images'] ?? []),
+            ]),
+        ]);
     }
 }
