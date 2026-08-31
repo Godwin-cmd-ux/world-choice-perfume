@@ -246,6 +246,14 @@ class AuthController extends Controller
 
         $hashedPassword = Hash::make($validated['password']);
 
+        // Sync branch to SQLite BEFORE creating user (foreign key constraint)
+        if (!Branch::find($validated['branch_id'])) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
+
         // Create user in Supabase (primary)
         $this->supabase->insert('users', [
             'name' => $validated['name'],
@@ -273,14 +281,6 @@ class AuthController extends Controller
                 'otp_verified' => false,
             ]
         );
-
-        // Sync branch to SQLite
-        if (!Branch::find($validated['branch_id'])) {
-            Branch::updateOrCreate(
-                ['id' => $branch['id']],
-                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
-            );
-        }
 
         $otpService = new OtpService();
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
@@ -328,6 +328,20 @@ class AuthController extends Controller
         }
 
         $hashedPassword = Hash::make($validated['password']);
+
+        // Verify branch exists in Supabase
+        $branch = $this->supabase->find('branches', $validated['branch_id']);
+        if (!$branch) {
+            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+        }
+
+        // Sync branch to SQLite
+        if (!Branch::find($validated['branch_id'])) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
 
         // Create in Supabase (primary)
         $this->supabase->insert('users', [
@@ -436,6 +450,17 @@ class AuthController extends Controller
         $sbUser = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if (!$sbUser) {
             return back()->withErrors(['email' => 'No account found with this email address.']);
+        }
+
+        // Ensure branch exists in SQLite before creating user
+        if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
+            $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
+            if ($sbBranch) {
+                Branch::updateOrCreate(
+                    ['id' => $sbBranch['id']],
+                    ['name' => $sbBranch['name'], 'address' => $sbBranch['address'] ?? null, 'is_active' => $sbBranch['is_active'] ?? true]
+                );
+            }
         }
 
         // Ensure local user exists for OTP record
