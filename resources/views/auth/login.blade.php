@@ -81,10 +81,13 @@
                         <i class="fas fa-user-tie mr-1"></i> Admin Sign Up
                     </a>
                 @else
-                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="col-span-2 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
+                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
                         <i class="fas fa-user-lock mr-1"></i> Enter Staff Code to Register
                     </button>
                 @endif
+                <a href="{{ route('register.stock-manager') }}" class="py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center text-sm text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/20 transition">
+                    <i class="fas fa-clipboard-check mr-1"></i> Stock Manager
+                </a>
             </div>
         </div>
 
