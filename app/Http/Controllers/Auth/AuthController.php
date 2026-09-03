@@ -384,6 +384,7 @@ class AuthController extends Controller
             'user_id' => $user->id,
             'message' => 'A verification code has been sent to your email.',
         ]);
+    }
 
     public function registerCashier(Request $request)
     {
