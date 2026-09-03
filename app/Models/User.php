@@ -36,6 +36,7 @@ class User extends Authenticatable
     public function scopeSuperAdmin($query) { return $query->where('role', 'super_admin'); }
     public function scopeBranchAdmin($query) { return $query->where('role', 'branch_admin'); }
     public function scopeCashiers($query) { return $query->where('role', 'cashier'); }
+    public function scopeStockManagers($query) { return $query->where('role', 'stock_manager'); }
     public function scopePending($query) { return $query->where('status', 'pending'); }
     public function scopeApproved($query) { return $query->where('status', 'approved'); }
     public function scopeActive($query) { return $query->whereIn('status', ['active', 'approved']); }
@@ -84,6 +85,7 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool { return $this->role === 'super_admin'; }
     public function isBranchAdmin(): bool { return $this->role === 'branch_admin'; }
     public function isCashier(): bool { return $this->role === 'cashier'; }
+    public function isStockManager(): bool { return $this->role === 'stock_manager'; }
     public function isApproved(): bool { return in_array($this->status, ['active', 'approved']); }
     public function isPending(): bool { return $this->status === 'pending'; }
 }

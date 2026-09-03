@@ -91,6 +91,10 @@
                             <a href="{{ route('cashier.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
                                 <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
                             </a>
+                        @elseif(auth()->user()->role === 'stock_manager')
+                            <a href="{{ route('stock-manager.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
+                                <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
+                            </a>
                         @endif
                         <a href="{{ route('logout') }}" class="text-sm text-gray-400 hover:text-white transition">Logout</a>
                     @else
@@ -116,7 +120,16 @@
                 <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
                 <div class="border-t border-dark-700 my-3"></div>
                 @auth
-                    <a href="{{ route(auth()->user()->role === 'super_admin' ? 'super-admin.dashboard' : (auth()->user()->role === 'branch_admin' ? 'branch-admin.dashboard' : 'cashier.dashboard')) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
+                    @php
+                        $dashboardRoute = match(auth()->user()->role) {
+                            'super_admin' => 'super-admin.dashboard',
+                            'branch_admin' => 'branch-admin.dashboard',
+                            'cashier' => 'cashier.dashboard',
+                            'stock_manager' => 'stock-manager.dashboard',
+                            default => 'login',
+                        };
+                    @endphp
+                    <a href="{{ route($dashboardRoute) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
                 @else
                     <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="block w-full text-left px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-sign-in-alt mr-2"></i> Staff Login</button>
                 @endauth
@@ -326,6 +339,14 @@
                     </button>
                 </form>
 
+                <div class="mt-4 space-y-2">
+                    <p class="text-xs text-gray-500">Don't have an account?</p>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <a href="{{ route('register.stock-manager') }}" class="text-xs text-emerald-400 hover:text-emerald-300 transition">
+                            <i class="fas fa-user-plus mr-1"></i> Register as Stock Manager
+                        </a>
+                    </div>
+                </div>
                 <button onclick="document.getElementById('staffLoginModal').classList.add('hidden')" class="mt-4 text-sm text-gray-500 hover:text-gray-300 transition">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Home
                 </button>

@@ -304,6 +304,87 @@ class AuthController extends Controller
         return view('auth.register-cashier', ['branches' => $branches]);
     }
 
+    public function showStockManagerRegistration()
+    {
+        $branches = collect($this->supabase->query('branches', [
+            'select' => '*',
+            'is_active' => 'eq.true',
+            'order' => 'name.asc',
+        ]))->map(fn($b) => (object) $b);
+
+        return view('auth.register-stock-manager', ['branches' => $branches]);
+    }
+
+    public function registerStockManager(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'branch_id' => 'required',
+        ]);
+
+        // Check if email already exists in Supabase
+        $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
+        if ($existing) {
+            return back()->withErrors(['email' => 'This email is already registered.']);
+        }
+
+        // Verify branch exists in Supabase
+        $branch = $this->supabase->find('branches', $validated['branch_id']);
+        if (!$branch) {
+            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+        }
+
+        // Sync branch to SQLite
+        if (!Branch::find($validated['branch_id'])) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
+
+        $hashedPassword = Hash::make($validated['password']);
+
+        // Create in Supabase (primary)
+        $this->supabase->insert('users', [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'password' => $hashedPassword,
+            'role' => 'stock_manager',
+            'status' => 'pending',
+            'branch_id' => (int) $validated['branch_id'],
+            'otp_verified' => false,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        // Also create/update in SQLite for Auth::login()
+        $user = User::updateOrCreate(
+            ['email' => $validated['email']],
+            [
+                'name' => $validated['name'],
+                'phone' => $validated['phone'],
+                'password' => $hashedPassword,
+                'role' => 'stock_manager',
+                'status' => 'pending',
+                'branch_id' => $validated['branch_id'],
+                'otp_verified' => false,
+            ]
+        );
+
+        $otpService = new OtpService();
+        $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
+
+        return view('auth.verify-otp', [
+            'email' => $validated['email'],
+            'type' => 'registration',
+            'user_id' => $user->id,
+            'message' => 'A verification code has been sent to your email.',
+        ]);
+
     public function registerCashier(Request $request)
     {
         $validated = $request->validate([
@@ -526,6 +607,7 @@ class AuthController extends Controller
             'super_admin' => redirect()->route('super-admin.dashboard'),
             'branch_admin' => redirect()->route('branch-admin.dashboard'),
             'cashier' => redirect()->route('cashier.dashboard'),
+            'stock_manager' => redirect()->route('stock-manager.dashboard'),
             default => redirect()->route('login'),
         };
     }

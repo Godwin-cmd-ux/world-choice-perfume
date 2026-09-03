@@ -101,6 +101,8 @@ Route::middleware('guest')->group(function () {
         Route::post('/register/branch-admin', [AuthController::class, 'registerBranchAdmin']);
         Route::get('/register/cashier', [AuthController::class, 'showCashierRegistration'])->name('register.cashier');
         Route::post('/register/cashier', [AuthController::class, 'registerCashier']);
+        Route::get('/register/stock-manager', [AuthController::class, 'showStockManagerRegistration'])->name('register.stock-manager');
+        Route::post('/register/stock-manager', [AuthController::class, 'registerStockManager']);
     });
 
     // OTP
@@ -167,13 +169,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::delete('/products/{product}', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'destroy'])->name('products.destroy');
         Route::delete('/product-images/{image}', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'removeImage'])->name('products.remove-image');
 
-        // Stock
-        Route::get('/stock', [\App\Http\Controllers\BranchAdmin\StockController::class, 'index'])->name('stock.index');
-        Route::get('/stock/entry', [\App\Http\Controllers\BranchAdmin\StockController::class, 'entryForm'])->name('stock.entry');
-        Route::post('/stock/entry', [\App\Http\Controllers\BranchAdmin\StockController::class, 'storeEntry'])->name('stock.store');
-        Route::get('/stock/movements', [\App\Http\Controllers\BranchAdmin\StockController::class, 'movements'])->name('stock.movements');
-        Route::post('/stock/adjust', [\App\Http\Controllers\BranchAdmin\StockController::class, 'adjust'])->name('stock.adjust');
-
         // Sales
         Route::get('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'create'])->name('sales.create');
@@ -198,6 +193,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'reject'])->name('cashiers.reject');
         Route::get('/cashiers/accountability', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'accountability'])->name('cashiers.accountability');
         Route::post('/cashiers/accountability', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'storeAccountability'])->name('cashiers.store-accountability');
+
+        // Stock Manager Approval
+        Route::get('/stock-managers', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'index'])->name('stock-managers.index');
+        Route::post('/stock-managers/{user}/approve', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'approve'])->name('stock-managers.approve');
+        Route::post('/stock-managers/{user}/reject', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'reject'])->name('stock-managers.reject');
 
         // Reports
         Route::prefix('reports')->name('reports.')->group(function () {
@@ -233,5 +233,36 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/orders/{order}/ready', [\App\Http\Controllers\Cashier\OrderController::class, 'markReady'])->name('orders.ready');
         Route::post('/orders/{order}/complete', [\App\Http\Controllers\Cashier\OrderController::class, 'complete'])->name('orders.complete');
         Route::post('/orders/{order}/serve', [\App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
+    });
+
+    // ========================
+    // STOCK MANAGER ROUTES
+    // ========================
+    Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager')->group(function () {
+        $smc = \App\Http\Controllers\StockManager\StockManagerController::class;
+
+        Route::get('/dashboard', [$smc, 'dashboard'])->name('dashboard');
+
+        // Product Stock
+        Route::get('/product-stock', [$smc, 'productStock'])->name('product-stock');
+        Route::get('/product-stock/entry', [$smc, 'productStockEntry'])->name('product-stock.entry');
+        Route::post('/product-stock/entry', [$smc, 'storeProductStockEntry'])->name('product-stock-entry.store');
+        Route::get('/product-stock/movements', [$smc, 'productStockMovements'])->name('product-stock-movements');
+
+        // Bottle Stock
+        Route::get('/bottle-stock', [$smc, 'bottleStock'])->name('bottle-stock');
+        Route::match(['get', 'post'], '/bottle-stock/in', [$smc, 'bottleStockIn'])->name('bottle-stock-in');
+        Route::match(['get', 'post'], '/bottle-stock/out', [$smc, 'bottleStockOut'])->name('bottle-stock-out');
+        Route::match(['get', 'post'], '/bottle-stock/broken', [$smc, 'bottleBroken'])->name('bottle-broken');
+        Route::get('/bottle-stock/movements', [$smc, 'bottleMovements'])->name('bottle-movements');
+
+        // Oil Fragrance
+        Route::get('/oil-fragrance', [$smc, 'oilFragranceStock'])->name('oil-fragrance');
+        Route::match(['get', 'post'], '/oil-fragrance/in', [$smc, 'oilFragranceStockIn'])->name('oil-fragrance-stock-in');
+        Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
+        Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
+
+        // QR Code
+        Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');
     });
 });
