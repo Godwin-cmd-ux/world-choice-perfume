@@ -252,7 +252,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Bottle Stock
         Route::get('/bottle-stock', [$smc, 'bottleStock'])->name('bottle-stock');
         Route::match(['get', 'post'], '/bottle-stock/in', [$smc, 'bottleStockIn'])->name('bottle-stock-in');
-        Route::match(['get', 'post'], '/bottle-stock/out', [$smc, 'bottleStockOut'])->name('bottle-stock-out');
         Route::match(['get', 'post'], '/bottle-stock/broken', [$smc, 'bottleBroken'])->name('bottle-broken');
         Route::get('/bottle-stock/movements', [$smc, 'bottleMovements'])->name('bottle-movements');
 

@@ -48,18 +48,34 @@
             <div class="grid grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                    <input type="text" name="supplier"
+                    <input type="text" name="supplier" value="{{ old('supplier') }}"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select name="category"
+                    <select name="category" id="category-select" onchange="toggleBottleVolume()"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                         <option value="">Select Category</option>
-                        <option value="Oil Fragrance">Oil Fragrance</option>
-                        <option value="Brand Perfume">Brand Perfume</option>
+                        <option value="Oil Fragrance" {{ old('category') == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
+                        <option value="Brand Perfume" {{ old('category') == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
                     </select>
                 </div>
+            </div>
+
+            <div id="bottle-volume-field" class="mb-6 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Volume (ml) *</label>
+                <select name="bottle_volume" id="bottle_volume"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Select Bottle Volume</option>
+                    <option value="6" {{ old('bottle_volume') == '6' ? 'selected' : '' }}>6ml</option>
+                    <option value="12" {{ old('bottle_volume') == '12' ? 'selected' : '' }}>12ml</option>
+                    <option value="30" {{ old('bottle_volume') == '30' ? 'selected' : '' }}>30ml</option>
+                    <option value="50" {{ old('bottle_volume') == '50' ? 'selected' : '' }}>50ml</option>
+                    <option value="100" {{ old('bottle_volume') == '100' ? 'selected' : '' }}>100ml</option>
+                </select>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>Selected volume bottles will be auto-outstocked by the quantity you enter above.
+                </p>
             </div>
 
             <div class="flex gap-3">
@@ -73,4 +89,25 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleBottleVolume() {
+    const category = document.getElementById('category-select').value;
+    const field = document.getElementById('bottle-volume-field');
+    const volumeInput = document.getElementById('bottle_volume');
+
+    if (category === 'Oil Fragrance') {
+        field.classList.remove('hidden');
+        volumeInput.setAttribute('required', 'required');
+    } else {
+        field.classList.add('hidden');
+        volumeInput.removeAttribute('required');
+        volumeInput.value = '';
+    }
+}
+
+toggleBottleVolume();
+</script>
+@endpush
 @endsection

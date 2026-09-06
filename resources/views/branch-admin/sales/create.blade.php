@@ -85,6 +85,29 @@
                 </div>
             </div>
 
+            <!-- Empty Bottles -->
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold"><i class="fas fa-wine-bottle mr-1"></i> Empty Bottles</h3>
+                    <span class="text-[10px] text-gray-400">Optional — auto-outstocks bottle stock</span>
+                </div>
+                <div id="bottle-items-container" class="space-y-3">
+                    <div class="bottle-item-row flex gap-2 items-start">
+                        <select name="empty_bottles[0][volume]" class="w-40 px-3 py-2 border rounded-lg text-sm bottle-volume-select">
+                            <option value="">-- Volume --</option>
+                            @foreach(\App\Services\BottleStockService::VOLUMES as $v)
+                                <option value="{{ $v }}" data-stock="{{ $bottleStock[$v] ?? 0 }}">{{ $v }}ml ({{ $bottleStock[$v] ?? 0 }} in stock)</option>
+                            @endforeach
+                        </select>
+                        <input type="number" name="empty_bottles[0][quantity]" value="1" min="1" class="w-20 px-3 py-2 border rounded-lg text-sm text-center bottle-qty-input">
+                        <input type="number" name="empty_bottles[0][price]" step="0.01" min="0" placeholder="Price (TZS)" class="flex-1 px-3 py-2 border rounded-lg text-sm bottle-price-input">
+                        <span class="bottle-line-total font-medium text-sm w-28 text-right pt-2">TZS 0</span>
+                        <button type="button" onclick="removeBottleRow(this)" class="text-red-500 hover:text-red-700 px-2 pt-2"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <button type="button" onclick="addBottleRow()" class="mt-3 text-amber-700 hover:underline text-sm"><i class="fas fa-plus mr-1"></i> Add Empty Bottle Line</button>
+            </div>
+
             <!-- Payment Mode -->
             <div class="bg-white rounded-xl shadow p-6">
                 <h3 class="font-semibold mb-4"><i class="fas fa-credit-card mr-1"></i> Payment Mode</h3>
@@ -131,7 +154,7 @@
 
 @push('scripts')
 <script>
-let rowIndex = 1, paymentRowIndex = 1;
+let rowIndex = 1, paymentRowIndex = 1, bottleRowIndex = 1;
 
 function setSaleType(type) {
     document.getElementById('sale_type').value = type;
@@ -171,15 +194,22 @@ document.getElementById('productSearch').addEventListener('input', function() { 
 function addRow() { const c = document.getElementById('items-container'), f = c.querySelector('.item-row'), n = f.cloneNode(true); n.querySelectorAll('select,input').forEach(e => { if(e.name) e.name = e.name.replace(/\d+/, rowIndex); }); n.querySelector('.qty-input').value = 1; n.querySelector('.line-total').textContent = 'TZS 0'; n.querySelector('.product-select').value = ''; const ci = n.querySelector('.wholesale-price-input'); if(ci){ci.value='';ci.classList.toggle('hidden',document.getElementById('sale_type').value!=='wholesale');} c.appendChild(n); rowIndex++; bindEvents(); }
 function removeRow(b) { if(document.getElementById('items-container').children.length>1) { b.closest('.item-row').remove(); calculateTotal(); } }
 function bindEvents() { document.querySelectorAll('.product-select').forEach(s=>s.onchange=()=>calculateTotal()); document.querySelectorAll('.qty-input').forEach(i=>i.oninput=()=>calculateTotal()); }
-function calculateTotal() { let t=0; const wh=document.getElementById('sale_type').value==='wholesale'; document.querySelectorAll('.item-row').forEach(r=>{const p=parseFloat(r.querySelector('.product-select').selectedOptions[0]?.dataset?.price||0);const q=parseInt(r.querySelector('.qty-input').value||0);const ci=r.querySelector('.wholesale-price-input');let up=p;if(wh&&ci&&ci.value)up=parseFloat(ci.value)||p;const lt=up*q;r.querySelector('.line-total').textContent='TZS '+lt.toLocaleString();t+=lt;}); document.getElementById('grand-total').textContent='TZS '+t.toLocaleString(); validatePayments(); }
+function calculateTotal() { let t=0; const wh=document.getElementById('sale_type').value==='wholesale'; document.querySelectorAll('.item-row').forEach(r=>{const p=parseFloat(r.querySelector('.product-select').selectedOptions[0]?.dataset?.price||0);const q=parseInt(r.querySelector('.qty-input').value||0);const ci=r.querySelector('.wholesale-price-input');let up=p;if(wh&&ci&&ci.value)up=parseFloat(ci.value)||p;const lt=up*q;r.querySelector('.line-total').textContent='TZS '+lt.toLocaleString();t+=lt;}); t+=calculateBottleTotal(); document.getElementById('grand-total').textContent='TZS '+t.toLocaleString(); validatePayments(); }
 
 // Payment
 function togglePaymentMode(m) { document.querySelectorAll('.payment-mode-option').forEach(e=>e.classList.remove('border-amber-500','bg-amber-50')); document.querySelector(`.payment-mode-option[data-mode="${m}"]`).classList.add('border-amber-500','bg-amber-50'); document.getElementById('singlePayment').classList.toggle('hidden',m!=='single'); document.getElementById('multiPayment').classList.toggle('hidden',m!=='multi'); if(m==='multi')validatePayments(); else{document.getElementById('submitBtn').disabled=false;document.getElementById('submitBtn').classList.remove('opacity-50');} }
 function addPaymentRow() { const c=document.getElementById('payment-rows'),f=c.querySelector('.payment-row'),n=f.cloneNode(true); n.querySelectorAll('select,input').forEach(e=>{if(e.name)e.name=e.name.replace(/\d+/,paymentRowIndex);}); n.querySelector('.payment-amount').value=''; c.appendChild(n); paymentRowIndex++; }
 function removePaymentRow(b) { if(document.getElementById('payment-rows').children.length>1){b.closest('.payment-row').remove();validatePayments();} }
-function validatePayments() { const m=document.querySelector('input[name="payment_mode"]:checked')?.value; if(m!=='multi')return; let t=0; document.querySelectorAll('.item-row').forEach(r=>{const p=parseFloat(r.querySelector('.product-select').selectedOptions[0]?.dataset?.price||0);const q=parseInt(r.querySelector('.qty-input').value||0);t+=p*q;}); let pt=0; document.querySelectorAll('.payment-amount').forEach(i=>{pt+=parseFloat(i.value||0);}); document.getElementById('payment-total').textContent='TZS '+pt.toLocaleString(); const mm=Math.abs(pt-t)>0.01; document.getElementById('payment-mismatch').classList.toggle('hidden',!mm); document.getElementById('submitBtn').disabled=mm; document.getElementById('submitBtn').classList.toggle('opacity-50',mm); }
+function validatePayments() { const m=document.querySelector('input[name="payment_mode"]:checked')?.value; if(m!=='multi')return; let t=0; document.querySelectorAll('.item-row').forEach(r=>{const p=parseFloat(r.querySelector('.product-select').selectedOptions[0]?.dataset?.price||0);const q=parseInt(r.querySelector('.qty-input').value||0);t+=p*q;}); t+=calculateBottleTotal(); let pt=0; document.querySelectorAll('.payment-amount').forEach(i=>{pt+=parseFloat(i.value||0);}); document.getElementById('payment-total').textContent='TZS '+pt.toLocaleString(); const mm=Math.abs(pt-t)>0.01; document.getElementById('payment-mismatch').classList.toggle('hidden',!mm); document.getElementById('submitBtn').disabled=mm; document.getElementById('submitBtn').classList.toggle('opacity-50',mm); }
+
+// Empty bottles
+function addBottleRow() { const c=document.getElementById('bottle-items-container'), f=c.querySelector('.bottle-item-row'), n=f.cloneNode(true); n.querySelectorAll('select,input').forEach(e=>{if(e.name)e.name=e.name.replace(/\d+/,bottleRowIndex);}); n.querySelector('.bottle-qty-input').value=1; n.querySelector('.bottle-price-input').value=''; n.querySelector('.bottle-line-total').textContent='TZS 0'; n.querySelector('.bottle-volume-select').value=''; c.appendChild(n); bottleRowIndex++; bindBottleEvents(); }
+function removeBottleRow(b) { if(document.getElementById('bottle-items-container').children.length>1){b.closest('.bottle-item-row').remove();calculateTotal();} }
+function bindBottleEvents() { document.querySelectorAll('.bottle-qty-input').forEach(i=>i.oninput=()=>calculateTotal()); document.querySelectorAll('.bottle-price-input').forEach(i=>i.oninput=()=>calculateTotal()); }
+function calculateBottleTotal() { let t=0; document.querySelectorAll('.bottle-item-row').forEach(r=>{const q=parseInt(r.querySelector('.bottle-qty-input').value||0);const p=parseFloat(r.querySelector('.bottle-price-input').value||0);const lt=q*p;r.querySelector('.bottle-line-total').textContent='TZS '+lt.toLocaleString();t+=lt;}); return t; }
 
 bindEvents();
+bindBottleEvents();
 </script>
 @endpush
 @endsection

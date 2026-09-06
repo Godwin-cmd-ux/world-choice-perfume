@@ -6,9 +6,6 @@
     <a href="{{ route('stock-manager.bottle-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
         <i class="fas fa-plus mr-1"></i> Stock In
     </a>
-    <a href="{{ route('stock-manager.bottle-stock-out') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-arrow-right mr-1"></i> Stock Out
-    </a>
     <a href="{{ route('stock-manager.bottle-broken') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
         <i class="fas fa-broken-image mr-1"></i> Broken
     </a>
@@ -34,7 +31,7 @@
 {{-- Quick Actions --}}
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Quick Actions</h3>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <a href="{{ route('stock-manager.bottle-stock-in') }}" class="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition">
             <div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center">
                 <i class="fas fa-plus text-white"></i>
@@ -42,15 +39,6 @@
             <div>
                 <p class="font-medium text-gray-800">Stock In</p>
                 <p class="text-xs text-gray-500">Add bottles to inventory</p>
-            </div>
-        </a>
-        <a href="{{ route('stock-manager.bottle-stock-out') }}" class="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition">
-            <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
-                <i class="fas fa-arrow-right text-white"></i>
-            </div>
-            <div>
-                <p class="font-medium text-gray-800">Stock Out</p>
-                <p class="text-xs text-gray-500">Bottles sent for production</p>
             </div>
         </a>
         <a href="{{ route('stock-manager.bottle-broken') }}" class="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition">

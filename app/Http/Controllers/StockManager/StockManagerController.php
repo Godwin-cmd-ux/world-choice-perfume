@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
+use App\Services\BottleStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -10,10 +11,12 @@ use Illuminate\Http\Request;
 class StockManagerController extends Controller
 {
     private SupabaseService $supabase;
+    private BottleStockService $bottles;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->bottles = new BottleStockService($this->supabase);
     }
 
     // ========================
@@ -129,10 +132,30 @@ class StockManagerController extends Controller
             'selling_price' => 'required|numeric|min:0',
             'supplier' => 'nullable|string|max:255',
             'category' => 'nullable|in:Oil Fragrance,Brand Perfume',
+            'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
             'date_received' => 'required|date',
         ]);
 
         $branchId = auth()->user()->branch_id;
+        $category = $validated['category'] ?? null;
+        $bottleVolume = $validated['bottle_volume'] ?? null;
+
+        // Oil fragrance entries consume empty bottles: require the volume and
+        // make sure enough of that volume is in stock before recording the entry.
+        if ($category === 'Oil Fragrance') {
+            if (empty($bottleVolume)) {
+                return back()->withErrors(['bottle_volume' => 'Bottle volume is required for Oil Fragrance entries.'])->withInput();
+            }
+
+            $available = $this->bottles->stockMap($branchId);
+            $bottleVolume = (int) $bottleVolume;
+
+            if (($available[$bottleVolume] ?? 0) < $validated['quantity']) {
+                return back()->withErrors([
+                    'bottle_volume' => "Insufficient bottle stock for {$bottleVolume}ml. Available: " . ($available[$bottleVolume] ?? 0) . '.',
+                ])->withInput();
+            }
+        }
 
         $existing = $this->supabase->findOne('branch_stock', [
             'branch_id' => $branchId,
@@ -179,6 +202,17 @@ class StockManagerController extends Controller
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ]);
+
+        // Auto-outstock empty bottles used to bottle the oil fragrance entry.
+        if ($category === 'Oil Fragrance' && $bottleVolume) {
+            $this->bottles->deduct(
+                $branchId,
+                $bottleVolume,
+                (int) $validated['quantity'],
+                'Auto outstock for oil fragrance stock entry',
+                (string) auth()->id()
+            );
+        }
 
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock entry recorded successfully.');
     }
@@ -296,50 +330,6 @@ class StockManagerController extends Controller
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-stock-in', ['volumes' => $volumes]);
-    }
-
-    public function bottleStockOut(Request $request)
-    {
-        $branchId = auth()->user()->branch_id;
-
-        if ($request->isMethod('post')) {
-            $validated = $request->validate([
-                'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
-                'quantity' => 'required|integer|min:1',
-                'reason' => 'nullable|string|max:255',
-            ]);
-
-            $existing = $this->supabase->findOne('bottle_stock', [
-                'branch_id' => $branchId,
-                'volume' => $validated['volume'],
-            ]);
-
-            if (!$existing || ($existing['quantity'] ?? 0) < $validated['quantity']) {
-                return back()->withErrors(['quantity' => 'Insufficient bottle stock.']);
-            }
-
-            $newQty = ($existing['quantity'] ?? 0) - $validated['quantity'];
-            $this->supabase->update('bottle_stock', [
-                'quantity' => $newQty,
-                'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
-
-            $this->supabase->insert('bottle_stock_movements', [
-                'branch_id' => $branchId,
-                'volume' => $validated['volume'],
-                'type' => 'stock_out',
-                'quantity' => $validated['quantity'],
-                'reason' => $validated['reason'] ?? 'Stock out for production',
-                'performed_by' => auth()->id(),
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
-            ]);
-
-            return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock out recorded.');
-        }
-
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
-        return view('stock-manager.bottle-stock-out', ['volumes' => $volumes]);
     }
 
     public function bottleBroken(Request $request)

@@ -107,6 +107,33 @@
                 </div>
             </div>
 
+            <!-- Empty Bottles -->
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold"><i class="fas fa-wine-bottle mr-1"></i> Empty Bottles</h3>
+                    <span class="text-[10px] text-gray-400">Optional — auto-outstocks bottle stock</span>
+                </div>
+
+                <div id="bottle-items-container" class="space-y-3">
+                    <div class="bottle-item-row flex gap-2 items-start">
+                        <select name="empty_bottles[0][volume]" class="w-40 px-3 py-2 border rounded-lg text-sm bottle-volume-select">
+                            <option value="">-- Volume --</option>
+                            @foreach(\App\Services\BottleStockService::VOLUMES as $v)
+                                <option value="{{ $v }}" data-stock="{{ $bottleStock[$v] ?? 0 }}">{{ $v }}ml ({{ $bottleStock[$v] ?? 0 }} in stock)</option>
+                            @endforeach
+                        </select>
+                        <input type="number" name="empty_bottles[0][quantity]" value="1" min="1" class="w-20 px-3 py-2 border rounded-lg text-sm text-center bottle-qty-input">
+                        <input type="number" name="empty_bottles[0][price]" step="0.01" min="0" placeholder="Price (TZS)" class="flex-1 px-3 py-2 border rounded-lg text-sm bottle-price-input">
+                        <span class="bottle-line-total font-medium text-sm w-28 text-right pt-2">TZS 0</span>
+                        <button type="button" onclick="removeBottleRow(this)" class="text-red-500 hover:text-red-700 px-2 pt-2"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="addBottleRow()" class="mt-3 text-amber-700 hover:underline text-sm">
+                    <i class="fas fa-plus mr-1"></i> Add Empty Bottle Line
+                </button>
+            </div>
+
             <!-- Payment Mode -->
             <div class="bg-white rounded-xl shadow p-6">
                 <h3 class="font-semibold mb-4"><i class="fas fa-credit-card mr-1"></i> Payment Mode</h3>
@@ -162,6 +189,7 @@
 <script>
 let rowIndex = 1;
 let paymentRowIndex = 1;
+let bottleRowIndex = 1;
 
 // ===================== SALE TYPE =====================
 function setSaleType(type) {
@@ -315,6 +343,7 @@ function calculateTotal() {
         row.querySelector('.line-total').textContent = 'TZS ' + lineTotal.toLocaleString();
         total += lineTotal;
     });
+    total += calculateBottleTotal();
     document.getElementById('grand-total').textContent = 'TZS ' + total.toLocaleString();
     validatePayments();
 }
@@ -352,6 +381,7 @@ function validatePayments() {
         const qty = parseInt(row.querySelector('.qty-input').value || 0);
         total += price * qty;
     });
+    total += calculateBottleTotal();
     let paymentTotal = 0;
     document.querySelectorAll('.payment-amount').forEach(input => { paymentTotal += parseFloat(input.value || 0); });
     document.getElementById('payment-total').textContent = 'TZS ' + paymentTotal.toLocaleString();
@@ -361,7 +391,54 @@ function validatePayments() {
     document.getElementById('submitBtn').classList.toggle('opacity-50', mismatch);
 }
 
+// ===================== EMPTY BOTTLES =====================
+function addBottleRow() {
+    const container = document.getElementById('bottle-items-container');
+    const firstRow = container.querySelector('.bottle-item-row');
+    const newRow = firstRow.cloneNode(true);
+    newRow.querySelectorAll('select, input').forEach(el => {
+        if (el.name) el.name = el.name.replace(/\d+/, bottleRowIndex);
+    });
+    newRow.querySelector('.bottle-qty-input').value = 1;
+    newRow.querySelector('.bottle-price-input').value = '';
+    newRow.querySelector('.bottle-line-total').textContent = 'TZS 0';
+    newRow.querySelector('.bottle-volume-select').value = '';
+    container.appendChild(newRow);
+    bottleRowIndex++;
+    bindBottleEvents();
+}
+
+function removeBottleRow(btn) {
+    const container = document.getElementById('bottle-items-container');
+    if (container.children.length > 1) {
+        btn.closest('.bottle-item-row').remove();
+        calculateTotal();
+    }
+}
+
+function bindBottleEvents() {
+    document.querySelectorAll('.bottle-qty-input').forEach(input => {
+        input.oninput = function() { calculateTotal(); };
+    });
+    document.querySelectorAll('.bottle-price-input').forEach(input => {
+        input.oninput = function() { calculateTotal(); };
+    });
+}
+
+function calculateBottleTotal() {
+    let total = 0;
+    document.querySelectorAll('.bottle-item-row').forEach(row => {
+        const qty = parseInt(row.querySelector('.bottle-qty-input').value || 0);
+        const price = parseFloat(row.querySelector('.bottle-price-input').value || 0);
+        const lineTotal = qty * price;
+        row.querySelector('.bottle-line-total').textContent = 'TZS ' + lineTotal.toLocaleString();
+        total += lineTotal;
+    });
+    return total;
+}
+
 bindEvents();
+bindBottleEvents();
 </script>
 @endpush
 @endsection

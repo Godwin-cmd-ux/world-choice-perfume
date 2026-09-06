@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\BottleStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class SalesController extends Controller
 {
     private SupabaseService $supabase;
+    private BottleStockService $bottles;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->bottles = new BottleStockService($this->supabase);
     }
 
     public function index(Request $request)
@@ -116,7 +119,9 @@ class SalesController extends Controller
             ];
         });
 
-        return view('branch-admin.sales.create', compact('products'));
+        $bottleStock = $this->bottles->stockMap($branchId);
+
+        return view('branch-admin.sales.create', ['products' => $products, 'bottleStock' => $bottleStock]);
     }
 
     public function store(Request $request)
@@ -130,10 +135,14 @@ class SalesController extends Controller
             'payments' => 'required|array|min:1',
             'payments.*.method' => 'required|in:cash,bank_transfer,mobile_payment',
             'payments.*.amount' => 'required_if:payment_mode,multi|nullable|numeric|min:0',
-            'items' => 'required|array|min:1',
+            'items' => 'required_without:empty_bottles|array|min:1',
             'items.*.product_id' => 'required',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.custom_price' => 'nullable|numeric|min:0',
+            'empty_bottles' => 'nullable|array',
+            'empty_bottles.*.volume' => 'nullable|integer|in:6,12,30,50,100',
+            'empty_bottles.*.quantity' => 'nullable|integer|min:1',
+            'empty_bottles.*.price' => 'nullable|numeric|min:0',
             'sale_type' => 'required|in:retail,wholesale',
         ]);
 
@@ -231,7 +240,80 @@ class SalesController extends Controller
                 ];
             }
 
-            // 4. Build payment summary
+            // 4. Empty bottle lines (empty bottles sold directly)
+            $rawBottles = $validated['empty_bottles'] ?? [];
+            $bottleItems = array_values(array_filter($rawBottles, fn($b) => !empty($b['volume'] ?? null)));
+
+            foreach ($bottleItems as $btl) {
+                if (empty($btl['quantity']) || !isset($btl['price']) || $btl['price'] === '' || $btl['price'] === null) {
+                    return back()->withErrors(['empty_bottles' => 'Each empty bottle line requires a quantity and price.'])->withInput();
+                }
+            }
+
+            $bottleTotal = 0;
+            $bottleDeductions = [];
+
+            if (!empty($bottleItems)) {
+                $bottleStockRows = $this->supabase->queryFresh('bottle_stock', [
+                    'branch_id' => "eq.{$branchId}",
+                ]);
+                $bottleAvailable = [];
+                foreach ($bottleStockRows as $bs) {
+                    $bv = $this->bottles->parseVolume((string) ($bs['volume'] ?? ''));
+                    if ($bv !== null) {
+                        $bottleAvailable[$bv] = (int) ($bs['quantity'] ?? 0);
+                    }
+                }
+
+                foreach ($bottleItems as $btl) {
+                    $volume = (int) $btl['volume'];
+                    $bQty = (int) $btl['quantity'];
+                    $bPrice = (float) $btl['price'];
+                    $available = $bottleAvailable[$volume] ?? 0;
+
+                    if ($available < $bQty) {
+                        return back()->withErrors([
+                            'empty_bottles' => "Insufficient bottle stock for {$volume}ml. Available: {$available}.",
+                        ])->withInput();
+                    }
+
+                    $bottleProduct = $this->bottles->findOrCreateEmptyBottleProduct($volume);
+
+                    if (!$bottleProduct || empty($bottleProduct['id'])) {
+                        return back()->withErrors(['empty_bottles' => 'Could not register the empty bottle product for the receipt.'])->withInput();
+                    }
+
+                    $lineTotal = $bPrice * $bQty;
+                    $bottleTotal += $lineTotal;
+
+                    $saleItems[] = [
+                        'sale_id' => null,
+                        'product_id' => $bottleProduct['id'],
+                        'quantity' => $bQty,
+                        'unit_price' => $bPrice,
+                        'unit_cost' => 0,
+                        'total' => $lineTotal,
+                        'created_at' => now()->toIso8601String(),
+                        'updated_at' => now()->toIso8601String(),
+                    ];
+
+                    $bottleDeductions[] = [
+                        'volume' => $volume,
+                        'quantity' => $bQty,
+                        'reason' => "Sold as empty bottle - Sale {$saleNumber}",
+                    ];
+
+                    $bottleAvailable[$volume] -= $bQty;
+                }
+
+                $subtotal += $bottleTotal;
+            }
+
+            if (empty($saleItems)) {
+                return back()->withErrors(['items' => 'Add at least one product or empty bottle to the sale.'])->withInput();
+            }
+
+            // 5. Build payment summary
             $payments = $validated['payments'] ?? [];
             $paymentParts = [];
             foreach ($payments as $p) {
@@ -285,6 +367,11 @@ class SalesController extends Controller
                 $sm['reference_id'] = $sale['id'];
             }
             $this->supabase->insertMany('stock_movements', $stockMovements);
+
+            // 7b. Auto-outstock empty bottles sold directly
+            foreach ($bottleDeductions as $bd) {
+                $this->bottles->deduct($branchId, $bd['volume'], $bd['quantity'], $bd['reason'], $supabaseUserId);
+            }
 
             // 8. Audit log
             $this->supabase->insert('audit_logs', [
