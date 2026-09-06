@@ -51,24 +51,36 @@ class StockManagerController extends Controller
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
         // Recent movements
-        $recentBottleMovements = $this->supabase->query('bottle_stock_movements', [
+        $recentBottleMovements = collect($this->supabase->query('bottle_stock_movements', [
             'select' => '*, performedBy:users(id,name)',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 5,
-        ]);
-        $recentOilMovements = $this->supabase->query('oil_fragrance_movements', [
+        ]))->map(fn($m) => $this->normalizeMovement($m))->all();
+        $recentOilMovements = collect($this->supabase->query('oil_fragrance_movements', [
             'select' => '*, performedBy:users(id,name)',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 5,
-        ]);
+        ]))->map(fn($m) => $this->normalizeMovement($m))->all();
 
         return view('stock-manager.dashboard', compact(
             'totalProductItems', 'totalProductValue', 'lowStockProducts',
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements'
         ));
+    }
+
+    /**
+     * Normalize Supabase movement rows so views can rely on object access.
+     */
+    private function normalizeMovement(array $row): object
+    {
+        if (isset($row['performedBy']) && is_array($row['performedBy'])) {
+            $row['performedBy'] = (object) $row['performedBy'];
+        }
+
+        return (object) $row;
     }
 
     // ========================
@@ -395,11 +407,8 @@ class StockManagerController extends Controller
             $params['volume'] = "eq.{$request->volume}";
         }
 
-        $movements = $this->supabase->query('bottle_stock_movements', $params);
-        $movements = collect($movements)->map(function ($m) {
-            if (isset($m['performedBy']) && is_array($m['performedBy'])) $m['performedBy'] = (object) $m['performedBy'];
-            return (object) $m;
-        });
+        $movements = collect($this->supabase->query('bottle_stock_movements', $params))
+            ->map(fn($m) => $this->normalizeMovement($m))->all();
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-movements', ['movements' => $movements, 'volumes' => $volumes]);
@@ -538,11 +547,8 @@ class StockManagerController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $movements = $this->supabase->query('oil_fragrance_movements', $params);
-        $movements = collect($movements)->map(function ($m) {
-            if (isset($m['performedBy']) && is_array($m['performedBy'])) $m['performedBy'] = (object) $m['performedBy'];
-            return (object) $m;
-        });
+        $movements = collect($this->supabase->query('oil_fragrance_movements', $params))
+            ->map(fn($m) => $this->normalizeMovement($m))->all();
 
         return view('stock-manager.oil-fragrance-movements', ['movements' => $movements]);
     }
