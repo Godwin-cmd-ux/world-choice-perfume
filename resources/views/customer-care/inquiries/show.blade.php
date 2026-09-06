@@ -15,7 +15,7 @@
                 <p>{{ $inquiry->message ?? 'No message content.' }}</p>
             </div>
 
-            @if($inquiry->reply_message)
+            @if(!empty($inquiry->reply_message))
                 <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                     <h4 class="font-semibold text-green-800 mb-2"><i class="fas fa-reply mr-1"></i> Your Reply</h4>
                     <p class="text-sm text-green-700">{{ $inquiry->reply_message }}</p>
