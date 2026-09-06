@@ -34,6 +34,9 @@ class InquiryController extends Controller
 
         $inquiries = collect($this->supabase->query('inquiries', $params))->map(function ($i) {
             if (isset($i['user']) && is_array($i['user'])) $i['user'] = (object) $i['user'];
+            $i['name'] = $i['name'] ?? null;
+            $i['reply_message'] = $i['reply_message'] ?? null;
+            $i['status'] = $i['status'] ?? 'pending';
             return (object) $i;
         });
 
@@ -46,6 +49,9 @@ class InquiryController extends Controller
         if (!$inquiry) abort(404);
 
         if (isset($inquiry['user']) && is_array($inquiry['user'])) $inquiry['user'] = (object) $inquiry['user'];
+        $inquiry['name'] = $inquiry['name'] ?? null;
+        $inquiry['reply_message'] = $inquiry['reply_message'] ?? null;
+        $inquiry['status'] = $inquiry['status'] ?? 'pending';
 
         // Mark as read
         if (!($inquiry['is_read'] ?? false)) {

@@ -43,7 +43,7 @@
                         <td class="py-3 px-4">
                             <a href="{{ route('customer-care.inquiries.show', $i->id) }}" class="font-medium hover:text-amber-700">{{ $i->subject ?? '—' }}</a>
                         </td>
-                        <td class="px-4 text-gray-500">{{ $i->user->name ?? 'Customer' }}</td>
+                        <td class="px-4 text-gray-500">{{ $i->name ?? $i->user?->name ?? 'Customer' }}</td>
                         <td class="px-4">
                             @if(($i->is_read ?? false))
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">Read</span>

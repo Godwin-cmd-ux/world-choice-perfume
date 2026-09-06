@@ -22,7 +22,7 @@
                 </div>
             @endif
 
-            @if(!($inquiry->status ?? '') === 'replied')
+            @if(($inquiry->status ?? '') !== 'replied')
                 <div class="border-t mt-6 pt-4">
                     <h4 class="font-semibold mb-3">Reply</h4>
                     <form method="POST" action="{{ route('customer-care.inquiries.reply', $inquiry->id) }}">
@@ -39,7 +39,7 @@
         <div class="bg-white rounded-xl shadow p-6">
             <h3 class="font-semibold mb-3">Details</h3>
             <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-gray-500">From:</span><span>{{ $inquiry->user->name ?? 'Customer' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">From:</span><span>{{ $inquiry->name ?? $inquiry->user?->name ?? 'Customer' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Email:</span><span>{{ $inquiry->email ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Phone:</span><span>{{ $inquiry->phone ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Date:</span><span>{{ $inquiry->created_at ? \Carbon\Carbon::parse($inquiry->created_at)->format('M d, Y H:i') : '—' }}</span></div>

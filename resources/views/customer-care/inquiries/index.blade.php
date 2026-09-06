@@ -36,7 +36,7 @@
                             <a href="{{ route('customer-care.inquiries.show', $i->id) }}" class="font-medium hover:text-blue-700">{{ $i->subject ?? 'No Subject' }}</a>
                             <p class="text-xs text-gray-400 truncate max-w-xs">{{ $i->message ?? '' }}</p>
                         </td>
-                        <td class="px-4 text-gray-500">{{ $i->user->name ?? 'Customer' }}</td>
+                        <td class="px-4 text-gray-500">{{ $i->email ?? $i->user?->name ?? 'Customer' }}</td>
                         <td class="px-4">
                             @if(($i->status ?? '') === 'replied')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800">Replied</span>

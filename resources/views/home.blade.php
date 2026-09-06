@@ -345,6 +345,123 @@
         </div>
     </div>
 </section>
+
+<!-- Contact Us Section -->
+<section id="contact-us" class="py-20 bg-dark-950">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <!-- Info Side -->
+            <div class="scroll-hidden">
+                <span class="text-xs font-semibold tracking-[0.3em] uppercase text-gold-400/60">We're Here to Help</span>
+                <h2 class="font-display text-4xl sm:text-5xl font-bold mt-3 mb-6">
+                    <span class="text-white">Contact </span><span class="gold-text">Us</span>
+                </h2>
+                <p class="text-gray-400 mb-10 max-w-lg leading-relaxed">
+                    Questions about an order, a fragrance, or anything else? Send us a message and our customer care team will get back to you as soon as possible.
+                </p>
+
+                <div class="space-y-5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                            <i class="fas fa-phone text-gold-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Call us</p>
+                            <p class="text-white font-medium">+255 710 603 637</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                            <i class="fas fa-clock text-gold-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Working hours</p>
+                            <p class="text-white font-medium">Mon – Sat: 9AM – 8PM</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                            <i class="fas fa-headset text-gold-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Customer care</p>
+                            <p class="text-white font-medium">Use the form — replies go to your email</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Side -->
+            <div class="scroll-hidden">
+                <div class="bg-dark-800/50 border border-dark-600 rounded-2xl p-8">
+                    @if(session('success'))
+                        <div class="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm">
+                            <i class="fas fa-check-circle mr-1"></i> {{ session('success') }}
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+                            <ul class="list-disc list-inside">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <form method="POST" action="{{ route('customer.contact.store') }}" class="space-y-4">
+                        @csrf
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Branch</label>
+                            <select name="branch_id" required
+                                class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
+                                <option value="">Select a branch</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Email Address *</label>
+                                <input type="email" name="email" value="{{ old('email') }}" required
+                                    class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
+                                    placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Phone Number *</label>
+                                <input type="text" name="phone" value="{{ old('phone') }}" required
+                                    class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
+                                    placeholder="+255 7XX XXX XXX">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Heading *</label>
+                            <input type="text" name="subject" value="{{ old('subject') }}" required
+                                class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
+                                placeholder="What is your message about?">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Message *</label>
+                            <textarea name="message" rows="5" required
+                                class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none resize-none"
+                                placeholder="Type your message here...">{{ old('message') }}</textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition-all duration-300 shadow-lg shadow-gold-500/25">
+                            <i class="fas fa-paper-plane mr-2"></i> Send Message
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 @endsection
 
 @push('scripts')

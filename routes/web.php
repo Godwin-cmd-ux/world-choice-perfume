@@ -23,6 +23,7 @@ Route::get('/', function() {
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
 Route::get('/news', [\App\Http\Controllers\Customer\NewsController::class, 'index'])->name('customer.news');
+Route::post('/contact', [\App\Http\Controllers\Customer\InquiryController::class, 'store'])->name('customer.contact.store');
 
 // Customer Orders
 Route::prefix('orders')->name('customer.orders.')->group(function () {

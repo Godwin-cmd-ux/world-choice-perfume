@@ -133,6 +133,7 @@ BEGIN
     END IF;
 END $$;
 
+
 -- ============================================================
 -- 7. ADD ROLES: customer_care and seller
 -- If you have a CHECK constraint on the users.role column,
