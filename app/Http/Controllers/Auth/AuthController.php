@@ -366,6 +366,10 @@ class AuthController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
+        if (!$sbUser || !isset($sbUser['id'])) {
+            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+        }
+
         // Also create/update in SQLite for Auth::login()
         $user = User::updateOrCreate(
             ['email' => $validated['email']],
