@@ -353,7 +353,7 @@ class AuthController extends Controller
         $hashedPassword = Hash::make($validated['password']);
 
         // Create in Supabase (primary)
-        $this->supabase->insert('users', [
+        $sbUser = $this->supabase->insert('users', [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'],
@@ -377,11 +377,12 @@ class AuthController extends Controller
                 'status' => 'pending',
                 'branch_id' => $validated['branch_id'],
                 'otp_verified' => false,
+                'supabase_id' => $sbUser['id'],
             ]
         );
 
         $otpService = new OtpService();
-        $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
+        $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],

@@ -31,7 +31,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role
 -- ============================================================================
 -- 2. CREATE ENUM TYPES
 -- ============================================================================
-CREATE TYPE user_role AS ENUM ('super_admin', 'branch_admin', 'cashier');
+CREATE TYPE user_role AS ENUM ('super_admin', 'branch_admin', 'cashier', 'stock_manager');
 CREATE TYPE user_status AS ENUM ('pending', 'approved', 'rejected', 'active');
 CREATE TYPE stock_movement_type AS ENUM ('entry', 'sale', 'return', 'adjustment', 'damage', 'missing');
 CREATE TYPE payment_status AS ENUM ('pending', 'paid', 'refunded');

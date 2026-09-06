@@ -33,7 +33,19 @@ class OtpService
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        // Determine the purpose label
+        // Store OTP in Supabase
+        $record = $this->supabase->insert('otp_records', [
+            'email' => $email,
+            'otp' => $otp,
+            'type' => $type,
+            'user_id' => $userId,
+            'expires_at' => $expiresAt->toIso8601String(),
+            'used' => false,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        // Determine the purpose label for the email (display only — not sent to Supabase)
         $purposeLabel = match($type) {
             'registration' => 'Registration',
             'password_reset' => 'Password Reset',
