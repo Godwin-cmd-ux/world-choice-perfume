@@ -27,7 +27,13 @@ class ProfileController extends Controller
             if ($branch) $branch = (object) $branch;
         }
 
-        return view('profile.edit', ['user' => $user, 'branch' => $branch]);
+        // Use role-specific profile view where available
+        $view = match($user->role) {
+            'stock_manager' => 'stock-manager.profile',
+            default => 'profile.edit',
+        };
+
+        return view($view, ['user' => $user, 'branch' => $branch]);
     }
 
     public function update(Request $request)
