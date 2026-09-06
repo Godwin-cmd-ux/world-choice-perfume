@@ -28,26 +28,16 @@
             <div><p class="text-2xl font-bold">TZS {{ number_format($totalStockValue) }}</p><p class="text-sm text-gray-500">Stock Value</p></div>
         </div>
     </div>
-</div>
-
-<div class="bg-white rounded-xl shadow p-6 mb-8">
+</div>    <div class="bg-white rounded-xl shadow p-6 mb-8">
     <h3 class="text-lg font-semibold mb-4">Monthly Financials</h3>
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="text-center p-4 bg-gray-50 rounded-lg">
             <p class="text-xl font-bold text-green-600">TZS {{ number_format($financials['revenue']) }}</p>
             <p class="text-sm text-gray-500">Revenue</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <p class="text-xl font-bold text-blue-600">TZS {{ number_format($financials['gross_profit']) }}</p>
-            <p class="text-sm text-gray-500">Gross Profit</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 rounded-lg">
             <p class="text-xl font-bold text-red-600">TZS {{ number_format($financials['expenses']) }}</p>
             <p class="text-sm text-gray-500">Expenses</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <p class="text-xl font-bold text-amber-600">TZS {{ number_format($financials['net_profit']) }}</p>
-            <p class="text-sm text-gray-500">Net Profit</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-lg">
             <p class="text-xl font-bold text-gray-700">{{ $financials['transaction_count'] }}</p>

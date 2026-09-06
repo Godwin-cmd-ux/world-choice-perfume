@@ -170,7 +170,7 @@ class OrderController extends Controller
             // 5. Fetch ALL stock for this branch in ONE query (instead of N)
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$order['branch_id']}",
-                'select' => 'id,product_id,quantity,buying_cost',
+                'select' => 'id,product_id,quantity,selling_price',
             ]));
             $stockMap = [];
             foreach ($allStock as $s) {
@@ -191,7 +191,6 @@ class OrderController extends Controller
                         'product_id' => $orderItem['product_id'],
                         'quantity' => $orderItem['quantity'],
                         'unit_price' => $orderItem['unit_price'],
-                        'unit_cost' => $stock['buying_cost'],
                         'total' => $orderItem['total'],
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
@@ -207,7 +206,6 @@ class OrderController extends Controller
                         'product_id' => $orderItem['product_id'],
                         'type' => 'sale',
                         'quantity' => -($orderItem['quantity'] ?? 0),
-                        'unit_cost' => $stock['buying_cost'],
                         'unit_price' => $orderItem['unit_price'],
                         'reference_type' => 'sale',
                         'reference_id' => $sale['id'],

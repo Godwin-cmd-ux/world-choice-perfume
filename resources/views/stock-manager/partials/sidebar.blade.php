@@ -22,6 +22,12 @@
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Stock Management</p>
         </div>
 
+        <a href="{{ route('stock-manager.sales.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.sales.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-receipt w-5 text-center"></i>
+            <span>Sales</span>
+        </a>
+
         <a href="{{ route('stock-manager.products.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.products.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-box w-5 text-center"></i>
@@ -44,6 +50,12 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.oil-fragrance*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-flask w-5 text-center"></i>
             <span>Oil Fragrance</span>
+        </a>
+
+        <a href="{{ route('stock-manager.bottle-accessories.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-accessories.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-cogs w-5 text-center"></i>
+            <span>Bottle Accessories</span>
         </a>
 
         <div class="pt-3 mt-3 border-t border-gray-700">

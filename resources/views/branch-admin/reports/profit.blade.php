@@ -16,26 +16,18 @@
     </form>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
     <div class="bg-white rounded-xl shadow p-6 text-center">
         <p class="text-2xl font-bold text-green-600">TZS {{ number_format($financials['revenue']) }}</p>
         <p class="text-sm text-gray-500 mt-1">Revenue</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-6 text-center">
-        <p class="text-2xl font-bold text-red-600">TZS {{ number_format($financials['cogs']) }}</p>
-        <p class="text-sm text-gray-500 mt-1">COGS</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-6 text-center">
-        <p class="text-2xl font-bold text-blue-600">TZS {{ number_format($financials['gross_profit']) }}</p>
-        <p class="text-sm text-gray-500 mt-1">Gross Profit</p>
     </div>
     <div class="bg-white rounded-xl shadow p-6 text-center">
         <p class="text-2xl font-bold text-red-500">TZS {{ number_format($financials['expenses']) }}</p>
         <p class="text-sm text-gray-500 mt-1">Expenses</p>
     </div>
     <div class="bg-white rounded-xl shadow p-6 text-center">
-        <p class="text-2xl font-bold text-amber-700">TZS {{ number_format($financials['net_profit']) }}</p>
-        <p class="text-sm text-gray-500 mt-1">Net Profit</p>
+        <p class="text-2xl font-bold text-amber-700">{{ $financials['transaction_count'] }}</p>
+        <p class="text-sm text-gray-500 mt-1">Transactions</p>
     </div>
 </div>
 

@@ -38,13 +38,11 @@ class OrderController extends Controller
             'quantity' => 'gt.0',
         ]);
 
-        $products = collect($rawStock)->map(function ($item) {
-            return (object) [
+        $products = collect($rawStock)->map(function ($item) {                return (object) [
                 'id' => $item['id'],
                 'branch_id' => $item['branch_id'],
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
-                'buying_cost' => $item['buying_cost'],
                 'selling_price' => $item['selling_price'],
                 'product' => (object) array_merge($item['product'] ?? [], [
                     'images' => collect($item['product']['images'] ?? []),

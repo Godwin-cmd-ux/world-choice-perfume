@@ -11,9 +11,12 @@ class EnsureCashierApproved
     {
         $user = auth()->user();
 
-        if ($user && in_array($user->role, ['cashier', 'branch_admin']) && !$user->isApproved()) {
+        if ($user && !$user->isApproved()) {
+            $message = ($user->status ?? '') === 'blocked'
+                ? 'Your account has been blocked. Please contact your administrator.'
+                : 'Your account is pending approval. Please wait for an administrator to approve your account.';
             auth()->logout();
-            return redirect()->route('login')->with('error', 'Your account is pending approval. Please wait for a super administrator to approve your account.');
+            return redirect()->route('login')->with('error', $message);
         }
 
         return $next($request);

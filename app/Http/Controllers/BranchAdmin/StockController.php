@@ -38,7 +38,7 @@ class StockController extends Controller
         }
 
         $stocks = array_values($stocks);
-        $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['buying_cost'] ?? 0), $stocks));
+        $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
 
         // Cast for views - nested objects too
         $stocks = collect($stocks)->map(function ($s) {
@@ -70,9 +70,7 @@ class StockController extends Controller
         $validated = $request->validate([
             'product_id' => 'required',
             'quantity' => 'required|integer|min:1',
-            'buying_cost' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
-            'supplier' => 'nullable|string|max:255',
             'category' => 'nullable|in:Oil Fragrance,Brand Perfume',
             'date_received' => 'required|date',
         ]);
@@ -89,9 +87,7 @@ class StockController extends Controller
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
-                'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
-                'supplier' => $validated['supplier'] ?? null,
                 'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
@@ -102,9 +98,7 @@ class StockController extends Controller
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $validated['quantity'],
-                'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
-                'supplier' => $validated['supplier'] ?? null,
                 'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
@@ -119,10 +113,9 @@ class StockController extends Controller
             'product_id' => $validated['product_id'],
             'type' => 'entry',
             'quantity' => $validated['quantity'],
-            'unit_cost' => $validated['buying_cost'],
             'unit_price' => $validated['selling_price'],
             'performed_by' => auth()->id(),
-            'notes' => "Stock entry from supplier: {$validated['supplier']}",
+            'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ]);

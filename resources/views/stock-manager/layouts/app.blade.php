@@ -18,10 +18,12 @@
         }
     </script>
     <style>
-        .sidebar { width: 250px; min-height: 100vh; }
+        .sidebar { width: 250px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: hidden; overflow-x: hidden; }
+        .main-content { margin-left: 250px; min-height: 100vh; }
         @media (max-width: 768px) {
             .sidebar { position: fixed; z-index: 50; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
         }
     </style>
     @stack('styles')
@@ -30,7 +32,7 @@
     <div class="flex min-h-screen">
         @include('stock-manager.partials.sidebar')
 
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="main-content flex-1 flex flex-col min-w-0">
             {{-- Top Bar --}}
             <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">

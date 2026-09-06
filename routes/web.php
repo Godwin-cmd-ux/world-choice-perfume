@@ -22,6 +22,7 @@ Route::get('/', function() {
 })->name('home');
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
+Route::get('/news', [\App\Http\Controllers\Customer\NewsController::class, 'index'])->name('customer.news');
 
 // Customer Orders
 Route::prefix('orders')->name('customer.orders.')->group(function () {
@@ -33,6 +34,10 @@ Route::prefix('orders')->name('customer.orders.')->group(function () {
 
 // Twende Dukani — Navigate to branch
 Route::get('/twende-dukani/{branch}', [\App\Http\Controllers\Customer\NavigationController::class, 'show'])->name('customer.twende-dukani');
+
+// Pesapal Payment Callbacks
+Route::get('/pesapal/callback', [\App\Http\Controllers\PesapalController::class, 'callback'])->name('pesapal.callback');
+Route::post('/pesapal/ipn', [\App\Http\Controllers\PesapalController::class, 'ipn'])->name('pesapal.ipn');
 
 // Customer search API (for sales)
 Route::get('/api/customers/search', function(\Illuminate\Http\Request $request) {
@@ -147,6 +152,26 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/cashiers/{cashier}/approve', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'approve'])->name('cashiers.approve');
         Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'reject'])->name('cashiers.reject');
 
+        // Orders Monitor
+        Route::get('/orders', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'show'])->name('orders.show');
+
+        // Reports
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'index'])->name('index');
+            Route::get('/sales', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'sales'])->name('sales');
+            Route::get('/expenses', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'expenses'])->name('expenses');
+            Route::get('/stock', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'stock'])->name('stock');
+            Route::get('/staff-performance', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'staffPerformance'])->name('staff-performance');
+            Route::get('/product-performance', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'productPerformance'])->name('product-performance');
+        });
+
+        // Notifications
+        Route::get('/notifications', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{notification}/mark-read', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'markRead'])->name('notifications.mark-read');
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/report', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'generateReport'])->name('notifications.generate-report');
+
         // Staff Management
         Route::get('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
         Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
@@ -190,16 +215,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/stock-managers/{user}/approve', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'approve'])->name('stock-managers.approve');
         Route::post('/stock-managers/{user}/reject', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'reject'])->name('stock-managers.reject');
 
-        // Reports
-        Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'index'])->name('index');
-            Route::get('/sales', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'sales'])->name('sales');
-            Route::get('/profit', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'profit'])->name('profit');
-            Route::get('/expenses', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'expenses'])->name('expenses');
-            Route::get('/stock', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'stock'])->name('stock');
-            Route::get('/cashier-performance', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'cashierPerformance'])->name('cashier-performance');
-            Route::get('/product-performance', [\App\Http\Controllers\BranchAdmin\ReportController::class, 'productPerformance'])->name('product-performance');
-        });
+
     });
 
     // ========================
@@ -224,6 +240,34 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/orders/{order}/ready', [\App\Http\Controllers\Cashier\OrderController::class, 'markReady'])->name('orders.ready');
         Route::post('/orders/{order}/complete', [\App\Http\Controllers\Cashier\OrderController::class, 'complete'])->name('orders.complete');
         Route::post('/orders/{order}/serve', [\App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
+    });
+
+    // ========================
+    // SELLER ROUTES
+    // ========================
+    Route::prefix('seller')->name('seller.')->middleware('role:seller')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Seller\SellerController::class, 'dashboard'])->name('dashboard');
+        Route::get('/sales', [\App\Http\Controllers\Seller\SellerController::class, 'sales'])->name('sales');
+    });
+
+    // ========================
+    // CUSTOMER CARE ROUTES
+    // ========================
+    Route::prefix('customer-care')->name('customer-care.')->middleware('role:customer_care')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\CustomerCare\DashboardController::class, 'index'])->name('dashboard');
+
+        // News
+        Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');
+        Route::get('/news/create', [\App\Http\Controllers\CustomerCare\NewsController::class, 'create'])->name('news.create');
+        Route::post('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'store'])->name('news.store');
+        Route::get('/news/{post}/edit', [\App\Http\Controllers\CustomerCare\NewsController::class, 'edit'])->name('news.edit');
+        Route::put('/news/{post}', [\App\Http\Controllers\CustomerCare\NewsController::class, 'update'])->name('news.update');
+        Route::delete('/news/{post}', [\App\Http\Controllers\CustomerCare\NewsController::class, 'destroy'])->name('news.destroy');
+
+        // Inquiries
+        Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
+        Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
+        Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
     });
 
     // ========================
@@ -252,10 +296,25 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
         Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 
+        // Bottle Accessories
+        $bac = \App\Http\Controllers\StockManager\BottleAccessoriesController::class;
+        Route::get('/bottle-accessories', [$bac, 'index'])->name('bottle-accessories.index');
+        Route::get('/bottle-accessories/create', [$bac, 'create'])->name('bottle-accessories.create');
+        Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
+        Route::match(['get', 'post'], '/bottle-accessories/stock-out', [$bac, 'stockOut'])->name('bottle-accessories.stock-out');
+        Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
+
         // QR Code
         Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');
 
         // Product Management
+        // Sales
+        $smSales = \App\Http\Controllers\StockManager\SalesController::class;
+        Route::get('/sales', [$smSales, 'index'])->name('sales.index');
+        Route::get('/sales/create', [$smSales, 'create'])->name('sales.create');
+        Route::post('/sales', [$smSales, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
+
         $pmc = \App\Http\Controllers\StockManager\ProductController::class;
         Route::get('/products', [$pmc, 'index'])->name('products.index');
         Route::get('/products/create', [$pmc, 'create'])->name('products.create');

@@ -68,6 +68,8 @@
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.products.*') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Shop</a>
                     <a href="{{ route('customer.orders.track') }}" data-nav="track-order"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.orders.track') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">Track Order</a>
+                    <a href="{{ route('customer.news') }}" data-nav="news"
+                       class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg transition-all {{ request()->routeIs('customer.news') ? 'text-gold-400 bg-gold-500/10 text-base px-4 py-2.5' : 'text-gray-300 hover:text-gold-400 hover:bg-white/5' }}">News</a>
                     <a href="{{ request()->routeIs('home') ? '#about' : route('home').'#about' }}" data-nav="about" data-scroll="true"
                        class="nav-link nav-item text-sm font-medium px-3 py-2 rounded-lg text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-all">About</a>
                     <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" data-nav="branches" data-scroll="true"

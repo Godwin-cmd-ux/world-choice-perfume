@@ -112,7 +112,6 @@ class SalesController extends Controller
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
                 'selling_price' => $item['selling_price'],
-                'buying_cost' => $item['buying_cost'],
                 'product' => (object) array_merge($item['product'] ?? [], [
                     'images' => collect($item['product']['images'] ?? []),
                 ]),
@@ -130,7 +129,6 @@ class SalesController extends Controller
             'customer_id' => 'nullable|integer',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'supplier' => 'nullable|string|max:255',
             'payment_mode' => 'required|in:single,multi',
             'payments' => 'required|array|min:1',
             'payments.*.method' => 'required|in:cash,bank_transfer,mobile_payment',
@@ -178,7 +176,7 @@ class SalesController extends Controller
             // 2. Fetch ALL stock in ONE query
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$branchId}",
-                'select' => 'id,product_id,quantity,selling_price,buying_cost',
+                'select' => 'id,product_id,quantity,selling_price',
             ]));
 
             $stockMap = [];
@@ -213,7 +211,6 @@ class SalesController extends Controller
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $unitPrice,
-                    'unit_cost' => $stock['buying_cost'],
                     'total' => $lineTotal,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
@@ -229,7 +226,6 @@ class SalesController extends Controller
                     'product_id' => $item['product_id'],
                     'type' => 'sale',
                     'quantity' => -$item['quantity'],
-                    'unit_cost' => $stock['buying_cost'],
                     'unit_price' => $stock['selling_price'],
                     'reference_type' => 'sale',
                     'reference_id' => null,
@@ -291,7 +287,6 @@ class SalesController extends Controller
                         'product_id' => $bottleProduct['id'],
                         'quantity' => $bQty,
                         'unit_price' => $bPrice,
-                        'unit_cost' => 0,
                         'total' => $lineTotal,
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
@@ -335,7 +330,7 @@ class SalesController extends Controller
                 'customer_id' => $customerId,
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
-                'supplier' => $validated['supplier'] ?? null,
+                'supplier' => null,
                 'payment_method' => $primaryMethod,
                 'payment_summary' => $paymentSummary,
                 'sale_type' => $validated['sale_type'] ?? 'retail',

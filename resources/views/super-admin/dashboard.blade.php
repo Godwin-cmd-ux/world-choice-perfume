@@ -71,22 +71,18 @@
         <h3 class="text-base font-semibold text-gray-800">Today's Financial Summary</h3>
         <span class="text-xs text-gray-400">{{ now()->format('l, M d, Y') }}</span>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="text-center p-4 bg-gray-50 rounded-xl">
             <p class="text-2xl font-bold text-emerald-600">TZS {{ number_format($todayFinancials['revenue']) }}</p>
             <p class="text-xs text-gray-500 mt-1 font-medium">Revenue</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 rounded-xl">
-            <p class="text-2xl font-bold text-blue-600">TZS {{ number_format($todayFinancials['gross_profit']) }}</p>
-            <p class="text-xs text-gray-500 mt-1 font-medium">Gross Profit</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-xl">
             <p class="text-2xl font-bold text-red-500">TZS {{ number_format($todayFinancials['expenses']) }}</p>
             <p class="text-xs text-gray-500 mt-1 font-medium">Expenses</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-xl">
-            <p class="text-2xl font-bold text-amber-600">TZS {{ number_format($todayFinancials['net_profit']) }}</p>
-            <p class="text-xs text-gray-500 mt-1 font-medium">Net Profit</p>
+            <p class="text-2xl font-bold text-amber-600">{{ $todayFinancials['transaction_count'] }}</p>
+            <p class="text-xs text-gray-500 mt-1 font-medium">Transactions</p>
         </div>
     </div>
 </div>

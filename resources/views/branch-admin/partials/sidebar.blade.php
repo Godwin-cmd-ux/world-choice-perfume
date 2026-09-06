@@ -42,12 +42,6 @@
             <i class="fas fa-money-bill-wave w-5 text-center"></i>
             <span>Expenses</span>
         </a>
-        <a href="{{ route('branch-admin.reports.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.reports.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-chart-bar w-5 text-center"></i>
-            <span>Reports</span>
-        </a>
-
         <div class="pt-4 mt-4 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Account</p>
         </div>

@@ -31,6 +31,23 @@
             @endif
         </a>
 
+        <a href="{{ route('super-admin.orders.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.orders.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-shopping-bag w-5 text-center"></i>
+            <span>Orders</span>
+        </a>
+        <a href="{{ route('super-admin.notifications.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.notifications.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-bell w-5 text-center"></i>
+            <span>Notifications</span>
+        </a>
+
+        <a href="{{ route('super-admin.reports.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.reports.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-chart-bar w-5 text-center"></i>
+            <span>Reports</span>
+        </a>
+
         <a href="{{ route('super-admin.staff.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.staff.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-users-cog w-5 text-center"></i>

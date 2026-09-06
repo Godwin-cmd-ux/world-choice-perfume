@@ -15,7 +15,6 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Product</th>
                 <th class="text-right px-4">Quantity</th>
-                <th class="text-right px-4">Buying Cost</th>
                 <th class="text-right px-4">Selling Price</th>
                 <th class="text-right px-4">Stock Value</th>
             </tr></thead>
@@ -24,12 +23,11 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $item['product'] }}</td>
                         <td class="px-4 text-right {{ $item['quantity'] <= 5 ? 'text-red-600 font-bold' : '' }}">{{ $item['quantity'] }}</td>
-                        <td class="px-4 text-right">TZS {{ number_format($item['buying_cost']) }}</td>
                         <td class="px-4 text-right">TZS {{ number_format($item['selling_price']) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($item['stock_value']) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No stock data</td></tr>
+                    <tr><td colspan="4" class="py-8 text-center text-gray-400">No stock data</td></tr>
                 @endforelse
             </tbody>
         </table>

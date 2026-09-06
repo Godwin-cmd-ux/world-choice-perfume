@@ -102,7 +102,6 @@ class ProductController extends Controller
                 'branch_id' => $item['branch_id'],
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
-                'buying_cost' => $item['buying_cost'],
                 'selling_price' => $item['selling_price'],
                 'branch' => (object) ($item['branch'] ?? []),
             ];

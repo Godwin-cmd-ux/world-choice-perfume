@@ -18,7 +18,7 @@ class FinancialService
         $start = $startDate->toIso8601String();
         $end = $endDate->toIso8601String();
 
-        // Revenue - paid sales (1 API call)
+        // Revenue - paid sales
         $sales = $this->supabase->query('sales', [
             'branch_id' => "eq.{$branchId}",
             'payment_status' => 'eq.paid',
@@ -32,23 +32,17 @@ class FinancialService
 
         $revenue = array_sum(array_map(fn($s) => $s['total'] ?? 0, $sales));
 
-        // COGS - fetch ALL sale items for this branch in one call (1 API call)
+        // Products sold count
         $allSaleItems = $this->supabase->query('sale_items', [
-            'select' => 'sale_id,unit_cost,quantity',
+            'select' => 'sale_id,quantity',
         ]);
-
-        // Filter to only items belonging to sales in this branch/date range
         $saleIds = array_map(fn($s) => $s['id'], $sales);
         $filteredItems = array_filter($allSaleItems, function ($item) use ($saleIds) {
             return in_array($item['sale_id'] ?? '', $saleIds) || in_array((int)($item['sale_id'] ?? 0), $saleIds);
         });
-
-        $cogs = array_sum(array_map(fn($i) => ($i['unit_cost'] ?? 0) * ($i['quantity'] ?? 0), $filteredItems));
         $productsSold = array_sum(array_map(fn($i) => $i['quantity'] ?? 0, $filteredItems));
 
-        $grossProfit = $revenue - $cogs;
-
-        // Expenses (1 API call)
+        // Expenses
         $expenses = $this->supabase->query('expenses', [
             'branch_id' => "eq.{$branchId}",
         ]);
@@ -58,9 +52,7 @@ class FinancialService
         });
         $totalExpenses = array_sum(array_map(fn($e) => $e['amount'] ?? 0, $expenses));
 
-        $netProfit = $grossProfit - $totalExpenses;
-
-        // Stock info (1 API call)
+        // Stock info
         $stocks = $this->supabase->query('branch_stock', [
             'branch_id' => "eq.{$branchId}",
             'select' => 'quantity',
@@ -69,10 +61,7 @@ class FinancialService
 
         return [
             'revenue' => $revenue,
-            'cogs' => $cogs,
-            'gross_profit' => $grossProfit,
             'expenses' => $totalExpenses,
-            'net_profit' => $netProfit,
             'transaction_count' => count($sales),
             'products_sold' => $productsSold,
             'stock_remaining' => $stockRemaining,
@@ -100,7 +89,7 @@ class FinancialService
         ]);
 
         $allSaleItems = $this->supabase->query('sale_items', [
-            'select' => 'sale_id,unit_cost,quantity',
+            'select' => 'sale_id,quantity',
         ]);
 
         // Filter by date in PHP
@@ -139,11 +128,9 @@ class FinancialService
                 if (!isset($expensesByBranch[$bid])) $expensesByBranch[$bid] = [];
                 $expensesByBranch[$bid][] = $e;
             }
-        }
-
-        $total = [
-            'revenue' => 0, 'cogs' => 0, 'gross_profit' => 0,
-            'expenses' => 0, 'net_profit' => 0, 'transaction_count' => 0,
+        }        $total = [
+            'revenue' => 0,
+            'expenses' => 0, 'transaction_count' => 0,
             'products_sold' => 0, 'by_branch' => [],
         ];
 
@@ -155,24 +142,17 @@ class FinancialService
             $revenue = array_sum(array_map(fn($s) => $s['total'] ?? 0, $branchSales));
 
             // COGS
-            $cogs = 0;
             $productsSold = 0;
             foreach ($branchSales as $sale) {
                 $items = $saleItemsBySale[$sale['id']] ?? [];
-                $cogs += array_sum(array_map(fn($i) => ($i['unit_cost'] ?? 0) * ($i['quantity'] ?? 0), $items));
                 $productsSold += array_sum(array_map(fn($i) => $i['quantity'] ?? 0, $items));
             }
 
             $totalExpenses = array_sum(array_map(fn($e) => $e['amount'] ?? 0, $branchExpenses));
-            $grossProfit = $revenue - $cogs;
-            $netProfit = $grossProfit - $totalExpenses;
 
             $branchFinancials = [
                 'revenue' => $revenue,
-                'cogs' => $cogs,
-                'gross_profit' => $grossProfit,
                 'expenses' => $totalExpenses,
-                'net_profit' => $netProfit,
                 'transaction_count' => count($branchSales),
                 'products_sold' => $productsSold,
                 'branch_name' => $branch['name'],
@@ -180,10 +160,7 @@ class FinancialService
 
             $total['by_branch'][$bid] = $branchFinancials;
             $total['revenue'] += $revenue;
-            $total['cogs'] += $cogs;
-            $total['gross_profit'] += $grossProfit;
             $total['expenses'] += $totalExpenses;
-            $total['net_profit'] += $netProfit;
             $total['transaction_count'] += count($branchSales);
             $total['products_sold'] += $productsSold;
         }

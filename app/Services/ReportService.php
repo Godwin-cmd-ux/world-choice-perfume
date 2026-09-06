@@ -128,9 +128,8 @@ class ReportService
             return [
                 'product' => $stock['product']['name'] ?? 'Unknown',
                 'quantity' => $stock['quantity'] ?? 0,
-                'buying_cost' => $stock['buying_cost'] ?? 0,
                 'selling_price' => $stock['selling_price'] ?? 0,
-                'stock_value' => ($stock['quantity'] ?? 0) * ($stock['buying_cost'] ?? 0),
+                'stock_value' => ($stock['quantity'] ?? 0) * ($stock['selling_price'] ?? 0),
             ];
         }, $stocks);
     }

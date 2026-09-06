@@ -27,7 +27,7 @@ class DashboardController extends Controller
                 'pendingOrders' => 0,
                 'lowStock' => 0,
                 'totalStockValue' => 0,
-                'financials' => ['revenue' => 0, 'gross_profit' => 0, 'expenses' => 0, 'net_profit' => 0, 'transaction_count' => 0, 'products_sold' => 0, 'cogs' => 0, 'stock_remaining' => 0],
+                'financials' => ['revenue' => 0, 'expenses' => 0, 'transaction_count' => 0, 'products_sold' => 0, 'stock_remaining' => 0],
             ]);
         }
 
@@ -51,13 +51,13 @@ class DashboardController extends Controller
             'status' => 'eq.pending',
         ]);
 
-        // Batch 3: Low stock items — fetch quantity+buying_cost in one query
+        // Batch 3: Low stock items
         $allStock = $this->supabase->query('branch_stock', [
             'branch_id' => "eq.{$branchId}",
-            'select' => 'quantity,buying_cost',
+            'select' => 'quantity,selling_price',
         ]);
         $lowStock = count(array_filter($allStock, fn($s) => ($s['quantity'] ?? 0) <= 5));
-        $totalStockValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['buying_cost'] ?? 0), $allStock));
+        $totalStockValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $allStock));
 
         // Batch 4: Monthly sales — filter by date in the query
         $monthlySales = $this->supabase->query('sales', [
@@ -78,12 +78,9 @@ class DashboardController extends Controller
 
         $financials = [
             'revenue' => $revenue,
-            'gross_profit' => $revenue,
             'expenses' => $totalExpenses,
-            'net_profit' => $revenue - $totalExpenses,
             'transaction_count' => count($monthlySales),
             'products_sold' => 0,
-            'cogs' => 0,
             'stock_remaining' => 0,
         ];
 

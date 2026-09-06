@@ -86,6 +86,8 @@ class User extends Authenticatable
     public function isBranchAdmin(): bool { return $this->role === 'branch_admin'; }
     public function isCashier(): bool { return $this->role === 'cashier'; }
     public function isStockManager(): bool { return $this->role === 'stock_manager'; }
+    public function isCustomerCare(): bool { return $this->role === 'customer_care'; }
+    public function isSeller(): bool { return $this->role === 'seller'; }
     public function isApproved(): bool { return in_array($this->status, ['active', 'approved']); }
     public function isPending(): bool { return $this->status === 'pending'; }
 }

@@ -11,7 +11,7 @@
             <div>
                 <p class="text-sm font-medium text-gray-500">Total Products</p>
                 <p class="text-2xl font-bold text-gray-800 mt-1">{{ number_format($totalProductItems) }}</p>
-                <p class="text-xs text-gray-400 mt-1">TZS {{ number_format($totalProductValue) }} value</p>
+                <p class="text-xs text-gray-400 mt-1">Total in stock</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
                 <i class="fas fa-box text-blue-500 text-xl"></i>

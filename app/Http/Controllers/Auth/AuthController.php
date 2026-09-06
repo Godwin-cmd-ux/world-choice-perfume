@@ -64,6 +64,10 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been rejected. Please contact support.']);
         }
 
+        if (($sbUser['status'] ?? '') === 'blocked') {
+            return back()->withErrors(['email' => 'Your account has been blocked. Please contact your administrator.']);
+        }
+
         // Ensure branch exists in SQLite before creating user
         if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
             $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
@@ -619,6 +623,8 @@ class AuthController extends Controller
             'branch_admin' => redirect()->route('branch-admin.dashboard'),
             'cashier' => redirect()->route('cashier.dashboard'),
             'stock_manager' => redirect()->route('stock-manager.dashboard'),
+            'customer_care' => redirect()->route('customer-care.dashboard'),
+            'seller' => redirect()->route('seller.dashboard'),
             default => redirect()->route('login'),
         };
     }

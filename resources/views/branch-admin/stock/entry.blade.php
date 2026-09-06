@@ -30,24 +30,12 @@
                     <input type="date" name="date_received" value="{{ old('date_received', date('Y-m-d')) }}" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Buying Cost (per unit) *</label>
-                    <input type="number" step="0.01" name="buying_cost" value="{{ old('buying_cost') }}" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 @error('buying_cost') border-red-500 @enderror">
-                    @error('buying_cost') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (per unit) *</label>
-                    <input type="number" step="0.01" name="selling_price" value="{{ old('selling_price') }}" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 @error('selling_price') border-red-500 @enderror">
-                    @error('selling_price') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (per unit) *</label>
+                <input type="number" step="0.01" name="selling_price" value="{{ old('selling_price') }}" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 @error('selling_price') border-red-500 @enderror">
+                @error('selling_price') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                    <input type="text" name="supplier" value="{{ old('supplier') }}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
-                </div>
-                <div>
+            <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
                     <select name="category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
                         <option value="">-- Select --</option>

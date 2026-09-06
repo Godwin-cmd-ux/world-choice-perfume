@@ -115,9 +115,8 @@ class ReportController extends Controller
             return [
                 'product' => $s['product']['name'] ?? 'Unknown',
                 'quantity' => $s['quantity'] ?? 0,
-                'buying_cost' => $s['buying_cost'] ?? 0,
                 'selling_price' => $s['selling_price'] ?? 0,
-                'stock_value' => ($s['quantity'] ?? 0) * ($s['buying_cost'] ?? 0),
+                'stock_value' => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0),
             ];
         }, $stocks);
 
@@ -231,7 +230,6 @@ class ReportController extends Controller
                 $allSaleItems[] = $item;
             }
         }
-        $cogs = array_sum(array_map(fn($i) => ($i['quantity'] ?? 0) * ($i['buying_cost'] ?? 0), $allSaleItems));
         $productsSold = array_sum(array_map(fn($i) => $i['quantity'] ?? 0, $allSaleItems));
 
         // Get stock remaining
@@ -241,11 +239,8 @@ class ReportController extends Controller
         return [
             'revenue' => $revenue,
             'expenses' => $totalExpenses,
-            'net_profit' => $revenue - $totalExpenses - $cogs,
             'transaction_count' => count($sales),
             'products_sold' => $productsSold,
-            'cogs' => $cogs,
-            'gross_profit' => $revenue - $cogs,
             'stock_remaining' => $stockRemaining,
         ];
     }

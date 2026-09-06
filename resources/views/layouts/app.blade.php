@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sidebar { width: 260px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; }
+        .sidebar { width: 260px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: hidden; overflow-x: hidden; }
         .main-content { margin-left: 260px; min-height: 100vh; }
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
@@ -48,6 +48,12 @@
                 @include('branch-admin.partials.sidebar')
             @elseif(auth()->user()->isCashier())
                 @include('cashier.partials.sidebar')
+            @elseif(auth()->user()->isStockManager())
+                @include('stock-manager.partials.sidebar')
+            @elseif(auth()->user()->role === 'customer_care')
+                @include('customer-care.partials.sidebar')
+            @elseif(auth()->user()->role === 'seller')
+                @include('seller.partials.sidebar')
             @endif
         @endauth
 

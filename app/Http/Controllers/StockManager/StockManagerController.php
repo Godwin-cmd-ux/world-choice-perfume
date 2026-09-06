@@ -29,11 +29,10 @@ class StockManagerController extends Controller
 
         // Product stock stats
         $productStock = $this->supabase->query('branch_stock', [
-            'select' => 'quantity,buying_cost,selling_price',
+            'select' => 'quantity,selling_price',
             'branch_id' => "eq.{$branchId}",
         ]);
         $totalProductItems = array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $productStock));
-        $totalProductValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['buying_cost'] ?? 0), $productStock));
         $lowStockProducts = count(array_filter($productStock, fn($s) => ($s['quantity'] ?? 0) <= 5));
 
         // Bottle stock stats
@@ -65,7 +64,7 @@ class StockManagerController extends Controller
         ]))->map(fn($m) => $this->normalizeMovement($m))->all();
 
         return view('stock-manager.dashboard', compact(
-            'totalProductItems', 'totalProductValue', 'lowStockProducts',
+            'totalProductItems', 'lowStockProducts',
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements'
         ));
@@ -109,7 +108,7 @@ class StockManagerController extends Controller
         }
 
         $stocks = array_values($stocks);
-        $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['buying_cost'] ?? 0), $stocks));
+        $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
 
         $stocks = collect($stocks)->map(function ($s) {
             if (isset($s['product']) && is_array($s['product'])) {
@@ -140,9 +139,7 @@ class StockManagerController extends Controller
         $validated = $request->validate([
             'product_id' => 'required',
             'quantity' => 'required|integer|min:1',
-            'buying_cost' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
-            'supplier' => 'nullable|string|max:255',
             'category' => 'nullable|in:Oil Fragrance,Brand Perfume',
             'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
             'date_received' => 'required|date',
@@ -178,9 +175,7 @@ class StockManagerController extends Controller
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
-                'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
-                'supplier' => $validated['supplier'] ?? null,
                 'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
@@ -191,9 +186,7 @@ class StockManagerController extends Controller
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $validated['quantity'],
-                'buying_cost' => $validated['buying_cost'],
                 'selling_price' => $validated['selling_price'],
-                'supplier' => $validated['supplier'] ?? null,
                 'category' => $validated['category'] ?? null,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
@@ -207,10 +200,9 @@ class StockManagerController extends Controller
             'product_id' => $validated['product_id'],
             'type' => 'entry',
             'quantity' => $validated['quantity'],
-            'unit_cost' => $validated['buying_cost'],
             'unit_price' => $validated['selling_price'],
             'performed_by' => auth()->id(),
-            'notes' => "Stock entry from supplier: {$validated['supplier']}",
+            'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ]);
@@ -301,7 +293,23 @@ class StockManagerController extends Controller
                 'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
                 'quantity' => 'required|integer|min:1',
                 'reason' => 'nullable|string|max:255',
+                'has_logo' => 'required|in:yes,no',
+                'logo_color' => 'required_if:has_logo,yes|nullable|in:yellow,black',
+                'has_box' => 'required_if:has_logo,no|nullable|in:yes,no',
+                'box_color' => 'required_if:has_box,yes|nullable|in:black,white',
             ]);
+
+            // Build category info
+            $categoryInfo = null;
+            if ($validated['has_logo'] === 'yes' && !empty($validated['logo_color'])) {
+                $categoryInfo = 'Logo: ' . ucfirst($validated['logo_color']);
+            } elseif ($validated['has_logo'] === 'no') {
+                if (($validated['has_box'] ?? '') === 'yes' && !empty($validated['box_color'])) {
+                    $categoryInfo = 'No Logo, Box: ' . ucfirst($validated['box_color']);
+                } else {
+                    $categoryInfo = 'No Logo, No Box';
+                }
+            }
 
             // Upsert bottle stock
             $existing = $this->supabase->findOne('bottle_stock', [
@@ -325,13 +333,22 @@ class StockManagerController extends Controller
                 ]);
             }
 
-            // Record movement
+            // Record movement with category info
+            $movementReason = ($validated['reason'] ?? 'Stock in');
+            if ($categoryInfo) {
+                $movementReason .= ' [' . $categoryInfo . ']';
+            }
+
             $this->supabase->insert('bottle_stock_movements', [
                 'branch_id' => $branchId,
                 'volume' => $validated['volume'],
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
-                'reason' => $validated['reason'] ?? 'Stock in',
+                'reason' => $movementReason,
+                'has_logo' => $validated['has_logo'],
+                'logo_color' => $validated['logo_color'] ?? null,
+                'has_box' => $validated['has_box'] ?? null,
+                'box_color' => $validated['box_color'] ?? null,
                 'performed_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
