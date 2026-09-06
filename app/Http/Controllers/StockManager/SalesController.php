@@ -361,7 +361,7 @@ class SalesController extends Controller
                 }
             }
             if ($hasDiscount) {
-                $this->supabase->insert('notifications', [
+                $this->supabase->insert('admin_notifications', [
                     'type' => 'discount_used',
                     'branch_id' => $branchId,
                     'user_id' => $supabaseUserId,

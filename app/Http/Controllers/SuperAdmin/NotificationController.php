@@ -27,7 +27,7 @@ class NotificationController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $notifications = $this->supabase->query('notifications', $params);
+        $notifications = $this->supabase->query('admin_notifications', $params);
 
         // Apply date range filters in PHP
         if ($request->date_from) {
@@ -60,7 +60,7 @@ class NotificationController extends Controller
 
     public function markAllRead()
     {
-        $unread = $this->supabase->query('notifications', [
+        $unread = $this->supabase->query('admin_notifications', [
             'is_read' => 'eq.false',
             'select' => 'id',
         ]);
@@ -87,7 +87,7 @@ class NotificationController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $notifications = $this->supabase->query('notifications', $params);
+        $notifications = $this->supabase->query('admin_notifications', $params);
 
         if ($request->date_from) {
             $from = $request->date_from;
