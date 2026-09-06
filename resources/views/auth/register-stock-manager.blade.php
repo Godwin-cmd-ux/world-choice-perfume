@@ -51,20 +51,28 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Branch</label>
-                        <select name="branch_id" required
-                            class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
-                            <option value="">Select a branch</option>
-                            @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
-                                    {{ $branch->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Branch</label>
+                    <select name="branch_id" required
+                        class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
+                        <option value="">Select a branch</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Company Secret Code</label>
+                    <input type="text" name="secret_code" value="{{ old('secret_code') }}" required
+                        class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
+                        placeholder="Enter the company secret code">
+                    @error('secret_code') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
                         <input type="password" name="password" required
                             class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none"
                             placeholder="Min. 8 characters">

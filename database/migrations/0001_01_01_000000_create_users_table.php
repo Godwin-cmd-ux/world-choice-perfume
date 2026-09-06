@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('phone')->nullable();
-            $table->enum('role', ['super_admin', 'branch_admin', 'cashier'])->default('cashier');
+            $table->enum('role', ['super_admin', 'branch_admin', 'cashier', 'stock_manager'])->default('cashier');
             $table->enum('status', ['pending', 'approved', 'rejected', 'active'])->default('pending');
             $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
             $table->string('profile_picture')->nullable();

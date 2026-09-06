@@ -322,8 +322,13 @@ class AuthController extends Controller
             'email' => 'required|email',
             'phone' => 'required|string|max:20',
             'password' => 'required|string|min:8|confirmed',
+            'secret_code' => 'required|string',
             'branch_id' => 'required',
         ]);
+
+        if ($validated['secret_code'] !== config('app.staff_secret_code', 'WCP-STAFF-2026')) {
+            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+        }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
