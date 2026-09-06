@@ -17,11 +17,6 @@
             <i class="fas fa-tachometer-alt w-5 text-center"></i>
             <span>Dashboard</span>
         </a>
-        <a href="{{ route('branch-admin.products.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.products.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-box w-5 text-center"></i>
-            <span>Products</span>
-        </a>
         <a href="{{ route('branch-admin.sales.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.sales.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-receipt w-5 text-center"></i>

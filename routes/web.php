@@ -160,15 +160,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     Route::prefix('branch-admin')->name('branch-admin.')->middleware('role:branch_admin')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\BranchAdmin\DashboardController::class, 'index'])->name('dashboard');
 
-        // Products (no model binding - we fetch from Supabase)
-        Route::get('/products', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'index'])->name('products.index');
-        Route::get('/products/create', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'create'])->name('products.create');
-        Route::post('/products', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'store'])->name('products.store');
-        Route::get('/products/{product}/edit', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'edit'])->name('products.edit');
-        Route::put('/products/{product}', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'update'])->name('products.update');
-        Route::delete('/products/{product}', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'destroy'])->name('products.destroy');
-        Route::delete('/product-images/{image}', [\App\Http\Controllers\BranchAdmin\ProductController::class, 'removeImage'])->name('products.remove-image');
-
         // Sales
         Route::get('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'create'])->name('sales.create');
@@ -263,5 +254,15 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         // QR Code
         Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');
+
+        // Product Management
+        $pmc = \App\Http\Controllers\StockManager\ProductController::class;
+        Route::get('/products', [$pmc, 'index'])->name('products.index');
+        Route::get('/products/create', [$pmc, 'create'])->name('products.create');
+        Route::post('/products', [$pmc, 'store'])->name('products.store');
+        Route::get('/products/{product}/edit', [$pmc, 'edit'])->name('products.edit');
+        Route::put('/products/{product}', [$pmc, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [$pmc, 'destroy'])->name('products.destroy');
+        Route::delete('/product-images/{image}', [$pmc, 'removeImage'])->name('products.remove-image');
     });
 });
