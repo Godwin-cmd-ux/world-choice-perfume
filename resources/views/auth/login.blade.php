@@ -83,6 +83,12 @@
                     <a href="{{ route('register.stock-manager') }}" class="py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center text-sm text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/20 transition">
                         <i class="fas fa-clipboard-check mr-1"></i> Stock Manager
                     </a>
+                    <a href="{{ route('register.customer-care') }}" class="py-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-center text-sm text-blue-400 hover:border-blue-500/50 hover:bg-blue-500/20 transition">
+                        <i class="fas fa-headset mr-1"></i> Customer Care
+                    </a>
+                    <a href="{{ route('register.seller') }}" class="py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-center text-sm text-cyan-400 hover:border-cyan-500/50 hover:bg-cyan-500/20 transition col-span-2">
+                        <i class="fas fa-hand-holding-heart mr-1"></i> Seller Sign Up
+                    </a>
                 @else
                     <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-center text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
                         <i class="fas fa-user-lock mr-1"></i> Enter Staff Code to Register

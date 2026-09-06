@@ -108,6 +108,10 @@ Route::middleware('guest')->group(function () {
         Route::post('/register/cashier', [AuthController::class, 'registerCashier']);
         Route::get('/register/stock-manager', [AuthController::class, 'showStockManagerRegistration'])->name('register.stock-manager');
         Route::post('/register/stock-manager', [AuthController::class, 'registerStockManager']);
+        Route::get('/register/customer-care', [AuthController::class, 'showCustomerCareRegistration'])->name('register.customer-care');
+        Route::post('/register/customer-care', [AuthController::class, 'registerCustomerCare']);
+        Route::get('/register/seller', [AuthController::class, 'showSellerRegistration'])->name('register.seller');
+        Route::post('/register/seller', [AuthController::class, 'registerSeller']);
     });
 
     // OTP
