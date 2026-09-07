@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-lg">
-    <form method="POST" action="{{ route('branch-admin.expenses.store') }}" class="bg-white rounded-xl shadow p-6">
+    <form method="POST" action="{{ route('cashier.expenses.store') }}" class="bg-white rounded-xl shadow p-6">
         @csrf
         <div class="space-y-4">
             <div>
@@ -35,7 +35,7 @@
             </div>
         </div>
         <div class="flex gap-3 mt-6">
-            <a href="{{ route('branch-admin.expenses.index') }}" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Cancel</a>
+            <a href="{{ route('cashier.expenses.index') }}" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Cancel</a>
             <button type="submit" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">Record Expense</button>
         </div>
     </form>

@@ -201,10 +201,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/orders/{order}', [\App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/cancel', [\App\Http\Controllers\BranchAdmin\OrderController::class, 'cancel'])->name('orders.cancel');
 
-        // Expenses
+        // Expenses (view only — cashier commits expenses)
         Route::get('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'index'])->name('expenses.index');
-        Route::get('/expenses/create', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'create'])->name('expenses.create');
-        Route::post('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'store'])->name('expenses.store');
         Route::get('/expenses/{expense}', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'show'])->name('expenses.show');
 
         // Cashier Management
@@ -235,8 +233,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [\App\Http\Controllers\Cashier\SaleController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [\App\Http\Controllers\Cashier\SaleController::class, 'show'])->name('sales.show');
 
-        // Expenses (view only — creation moved to branch admin)
+        // Expenses (cashier commits expenses; sees all branch expenses)
         Route::get('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/create', [\App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
 
         // Orders
         Route::get('/orders', [\App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');

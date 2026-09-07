@@ -15,20 +15,26 @@ class ExpenseController extends Controller
         $this->supabase = new SupabaseService();
     }
 
+    /**
+     * Cashier sees all expenses for their own branch.
+     */
     public function index(Request $request)
     {
-        $userId = auth()->user()->supabase_id ?? auth()->id();
+        $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, branch:branches(id,name)',
-            'user_id' => "eq.{$userId}",
+            'select' => '*, user:users(id,name)',
+            'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
         ];
 
+        if ($request->category) {
+            $params['category'] = "eq.{$request->category}";
+        }
+
         $expenses = $this->supabase->query('expenses', $params);
 
-        // Apply date filters in PHP
         if ($request->date_from) {
             $from = $request->date_from;
             $expenses = array_filter($expenses, fn($e) => substr($e['created_at'] ?? '', 0, 10) >= $from);
@@ -42,18 +48,24 @@ class ExpenseController extends Controller
         $totalExpenses = array_sum(array_map(fn($e) => $e['amount'] ?? 0, $expenses));
 
         $expenses = collect($expenses)->map(function ($e) {
-            if (isset($e['branch']) && is_array($e['branch'])) $e['branch'] = (object) $e['branch'];
+            if (isset($e['user']) && is_array($e['user'])) $e['user'] = (object) $e['user'];
             return (object) $e;
         });
 
         return view('cashier.expenses.index', compact('expenses', 'totalExpenses'));
     }
 
+    /**
+     * Cashier can record a new expense for their branch.
+     */
     public function create()
     {
         return view('cashier.expenses.create');
     }
 
+    /**
+     * Cashier commits a new expense for their branch.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -62,9 +74,12 @@ class ExpenseController extends Controller
             'description' => 'required|string|min:10',
         ]);
 
-        $expense = $this->supabase->insert('expenses', [
-            'branch_id' => auth()->user()->branch_id,
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
+        $branchId = auth()->user()->branch_id;
+        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
+
+        $this->supabase->insert('expenses', [
+            'branch_id' => $branchId,
+            'user_id' => $supabaseUserId,
             'category' => $validated['category'],
             'amount' => $validated['amount'],
             'description' => $validated['description'],
@@ -73,9 +88,8 @@ class ExpenseController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        // Audit log
         $this->supabase->insert('audit_logs', [
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
+            'user_id' => $supabaseUserId,
             'action' => 'expense_created',
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
