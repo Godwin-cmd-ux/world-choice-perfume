@@ -139,22 +139,24 @@ function setBottleState(state) {
         el.querySelector('i').className = isSelected
             ? 'fas fa-check-circle text-emerald-500 text-lg'
             : (state === 'yes' ? 'fas fa-check-circle text-gray-300 text-lg' : 'fas fa-times-circle text-gray-300 text-lg');
-    });
-
-    const logoColorField = document.getElementById('logo-color-field');
+    });            const logoColorField = document.getElementById('logo-color-field');
     const hasBoxField = document.getElementById('has-box-field');
+    const boxColorField = document.getElementById('box-color-field');
 
     if (state === 'yes') {
         logoColorField.classList.remove('hidden');
         hasBoxField.classList.add('hidden');
-        document.getElementById('box-color-field').classList.add('hidden');
+        boxColorField.classList.add('hidden');
+        console.log('bottle: has_logo = yes → showing logo color field');
     } else if (state === 'no') {
         logoColorField.classList.add('hidden');
         hasBoxField.classList.remove('hidden');
+        boxColorField.classList.add('hidden');
+        console.log('bottle: has_logo = no → showing has-box field');
     } else {
         logoColorField.classList.add('hidden');
         hasBoxField.classList.add('hidden');
-        document.getElementById('box-color-field').classList.add('hidden');
+        boxColorField.classList.add('hidden');
     }
 }
 
