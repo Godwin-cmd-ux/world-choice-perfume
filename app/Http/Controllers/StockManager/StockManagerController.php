@@ -50,18 +50,8 @@ class StockManagerController extends Controller
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
         // Recent movements
-        $recentBottleMovements = collect($this->supabase->query('bottle_stock_movements', [
-            'select' => '*, performedBy:users(id,name)',
-            'branch_id' => "eq.{$branchId}",
-            'order' => 'created_at.desc',
-            'limit' => 5,
-        ]))->map(fn($m) => $this->normalizeMovement($m))->all();
-        $recentOilMovements = collect($this->supabase->query('oil_fragrance_movements', [
-            'select' => '*, performedBy:users(id,name)',
-            'branch_id' => "eq.{$branchId}",
-            'order' => 'created_at.desc',
-            'limit' => 5,
-        ]))->map(fn($m) => $this->normalizeMovement($m))->all();
+        $recentBottleMovements = $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 5);
+        $recentOilMovements = $this->loadMovementsWithUser('oil_fragrance_movements', $branchId, 5);
 
         return view('stock-manager.dashboard', compact(
             'totalProductItems', 'lowStockProducts',
@@ -71,15 +61,47 @@ class StockManagerController extends Controller
     }
 
     /**
-     * Normalize Supabase movement rows so views can rely on object access.
+     * Load movements with a PHP-side join for performedBy.
+     * PostgREST expansions like performedBy:users(id,name) silently return 0 rows,
+     * so we fetch the user data separately and join in PHP.
      */
-    private function normalizeMovement(array $row): object
+    private function loadMovementsWithUser(string $table, int $branchId, int $limit, array $extraParams = []): array
     {
-        if (isset($row['performedBy']) && is_array($row['performedBy'])) {
-            $row['performedBy'] = (object) $row['performedBy'];
+        $params = array_merge([
+            'select' => '*',
+            'branch_id' => "eq.{$branchId}",
+            'order' => 'created_at.desc',
+            'limit' => $limit,
+        ], $extraParams);
+
+        $rows = $this->supabase->query($table, $params);
+
+        // Collect user IDs
+        $userIds = [];
+        foreach ($rows as $r) {
+            if (!empty($r['performed_by'])) {
+                $userIds[$r['performed_by']] = true;
+            }
         }
 
-        return (object) $row;
+        $users = [];
+        if (!empty($userIds)) {
+            $userRows = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.' . implode(',', array_keys($userIds)),
+                'limit' => 100,
+            ]);
+            foreach ($userRows as $u) {
+                $users[$u['id']] = $u;
+            }
+        }
+
+        return collect($rows)->map(function ($r) use ($users) {
+            $r['performedBy'] = !empty($r['performed_by']) && isset($users[$r['performed_by']])
+                ? (object) ['id' => $users[$r['performed_by']]['id'], 'name' => $users[$r['performed_by']]['name']]
+                : null;
+            return (object) $r;
+        })->all();
     }
 
     // ========================
@@ -410,7 +432,7 @@ class StockManagerController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, performedBy:users(id,name)',
+            'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -424,8 +446,7 @@ class StockManagerController extends Controller
             $params['volume'] = "eq.{$request->volume}";
         }
 
-        $movements = collect($this->supabase->query('bottle_stock_movements', $params))
-            ->map(fn($m) => $this->normalizeMovement($m))->all();
+        $movements = $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 50, $params);
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-movements', ['movements' => $movements, 'volumes' => $volumes]);
@@ -554,7 +575,7 @@ class StockManagerController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, performedBy:users(id,name)',
+            'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -564,8 +585,7 @@ class StockManagerController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $movements = collect($this->supabase->query('oil_fragrance_movements', $params))
-            ->map(fn($m) => $this->normalizeMovement($m))->all();
+        $movements = $this->loadMovementsWithUser('oil_fragrance_movements', $branchId, 50, $params);
 
         return view('stock-manager.oil-fragrance-movements', ['movements' => $movements]);
     }

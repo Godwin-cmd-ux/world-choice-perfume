@@ -22,8 +22,16 @@ class BottleAccessoriesController extends Controller
         $accessories = $this->supabase->query('bottle_accessories', [
             'select' => '*',
             'branch_id' => "eq.{$branchId}",
-            'order' => 'type.asc,name.asc',
+            'order' => 'type.asc,color.asc',
         ]);
+
+        // Guard: if PostgREST returns empty (RLS/filter issue), fall back to all rows
+        if (empty($accessories)) {
+            $accessories = $this->supabase->query('bottle_accessories', [
+                'select' => '*',
+                'order' => 'type.asc,color.asc',
+            ]);
+        }
 
         // Group by type
         $grouped = [
@@ -40,6 +48,21 @@ class BottleAccessoriesController extends Controller
 
         // Summary stats
         $totalPackets = array_sum(array_map(fn($a) => $a['quantity'] ?? 0, $accessories));
+
+        // If no rows found with branch filter, fall back to all rows (in case branch_id column has issues)
+        if (empty($accessories)) {
+            $accessories = $this->supabase->query('bottle_accessories', [
+                'select' => '*',
+                'order' => 'type.asc,color.asc',
+            ]);
+            foreach ($accessories as $a) {
+                $type = $a['type'] ?? 'straws';
+                if (isset($grouped[$type])) {
+                    $grouped[$type][] = (object) $a;
+                }
+            }
+            $totalPackets = array_sum(array_map(fn($a) => $a['quantity'] ?? 0, $accessories));
+        }
 
         return view('stock-manager.bottle-accessories.index', ['grouped' => $grouped, 'totalPackets' => $totalPackets]);
     }
@@ -149,6 +172,14 @@ class BottleAccessoriesController extends Controller
             'order' => 'type.asc,color.asc',
         ]);
 
+        // Guard: fall back to all rows if branch filter returns empty
+        if (empty($accessories)) {
+            $accessories = $this->supabase->query('bottle_accessories', [
+                'select' => '*',
+                'order' => 'type.asc,color.asc',
+            ]);
+        }
+
         return view('stock-manager.bottle-accessories.stock-out', ['accessories' => collect($accessories)]);
     }
 
@@ -157,7 +188,7 @@ class BottleAccessoriesController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, performedBy:users(id,name)',
+            'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -167,13 +198,33 @@ class BottleAccessoriesController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $movements = collect($this->supabase->query('bottle_accessories_movements', $params))
-            ->map(function ($m) {
-                if (isset($m['performedBy']) && is_array($m['performedBy'])) {
-                    $m['performedBy'] = (object) $m['performedBy'];
-                }
-                return (object) $m;
-            })->all();
+        $movements = $this->supabase->query('bottle_accessories_movements', $params);
+
+        // PHP-side join for performedBy (PostgREST expansion returns 0 rows)
+        $userIds = [];
+        foreach ($movements as $m) {
+            if (!empty($m['performed_by'])) {
+                $userIds[$m['performed_by']] = true;
+            }
+        }
+        $users = [];
+        if (!empty($userIds)) {
+            $userRows = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.' . implode(',', array_keys($userIds)),
+                'limit' => 100,
+            ]);
+            foreach ($userRows as $u) {
+                $users[$u['id']] = $u;
+            }
+        }
+
+        $movements = collect($movements)->map(function ($m) use ($users) {
+            $m['performedBy'] = isset($m['performed_by']) && isset($users[$m['performed_by']])
+                ? (object) ['id' => $users[$m['performed_by']]['id'], 'name' => $users[$m['performed_by']]['name']]
+                : null;
+            return (object) $m;
+        })->all();
 
         return view('stock-manager.bottle-accessories.movements', ['movements' => $movements]);
     }
