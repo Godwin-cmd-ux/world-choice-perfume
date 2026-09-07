@@ -149,27 +149,35 @@ class StockManagerController extends Controller
     {
         $products = $this->supabase->query('products', [
             'is_active' => 'eq.true',
-            'select' => '*',
+            'select' => 'id,name,brand,category',
             'order' => 'name.asc',
         ]);
 
-        return view('stock-manager.product-stock-entry', ['products' => collect($products)->map(fn($p) => (object) $p)]);
+        // Build a lookup of category by product id for JS auto-fill.
+        $categoryMap = [];
+        foreach ($products as $p) {
+            $categoryMap[$p['id']] = $p['category'] ?? null;
+        }
+
+        return view('stock-manager.product-stock-entry', [
+            'products' => collect($products)->map(fn($p) => (object) $p),
+            'categoryMap' => $categoryMap,
+        ]);
     }
 
     public function storeProductStockEntry(Request $request)
-    {
-        $validated = $request->validate([
-            'product_id' => 'required',
-            'quantity' => 'required|integer|min:1',
-            'selling_price' => 'required|numeric|min:0',
-            'category' => 'nullable|in:Oil Fragrance,Brand Perfume',
-            'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
-            'date_received' => 'required|date',
-        ]);
+    {            $validated = $request->validate([
+                'product_id' => 'required',
+                'quantity' => 'required|integer|min:1',
+                'selling_price' => 'required|numeric|min:0',
+                'category' => 'required|in:Oil Fragrance,Brand Perfume',
+                'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
+                'date_received' => 'required|date',
+            ]);
 
-        $branchId = auth()->user()->branch_id;
-        $category = $validated['category'] ?? null;
-        $bottleVolume = $validated['bottle_volume'] ?? null;
+            $branchId = auth()->user()->branch_id;
+            $category = $validated['category'];
+            $bottleVolume = $validated['bottle_volume'] ?? null;
 
         // Oil fragrance entries consume empty bottles: require the volume and
         // make sure enough of that volume is in stock before recording the entry.
@@ -197,19 +205,18 @@ class StockManagerController extends Controller
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
-                'selling_price' => $validated['selling_price'],
-                'category' => $validated['category'] ?? null,
-                'date_received' => $validated['date_received'],
-                'entered_by' => auth()->id(),
-                'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
-        } else {
-            $this->supabase->insert('branch_stock', [
-                'branch_id' => $branchId,
-                'product_id' => $validated['product_id'],
-                'quantity' => $validated['quantity'],
-                'selling_price' => $validated['selling_price'],
-                'category' => $validated['category'] ?? null,
+                'selling_price' => $validated['selling_price'],                    'category' => $category,
+                    'date_received' => $validated['date_received'],
+                    'entered_by' => auth()->id(),
+                    'updated_at' => now()->toIso8601String(),
+                ], ['id' => $existing['id']]);
+            } else {
+                $this->supabase->insert('branch_stock', [
+                    'branch_id' => $branchId,
+                    'product_id' => $validated['product_id'],
+                    'quantity' => $validated['quantity'],
+                    'selling_price' => $validated['selling_price'],
+                    'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
@@ -479,8 +486,12 @@ class StockManagerController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'quantity' => 'required|integer|min:1',
+                'bottle_volume' => 'required|integer|in:500,1000',
                 'reason' => 'nullable|string|max:255',
             ]);
+
+            $bottleVolume = (int) $validated['bottle_volume'];
+            $volumeLabel = $bottleVolume === 500 ? '500ml' : '1000ml';
 
             $existing = $this->supabase->findOne('oil_fragrance_stock', [
                 'branch_id' => $branchId,
@@ -491,6 +502,7 @@ class StockManagerController extends Controller
                 $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
                 $this->supabase->update('oil_fragrance_stock', [
                     'quantity' => $newQty,
+                    'volume' => $bottleVolume,
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $existing['id']]);
             } else {
@@ -498,6 +510,7 @@ class StockManagerController extends Controller
                     'branch_id' => $branchId,
                     'name' => $validated['name'],
                     'quantity' => $validated['quantity'],
+                    'volume' => $bottleVolume,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ]);
@@ -506,9 +519,10 @@ class StockManagerController extends Controller
             $this->supabase->insert('oil_fragrance_movements', [
                 'branch_id' => $branchId,
                 'name' => $validated['name'],
+                'volume' => $bottleVolume,
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
-                'reason' => $validated['reason'] ?? 'Stock in',
+                'reason' => ($validated['reason'] ?? 'Stock in') . " [{$volumeLabel}]",
                 'performed_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),

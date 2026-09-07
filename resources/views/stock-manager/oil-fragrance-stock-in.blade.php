@@ -39,10 +39,24 @@
                     placeholder="e.g. New shipment from supplier">
             </div>
 
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Volume *</label>
+                <select name="bottle_volume" id="bottle_volume" required
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Select Volume</option>
+                    <option value="500" {{ old('bottle_volume') == '500' ? 'selected' : '' }}>500ml</option>
+                    <option value="1000" {{ old('bottle_volume') == '1000' ? 'selected' : '' }}>1000ml</option>
+                </select>
+            </div>
+
             <div class="flex gap-3">
                 <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Record Stock In
                 </button>
+
+                @error('bottle_volume')
+                    <p class="text-sm text-red-600">{{ $message }}</p>
+                @enderror
                 <a href="{{ route('stock-manager.oil-fragrance') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium">
                     Cancel
                 </a>

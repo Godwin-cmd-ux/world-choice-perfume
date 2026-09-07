@@ -10,11 +10,12 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
-                <select name="product_id" required
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <select name="product_id" id="product_id" required
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    onchange="autoFillCategory()">
                     <option value="">Select Product</option>
                     @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }} — {{ $product->brand }}</option>
+                        <option value="{{ $product->id }}" data-category="{{ $product->category ?? '' }}">{{ $product->name }} — {{ $product->brand }}</option>
                     @endforeach
                 </select>
             </div>
@@ -47,6 +48,9 @@
                         <option value="Oil Fragrance" {{ old('category') == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
                         <option value="Brand Perfume" {{ old('category') == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
                     </select>
+                    @error('category')
+                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -80,6 +84,21 @@
 
 @push('scripts')
 <script>
+const categoryMap = @json($categoryMap ?? []);
+
+function autoFillCategory() {
+    const productId = document.getElementById('product_id').value;
+    const categorySelect = document.getElementById('category-select');
+
+    if (productId && categoryMap[productId]) {
+        categorySelect.value = categoryMap[productId];
+    } else {
+        categorySelect.value = '';
+    }
+
+    toggleBottleVolume();
+}
+
 function toggleBottleVolume() {
     const category = document.getElementById('category-select').value;
     const field = document.getElementById('bottle-volume-field');
@@ -95,7 +114,8 @@ function toggleBottleVolume() {
     }
 }
 
-toggleBottleVolume();
+// Run on load in case a value was repopulated after a validation error
+autoFillCategory();
 </script>
 @endpush
 @endsection
