@@ -57,15 +57,15 @@
             <div id="logo-color-field" class="mb-4 hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Logo Color *</label>
                 <div class="flex gap-3">
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'yellow' ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yellow" onclick="setLogoColor('yellow')">
+                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'yellow' ? 'border-yellow-400 bg-yellow-50 shadow-sm' : 'border-gray-200 hover:border-gray-300' }}" data-value="yellow" onclick="setLogoColor('yellow')">
                         <input type="radio" name="logo_color" value="yellow" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'yellow' ? 'checked' : '' }}>
                         <span class="w-5 h-5 rounded-full bg-yellow-400 border border-yellow-500"></span>
                         <span class="text-sm font-medium">Yellow</span>
                     </label>
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'black' ? 'border-gray-600 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setLogoColor('black')">
+                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'black' ? 'border-gray-800 bg-gray-900 text-white shadow-sm' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setLogoColor('black')">
                         <input type="radio" name="logo_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'black' ? 'checked' : '' }}>
-                        <span class="w-5 h-5 rounded-full bg-gray-800 border border-gray-900"></span>
-                        <span class="text-sm font-medium">Black</span>
+                        <span class="w-5 h-5 rounded-full bg-gray-900 border border-gray-600"></span>
+                        <span class="text-sm font-medium text-gray-200">Black</span>
                     </label>
                 </div>
             </div>
@@ -163,7 +163,7 @@ function setLogoColor(color) {
     document.querySelectorAll('.logo-color-option').forEach(el => {
         const isSelected = el.dataset.value === color;
         el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(isSelected ? 'border-amber-400' : 'border-gray-200', isSelected ? 'bg-amber-50' : '');
+        el.classList.add(isSelected ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200', isSelected ? 'border-yellow-400 bg-yellow-50' : '');
         el.querySelector('input[type="radio"]').checked = isSelected;
     });
 }
