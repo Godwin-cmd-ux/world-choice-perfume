@@ -359,15 +359,27 @@ class StockManagerController extends Controller
     // BOTTLE STOCK
     // ========================
 
-    public function bottleStock()
+    public function bottleStock(Request $request)
     {
         $branchId = auth()->user()->branch_id;
 
-        $bottles = $this->supabase->query('bottle_stock', [
+        $params = [
             'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'volume.asc',
-        ]);
+        ];
+
+        $bottles = $this->supabase->query('bottle_stock', $params);
+
+        // Search by volume
+        if ($request->search) {
+            $search = strtolower($request->search);
+            $bottles = array_filter($bottles, function ($b) use ($search) {
+                return str_contains(strtolower($b['volume'] ?? ''), $search);
+            });
+        }
+
+        $bottles = array_values($bottles);
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
         $bottleMap = [];
@@ -375,7 +387,58 @@ class StockManagerController extends Controller
             $bottleMap[$b['volume']] = $b['quantity'] ?? 0;
         }
 
-        return view('stock-manager.bottle-stock', ['volumes' => $volumes, 'bottleMap' => $bottleMap]);
+        return view('stock-manager.bottle-stock', [
+            'volumes' => $volumes,
+            'bottleMap' => $bottleMap,
+            'bottleRecords' => collect($bottles)->map(fn($b) => (object) $b),
+        ]);
+    }
+
+    public function updateBottleStock(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+            'has_logo' => 'nullable|in:yes,no',
+            'logo_color' => 'nullable|in:yellow,black',
+            'has_box' => 'nullable|in:yes,no',
+            'box_color' => 'nullable|in:black,white',
+        ]);
+
+        $stock = $this->supabase->findOne('bottle_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Bottle stock record not found.'])->withInput();
+        }
+
+        $this->supabase->update('bottle_stock', [
+            'quantity' => $validated['quantity'],
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $id]);
+
+        return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock updated.');
+    }
+
+    public function destroyBottleStock($id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('bottle_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Bottle stock record not found.']);
+        }
+
+        $this->supabase->delete('bottle_stock', ['id' => $id]);
+
+        return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock record deleted.');
     }
 
     public function bottleStockIn(Request $request)
