@@ -197,8 +197,9 @@ function setBoxColor(color) {
     });
 }
 
-// Restore state on page load
-if (currentState) setBottleState(currentState);
+// Restore state on page load (also run when currentState is empty —
+// ensure both hidden fields stay hidden on a fresh page).
+setBottleState(currentState || '');
 if (currentLogoColor) setLogoColor(currentLogoColor);
 if (currentHasBox) setHasBox(currentHasBox);
 </script>
