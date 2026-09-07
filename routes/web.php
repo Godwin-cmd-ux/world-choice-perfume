@@ -306,6 +306,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/oil-fragrance', [$smc, 'oilFragranceStock'])->name('oil-fragrance');
         Route::match(['get', 'post'], '/oil-fragrance/in', [$smc, 'oilFragranceStockIn'])->name('oil-fragrance-stock-in');
         Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
+        Route::patch('/oil-fragrance/{stock}', [$smc, 'updateOilFragranceStock'])->name('oil-fragrance.update');
+        Route::delete('/oil-fragrance/{stock}', [$smc, 'destroyOilFragranceStock'])->name('oil-fragrance.destroy');
         Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 
         // Bottle Accessories

@@ -23,56 +23,87 @@
     </div>
 </div>
 
-{{-- Oil Fragrance List --}}
-<div class="bg-white rounded-xl shadow overflow-hidden">
+{{-- Search --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <form method="GET" action="{{ route('stock-manager.oil-fragrance') }}" class="flex gap-3">
+        <div class="relative flex-1">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input type="text" name="search" value="{{ request('search') }}"
+                placeholder="Search fragrance name..."
+                class="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm">
+        </div>
+        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
+            Search
+        </button>
+        @if(request('search'))
+            <a href="{{ route('stock-manager.oil-fragrance') }}" class="text-sm text-purple-600 hover:text-purple-800 font-medium">Clear</a>
+        @endif
+    </form>
+</div>
+
+{{-- Records Table --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Oil Fragrance Records</h3>
+        <span class="text-xs text-gray-400">{{ $oils->count() }} record(s)</span>
+    </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="text-left py-3 px-4">Fragrance Name</th>
-                    <th class="text-right px-4">Quantity</th>
-                    <th class="text-left px-4">Actions</th>
+            <thead>
+                <tr class="bg-gray-50 text-left">
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fragrance Name</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Quantity</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100">
                 @forelse($oils as $oil)
-                    <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 font-medium">{{ $oil['name'] }}</td>
-                        <td class="px-4 text-right font-bold text-lg">{{ number_format($oil['quantity'] ?? 0) }}</td>
-                        <td class="px-4">
-                            <div class="flex gap-2">
-                                <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full hover:bg-green-200">+ Add</a>
-                                <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200">- Remove</a>
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 font-medium text-gray-800">{{ $oil->name }}</td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="font-bold text-lg text-purple-700">{{ number_format($oil->quantity ?? 0) }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-gray-600">{{ $oil->volume === 500 ? '500ml' : ($oil->volume === 1000 ? '1000ml' : ($oil->volume ?? '-')) }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                {{-- Edit --}}
+                                <form method="POST" action="{{ route('stock-manager.oil-fragrance.update', $oil->id) }}" class="inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" name="quantity" value="{{ $oil->quantity }}" min="0"
+                                            class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-purple-500"
+                                            placeholder="Qty">
+                                        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded text-xs font-medium">
+                                            <i class="fas fa-pen mr-0.5"></i> Edit
+                                        </button>
+                                    </div>
+                                </form>
+                                {{-- Delete --}}
+                                <form method="POST" action="{{ route('stock-manager.oil-fragrance.destroy', $oil->id) }}" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
+                                        onclick="return confirm('Delete oil fragrance \'{{ $oil->name }}\'? This will remove the stock record.')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="3" class="py-8 text-center text-gray-400">No oil fragrance stock recorded yet.</td></tr>
+                    <tr>
+                        <td colspan="4" class="px-6 py-10 text-center text-gray-400">
+                            <i class="fas fa-inbox text-2xl mb-2 block"></i>
+                            No oil fragrance stock records found.
+                        </td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-</div>
-
-{{-- Quick Actions --}}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-    <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" class="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition">
-        <div class="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center">
-            <i class="fas fa-plus text-white"></i>
-        </div>
-        <div>
-            <p class="font-medium text-gray-800">Stock In</p>
-            <p class="text-xs text-gray-500">Import oil fragrance bottles</p>
-        </div>
-    </a>
-    <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" class="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition">
-        <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
-            <i class="fas fa-arrow-right text-white"></i>
-        </div>
-        <div>
-            <p class="font-medium text-gray-800">Stock Out</p>
-            <p class="text-xs text-gray-500">Use for perfume production</p>
-        </div>
-    </a>
 </div>
 @endsection

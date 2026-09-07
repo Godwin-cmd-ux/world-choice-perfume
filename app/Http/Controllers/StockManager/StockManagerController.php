@@ -591,19 +591,92 @@ class StockManagerController extends Controller
     // OIL FRAGRANCE STOCK
     // ========================
 
-    public function oilFragranceStock()
+    public function oilFragranceStock(Request $request)
     {
         $branchId = auth()->user()->branch_id;
 
-        $oils = $this->supabase->query('oil_fragrance_stock', [
+        $params = [
             'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'name.asc',
-        ]);
+        ];
 
+        $oils = $this->supabase->query('oil_fragrance_stock', $params);
+
+        // Search by name
+        if ($request->search) {
+            $search = strtolower($request->search);
+            $oils = array_filter($oils, fn($o) => str_contains(strtolower($o['name'] ?? ''), $search));
+        }
+
+        $oils = array_values($oils);
         $totalQuantity = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oils));
 
-        return view('stock-manager.oil-fragrance-stock', ['oils' => collect($oils), 'totalQuantity' => $totalQuantity]);
+        return view('stock-manager.oil-fragrance-stock', [
+            'oils' => collect($oils)->map(fn($o) => (object) $o),
+            'totalQuantity' => $totalQuantity,
+        ]);
+    }
+
+    public function updateOilFragranceStock(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+        ]);
+
+        $stock = $this->supabase->findOne('oil_fragrance_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Oil fragrance stock record not found.'])->withInput();
+        }
+
+        $oldQty = $stock['quantity'] ?? 0;
+        $newQty = $validated['quantity'];
+
+        $this->supabase->update('oil_fragrance_stock', [
+            'quantity' => $newQty,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $id]);
+
+        if ($newQty != $oldQty) {
+            $type = $newQty > $oldQty ? 'stock_in' : 'stock_out';
+            $this->supabase->insert('oil_fragrance_movements', [
+                'branch_id' => $branchId,
+                'name' => $stock['name'],
+                'volume' => $stock['volume'] ?? null,
+                'type' => $type,
+                'quantity' => abs($newQty - $oldQty),
+                'reason' => 'Manual adjustment',
+                'performed_by' => auth()->id(),
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock updated.');
+    }
+
+    public function destroyOilFragranceStock($id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('oil_fragrance_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Oil fragrance stock record not found.']);
+        }
+
+        $this->supabase->delete('oil_fragrance_stock', ['id' => $id]);
+
+        return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock record deleted.');
     }
 
     public function oilFragranceStockIn(Request $request)
