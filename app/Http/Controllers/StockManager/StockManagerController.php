@@ -250,6 +250,24 @@ class StockManagerController extends Controller
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock entry recorded successfully.');
     }
 
+    public function destroyProductStock($stockId)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('branch_stock', [
+            'id' => $stockId,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Stock record not found.']);
+        }
+
+        $this->supabase->delete('branch_stock', ['id' => $stockId]);
+
+        return redirect()->route('stock-manager.product-stock')->with('success', 'Stock record deleted.');
+    }
+
     public function updateProductStock(Request $request, $stockId)
     {
         $validated = $request->validate([

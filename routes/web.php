@@ -291,6 +291,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/product-stock/entry', [$smc, 'productStockEntry'])->name('product-stock.entry');
         Route::post('/product-stock/entry', [$smc, 'storeProductStockEntry'])->name('product-stock-entry.store');
         Route::patch('/product-stock/{stock}', [$smc, 'updateProductStock'])->name('product-stock.update');
+        Route::delete('/product-stock/{stock}', [$smc, 'destroyProductStock'])->name('product-stock.destroy');
         Route::get('/product-stock/movements', [$smc, 'productStockMovements'])->name('product-stock-movements');
 
         // Bottle Stock
