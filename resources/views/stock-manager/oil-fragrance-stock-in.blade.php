@@ -19,24 +19,37 @@
             @csrf
 
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fragrance Name *</label>
-                <input type="text" name="name" required
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fragrance *</label>
+                <select name="product_id" id="product_id" required
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="e.g. Rose Oil, Vanilla Essence">
+                    @if($errors->has('product_id')) aria-invalid="true" @endif>
+                    <option value="">Select Fragrance</option>
+                    @foreach($oilProducts as $product)
+                        <option value="{{ $product->id }}"
+                            {{ old('product_id') == $product->id ? 'selected' : '' }}>
+                            {{ $product->name }} ({{ $product->brand ?? 'No Brand' }})
+                        </option>
+                    @endforeach
+                </select>
+                @error('product_id')
+                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Quantity (bottles) *</label>
                 <input type="number" name="quantity" required min="1"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="Enter number of bottles">
+                    placeholder="Enter number of bottles"
+                    value="{{ old('quantity') }}">
             </div>
 
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Notes</label>
                 <input type="text" name="reason"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="e.g. New shipment from supplier">
+                    placeholder="e.g. New shipment from supplier"
+                    value="{{ old('reason') }}">
             </div>
 
             <div class="mb-6">
@@ -47,16 +60,15 @@
                     <option value="500" {{ old('bottle_volume') == '500' ? 'selected' : '' }}>500ml</option>
                     <option value="1000" {{ old('bottle_volume') == '1000' ? 'selected' : '' }}>1000ml</option>
                 </select>
+                @error('bottle_volume')
+                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="flex gap-3">
                 <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Record Stock In
                 </button>
-
-                @error('bottle_volume')
-                    <p class="text-sm text-red-600">{{ $message }}</p>
-                @enderror
                 <a href="{{ route('stock-manager.oil-fragrance') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium">
                     Cancel
                 </a>

@@ -683,20 +683,43 @@ class StockManagerController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
+        // Load oil fragrance products for the dropdown.
+        $oilProducts = $this->supabase->query('products', [
+            'is_active' => 'eq.true',
+            'category' => 'eq."Oil Fragrance"',
+            'select' => 'id,name,brand',
+            'order' => 'name.asc',
+            'limit' => 200,
+        ]);
+        $oilProducts = collect($oilProducts)->map(fn($p) => (object) $p);
+
         if ($request->isMethod('post')) {
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'product_id' => 'required',
                 'quantity' => 'required|integer|min:1',
                 'bottle_volume' => 'required|integer|in:500,1000',
                 'reason' => 'nullable|string|max:255',
             ]);
 
+            $productId = $validated['product_id'];
+
+            // Confirm the selected product is still an oil fragrance.
+            $product = $this->supabase->findOne('products', [
+                'id' => $productId,
+                'category' => 'eq."Oil Fragrance"',
+            ]);
+
+            if (!$product) {
+                return back()->withErrors(['product_id' => 'Selected product is not available or is not an Oil Fragrance.'])->withInput();
+            }
+
+            $name = $product['name'];
             $bottleVolume = (int) $validated['bottle_volume'];
             $volumeLabel = $bottleVolume === 500 ? '500ml' : '1000ml';
 
             $existing = $this->supabase->findOne('oil_fragrance_stock', [
                 'branch_id' => $branchId,
-                'name' => $validated['name'],
+                'name' => $name,
             ]);
 
             if ($existing) {
@@ -709,7 +732,7 @@ class StockManagerController extends Controller
             } else {
                 $this->supabase->insert('oil_fragrance_stock', [
                     'branch_id' => $branchId,
-                    'name' => $validated['name'],
+                    'name' => $name,
                     'quantity' => $validated['quantity'],
                     'volume' => $bottleVolume,
                     'created_at' => now()->toIso8601String(),
@@ -719,7 +742,7 @@ class StockManagerController extends Controller
 
             $this->supabase->insert('oil_fragrance_movements', [
                 'branch_id' => $branchId,
-                'name' => $validated['name'],
+                'name' => $name,
                 'volume' => $bottleVolume,
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
@@ -732,7 +755,7 @@ class StockManagerController extends Controller
             return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock added.');
         }
 
-        return view('stock-manager.oil-fragrance-stock-in');
+        return view('stock-manager.oil-fragrance-stock-in', ['oilProducts' => $oilProducts]);
     }
 
     public function oilFragranceStockOut(Request $request)
