@@ -130,16 +130,20 @@ let currentLogoColor = '{{ old("logo_color") }}';
 let currentHasBox = '{{ old("has_box") }}';
 
 function setBottleState(state) {
-    currentState = state;
-    document.querySelectorAll('.bottle-state-option').forEach(el => {
+    currentState = state;    document.querySelectorAll('.bottle-state-option').forEach(el => {
         const isSelected = el.dataset.value === state;
         el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(isSelected ? 'border-emerald-500' : 'border-gray-200', isSelected ? 'bg-emerald-50' : '');
+        if (isSelected) {
+            el.classList.add('border-emerald-500', 'bg-emerald-50');
+        } else {
+            el.classList.add('border-gray-200');
+        }
         el.querySelector('input[type="radio"]').checked = isSelected;
         el.querySelector('i').className = isSelected
             ? 'fas fa-check-circle text-emerald-500 text-lg'
             : (state === 'yes' ? 'fas fa-check-circle text-gray-300 text-lg' : 'fas fa-times-circle text-gray-300 text-lg');
-    });            const logoColorField = document.getElementById('logo-color-field');
+    });
+            const logoColorField = document.getElementById('logo-color-field');
     const hasBoxField = document.getElementById('has-box-field');
     const boxColorField = document.getElementById('box-color-field');
 
@@ -165,7 +169,11 @@ function setLogoColor(color) {
     document.querySelectorAll('.logo-color-option').forEach(el => {
         const isSelected = el.dataset.value === color;
         el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(isSelected ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200', isSelected ? 'border-yellow-400 bg-yellow-50' : '');
+        if (isSelected) {
+            el.classList.add('border-yellow-400', 'bg-yellow-50');
+        } else {
+            el.classList.add('border-gray-200');
+        }
         el.querySelector('input[type="radio"]').checked = isSelected;
     });
 }
@@ -175,7 +183,11 @@ function setHasBox(val) {
     document.querySelectorAll('.has-box-option').forEach(el => {
         const isSelected = el.dataset.value === val;
         el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(isSelected ? 'border-emerald-500' : 'border-gray-200', isSelected ? 'bg-emerald-50' : '');
+        if (isSelected) {
+            el.classList.add('border-emerald-500', 'bg-emerald-50');
+        } else {
+            el.classList.add('border-gray-200');
+        }
         el.querySelector('input[type="radio"]').checked = isSelected;
         el.querySelector('i').className = isSelected
             ? 'fas fa-check-circle text-emerald-500 text-lg'
@@ -194,7 +206,11 @@ function setBoxColor(color) {
     document.querySelectorAll('.box-color-option').forEach(el => {
         const isSelected = el.dataset.value === color;
         el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(isSelected ? (color === 'black' ? 'border-gray-600' : 'border-gray-300') : 'border-gray-200', isSelected ? (color === 'white' ? 'bg-white' : 'bg-gray-50') : '');
+        if (isSelected) {
+            el.classList.add(color === 'black' ? 'border-gray-600' : 'border-gray-300', color === 'white' ? 'bg-white' : 'bg-gray-50');
+        } else {
+            el.classList.add('border-gray-200');
+        }
         el.querySelector('input[type="radio"]').checked = isSelected;
     });
 }
