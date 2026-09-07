@@ -11,18 +11,18 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Accessory Type *</label>
                 <div class="flex gap-3">
-                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all {{ old('type') === 'straws' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
-                        <input type="radio" name="type" value="straws" class="hidden" {{ old('type') === 'straws' ? 'checked' : '' }} required onchange="this.closest('label').className = this.checked ? 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-emerald-500 bg-emerald-50 rounded-lg cursor-pointer transition-all' : this.closest('label').className = 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer transition-all'">
+                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all type-option {{ old('type') === 'straws' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" name="type" value="straws" class="hidden" {{ old('type') === 'straws' ? 'checked' : '' }} required>
                         <i class="fas fa-minus-circle text-emerald-500"></i>
                         <span class="text-sm font-medium">Straws</span>
                     </label>
-                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all {{ old('type') === 'bottlenecks' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
-                        <input type="radio" name="type" value="bottlenecks" class="hidden" {{ old('type') === 'bottlenecks' ? 'checked' : '' }} onchange="this.closest('label').className = this.checked ? 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-emerald-500 bg-emerald-50 rounded-lg cursor-pointer transition-all' : this.closest('label').className = 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer transition-all'">
+                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all type-option {{ old('type') === 'bottlenecks' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" name="type" value="bottlenecks" class="hidden" {{ old('type') === 'bottlenecks' ? 'checked' : '' }} required>
                         <i class="fas fa-circle-notch text-emerald-500"></i>
                         <span class="text-sm font-medium">Bottle Necks</span>
                     </label>
-                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all {{ old('type') === 'bottle_tops' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
-                        <input type="radio" name="type" value="bottle_tops" class="hidden" {{ old('type') === 'bottle_tops' ? 'checked' : '' }} onchange="this.closest('label').className = this.checked ? 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-emerald-500 bg-emerald-50 rounded-lg cursor-pointer transition-all' : this.closest('label').className = 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer transition-all'">
+                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all type-option {{ old('type') === 'bottle_tops' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" name="type" value="bottle_tops" class="hidden" {{ old('type') === 'bottle_tops' ? 'checked' : '' }} required>
                         <i class="fas fa-cap-check text-emerald-500"></i>
                         <span class="text-sm font-medium">Bottle Tops</span>
                     </label>
@@ -32,13 +32,13 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Color *</label>
                 <div class="flex gap-3">
-                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all {{ old('color') === 'silver' ? 'border-gray-400 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}">
-                        <input type="radio" name="color" value="silver" class="hidden" {{ old('color') === 'silver' ? 'checked' : '' }} required onchange="this.closest('label').className = this.checked ? 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-400 bg-gray-50 rounded-lg cursor-pointer transition-all' : this.closest('label').className = 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer transition-all'">
+                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all color-option {{ old('color') === 'silver' ? 'border-gray-400 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" name="color" value="silver" class="hidden" {{ old('color') === 'silver' ? 'checked' : '' }} required>
                         <span class="w-4 h-4 rounded-full bg-gray-300 border border-gray-400"></span>
                         <span class="text-sm font-medium">Silver</span>
                     </label>
-                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all {{ old('color') === 'gold' ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300' }}">
-                        <input type="radio" name="color" value="gold" class="hidden" {{ old('color') === 'gold' ? 'checked' : '' }} onchange="this.closest('label').className = this.checked ? 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-amber-400 bg-amber-50 rounded-lg cursor-pointer transition-all' : this.closest('label').className = 'flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer transition-all'">
+                    <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all color-option {{ old('color') === 'gold' ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" name="color" value="gold" class="hidden" {{ old('color') === 'gold' ? 'checked' : '' }} required>
                         <span class="w-4 h-4 rounded-full bg-amber-400 border border-amber-500"></span>
                         <span class="text-sm font-medium">Gold</span>
                     </label>
@@ -68,5 +68,52 @@
             </div>
         </form>
     </div>
-</div>
+</div>@push('scripts')
+<script>
+// When a type is selected, clear all other type selections
+document.querySelectorAll('input[name="type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.checked) {
+            document.querySelectorAll('.type-option').forEach(el => {
+                const wasSelected = el.dataset.value === this.value;
+                el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
+                el.classList.add(wasSelected ? 'border-emerald-500' : 'border-gray-200', wasSelected ? 'bg-emerald-50' : '');
+            });
+        }
+    });
+});
+
+// When a color is selected, clear the other color selection
+document.querySelectorAll('input[name="color"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.checked) {
+            document.querySelectorAll('.color-option').forEach(el => {
+                const wasSelected = el.dataset.value === this.value;
+                el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
+                el.classList.add(wasSelected ? 'border-amber-400' : 'border-gray-200', wasSelected ? 'bg-amber-50' : (this.value === 'silver' && wasSelected ? 'bg-gray-50' : ''));
+            });
+        }
+    });
+});
+
+// Restore state from old() values on page load
+@if(old('type'))
+    document.querySelector('input[name="type"][value="{{ old("type") }}"]').checked = true;
+    document.querySelectorAll('.type-option').forEach(el => {
+        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
+        el.classList.add(el.dataset.value === '{{ old("type") }}' ? 'border-emerald-500' : 'border-gray-200', el.dataset.value === '{{ old("type") }}' ? 'bg-emerald-50' : '');
+    });
+@endif
+@if(old('color'))
+    document.querySelector('input[name="color"][value="{{ old("color") }}"]').checked = true;
+    document.querySelectorAll('.color-option').forEach(el => {
+        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
+        if (el.dataset.value === '{{ old("color") }}') {
+            el.classList.add('border-amber-400', 'bg-amber-50');
+        }
+    });
+@endif
+</script>
+@endpush
 @endsection
+
