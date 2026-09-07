@@ -250,6 +250,53 @@ class StockManagerController extends Controller
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock entry recorded successfully.');
     }
 
+    public function updateProductStock(Request $request, $stockId)
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+            'selling_price' => 'required|numeric|min:0',
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('branch_stock', [
+            'id' => $stockId,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Stock record not found.'])->withInput();
+        }
+
+        $oldQty = $stock['quantity'] ?? 0;
+        $newQty = $validated['quantity'];
+        $oldPrice = $stock['selling_price'] ?? 0;
+        $newPrice = $validated['selling_price'];
+
+        $this->supabase->update('branch_stock', [
+            'quantity' => $newQty,
+            'selling_price' => $newPrice,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $stockId]);
+
+        // Log movement if quantity changed
+        if ($newQty != $oldQty) {
+            $this->supabase->insert('stock_movements', [
+                'branch_id' => $branchId,
+                'product_id' => $stock['product_id'],
+                'type' => $newQty > $oldQty ? 'entry' : 'sale',
+                'quantity' => $newQty - $oldQty,
+                'unit_price' => $oldPrice,
+                'performed_by' => auth()->id(),
+                'notes' => 'Manual stock adjustment',
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        return redirect()->route('stock-manager.product-stock')->with('success', 'Stock updated successfully.');
+    }
+
     public function productStockMovements(Request $request)
     {
         $branchId = auth()->user()->branch_id;
