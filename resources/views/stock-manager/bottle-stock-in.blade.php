@@ -41,12 +41,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Bottle State *</label>
                 <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all bottle-state-option {{ old('has_logo') === 'yes' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yes" onclick="setBottleState('yes')">
-                        <input type="radio" name="has_logo" value="yes" class="hidden" {{ old('has_logo') === 'yes' ? 'checked' : '' }}>
+                        <input type="radio" name="has_logo" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'yes' ? 'checked' : '' }}>
                         <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
                         <span class="text-sm font-medium">Has Logo</span>
                     </label>
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all bottle-state-option {{ old('has_logo') === 'no' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="no" onclick="setBottleState('no')">
-                        <input type="radio" name="has_logo" value="no" class="hidden" {{ old('has_logo') === 'no' ? 'checked' : '' }}>
+                        <input type="radio" name="has_logo" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'no' ? 'checked' : '' }}>
                         <i class="fas fa-times-circle text-gray-400 text-lg"></i>
                         <span class="text-sm font-medium">No Logo</span>
                     </label>
@@ -58,12 +58,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Logo Color *</label>
                 <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'yellow' ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yellow" onclick="setLogoColor('yellow')">
-                        <input type="radio" name="logo_color" value="yellow" class="hidden" {{ old('logo_color') === 'yellow' ? 'checked' : '' }}>
+                        <input type="radio" name="logo_color" value="yellow" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'yellow' ? 'checked' : '' }}>
                         <span class="w-5 h-5 rounded-full bg-yellow-400 border border-yellow-500"></span>
                         <span class="text-sm font-medium">Yellow</span>
                     </label>
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'black' ? 'border-gray-600 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setLogoColor('black')">
-                        <input type="radio" name="logo_color" value="black" class="hidden" {{ old('logo_color') === 'black' ? 'checked' : '' }}>
+                        <input type="radio" name="logo_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'black' ? 'checked' : '' }}>
                         <span class="w-5 h-5 rounded-full bg-gray-800 border border-gray-900"></span>
                         <span class="text-sm font-medium">Black</span>
                     </label>
@@ -75,12 +75,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Has Box? *</label>
                 <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all has-box-option {{ old('has_box') === 'yes' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yes" onclick="setHasBox('yes')">
-                        <input type="radio" name="has_box" value="yes" class="hidden" {{ old('has_box') === 'yes' ? 'checked' : '' }}>
+                        <input type="radio" name="has_box" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'yes' ? 'checked' : '' }}>
                         <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
                         <span class="text-sm font-medium">Has Box</span>
                     </label>
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all has-box-option {{ old('has_box') === 'no' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="no" onclick="setHasBox('no')">
-                        <input type="radio" name="has_box" value="no" class="hidden" {{ old('has_box') === 'no' ? 'checked' : '' }}>
+                        <input type="radio" name="has_box" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'no' ? 'checked' : '' }}>
                         <i class="fas fa-times-circle text-gray-400 text-lg"></i>
                         <span class="text-sm font-medium">No Box</span>
                     </label>
@@ -92,12 +92,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Box Color *</label>
                 <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all box-color-option {{ old('box_color') === 'black' ? 'border-gray-600 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setBoxColor('black')">
-                        <input type="radio" name="box_color" value="black" class="hidden" {{ old('box_color') === 'black' ? 'checked' : '' }}>
+                        <input type="radio" name="box_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('box_color') === 'black' ? 'checked' : '' }}>
                         <span class="w-5 h-5 rounded-full bg-gray-800 border border-gray-900"></span>
                         <span class="text-sm font-medium">Black</span>
                     </label>
                     <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all box-color-option {{ old('box_color') === 'white' ? 'border-gray-300 bg-white' : 'border-gray-200 hover:border-gray-300' }}" data-value="white" onclick="setBoxColor('white')">
-                        <input type="radio" name="box_color" value="white" class="hidden" {{ old('box_color') === 'white' ? 'checked' : '' }}>
+                        <input type="radio" name="box_color" value="white" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('box_color') === 'white' ? 'checked' : '' }}>
                         <span class="w-5 h-5 rounded-full bg-white border-2 border-gray-300"></span>
                         <span class="text-sm font-medium">White</span>
                     </label>
