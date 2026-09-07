@@ -18,12 +18,38 @@ class NewsController extends Controller
     public function index()
     {
         $posts = collect($this->supabase->query('news_posts', [
-            'select' => '*, branch:branches(id,name), author:users(id,name)',
+            'select' => '*',
             'order' => 'created_at.desc',
             'limit' => 50,
-        ]))->map(function ($p) {
-            if (isset($p['branch']) && is_array($p['branch'])) $p['branch'] = (object) $p['branch'];
-            if (isset($p['author']) && is_array($p['author'])) $p['author'] = (object) $p['author'];
+        ]));
+
+        // PHP-side joins (PostgREST expansions return 0 rows due to RLS/FK issues)
+        $branchIds = $posts->pluck('branch_id')->filter()->unique()->values()->toArray();
+        $authorIds = $posts->pluck('author_id')->filter()->unique()->values()->toArray();
+
+        $branches = [];
+        if (!empty($branchIds)) {
+            $branchesList = $this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $branchIds) . ')',
+            ]);
+            foreach ($branchesList as $b) $branches[$b['id']] = $b['name'];
+        }
+
+        $authors = [];
+        if (!empty($authorIds)) {
+            $authorsList = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $authorIds) . ')',
+            ]);
+            foreach ($authorsList as $u) $authors[$u['id']] = $u['name'];
+        }
+
+        $posts = $posts->map(function ($p) use ($branches, $authors) {
+            $p['branch'] = isset($p['branch_id']) && isset($branches[$p['branch_id']])
+                ? (object) ['id' => $p['branch_id'], 'name' => $branches[$p['branch_id']]] : null;
+            $p['author'] = isset($p['author_id']) && isset($authors[$p['author_id']])
+                ? (object) ['id' => $p['author_id'], 'name' => $authors[$p['author_id']]] : null;
             return (object) $p;
         });
 

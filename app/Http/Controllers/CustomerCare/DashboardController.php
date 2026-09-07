@@ -32,14 +32,29 @@ class DashboardController extends Controller
             'is_read' => 'eq.false',
         ]);
 
-        // Recent inquiries
+        // Recent inquiries (PHP-side user join — PostgREST expansion returns 0 rows)
         $recentInquiries = collect($this->supabase->query('inquiries', [
-            'select' => '*, user:users(id,name)',
+            'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 10,
-        ]))->map(function ($i) {
-            if (isset($i['user']) && is_array($i['user'])) $i['user'] = (object) $i['user'];
+        ]));
+
+        $userIds = $recentInquiries->pluck('user_id')->filter()->unique()->values()->toArray();
+        $users = [];
+        if (!empty($userIds)) {
+            $usersList = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $userIds) . ')',
+            ]);
+            foreach ($usersList as $u) {
+                $users[$u['id']] = $u['name'];
+            }
+        }
+
+        $recentInquiries = $recentInquiries->map(function ($i) use ($users) {
+            $i['user'] = isset($i['user_id']) && isset($users[$i['user_id']])
+                ? (object) ['id' => $i['user_id'], 'name' => $users[$i['user_id']]] : null;
             return (object) $i;
         });
 

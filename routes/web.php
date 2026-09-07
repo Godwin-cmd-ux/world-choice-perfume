@@ -261,6 +261,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     Route::prefix('customer-care')->name('customer-care.')->middleware('role:customer_care')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CustomerCare\DashboardController::class, 'index'])->name('dashboard');
 
+        // Sales
+        Route::get('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'index'])->name('sales.index');
+
         // News
         Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');
         Route::get('/news/create', [\App\Http\Controllers\CustomerCare\NewsController::class, 'create'])->name('news.create');

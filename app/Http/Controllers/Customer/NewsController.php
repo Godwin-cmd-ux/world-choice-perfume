@@ -17,12 +17,29 @@ class NewsController extends Controller
     public function index()
     {
         $posts = collect($this->supabase->query('news_posts', [
-            'select' => '*, branch:branches(id,name)',
+            'select' => '*',
             'is_published' => 'eq.true',
             'order' => 'created_at.desc',
             'limit' => 50,
-        ]))->map(function ($p) {
-            if (isset($p['branch']) && is_array($p['branch'])) $p['branch'] = (object) $p['branch'];
+        ]));
+
+        // PHP-side branch join (PostgREST branch:branches expansion returns 0 rows)
+        $branchIds = $posts->pluck('branch_id')->filter()->unique()->values()->toArray();
+        $branches = [];
+        if (!empty($branchIds)) {
+            $branchesList = $this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $branchIds) . ')',
+            ]);
+            foreach ($branchesList as $b) {
+                $branches[$b['id']] = $b['name'];
+            }
+        }
+
+        $posts = $posts->map(function ($p) use ($branches) {
+            $p['branch'] = isset($p['branch_id']) && isset($branches[$p['branch_id']])
+                ? (object) ['id' => $p['branch_id'], 'name' => $branches[$p['branch_id']]]
+                : null;
             return (object) $p;
         });
 

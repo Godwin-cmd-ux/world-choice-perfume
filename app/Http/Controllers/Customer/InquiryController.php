@@ -37,6 +37,7 @@ class InquiryController extends Controller
 
         $this->supabase->insert('inquiries', [
             'branch_id' => (int) $validated['branch_id'],
+            'user_id' => auth()->check() ? (auth()->user()->supabase_id ?? auth()->id()) : null,
             'email' => $validated['email'],
             'phone' => $validated['phone'],
             'subject' => $validated['subject'],

@@ -20,7 +20,7 @@ class InquiryController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, user:users(id,name)',
+            'select' => '*',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -32,8 +32,24 @@ class InquiryController extends Controller
             $params['is_read'] = 'eq.false';
         }
 
-        $inquiries = collect($this->supabase->query('inquiries', $params))->map(function ($i) {
-            if (isset($i['user']) && is_array($i['user'])) $i['user'] = (object) $i['user'];
+        $inquiries = collect($this->supabase->query('inquiries', $params));
+
+        // PHP-side user join (PostgREST user:users expansion returns 0 rows due to RLS/FK issues)
+        $userIds = $inquiries->pluck('user_id')->filter()->unique()->values()->toArray();
+        $users = [];
+        if (!empty($userIds)) {
+            $usersList = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $userIds) . ')',
+            ]);
+            foreach ($usersList as $u) {
+                $users[$u['id']] = $u['name'];
+            }
+        }
+
+        $inquiries = $inquiries->map(function ($i) use ($users) {
+            $i['user'] = isset($i['user_id']) && isset($users[$i['user_id']])
+                ? (object) ['id' => $i['user_id'], 'name' => $users[$i['user_id']]] : null;
             $i['name'] = $i['name'] ?? null;
             $i['reply_message'] = $i['reply_message'] ?? null;
             $i['status'] = $i['status'] ?? 'pending';
@@ -45,11 +61,19 @@ class InquiryController extends Controller
 
     public function show($inquiryId)
     {
-        $inquiry = $this->supabase->find('inquiries', $inquiryId, '*, user:users(id,name)');
+        $inquiry = $this->supabase->find('inquiries', $inquiryId, '*');
         if (!$inquiry) abort(404);
 
-        if (isset($inquiry['user']) && is_array($inquiry['user'])) $inquiry['user'] = (object) $inquiry['user'];
-        $inquiry['name'] = $inquiry['name'] ?? null;
+        // PHP-side user join
+        $userId = $inquiry['user_id'] ?? null;
+        $userName = null;
+        if ($userId) {
+            $user = $this->supabase->find('users', $userId, 'id,name');
+            if ($user) $userName = $user['name'];
+        }
+        $inquiry['user'] = $userId && $userName
+            ? (object) ['id' => $userId, 'name' => $userName] : null;
+        $inquiry['name'] = $userName;
         $inquiry['reply_message'] = $inquiry['reply_message'] ?? null;
         $inquiry['status'] = $inquiry['status'] ?? 'pending';
 
