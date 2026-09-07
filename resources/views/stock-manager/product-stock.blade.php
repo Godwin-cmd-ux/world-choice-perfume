@@ -58,19 +58,28 @@
                         <td class="px-4">@if(!empty($stock->category))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $stock->category }}</span>@else <span class="text-gray-400">—</span> @endif</td>
                         <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->format('M d, Y') : '-' }}</td>
                         <td class="px-4 text-right">
-                            <form method="POST" action="{{ route('stock-manager.product-stock.update', $stock->id) }}" class="inline-flex items-center gap-1">
-                                @csrf
-                                @method('PATCH')
-                                <input type="number" name="quantity" value="{{ $stock->quantity }}" class="w-16 px-1 py-1 border border-gray-300 rounded text-right text-sm text-center focus:ring-2 focus:ring-emerald-500" min="0">
-                                <input type="number" name="selling_price" value="{{ $stock->selling_price }}" step="0.01" class="w-20 px-1 py-1 border border-gray-300 rounded text-right text-sm text-right focus:ring-2 focus:ring-emerald-500" min="0">
-                                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs font-medium">
-                                    <i class="fas fa-pen mr-0.5"></i> Edit
-                                </button>
-                            </form>
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="POST" action="{{ route('stock-manager.product-stock.update', $stock->id) }}" class="inline-flex items-center gap-1">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="number" name="quantity" value="{{ $stock->quantity }}" class="w-14 px-1 py-1 border border-gray-300 rounded text-right text-xs text-center focus:ring-2 focus:ring-emerald-500" min="0">
+                                    <input type="number" name="selling_price" value="{{ $stock->selling_price }}" step="0.01" class="w-16 px-1 py-1 border border-gray-300 rounded text-right text-xs text-right focus:ring-2 focus:ring-emerald-500" min="0">
+                                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs font-medium">
+                                        <i class="fas fa-pen mr-0.5"></i> Edit
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('products.destroy', $stock->product_id) }}" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-800 text-xs" title="Delete" onclick="return confirm('Delete stock for {{ $stock->product->name }}? This will deactivate the product.')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
+                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
             </tbody>
         </table>

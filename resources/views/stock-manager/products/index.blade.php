@@ -57,7 +57,18 @@
                             </span>
                         </td>
                         <td class="px-4 text-center">
-                            <a href="{{ route('stock-manager.products.edit', $product->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-edit"></i></a>
+                            <div class="flex justify-center gap-3">
+                                <a href="{{ route('stock-manager.products.edit', $product->id) }}" class="text-blue-600 hover:text-blue-800" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ route('stock-manager.products.destroy', $product->id) }}" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-800" title="Delete" onclick="return confirm('Delete product: {{ $product->name }}? This will deactivate it.')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
