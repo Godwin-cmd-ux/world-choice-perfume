@@ -399,6 +399,9 @@ class SupabaseService
                 'type','branch_id','user_id','title','message','data',
                 'is_read','created_at','updated_at',
             ],
+            'company_settings' => [
+                'key','value','updated_at',
+            ],
         ];
 
         $cols = $allowlists[$table] ?? [];

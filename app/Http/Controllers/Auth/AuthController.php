@@ -31,7 +31,7 @@ class AuthController extends Controller
             'secret_code' => 'required|string',
         ]);
 
-        $validCode = config('app.staff_secret_code', 'WCP-STAFF-2026');
+        $validCode = \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026');
 
         if ($request->secret_code !== $validCode) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
@@ -161,7 +161,7 @@ class AuthController extends Controller
             'secret_code' => 'required|string',
         ]);
 
-        if ($validated['secret_code'] !== config('app.super_admin_secret', 'WCP-SUPER-2026')) {
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
         }
 
@@ -232,7 +232,7 @@ class AuthController extends Controller
             'branch_id' => 'required|integer',
         ]);
 
-        if ($validated['secret_code'] !== config('app.super_admin_secret', 'WCP-SUPER-2026')) {
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
         }
 
@@ -341,7 +341,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== config('app.staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -433,7 +433,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== config('app.staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -514,7 +514,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== config('app.staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 

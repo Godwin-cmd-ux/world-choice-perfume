@@ -183,6 +183,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
         Route::post('/staff/{user}/toggle-status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
         Route::delete('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'destroy'])->name('staff.destroy');
+
+        Route::get('/settings', [\App\Http\Controllers\SuperAdmin\SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [\App\Http\Controllers\SuperAdmin\SettingsController::class, 'update'])->name('settings.update');
     });
 
     // ========================
