@@ -138,7 +138,7 @@ class SaleController extends Controller
             // 3. Fetch ALL stock for this branch in ONE query (instead of N queries)
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$branchId}",
-                'select' => 'id,product_id,quantity,selling_price',
+                'select' => 'id,product_id,quantity,selling_price,buying_cost',
             ]));
 
             // Build a lookup map by product_id
@@ -176,6 +176,7 @@ class SaleController extends Controller
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $unitPrice,
+                    'unit_cost' => (float) ($stock['buying_cost'] ?? 0),
                     'total' => $lineTotal,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
@@ -252,6 +253,7 @@ class SaleController extends Controller
                         'product_id' => $bottleProduct['id'],
                         'quantity' => $bQty,
                         'unit_price' => $bPrice,
+                        'unit_cost' => 0,
                         'total' => $lineTotal,
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
@@ -312,7 +314,12 @@ class SaleController extends Controller
             foreach ($saleItems as &$si) {
                 $si['sale_id'] = $sale['id'];
             }
-            $this->supabase->insertMany('sale_items', $saleItems);
+            unset($si);
+            $itemsResult = $this->supabase->insertMany('sale_items', $saleItems);
+            if ($itemsResult === null) {
+                $this->supabase->delete('sales', ['id' => $sale['id']]);
+                return back()->withErrors(['error' => 'Sale items could not be saved. Please try again.'])->withInput();
+            }
 
             // 7. Batch update stock quantities (N HTTP calls, but faster with cache)
             foreach ($stockUpdates as $su) {
@@ -326,7 +333,11 @@ class SaleController extends Controller
             foreach ($stockMovements as &$sm) {
                 $sm['reference_id'] = $sale['id'];
             }
-            $this->supabase->insertMany('stock_movements', $stockMovements);
+            unset($sm);
+            $movementsResult = $this->supabase->insertMany('stock_movements', $stockMovements);
+            if ($movementsResult === null) {
+                \Illuminate\Support\Facades\Log::warning("Stock movements not saved for sale {$saleNumber} (sale id {$sale['id']}).");
+            }
 
             // 8b. Auto-outstock empty bottles sold directly
             foreach ($bottleDeductions as $bd) {

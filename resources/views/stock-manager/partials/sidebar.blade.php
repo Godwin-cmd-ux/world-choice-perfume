@@ -41,7 +41,7 @@
         </a>
 
         <a href="{{ route('stock-manager.bottle-stock') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-wine-bottle w-5 text-center"></i>
             <span>Bottle Stock</span>
         </a>

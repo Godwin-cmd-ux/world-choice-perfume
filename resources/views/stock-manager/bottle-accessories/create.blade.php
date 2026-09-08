@@ -70,49 +70,45 @@
     </div>
 </div>@push('scripts')
 <script>
-// When a type is selected, clear all other type selections
-document.querySelectorAll('input[name="type"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (this.checked) {
-            document.querySelectorAll('.type-option').forEach(el => {
-                const wasSelected = el.dataset.value === this.value;
-                el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-                el.classList.add(wasSelected ? 'border-emerald-500' : 'border-gray-200', wasSelected ? 'bg-emerald-50' : '');
-            });
-        }
-    });
-});
+const accessoryStateClasses = ['border-emerald-500','bg-emerald-50','border-amber-400','bg-amber-50','border-gray-400','bg-gray-50','border-gray-200','hover:border-gray-300'];
 
-// When a color is selected, clear the other color selection
-document.querySelectorAll('input[name="color"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (this.checked) {
-            document.querySelectorAll('.color-option').forEach(el => {
-                const wasSelected = el.dataset.value === this.value;
-                el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-                el.classList.add(wasSelected ? 'border-amber-400' : 'border-gray-200', wasSelected ? 'bg-amber-50' : (this.value === 'silver' && wasSelected ? 'bg-gray-50' : ''));
-            });
-        }
-    });
-});
-
-// Restore state from old() values on page load
-@if(old('type'))
-    document.querySelector('input[name="type"][value="{{ old("type") }}"]').checked = true;
+function syncAccessorySelection() {
     document.querySelectorAll('.type-option').forEach(el => {
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        el.classList.add(el.dataset.value === '{{ old("type") }}' ? 'border-emerald-500' : 'border-gray-200', el.dataset.value === '{{ old("type") }}' ? 'bg-emerald-50' : '');
-    });
-@endif
-@if(old('color'))
-    document.querySelector('input[name="color"][value="{{ old("color") }}"]').checked = true;
-    document.querySelectorAll('.color-option').forEach(el => {
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        if (el.dataset.value === '{{ old("color") }}') {
-            el.classList.add('border-amber-400', 'bg-amber-50');
+        const checked = el.querySelector('input[name="type"]').checked;
+        accessoryStateClasses.forEach(c => el.classList.remove(c));
+        el.classList.add('border-2', 'rounded-lg', 'cursor-pointer', 'transition-all');
+        el.classList.add(checked ? 'border-emerald-500' : 'border-gray-200');
+        if (checked) {
+            el.classList.add('bg-emerald-50');
+        } else {
+            el.classList.add('hover:border-gray-300');
         }
     });
-@endif
+
+    document.querySelectorAll('.color-option').forEach(el => {
+        const input = el.querySelector('input[name="color"]');
+        const checked = input.checked;
+        const isSilver = input.value === 'silver';
+        accessoryStateClasses.forEach(c => el.classList.remove(c));
+        el.classList.add('border-2', 'rounded-lg', 'cursor-pointer', 'transition-all');
+        el.classList.add(checked ? (isSilver ? 'border-gray-400' : 'border-amber-400') : 'border-gray-200');
+        if (checked) {
+            el.classList.add(isSilver ? 'bg-gray-50' : 'bg-amber-50');
+        } else {
+            el.classList.add('hover:border-gray-300');
+        }
+    });
+}
+
+document.querySelectorAll('input[name="type"]').forEach(radio => {
+    radio.addEventListener('change', syncAccessorySelection);
+});
+document.querySelectorAll('input[name="color"]').forEach(radio => {
+    radio.addEventListener('change', syncAccessorySelection);
+});
+
+// Apply selection styling immediately (handles old() restore after a validation error)
+syncAccessorySelection();
 </script>
 @endpush
 @endsection

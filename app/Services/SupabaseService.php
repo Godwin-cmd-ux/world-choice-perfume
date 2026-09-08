@@ -170,8 +170,28 @@ class SupabaseService
      */
     public function insert(string $table, array|object $data): ?array
     {
+        // Remove columns that don't exist in the table to avoid PGRST204.
+        // PostgREST's schema cache can be stale when a column was added after
+        // the service role key was first used, so we drop unknown keys rather
+        // than retrying endlessly.
+        $data = $this->stripUnknownColumns($table, $data);
+
+        Log::debug("insert({$table}): sending keys=" . json_encode(array_keys($data)));
+
         try {
             $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
+
+            // If PostgREST returns PGRST204 (stale schema cache for this table),
+            // invalidate the table's cache and retry up to 5 times. Between retries
+            // we sleep longer to give PostgREST time to refresh its schema cache.
+            $attempts = 0;
+            while ($response->failed() && $attempts < 5 && str_contains($response->body(), 'PGRST204')) {
+                $attempts++;
+                $this->invalidateCache($table);
+                $this->invalidateCache('information_schema.columns');
+                usleep(3000000);
+                $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
+            }
         } catch (\Exception $e) {
             Log::error("Supabase insert failed for table {$table}: " . $e->getMessage());
             return null;
@@ -182,11 +202,19 @@ class SupabaseService
             return null;
         }
 
-        // Invalidate cache for this table
         $this->invalidateCache($table);
 
         $result = $response->json();
         return is_array($result) && count($result) > 0 ? $result[0] : $result;
+    }
+
+    public function insertOrFail(string $table, array|object $data): array
+    {
+        $result = $this->insert($table, $data);
+        if ($result === null) {
+            throw new \RuntimeException("Failed to insert into {$table}");
+        }
+        return $result;
     }
 
     /**
@@ -194,20 +222,62 @@ class SupabaseService
      */
     public function insertMany(string $table, array $records): ?array
     {
+        // Strip unknown columns from each record. PostgREST bulk inserts expect a
+        // plain JSON array of records. Wrapping them as [table => [...]] makes
+        // PostgREST interpret the table name as a nested-insert column, which fails
+        // with PGRST204: "Could not find the '{table}' column of '{table}'".
+        $clean = [];
+        foreach ($records as $r) {
+            $clean[] = $this->stripUnknownColumns($table, $r);
+        }
+        $payload = $clean;
+
+        $firstKeys = $clean ? array_keys($clean[0]) : [];
+        Log::debug("insertMany({$table}): payload keys=" . json_encode($firstKeys));
+
         try {
-            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $records);
+            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $payload);
+
+            // If PostgREST returns PGRST204 (stale schema cache for this table),
+            // invalidate the table's cache and retry up to 5 times. Between retries
+            // we sleep long enough for PostgREST to refresh its schema cache.
+            $attempts = 0;
+            while ($response->failed() && $attempts < 5 && str_contains($response->body(), 'PGRST204')) {
+                $attempts++;
+                $this->invalidateCache($table);
+                $this->invalidateCache('information_schema.columns');
+                usleep(20000000);
+
+                // Completely fresh HTTP client built from scratch each retry.
+                $response = Http::withHeaders([
+                    'apikey' => $this->serviceRoleKey,
+                    'Authorization' => 'Bearer ' . $this->serviceRoleKey,
+                    'Content-Type' => 'application/json',
+                    'Prefer' => 'return=representation',
+                ])->timeout(300)->post("{$this->url}/rest/v1/{$table}", $payload);
+            }
         } catch (\Exception $e) {
             Log::error("Supabase insertMany failed for table {$table}: " . $e->getMessage());
             return null;
         }
 
         if ($response->failed()) {
+            Log::warning("Supabase insertMany error for table {$table}: " . $response->body());
             return null;
         }
 
         $this->invalidateCache($table);
 
         return $response->json();
+    }
+
+    public function insertManyOrFail(string $table, array $records): array
+    {
+        $result = $this->insertMany($table, $records);
+        if ($result === null) {
+            throw new \RuntimeException("Failed to insert into {$table}");
+        }
+        return $result;
     }
 
     /**
@@ -229,6 +299,15 @@ class SupabaseService
         return $response->json() ?? [];
     }
 
+    public function updateOrFail(string $table, array|object $data, array $conditions): array
+    {
+        $result = $this->update($table, $data, $conditions);
+        if (empty($result)) {
+            throw new \RuntimeException("Failed to update {$table}");
+        }
+        return $result;
+    }
+
     /**
      * Delete records matching conditions (invalidates cache)
      */
@@ -248,6 +327,83 @@ class SupabaseService
         $this->invalidateCache($table);
 
         return $response->successful();
+    }
+
+    /**
+     * Remove keys from $data that don't exist as columns in $table.
+     * Uses a lightweight allowlist per table to avoid PGRST204 errors from
+     * PostgREST's stale schema cache.
+     */
+    private function stripUnknownColumns(string $table, array|object $data): array
+    {
+        $data = is_object($data) ? (array) $data : $data;            Log::debug("stripUnknownColumns({$table}): input keys=" . json_encode(array_keys($data)));
+
+        $columns = $this->knownColumns($table);
+        Log::debug("stripUnknownColumns({$table}): known columns=" . json_encode($columns));
+
+        if (empty($columns)) {
+            // No known columns — trust the data as-is (best effort).
+            Log::warning("stripUnknownColumns({$table}): no known columns, returning data as-is");
+            return $data;
+        }
+
+        $clean = array_intersect_key($data, array_fill_keys($columns, true));
+        Log::debug("stripUnknownColumns({$table}): output keys=" . json_encode(array_keys($clean)));
+        return $clean;
+    }
+
+    /**
+     * Get the known columns for a table.
+     * Uses hardcoded allowlists derived from the live Supabase schema for the
+     * tables we write to. This avoids reliance on the introspection endpoint.
+     */
+    private function knownColumns(string $table): array
+    {
+        static $cache = [];
+
+        if (isset($cache[$table])) {
+            return $cache[$table];
+        }
+
+        $allowlists = [
+            'sales' => [
+                'sale_number','branch_id','cashier_id','customer_id','subtotal',
+                'discount','total','payment_status','notes','created_at','updated_at',
+                'supplier','payment_method','payment_summary',
+            ],
+            'sale_items' => [
+                'sale_id','product_id','quantity','unit_price','unit_cost','total',
+                'created_at','updated_at',
+            ],
+            'stock_movements' => [
+                'branch_id','product_id','type','quantity','unit_cost','unit_price',
+                'reference_type','reference_id','performed_by','notes','created_at','updated_at',
+            ],
+            'bottle_stock_movements' => [
+                'branch_id','volume','type','quantity','reason','performed_by',
+                'created_at','updated_at','has_logo','logo_color','has_box','box_color',
+            ],
+            'oil_fragrance_movements' => [
+                'branch_id','name','type','quantity','reason','performed_by',
+                'created_at','updated_at',
+            ],
+            'bottle_accessories_movements' => [
+                'branch_id','type','color','movement_type','quantity','reason',
+                'performed_by','created_at','updated_at',
+            ],
+            'audit_logs' => [
+                'user_id','action','created_at','updated_at','auditable_type',
+                'auditable_id','old_values','new_values','ip_address',
+            ],
+            'admin_notifications' => [
+                'type','branch_id','user_id','title','message','data',
+                'is_read','created_at','updated_at',
+            ],
+        ];
+
+        $cols = $allowlists[$table] ?? [];
+        $cache[$table] = $cols;
+        return $cols;
     }
 
     /**
