@@ -704,12 +704,13 @@ class StockManagerController extends Controller
             $productId = $validated['product_id'];
 
             // Confirm the selected product is still an oil fragrance.
+            // SupabaseService::findOne fails when multiple filters are combined,
+            // so we fetch by id first then verify the category in PHP.
             $product = $this->supabase->findOne('products', [
                 'id' => $productId,
-                'category' => 'eq.Oil Fragrance',
             ]);
 
-            if (!$product) {
+            if (!$product || ($product['category'] ?? '') !== 'Oil Fragrance') {
                 return back()->withErrors(['product_id' => 'Selected product is not available or is not an Oil Fragrance.'])->withInput();
             }
 
