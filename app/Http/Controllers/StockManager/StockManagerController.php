@@ -686,7 +686,7 @@ class StockManagerController extends Controller
         // Load oil fragrance products for the dropdown.
         $oilProducts = $this->supabase->query('products', [
             'is_active' => 'eq.true',
-            'category' => 'eq."Oil Fragrance"',
+            'category' => 'eq.Oil Fragrance',
             'select' => 'id,name,brand',
             'order' => 'name.asc',
             'limit' => 200,
@@ -706,7 +706,7 @@ class StockManagerController extends Controller
             // Confirm the selected product is still an oil fragrance.
             $product = $this->supabase->findOne('products', [
                 'id' => $productId,
-                'category' => 'eq."Oil Fragrance"',
+                'category' => 'eq.Oil Fragrance',
             ]);
 
             if (!$product) {
