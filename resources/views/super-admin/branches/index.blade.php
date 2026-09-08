@@ -59,7 +59,7 @@
                                     <i class="fas fa-pen text-xs"></i>
                                 </a>
                                 @if($branch->is_active)
-                                    <form action="{{ route('super-admin.branches.destroy', $branch->id) }}" method="POST" class="inline" onsubmit="return confirm('Deactivate this branch?')">
+                                    <form action="{{ route('super-admin.branches.destroy', $branch->id) }}" method="POST" class="inline" data-confirm="Deactivate this branch?">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Deactivate">
                                             <i class="fas fa-ban text-xs"></i>

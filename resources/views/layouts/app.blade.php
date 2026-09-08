@@ -127,6 +127,7 @@
         <p>&copy; {{ date('Y') }} World Choice Perfumes — Be Smart, Nukia Kijanja</p>
         <p>This report was generated automatically. For inquiries, call +255 710 603 637</p>
     </div>
+    @include('partials.toast')
     @stack('scripts')
     <script>
         document.addEventListener('keydown', function(e) {

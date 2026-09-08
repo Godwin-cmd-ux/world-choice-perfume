@@ -368,6 +368,7 @@
             }
         });
     </script>
+    @include('partials.toast')
     @stack('scripts')
 </body>
 </html>

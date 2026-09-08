@@ -82,7 +82,7 @@
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('super-admin.staff.show', $user->id) }}" class="text-blue-600 hover:text-blue-800" title="View Details"><i class="fas fa-eye"></i></a>
                                 @if(($user->role ?? '') !== 'super_admin')
-                                    <form method="POST" action="{{ route('super-admin.staff.toggle-status', $user->id) }}" class="inline" onsubmit="return confirm('Are you sure?')">
+                                    <form method="POST" action="{{ route('super-admin.staff.toggle-status', $user->id) }}" class="inline" data-confirm="Are you sure?">
                                         @csrf
                                         <button type="submit" class="{{ ($user->status ?? '') === 'blocked' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800' }}" title="{{ ($user->status ?? '') === 'blocked' ? 'Unblock' : 'Block' }}">
                                             <i class="fas fa-{{ ($user->status ?? '') === 'blocked' ? 'unlock' : 'ban' }}"></i>

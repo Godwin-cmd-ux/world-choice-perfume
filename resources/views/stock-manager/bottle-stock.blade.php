@@ -94,7 +94,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
-                                        onclick="return confirm('Delete this bottle stock record? The quantity will be lost.')">
+                                        data-confirm="Delete this bottle stock record? The quantity will be lost.">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>

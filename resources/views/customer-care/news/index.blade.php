@@ -37,7 +37,7 @@
                         <td class="px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('customer-care.news.edit', $post->id) }}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
-                                <form method="POST" action="{{ route('customer-care.news.destroy', $post->id) }}" class="inline" onsubmit="return confirm('Delete this post?')">
+                                <form method="POST" action="{{ route('customer-care.news.destroy', $post->id) }}" class="inline" data-confirm="Delete this post?">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                                 </form>

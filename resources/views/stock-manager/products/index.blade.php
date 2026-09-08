@@ -64,7 +64,7 @@
                                 <form method="POST" action="{{ route('stock-manager.products.destroy', $product->id) }}" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800" title="Delete" onclick="return confirm('Delete product: {{ $product->name }}? This will deactivate it.')">
+                                    <button type="submit" class="text-red-600 hover:text-red-800" title="Delete" data-confirm="Delete product: {{ $product->name }}? This will deactivate it.">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>

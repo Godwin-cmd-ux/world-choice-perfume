@@ -45,7 +45,7 @@
                 <div class="mt-6 space-y-2 border-t pt-4">
                     <form method="POST" action="{{ route('super-admin.staff.toggle-status', $user->id) }}">
                         @csrf
-                        <button type="submit" onclick="return confirm('Are you sure?')"
+                        <button type="submit" data-confirm="Are you sure?"
                             class="w-full px-4 py-2 rounded-lg text-sm font-medium {{ ($user->status ?? '') === 'blocked' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white' }}">
                             <i class="fas fa-{{ ($user->status ?? '') === 'blocked' ? 'unlock' : 'ban' }} mr-1"></i>
                             {{ ($user->status ?? '') === 'blocked' ? 'Unblock User' : 'Block User' }}
@@ -54,7 +54,7 @@
                     <form method="POST" action="{{ route('super-admin.staff.destroy', $user->id) }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" onclick="return confirm('This will permanently delete this user. Are you sure?')"
+                        <button type="submit" data-confirm="This will permanently delete this user. Are you sure?"
                             class="w-full px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50">
                             <i class="fas fa-trash mr-1"></i> Delete User
                         </button>

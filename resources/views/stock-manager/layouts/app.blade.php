@@ -73,6 +73,7 @@
             </main>
         </div>
     </div>
+    @include('partials.toast')
     @stack('scripts')
 </body>
 </html>

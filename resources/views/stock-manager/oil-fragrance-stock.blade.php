@@ -87,7 +87,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
-                                        onclick="return confirm('Delete oil fragrance \'{{ $oil->name }}\'? This will remove the stock record.')">
+                                        data-confirm="Delete oil fragrance '{{ $oil->name }}'? This will remove the stock record.">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
