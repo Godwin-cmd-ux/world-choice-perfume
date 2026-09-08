@@ -19,29 +19,42 @@ class PesapalService
 
     /**
      * Get an OAuth access token from PesaPal (v3).
+     *
+     * The Auth/RequestToken endpoint is intermittently flaky (timeouts, temporary
+     * HTTP 5xx, occasional 429s), especially from hosted server IPs. Retry with a
+     * short backoff so transient failures don't abort an otherwise valid payment.
      */
     public function getToken(): ?string
     {
-        try {
-            $response = Http::asJson()->timeout(30)->post($this->baseUrl . '/Auth/RequestToken', [
-                'consumer_key' => $this->consumerKey,
-                'consumer_secret' => $this->consumerSecret,
-            ]);
+        $maxAttempts = 3;
 
-            if ($response->successful() && $response->json('token')) {
-                return $response->json('token');
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $response = Http::asJson()->timeout(30)->post($this->baseUrl . '/Auth/RequestToken', [
+                    'consumer_key' => $this->consumerKey,
+                    'consumer_secret' => $this->consumerSecret,
+                ]);
+
+                if ($response->successful() && $response->json('token')) {
+                    return $response->json('token');
+                }
+
+                Log::warning("PesaPal token request failed (attempt {$attempt})", [
+                    'status' => $response->status(),
+                    'response' => substr($response->body(), 0, 200),
+                ]);
+            } catch (\Exception $e) {
+                Log::warning("PesaPal token request error (attempt {$attempt})", ['error' => $e->getMessage()]);
             }
 
-            Log::error('PesaPal token request failed', [
-                'status' => $response->status(),
-                'response' => $response->body(),
-            ]);
-
-            return null;
-        } catch (\Exception $e) {
-            Log::error('PesaPal token request error', ['error' => $e->getMessage()]);
-            return null;
+            if ($attempt < $maxAttempts) {
+                usleep($attempt * 1000000);
+            }
         }
+
+        Log::error("PesaPal token request failed after {$maxAttempts} attempts");
+
+        return null;
     }
 
     /**
