@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +27,11 @@ class PesapalService
      */
     public function getToken(): ?string
     {
+        $cached = Cache::get('pesapal.token');
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
         $maxAttempts = 3;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
@@ -36,7 +42,10 @@ class PesapalService
                 ]);
 
                 if ($response->successful() && $response->json('token')) {
-                    return $response->json('token');
+                    $token = $response->json('token');
+                    Cache::put('pesapal.token', $token, now()->addMinutes(30));
+
+                    return $token;
                 }
 
                 Log::warning("PesaPal token request failed (attempt {$attempt})", [
@@ -64,13 +73,21 @@ class PesapalService
      */
     public function registerIpn(?string $url = null, string $type = 'POST'): ?array
     {
+        $url = $url ?? rtrim((string) config('app.url'), '/') . '/pesapal/ipn';
+
+        $cachedIpnId = Cache::get('pesapal.ipn_id');
+        if (is_string($cachedIpnId) && $cachedIpnId !== '') {
+            return [
+                'ipn_id' => $cachedIpnId,
+                'url' => $url,
+            ];
+        }
+
         $token = $this->getToken();
 
         if (!$token) {
             return null;
         }
-
-        $url = $url ?? rtrim((string) config('app.url'), '/') . '/pesapal/ipn';
 
         try {
             $response = Http::withToken($token)->asJson()->timeout(30)->post($this->baseUrl . '/URLSetup/RegisterIPN', [
@@ -79,8 +96,11 @@ class PesapalService
             ]);
 
             if ($response->successful() && $response->json('ipn_id')) {
+                $ipnId = $response->json('ipn_id');
+                Cache::put('pesapal.ipn_id', $ipnId, now()->addHours(24));
+
                 return [
-                    'ipn_id' => $response->json('ipn_id'),
+                    'ipn_id' => $ipnId,
                     'url' => $response->json('url') ?? $url,
                 ];
             }
