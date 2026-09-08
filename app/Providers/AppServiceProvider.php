@@ -34,8 +34,12 @@ class AppServiceProvider extends ServiceProvider
                     'status' => 'eq.pending',
                 ]);
                 $view->with('pendingCount', $pendingCashiers + $pendingAdmins);
+                $view->with('unreadNotifications', (int) $supabase->count('admin_notifications', [
+                    'is_read' => 'eq.false',
+                ]));
             } catch (\Exception $e) {
                 $view->with('pendingCount', 0);
+                $view->with('unreadNotifications', 0);
             }
         });
     }

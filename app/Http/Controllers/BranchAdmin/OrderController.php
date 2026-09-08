@@ -81,6 +81,18 @@ class OrderController extends Controller
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId]);
 
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'order_cancelled',
+            'order_cancelled',
+            'Order Cancelled',
+            "Order {$order['order_number']} was cancelled.",
+            ['order_id' => $orderId, 'order_number' => $order['order_number'], 'total' => $order['total'] ?? null],
+            'orders',
+            (string) $orderId,
+            ['status' => $order['status'] ?? ''],
+            ['status' => 'cancelled']
+        );
+
         return back()->with('success', 'Order cancelled.');
     }
 }

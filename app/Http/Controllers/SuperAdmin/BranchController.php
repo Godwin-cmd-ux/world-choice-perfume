@@ -154,6 +154,18 @@ class BranchController extends Controller
             \App\Models\Branch::where('name', $branch['name'])->update(['is_active' => false]);
         }
 
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'branch_deactivated',
+            'branch_deactivated',
+            'Branch Deactivated',
+            "Branch {$branch['name']} was deactivated.",
+            ['branch_id' => $branchId, 'branch_name' => $branch['name'] ?? null],
+            'branches',
+            (string) $branchId,
+            ['is_active' => true],
+            ['is_active' => false]
+        );
+
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch deactivated.');
     }
 }

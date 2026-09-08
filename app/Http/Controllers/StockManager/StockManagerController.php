@@ -210,6 +210,20 @@ class StockManagerController extends Controller
                     'entered_by' => auth()->id(),
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $existing['id']]);
+
+            if ((float) ($existing['selling_price'] ?? 0) !== (float) $validated['selling_price']) {
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    'price_customization',
+                    'price_change_stock_in',
+                    'Price Changed',
+                    "Selling price changed for product #{$validated['product_id']} during stock-in: " . number_format((float) ($existing['selling_price'] ?? 0)) . ' → ' . number_format((float) $validated['selling_price']) . ' TZS.',
+                    ['branch_stock_id' => $existing['id'], 'product_id' => $validated['product_id'], 'old_price' => $existing['selling_price'] ?? 0, 'new_price' => $validated['selling_price']],
+                    'branch_stock',
+                    (string) $existing['id'],
+                    ['selling_price' => $existing['selling_price'] ?? 0],
+                    ['selling_price' => $validated['selling_price']]
+                );
+            }
             } else {
                 $this->supabase->insert('branch_stock', [
                     'branch_id' => $branchId,
@@ -265,6 +279,18 @@ class StockManagerController extends Controller
 
         $this->supabase->delete('branch_stock', ['id' => $stockId]);
 
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'stock_deleted',
+            'stock_record_deleted',
+            'Stock Record Deleted',
+            "Stock record deleted for product #{$stock['product_id']} ({$stock['quantity']} units @ " . number_format((float) ($stock['selling_price'] ?? 0)) . ' TZS).',
+            ['branch_stock_id' => $stockId, 'product_id' => $stock['product_id'], 'quantity' => $stock['quantity'], 'selling_price' => $stock['selling_price'] ?? 0],
+            'branch_stock',
+            (string) $stockId,
+            ['quantity' => $stock['quantity'], 'selling_price' => $stock['selling_price'] ?? 0],
+            []
+        );
+
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock record deleted.');
     }
 
@@ -310,6 +336,36 @@ class StockManagerController extends Controller
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
+        }
+
+        $audit = new \App\Services\AuditService();
+
+        if ((float) $oldPrice !== (float) $newPrice) {
+            $audit->recordCriticalAction(
+                'price_customization',
+                'price_change_manual',
+                'Price Changed',
+                "Manual selling price change for product #{$stock['product_id']}: " . number_format((float) $oldPrice) . ' → ' . number_format((float) $newPrice) . ' TZS.',
+                ['branch_stock_id' => $stockId, 'product_id' => $stock['product_id'], 'old_price' => $oldPrice, 'new_price' => $newPrice],
+                'branch_stock',
+                (string) $stockId,
+                ['selling_price' => $oldPrice, 'quantity' => $oldQty],
+                ['selling_price' => $newPrice, 'quantity' => $newQty]
+            );
+        }
+
+        if ($newQty != $oldQty) {
+            $audit->recordCriticalAction(
+                'stock_adjusted',
+                'stock_adjusted_manual',
+                'Stock Adjusted',
+                "Manual stock adjustment for product #{$stock['product_id']}: {$oldQty} → {$newQty} units.",
+                ['branch_stock_id' => $stockId, 'product_id' => $stock['product_id'], 'old_qty' => $oldQty, 'new_qty' => $newQty],
+                'branch_stock',
+                (string) $stockId,
+                ['quantity' => $oldQty],
+                ['quantity' => $newQty]
+            );
         }
 
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock updated successfully.');
@@ -437,6 +493,18 @@ class StockManagerController extends Controller
         }
 
         $this->supabase->delete('bottle_stock', ['id' => $id]);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'stock_deleted',
+            'bottle_stock_deleted',
+            'Bottle Stock Deleted',
+            "Bottle stock record deleted (volume {$stock['volume']}, {$stock['quantity']} units).",
+            ['bottle_stock_id' => $id, 'volume' => $stock['volume'], 'quantity' => $stock['quantity']],
+            'bottle_stock',
+            (string) $id,
+            ['volume' => $stock['volume'], 'quantity' => $stock['quantity']],
+            []
+        );
 
         return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock record deleted.');
     }
@@ -675,6 +743,18 @@ class StockManagerController extends Controller
         }
 
         $this->supabase->delete('oil_fragrance_stock', ['id' => $id]);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'stock_deleted',
+            'oil_fragrance_stock_deleted',
+            'Oil Fragrance Stock Deleted',
+            "Oil fragrance stock record deleted (name {$stock['name']}, {$stock['quantity']} units).",
+            ['oil_fragrance_stock_id' => $id, 'name' => $stock['name'], 'quantity' => $stock['quantity']],
+            'oil_fragrance_stock',
+            (string) $id,
+            ['name' => $stock['name'], 'quantity' => $stock['quantity']],
+            []
+        );
 
         return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock record deleted.');
     }

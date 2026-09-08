@@ -132,7 +132,22 @@ class NewsController extends Controller
 
     public function destroy($postId)
     {
+        $post = $this->supabase->find('news_posts', $postId);
+
         $this->supabase->delete('news_posts', ['id' => $postId]);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'content_deleted',
+            'news_post_deleted',
+            'News Post Deleted',
+            "News post deleted: " . ($post['title'] ?? "#{$postId}") . ".",
+            ['post_id' => $postId, 'title' => $post['title'] ?? null],
+            'news_posts',
+            (string) $postId,
+            ['title' => $post['title'] ?? null],
+            []
+        );
+
         return redirect()->route('customer-care.news.index')->with('success', 'Post deleted.');
     }
 }

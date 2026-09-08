@@ -123,6 +123,18 @@ class StaffController extends Controller
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ]);
+
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    $newStatus === 'blocked' ? 'staff_blocked' : 'staff_unblocked',
+                    $newStatus === 'blocked' ? 'blocked_user' : 'unblocked_user',
+                    $newStatus === 'blocked' ? 'Staff Blocked' : 'Staff Unblocked',
+                    "Staff {$user['name']} was {$newStatus}.",
+                    ['user_id' => $userId, 'user_name' => $user['name'], 'status' => $newStatus],
+                    'users',
+                    (string) $userId,
+                    ['status' => $currentStatus],
+                    ['status' => $newStatus]
+                );
             }
         } catch (\Exception $e) {
             // Audit log failure should not block the action
@@ -133,6 +145,9 @@ class StaffController extends Controller
 
     public function destroy($userId)
     {
+        $user = $this->supabase->find('users', $userId);
+        if (!$user) abort(404);
+
         $this->supabase->delete('users', ['id' => $userId]);
 
         try {
@@ -144,6 +159,18 @@ class StaffController extends Controller
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ]);
+
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    'staff_deleted',
+                    'deleted_user',
+                    'Staff Deleted',
+                    "Staff {$user['name']} (" . ($user['role'] ?? 'staff') . ") was deleted.",
+                    ['user_id' => $userId, 'user_name' => $user['name'], 'role' => $user['role'] ?? null],
+                    'users',
+                    (string) $userId,
+                    ['status' => $user['status'] ?? 'active', 'name' => $user['name']],
+                    []
+                );
             }
         } catch (\Exception $e) {
             // Audit log failure should not block the action

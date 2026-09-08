@@ -23,7 +23,16 @@
             <option value="discount_used" {{ request('type') === 'discount_used' ? 'selected' : '' }}>Discount Used</option>
             <option value="price_customization" {{ request('type') === 'price_customization' ? 'selected' : '' }}>Price Customization</option>
             <option value="order_placed" {{ request('type') === 'order_placed' ? 'selected' : '' }}>Order Placed</option>
+            <option value="order_cancelled" {{ request('type') === 'order_cancelled' ? 'selected' : '' }}>Order Cancelled</option>
             <option value="staff_blocked" {{ request('type') === 'staff_blocked' ? 'selected' : '' }}>Staff Blocked</option>
+            <option value="staff_unblocked" {{ request('type') === 'staff_unblocked' ? 'selected' : '' }}>Staff Unblocked</option>
+            <option value="staff_deleted" {{ request('type') === 'staff_deleted' ? 'selected' : '' }}>Staff Deleted</option>
+            <option value="stock_deleted" {{ request('type') === 'stock_deleted' ? 'selected' : '' }}>Stock Record Deleted</option>
+            <option value="stock_adjusted" {{ request('type') === 'stock_adjusted' ? 'selected' : '' }}>Stock Adjusted</option>
+            <option value="branch_deactivated" {{ request('type') === 'branch_deactivated' ? 'selected' : '' }}>Branch Deactivated</option>
+            <option value="product_updated" {{ request('type') === 'product_updated' ? 'selected' : '' }}>Product Updated</option>
+            <option value="product_deactivated" {{ request('type') === 'product_deactivated' ? 'selected' : '' }}>Product Deactivated</option>
+            <option value="content_deleted" {{ request('type') === 'content_deleted' ? 'selected' : '' }}>Content Deleted</option>
         </select>
         <input type="date" name="date_from" value="{{ request('date_from') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="From">
         <input type="date" name="date_to" value="{{ request('date_to') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="To">
@@ -60,7 +69,16 @@
                                     'discount_used' => ['label' => 'Discount', 'class' => 'bg-red-100 text-red-800'],
                                     'price_customization' => ['label' => 'Price Custom', 'class' => 'bg-purple-100 text-purple-800'],
                                     'order_placed' => ['label' => 'Order', 'class' => 'bg-blue-100 text-blue-800'],
-                                    'staff_blocked' => ['label' => 'Staff', 'class' => 'bg-gray-100 text-gray-800'],
+                                    'order_cancelled' => ['label' => 'Cancelled', 'class' => 'bg-orange-100 text-orange-800'],
+                                    'staff_blocked' => ['label' => 'Blocked', 'class' => 'bg-gray-100 text-gray-800'],
+                                    'staff_unblocked' => ['label' => 'Unblocked', 'class' => 'bg-emerald-100 text-emerald-800'],
+                                    'staff_deleted' => ['label' => 'Staff Deleted', 'class' => 'bg-gray-100 text-gray-800'],
+                                    'stock_deleted' => ['label' => 'Stock Deleted', 'class' => 'bg-red-100 text-red-800'],
+                                    'stock_adjusted' => ['label' => 'Stock Adjust', 'class' => 'bg-yellow-100 text-yellow-800'],
+                                    'branch_deactivated' => ['label' => 'Branch Off', 'class' => 'bg-slate-100 text-slate-800'],
+                                    'product_updated' => ['label' => 'Product Edit', 'class' => 'bg-indigo-100 text-indigo-800'],
+                                    'product_deactivated' => ['label' => 'Product Off', 'class' => 'bg-slate-100 text-slate-800'],
+                                    'content_deleted' => ['label' => 'Content Deleted', 'class' => 'bg-rose-100 text-rose-800'],
                                 ];
                                 $typeInfo = $typeLabels[$n->type ?? ''] ?? ['label' => ucfirst($n->type ?? 'unknown'), 'class' => 'bg-gray-100 text-gray-800'];
                             @endphp

@@ -153,6 +153,7 @@ class SaleController extends Controller
             $stockUpdates = [];
             $stockMovements = [];
             $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
+            $priceOverridden = false;
 
             foreach ($validated['items'] as $item) {
                 $stock = $stockMap[$item['product_id']] ?? null;
@@ -167,6 +168,9 @@ class SaleController extends Controller
                 $unitPrice = ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price']))
                     ? $item['custom_price']
                     : ($stock['selling_price'] ?? 0);
+                if ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price'])) {
+                    $priceOverridden = true;
+                }
                 $lineTotal = $unitPrice * $item['quantity'];
                 $subtotal += $lineTotal;
                 $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];
@@ -351,6 +355,20 @@ class SaleController extends Controller
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
+
+            if ($priceOverridden) {
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    'price_customization',
+                    'custom_price_sale',
+                    'Price Customized',
+                    "A custom sale price was used in sale {$saleNumber} (Cashier).",
+                    ['sale_id' => $sale['id'], 'sale_number' => $saleNumber],
+                    'sale',
+                    (string) $sale['id'],
+                    [],
+                    ['custom_price_applied' => true]
+                );
+            }
 
             return redirect()->route('cashier.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");

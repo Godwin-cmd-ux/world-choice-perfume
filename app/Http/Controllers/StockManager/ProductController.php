@@ -167,6 +167,16 @@ class ProductController extends Controller
             }
         }
 
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'product_updated',
+            'product_updated',
+            'Product Updated',
+            "Product {$product['name']} was updated (id #{$productId}).",
+            ['product_id' => $productId, 'product_name' => $product['name'] ?? null, 'validated' => array_keys($validated)],
+            'products',
+            (string) $productId
+        );
+
         return redirect()->route('stock-manager.products.index')->with('success', 'Product updated successfully.');
     }
 
@@ -181,6 +191,18 @@ class ProductController extends Controller
         $product = $this->supabase->find('products', $productId);
         if ($product) {
             \App\Models\Product::where('name', $product['name'])->update(['is_active' => false]);
+
+            (new \App\Services\AuditService())->recordCriticalAction(
+                'product_deactivated',
+                'product_deactivated',
+                'Product Deactivated',
+                "Product {$product['name']} was deactivated (id #{$productId}).",
+                ['product_id' => $productId, 'product_name' => $product['name'] ?? null],
+                'products',
+                (string) $productId,
+                ['is_active' => true],
+                ['is_active' => false]
+            );
         }
 
         return redirect()->route('stock-manager.products.index')->with('success', 'Product deactivated.');

@@ -50,7 +50,7 @@ class NotificationController extends Controller
 
     public function markRead($notificationId)
     {
-        $this->supabase->update('notifications', [
+        $this->supabase->update('admin_notifications', [
             'is_read' => true,
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $notificationId]);
@@ -66,7 +66,7 @@ class NotificationController extends Controller
         ]);
 
         foreach ($unread as $n) {
-            $this->supabase->update('notifications', [
+            $this->supabase->update('admin_notifications', [
                 'is_read' => true,
                 'updated_at' => now()->toIso8601String(),
             ], ['id' => $n['id']]);

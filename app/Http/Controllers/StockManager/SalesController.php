@@ -372,17 +372,17 @@ class SalesController extends Controller
                 }
             }
             if ($hasDiscount) {
-                $this->supabase->insert('admin_notifications', [
-                    'type' => 'discount_used',
-                    'branch_id' => $branchId,
-                    'user_id' => $supabaseUserId,
-                    'title' => 'Discount Applied',
-                    'message' => "A discount was applied in sale {$saleNumber} (Stock Manager).",
-                    'data' => json_encode(['sale_id' => $sale['id'], 'sale_number' => $saleNumber]),
-                    'is_read' => false,
-                    'created_at' => now()->toIso8601String(),
-                    'updated_at' => now()->toIso8601String(),
-                ]);
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    'discount_used',
+                    'discount_applied_sale',
+                    'Discount Applied',
+                    "A discount was applied in sale {$saleNumber} (Stock Manager).",
+                    ['sale_id' => $sale['id'], 'sale_number' => $saleNumber],
+                    'sale',
+                    (string) $sale['id'],
+                    ['subtotal' => $subtotal, 'paid' => $subtotal],
+                    ['discount_applied' => true]
+                );
             }
 
             return redirect()->route('stock-manager.sales.show', $sale['id'])
