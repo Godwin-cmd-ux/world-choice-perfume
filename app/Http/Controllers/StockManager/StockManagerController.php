@@ -763,20 +763,59 @@ class StockManagerController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
+        // Load oil fragrance products for the dropdown (mirrors stock-in).
+        $oilProducts = $this->supabase->query('products', [
+            'is_active' => 'eq.true',
+            'category' => 'eq.Oil Fragrance',
+            'select' => 'id,name,brand',
+            'order' => 'name.asc',
+            'limit' => 200,
+        ]);
+        $oilProducts = collect($oilProducts)->map(fn($p) => (object) $p);
+
+        // Current oil stock quantities by product name, shown next to each option.
+        $stockByProduct = [];
+        $stocks = $this->supabase->query('oil_fragrance_stock', [
+            'branch_id' => "eq.{$branchId}",
+            'select' => 'name,quantity',
+            'order' => 'name.asc',
+        ]);
+        foreach ($stocks as $s) {
+            $stockByProduct[$s['name']] = (int) ($s['quantity'] ?? 0);
+        }
+
         if ($request->isMethod('post')) {
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'product_id' => 'required',
                 'quantity' => 'required|integer|min:1',
+                'bottle_volume' => 'required|integer|in:500,1000',
                 'reason' => 'nullable|string|max:255',
             ]);
 
+            $productId = $validated['product_id'];
+
+            // Confirm the selected product is still an oil fragrance.
+            $product = $this->supabase->findOne('products', [
+                'id' => $productId,
+            ]);
+
+            if (!$product || ($product['category'] ?? '') !== 'Oil Fragrance') {
+                return back()->withErrors(['product_id' => 'Selected product is not available or is not an Oil Fragrance.'])->withInput();
+            }
+
+            $name = $product['name'];
+            $bottleVolume = (int) $validated['bottle_volume'];
+            $volumeLabel = $bottleVolume === 500 ? '500ml' : '1000ml';
+
             $existing = $this->supabase->findOne('oil_fragrance_stock', [
                 'branch_id' => $branchId,
-                'name' => $validated['name'],
+                'name' => $name,
             ]);
 
             if (!$existing || ($existing['quantity'] ?? 0) < $validated['quantity']) {
-                return back()->withErrors(['quantity' => 'Insufficient oil fragrance stock.']);
+                return back()->withErrors([
+                    'quantity' => 'Insufficient oil fragrance stock. Available: ' . ($existing['quantity'] ?? 0) . '.',
+                ])->withInput();
             }
 
             $newQty = ($existing['quantity'] ?? 0) - $validated['quantity'];
@@ -787,10 +826,11 @@ class StockManagerController extends Controller
 
             $this->supabase->insert('oil_fragrance_movements', [
                 'branch_id' => $branchId,
-                'name' => $validated['name'],
+                'name' => $name,
+                'volume' => $bottleVolume,
                 'type' => 'stock_out',
                 'quantity' => $validated['quantity'],
-                'reason' => $validated['reason'] ?? 'Used for production',
+                'reason' => ($validated['reason'] ?? 'Used for production') . " [{$volumeLabel}]",
                 'performed_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
@@ -799,14 +839,10 @@ class StockManagerController extends Controller
             return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock out recorded.');
         }
 
-        $branchId = auth()->user()->branch_id;
-        $oils = $this->supabase->query('oil_fragrance_stock', [
-            'select' => '*',
-            'branch_id' => "eq.{$branchId}",
-            'order' => 'name.asc',
+        return view('stock-manager.oil-fragrance-stock-out', [
+            'oilProducts' => $oilProducts,
+            'stockByProduct' => $stockByProduct,
         ]);
-
-        return view('stock-manager.oil-fragrance-stock-out', ['oils' => collect($oils)]);
     }
 
     public function oilFragranceMovements(Request $request)
