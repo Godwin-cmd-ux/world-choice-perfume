@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Services\PesapalService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -127,6 +128,8 @@ class OrderController extends Controller
                 'status' => 'pending',
                 'total' => $total,
                 'delivery_notes' => $validated['delivery_notes'] ?? null,
+                'payment_status' => 'unpaid',
+                'payment_method' => 'pesapal',
             ]);
 
             // 6. Batch insert order items (1 HTTP call instead of N)
@@ -139,11 +142,88 @@ class OrderController extends Controller
             ], $orderItems);
             $this->supabase->insertMany('order_items', $itemsToInsert);
 
-            return view('customer.orders.success', ['order' => (object) $order]);
+            // 7. Send the customer to PesaPal to pay
+            $payment = $this->initiatePesaPalPayment($order, $customerId, $validated);
+
+            if ($payment['success'] && !empty($payment['redirect_url'])) {
+                $this->supabase->update('orders', [
+                    'payment_status' => 'pending',
+                    'pesapal_tracking_id' => $payment['order_tracking_id'] ?? null,
+                    'pesapal_merchant_reference' => $payment['merchant_reference'] ?? null,
+                    'updated_at' => now()->toIso8601String(),
+                ], ['id' => (int) $order['id']]);
+
+                return redirect()->away($payment['redirect_url']);
+            }
+
+            $this->supabase->update('orders', [
+                'payment_status' => 'failed',
+                'updated_at' => now()->toIso8601String(),
+            ], ['id' => (int) $order['id']]);
+
+            return view('customer.orders.success', ['order' => (object) array_merge($order, ['payment_status' => 'failed'])]);
 
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Order failed: ' . $e->getMessage()])->withInput();
         }
+    }
+
+    /**
+     * Resume payment for an existing unpaid order.
+     */
+    public function pay(Request $request, $orderId)
+    {
+        $order = $this->supabase->find('orders', $orderId);
+
+        if (!$order) {
+            abort(404);
+        }
+
+        if (($order['payment_status'] ?? '') === 'paid') {
+            return redirect()->route('customer.orders.track')
+                ->with('success', 'This order has already been paid.');
+        }
+
+        $customerId = $order['customer_id'] ?? null;
+        $customer = $customerId ? $this->supabase->find('customers', $customerId) : null;
+
+        $payment = $this->initiatePesaPalPayment($order, $customerId, [
+            'customer_name' => $customer['name'] ?? 'Customer',
+            'customer_email' => $customer['email'] ?? null,
+            'customer_phone' => $customer['phone'] ?? '',
+        ]);
+
+        if ($payment['success'] && !empty($payment['redirect_url'])) {
+            $this->supabase->update('orders', [
+                'payment_status' => 'pending',
+                'pesapal_tracking_id' => $payment['order_tracking_id'] ?? null,
+                'pesapal_merchant_reference' => $payment['merchant_reference'] ?? null,
+                'updated_at' => now()->toIso8601String(),
+            ], ['id' => (int) $order['id']]);
+
+            return redirect()->away($payment['redirect_url']);
+        }
+
+        return redirect()->route('customer.orders.track')
+            ->with('error', 'Could not start PesaPal payment: ' . ($payment['message'] ?? 'Please try again later.'));
+    }
+
+    /**
+     * Initiate a PesaPal payment for an order.
+     */
+    private function initiatePesaPalPayment(array $order, ?int $customerId, array $details): array
+    {
+        $pesapal = new PesapalService();
+
+        return $pesapal->initiatePayment([
+            'id' => $order['id'],
+            'amount' => $order['total'],
+            'description' => 'Order ' . $order['order_number'],
+            'first_name' => $details['customer_name'] ?? 'Customer',
+            'email' => $details['customer_email'] ?? null,
+            'phone' => $details['customer_phone'] ?? '',
+            'callback_url' => route('pesapal.callback'),
+        ]);
     }
 
     public function track(Request $request)

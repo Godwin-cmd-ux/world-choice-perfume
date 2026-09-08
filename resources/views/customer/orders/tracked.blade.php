@@ -25,10 +25,22 @@
                         <p class="font-semibold">{{ $order->order_number }}</p>
                         <p class="text-sm text-gray-500">{{ $order->branch->name }} | {{ \Carbon\Carbon::parse($order->created_at)->format('M d, Y H:i') }}</p>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-medium
-                        {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
-                        {{ ucfirst($order->status) }}
-                    </span>
+                    <div class="flex flex-col items-end gap-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium
+                            {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+                            {{ ucfirst($order->status) }}
+                        </span>
+                        <span class="px-3 py-1 rounded-full text-xs font-medium
+                            {{ ($order->payment_status ?? '') === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
+                            {{ ($order->payment_status ?? 'unpaid') === 'paid' ? 'Paid' : ucfirst($order->payment_status ?? 'unpaid') }}
+                        </span>
+                        @if(($order->payment_status ?? '') !== 'paid' && ($order->status ?? '') !== 'cancelled')
+                            <a href="{{ route('customer.orders.pay', $order->id) }}"
+                               class="px-3 py-1 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold">
+                                Pay Now
+                            </a>
+                        @endif
+                    </div>
                 </div>
                 <div class="mt-3 text-sm">
                     @foreach($order->items as $item)

@@ -29,6 +29,7 @@ Route::post('/contact', [\App\Http\Controllers\Customer\InquiryController::class
 Route::prefix('orders')->name('customer.orders.')->group(function () {
     Route::get('/create', [\App\Http\Controllers\Customer\OrderController::class, 'create'])->name('create');
     Route::post('/', [\App\Http\Controllers\Customer\OrderController::class, 'store'])->name('store');
+    Route::get('/{order}/pay', [\App\Http\Controllers\Customer\OrderController::class, 'pay'])->name('pay');
     Route::get('/track', [\App\Http\Controllers\Customer\OrderController::class, 'track'])->name('track');
     Route::post('/track', [\App\Http\Controllers\Customer\OrderController::class, 'trackByPhone'])->name('track-by-phone');
 });

@@ -48,8 +48,8 @@ return [
     ],
 
     'pesapal' => [
-        'consumer_key' => env('PESAPAL_CONSUMER_KEY', '914dCzN33pIQuHUr9zMuCri492qfVsOn'),
-        'consumer_secret' => env('PESAPAL_CONSUMER_SECRET', 'mjyIFSLux4reZ1yOeCgyPxdiFIo='),
+        'consumer_key' => env('PESAPAL_CONSUMER_KEY'),
+        'consumer_secret' => env('PESAPAL_CONSUMER_SECRET'),
     ],
 
 ];
