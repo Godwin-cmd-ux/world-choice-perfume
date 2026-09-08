@@ -763,17 +763,7 @@ class StockManagerController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
-        // Load oil fragrance products for the dropdown (mirrors stock-in).
-        $oilProducts = $this->supabase->query('products', [
-            'is_active' => 'eq.true',
-            'category' => 'eq.Oil Fragrance',
-            'select' => 'id,name,brand',
-            'order' => 'name.asc',
-            'limit' => 200,
-        ]);
-        $oilProducts = collect($oilProducts)->map(fn($p) => (object) $p);
-
-        // Current oil stock quantities by product name, shown next to each option.
+        // Current oil stock quantities by product name.
         $stockByProduct = [];
         $stocks = $this->supabase->query('oil_fragrance_stock', [
             'branch_id' => "eq.{$branchId}",
@@ -783,6 +773,18 @@ class StockManagerController extends Controller
         foreach ($stocks as $s) {
             $stockByProduct[$s['name']] = (int) ($s['quantity'] ?? 0);
         }
+
+        // Load oil fragrance products for the dropdown (mirrors stock-in), but only
+        // include products that currently have stock available to use.
+        $oilProducts = collect($this->supabase->query('products', [
+            'is_active' => 'eq.true',
+            'category' => 'eq.Oil Fragrance',
+            'select' => 'id,name,brand',
+            'order' => 'name.asc',
+            'limit' => 200,
+        ]))
+            ->filter(fn($p) => ($stockByProduct[$p['name'] ?? ''] ?? 0) > 0)
+            ->map(fn($p) => (object) $p);
 
         if ($request->isMethod('post')) {
             $validated = $request->validate([
