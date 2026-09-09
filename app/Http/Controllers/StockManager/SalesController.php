@@ -122,19 +122,23 @@ class SalesController extends Controller
             if (!empty($validated['customer_id'])) {
                 $customerId = $validated['customer_id'];
             } elseif (!empty($validated['customer_name']) || !empty($validated['customer_phone'])) {
+                $typedName = trim((string) ($validated['customer_name'] ?? ''));
+                $typedPhone = trim((string) ($validated['customer_phone'] ?? ''));
                 $existingCustomer = null;
-                if (!empty($validated['customer_phone'])) {
+                if ($typedPhone !== '') {
                     $existingCustomer = $this->supabase->findOne('customers', [
-                        'phone' => $validated['customer_phone'],
+                        'phone' => $typedPhone,
                     ]);
                 }
-                if ($existingCustomer) {
+                $nameAgrees = $typedName === ''
+                    || (isset($existingCustomer['name']) && mb_strtolower(trim((string) $existingCustomer['name'])) === mb_strtolower($typedName));
+                if ($existingCustomer && $nameAgrees) {
                     $customerId = $existingCustomer['id'];
                 } else {
                     $customer = $this->supabase->insert('customers', [
-                        'name' => $validated['customer_name'] ?? null,
-                        'phone' => $validated['customer_phone'] ?? null,
-                        'whatsapp' => $validated['customer_phone'] ?? null,
+                        'name' => $typedName !== '' ? $typedName : ($existingCustomer['name'] ?? null),
+                        'phone' => $typedPhone !== '' ? $typedPhone : ($existingCustomer['phone'] ?? null),
+                        'whatsapp' => $typedPhone !== '' ? $typedPhone : ($existingCustomer['whatsapp'] ?? null),
                     ]);
                     $customerId = $customer['id'] ?? null;
                 }
@@ -289,6 +293,14 @@ class SalesController extends Controller
 
             // 5. Build payment summary
             $payments = $validated['payments'] ?? [];
+            if ($validated['payment_mode'] === 'multi') {
+                $paymentTotal = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+                if (abs($paymentTotal - $subtotal) > 0.01) {
+                    return back()->withErrors([
+                        'payments' => 'Payment breakdown (' . number_format($paymentTotal) . ') must equal the sale total (' . number_format($subtotal) . ').',
+                    ])->withInput();
+                }
+            }
             $paymentParts = [];
             foreach ($payments as $p) {
                 $methodLabel = str_replace('_', ' ', ucfirst($p['method']));

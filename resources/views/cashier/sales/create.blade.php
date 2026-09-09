@@ -47,8 +47,8 @@
                 </div>
 
                 <div id="newCustomerForm" class="hidden space-y-2 mb-3">
-                    <input type="text" name="customer_name" id="newCustomerName" placeholder="New customer name" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
-                    <input type="text" name="customer_phone" id="newCustomerPhone" placeholder="Phone (optional)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
+                    <input type="text" name="customer_name" id="newCustomerName" placeholder="New customer name" autocomplete="off" oninput="document.getElementById('customer_id').value='';" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
+                    <input type="text" name="customer_phone" id="newCustomerPhone" placeholder="Phone (optional)" autocomplete="off" oninput="document.getElementById('customer_id').value='';" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <button type="button" onclick="toggleNewCustomer()" id="newCustomerBtn" class="w-full text-sm text-amber-700 hover:underline">
@@ -272,6 +272,7 @@ function createCustomerFromSearch() {
     const q = customerSearch.value.trim();
     document.getElementById('newCustomerForm').classList.remove('hidden');
     document.getElementById('newCustomerName').value = q;
+    document.getElementById('customer_id').value = '';
     customerResults.classList.add('hidden');
     customerSearch.value = '';
 }
@@ -328,7 +329,7 @@ function bindEvents() {
     });
 }
 
-function calculateTotal() {
+function computeSaleTotal() {
     let total = 0;
     const isWholesale = document.getElementById('sale_type').value === 'wholesale';
     document.querySelectorAll('.item-row').forEach(row => {
@@ -343,7 +344,11 @@ function calculateTotal() {
         row.querySelector('.line-total').textContent = 'TZS ' + lineTotal.toLocaleString();
         total += lineTotal;
     });
-    total += calculateBottleTotal();
+    return total + calculateBottleTotal();
+}
+
+function calculateTotal() {
+    const total = computeSaleTotal();
     document.getElementById('grand-total').textContent = 'TZS ' + total.toLocaleString();
     validatePayments();
 }
@@ -352,8 +357,12 @@ function calculateTotal() {
 function togglePaymentMode(mode) {
     document.querySelectorAll('.payment-mode-option').forEach(el => el.classList.remove('border-amber-500', 'bg-amber-50'));
     document.querySelector(`.payment-mode-option[data-mode="${mode}"]`).classList.add('border-amber-500', 'bg-amber-50');
-    document.getElementById('singlePayment').classList.toggle('hidden', mode !== 'single');
-    document.getElementById('multiPayment').classList.toggle('hidden', mode !== 'multi');
+    const single = document.getElementById('singlePayment');
+    const multi = document.getElementById('multiPayment');
+    single.classList.toggle('hidden', mode !== 'single');
+    multi.classList.toggle('hidden', mode !== 'multi');
+    single.querySelectorAll('select, input').forEach(el => el.disabled = mode !== 'single');
+    multi.querySelectorAll('select, input').forEach(el => el.disabled = mode !== 'multi');
     if (mode === 'multi') validatePayments();
     else { document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').classList.remove('opacity-50'); }
 }
@@ -375,13 +384,7 @@ function removePaymentRow(btn) {
 function validatePayments() {
     const mode = document.querySelector('input[name="payment_mode"]:checked')?.value;
     if (mode !== 'multi') return;
-    let total = 0;
-    document.querySelectorAll('.item-row').forEach(row => {
-        const price = parseFloat(row.querySelector('.product-select').selectedOptions[0]?.dataset?.price || 0);
-        const qty = parseInt(row.querySelector('.qty-input').value || 0);
-        total += price * qty;
-    });
-    total += calculateBottleTotal();
+    const total = computeSaleTotal();
     let paymentTotal = 0;
     document.querySelectorAll('.payment-amount').forEach(input => { paymentTotal += parseFloat(input.value || 0); });
     document.getElementById('payment-total').textContent = 'TZS ' + paymentTotal.toLocaleString();
@@ -439,6 +442,7 @@ function calculateBottleTotal() {
 
 bindEvents();
 bindBottleEvents();
+togglePaymentMode('single');
 </script>
 @endpush
 @endsection
