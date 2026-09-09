@@ -18,7 +18,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $params = [
-            'select' => '*, branch:branches(id,name), user:users(id,name)',
+            'select' => '*',
             'order' => 'created_at.desc',
             'limit' => 200,
         ];
@@ -27,23 +27,7 @@ class NotificationController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $notifications = $this->supabase->query('admin_notifications', $params);
-
-        // Apply date range filters in PHP
-        if ($request->date_from) {
-            $from = $request->date_from;
-            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) >= $from);
-        }
-        if ($request->date_to) {
-            $to = $request->date_to;
-            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) <= $to);
-        }
-
-        $notifications = collect(array_values($notifications))->map(function ($n) {
-            if (isset($n['branch']) && is_array($n['branch'])) $n['branch'] = (object) $n['branch'];
-            if (isset($n['user']) && is_array($n['user'])) $n['user'] = (object) $n['user'];
-            return (object) $n;
-        });
+        $notifications = $this->fetchNotifications($params, $request->date_from, $request->date_to);
 
         return view('super-admin.notifications.index', ['notifications' => $notifications]);
     }
@@ -78,7 +62,7 @@ class NotificationController extends Controller
     public function generateReport(Request $request)
     {
         $params = [
-            'select' => '*, branch:branches(id,name), user:users(id,name)',
+            'select' => '*',
             'order' => 'created_at.desc',
             'limit' => 500,
         ];
@@ -87,22 +71,7 @@ class NotificationController extends Controller
             $params['type'] = "eq.{$request->type}";
         }
 
-        $notifications = $this->supabase->query('admin_notifications', $params);
-
-        if ($request->date_from) {
-            $from = $request->date_from;
-            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) >= $from);
-        }
-        if ($request->date_to) {
-            $to = $request->date_to;
-            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) <= $to);
-        }
-
-        $notifications = collect(array_values($notifications))->map(function ($n) {
-            if (isset($n['branch']) && is_array($n['branch'])) $n['branch'] = (object) $n['branch'];
-            if (isset($n['user']) && is_array($n['user'])) $n['user'] = (object) $n['user'];
-            return (object) $n;
-        });
+        $notifications = $this->fetchNotifications($params, $request->date_from, $request->date_to);
 
         return view('super-admin.notifications.report', [
             'notifications' => $notifications,
@@ -110,5 +79,65 @@ class NotificationController extends Controller
             'date_from' => $request->date_from,
             'date_to' => $request->date_to,
         ]);
+    }
+
+    /**
+     * Fetch admin_notifications and attach branch/user names.
+     *
+     * PostgREST embedded relations (e.g. branch:branches(id,name)) require a
+     * foreign key between the tables. admin_notifications has no FKs, so those
+     * embedded selects fail with PGRST200 and return zero rows. We therefore
+     * fetch the records plainly and resolve names in separate IN queries.
+     */
+    private function fetchNotifications(array $params, $dateFrom = null, $dateTo = null)
+    {
+        $notifications = $this->supabase->query('admin_notifications', $params);
+
+        if ($dateFrom) {
+            $from = $dateFrom;
+            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) >= $from);
+        }
+        if ($dateTo) {
+            $to = $dateTo;
+            $notifications = array_filter($notifications, fn($n) => substr($n['created_at'] ?? '', 0, 10) <= $to);
+        }
+
+        $notifications = $this->attachNames(array_values($notifications));
+
+        return collect($notifications)->map(fn($n) => (object) $n);
+    }
+
+    private function attachNames(array $notifications): array
+    {
+        $branchIds = array_values(array_unique(array_filter(array_column($notifications, 'branch_id'))));
+        $userIds = array_values(array_unique(array_filter(array_column($notifications, 'user_id'))));
+
+        $branchNames = [];
+        if ($branchIds) {
+            $branches = $this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $branchIds) . ')',
+            ]);
+            foreach ($branches as $b) {
+                $branchNames[$b['id']] = $b['name'] ?? null;
+            }
+        }
+
+        $userNames = [];
+        if ($userIds) {
+            $users = $this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $userIds) . ')',
+            ]);
+            foreach ($users as $u) {
+                $userNames[$u['id']] = $u['name'] ?? null;
+            }
+        }
+
+        return array_map(function ($n) use ($branchNames, $userNames) {
+            $n['branch_name'] = $branchNames[$n['branch_id'] ?? null] ?? null;
+            $n['user_name'] = $userNames[$n['user_id'] ?? null] ?? null;
+            return $n;
+        }, $notifications);
     }
 }

@@ -85,8 +85,8 @@
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $typeInfo['class'] }}">{{ $typeInfo['label'] }}</span>
                         </td>
                         <td class="px-4 max-w-xs truncate">{{ $n->message ?? '—' }}</td>
-                        <td class="px-4 text-gray-500">{{ $n->branch?->name ?? '—' }}</td>
-                        <td class="px-4 text-gray-500">{{ $n->user?->name ?? '—' }}</td>
+                        <td class="px-4 text-gray-500">{{ $n->branch_name ?? '—' }}</td>
+                        <td class="px-4 text-gray-500">{{ $n->user_name ?? '—' }}</td>
                         <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->format('M d, Y H:i') : '—' }}</td>
                         <td class="px-4 text-center">
                             @if(!($n->is_read ?? false))

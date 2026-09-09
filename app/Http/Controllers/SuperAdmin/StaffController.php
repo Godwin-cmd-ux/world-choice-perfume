@@ -113,6 +113,15 @@ class StaffController extends Controller
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $userId]);
 
+        if (empty($result)) {
+            return back()->with(
+                'error',
+                $newStatus === 'blocked'
+                    ? 'Could not block this user: the database rejected the status update. Ensure the "blocked" value exists in the user_status enum (run SUPABASE_USER_STATUS_FIX.sql in the Supabase SQL Editor), then try again.'
+                    : 'Could not unblock this user. Please try again.'
+            );
+        }
+
         // Audit log — wrapped in try/catch so failure doesn't block the action
         try {
             $adminUserId = auth()->user()->supabase_id ?? auth()->id();

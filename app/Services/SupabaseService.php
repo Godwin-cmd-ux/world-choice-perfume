@@ -296,6 +296,11 @@ class SupabaseService
 
         $this->invalidateCache($table);
 
+        if ($response->failed()) {
+            Log::warning("Supabase update error for table {$table}: " . $response->body());
+            return [];
+        }
+
         return $response->json() ?? [];
     }
 

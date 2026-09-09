@@ -73,8 +73,8 @@
                             </span>
                         </td>
                         <td class="px-4">{{ $n->message ?? '—' }}</td>
-                        <td class="px-4 text-gray-500">{{ $n->branch?->name ?? '—' }}</td>
-                        <td class="px-4 text-gray-500">{{ $n->user?->name ?? '—' }}</td>
+                        <td class="px-4 text-gray-500">{{ $n->branch_name ?? '—' }}</td>
+                        <td class="px-4 text-gray-500">{{ $n->user_name ?? '—' }}</td>
                         <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->format('M d, Y H:i') : '—' }}</td>
                     </tr>
                 @empty
