@@ -55,8 +55,8 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-500">Pending Approvals</p>
-                <p class="text-3xl font-bold text-gray-900 mt-1">{{ $pendingCashiers + $pendingAdmins }}</p>
-                <p class="text-xs text-gray-400 mt-0.5">{{ $pendingAdmins }} admins · {{ $pendingCashiers }} cashiers</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1">{{ $pendingApprovals }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Across all staff roles</p>
             </div>
             <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
                 <i class="fas fa-user-clock text-red-600 text-xl"></i>

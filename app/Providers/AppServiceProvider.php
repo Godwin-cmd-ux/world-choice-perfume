@@ -25,15 +25,11 @@ class AppServiceProvider extends ServiceProvider
         View::composer('super-admin.*', function ($view) {
             try {
                 $supabase = new SupabaseService();
-                $pendingCashiers = $supabase->count('users', [
-                    'role' => 'eq.cashier',
+                $pendingCount = $supabase->count('users', [
+                    'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller)',
                     'status' => 'eq.pending',
                 ]);
-                $pendingAdmins = $supabase->count('users', [
-                    'role' => 'eq.branch_admin',
-                    'status' => 'eq.pending',
-                ]);
-                $view->with('pendingCount', $pendingCashiers + $pendingAdmins);
+                $view->with('pendingCount', $pendingCount);
                 $view->with('unreadNotifications', (int) $supabase->count('admin_notifications', [
                     'is_read' => 'eq.false',
                 ]));

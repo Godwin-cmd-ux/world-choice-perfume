@@ -1,20 +1,28 @@
 @extends('layouts.app')
 @section('title', 'Approvals')
 
-@section('header', ucfirst($role === 'branch_admin' ? 'Branch Admin' : 'Cashier') . ' Approvals')
-@section('subtitle', 'Review and manage pending registrations')
+@section('header', 'Account Approvals')
+@section('subtitle', 'Review and manage all staff registrations')
 
 @section('content')
+@php
+    $roleLabels = [
+        'cashier' => ['label' => 'Cashiers', 'icon' => 'fa-cash-register'],
+        'branch_admin' => ['label' => 'Branch Admins', 'icon' => 'fa-user-shield'],
+        'stock_manager' => ['label' => 'Stock Managers', 'icon' => 'fa-boxes-stacked'],
+        'customer_care' => ['label' => 'Customer Care', 'icon' => 'fa-headset'],
+        'seller' => ['label' => 'Sellers', 'icon' => 'fa-store'],
+        'all' => ['label' => 'All Staff', 'icon' => 'fa-users'],
+    ];
+@endphp
 {{-- Tabs --}}
-<div class="flex items-center gap-2 mb-5">
-    <a href="{{ route('super-admin.cashiers.index', ['role' => 'cashier']) }}"
-       class="px-4 py-2 rounded-lg text-sm font-medium transition-all {{ $role === 'cashier' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50' }}">
-        <i class="fas fa-cash-register mr-1.5"></i> Cashiers
-    </a>
-    <a href="{{ route('super-admin.cashiers.index', ['role' => 'branch_admin']) }}"
-       class="px-4 py-2 rounded-lg text-sm font-medium transition-all {{ $role === 'branch_admin' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50' }}">
-        <i class="fas fa-user-shield mr-1.5"></i> Branch Admins
-    </a>
+<div class="flex flex-wrap items-center gap-2 mb-5">
+    @foreach($roleLabels as $roleKey => $roleInfo)
+        <a href="{{ route('super-admin.cashiers.index', ['role' => $roleKey]) }}"
+           class="px-4 py-2 rounded-lg text-sm font-medium transition-all {{ $role === $roleKey ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50' }}">
+            <i class="fas {{ $roleInfo['icon'] }} mr-1.5"></i> {{ $roleInfo['label'] }}
+        </a>
+    @endforeach
 </div>
 
 {{-- Status Filters --}}
@@ -45,6 +53,7 @@
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-100">
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                    <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
@@ -64,6 +73,11 @@
                                 @endif
                                 <span class="font-medium text-gray-900">{{ $user->name }}</span>
                             </div>
+                        </td>
+                        <td class="py-3.5 px-6">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 capitalize">
+                                {{ str_replace('_', ' ', $user->role) }}
+                            </span>
                         </td>
                         <td class="py-3.5 px-6 text-gray-500">{{ $user->email }}</td>
                         <td class="py-3.5 px-6 text-gray-500">{{ $user->phone ?? '—' }}</td>
@@ -114,12 +128,12 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="py-12 text-center">
+                        <td colspan="7" class="py-12 text-center">
                             <div class="flex flex-col items-center">
                                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                     <i class="fas fa-user-check text-gray-400"></i>
                                 </div>
-                                <p class="text-sm text-gray-500">No {{ $role === 'branch_admin' ? 'branch admins' : 'cashiers' }} found</p>
+                                <p class="text-sm text-gray-500">No accounts found</p>
                             </div>
                         </td>
                     </tr>

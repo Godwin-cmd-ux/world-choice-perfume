@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 
 class CashierApprovalController extends Controller
 {
+    /** All approval-eligible staff roles (everything except super_admin) */
+    private const APPROVAL_ROLES = ['cashier', 'branch_admin', 'stock_manager', 'customer_care', 'seller'];
+
     private SupabaseService $supabase;
 
     public function __construct()
@@ -16,11 +19,14 @@ class CashierApprovalController extends Controller
     }
 
     /**
-     * Show pending approvals for both cashiers and branch admins
+     * Show pending approvals for all staff accounts
      */
     public function index(Request $request)
     {
-        $role = $request->get('role', 'cashier');
+        $role = $request->get('role', 'all');
+        if ($role !== 'all' && !in_array($role, self::APPROVAL_ROLES)) {
+            $role = 'all';
+        }
         $status = $request->get('status', 'pending');
         $page = (int) $request->get('page', 1);
         $perPage = 20;
@@ -32,8 +38,13 @@ class CashierApprovalController extends Controller
             'order' => 'created_at.desc',
             'limit' => (string) $perPage,
             'offset' => (string) $offset,
-            'role' => "eq.{$role}",
         ];
+
+        if ($role === 'all') {
+            $params['role'] = 'in.(' . implode(',', self::APPROVAL_ROLES) . ')';
+        } else {
+            $params['role'] = "eq.{$role}";
+        }
 
         if ($status !== 'all') {
             $params['status'] = "eq.{$status}";
@@ -77,7 +88,7 @@ class CashierApprovalController extends Controller
     public function show($userId)
     {
         $user = $this->supabase->find('users', $userId, '*');
-        if (!$user || !in_array($user['role'] ?? '', ['cashier', 'branch_admin'])) {
+        if (!$user || !in_array($user['role'] ?? '', self::APPROVAL_ROLES)) {
             abort(404);
         }
 
@@ -97,7 +108,7 @@ class CashierApprovalController extends Controller
     public function approve(Request $request, $userId)
     {
         $user = $this->supabase->find('users', $userId);
-        if (!$user || !in_array($user['role'] ?? '', ['cashier', 'branch_admin'])) {
+        if (!$user || !in_array($user['role'] ?? '', self::APPROVAL_ROLES)) {
             abort(404);
         }
 
@@ -133,7 +144,7 @@ class CashierApprovalController extends Controller
     public function reject(Request $request, $userId)
     {
         $user = $this->supabase->find('users', $userId);
-        if (!$user || !in_array($user['role'] ?? '', ['cashier', 'branch_admin'])) {
+        if (!$user || !in_array($user['role'] ?? '', self::APPROVAL_ROLES)) {
             abort(404);
         }
 

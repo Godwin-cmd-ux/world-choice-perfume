@@ -69,13 +69,9 @@ class DashboardController extends Controller
             }
         }
 
-        // 4. Pending approvals
-        $pendingCashiers = $this->supabase->count('users', [
-            'role' => 'eq.cashier',
-            'status' => 'eq.pending',
-        ]);
-        $pendingAdmins = $this->supabase->count('users', [
-            'role' => 'eq.branch_admin',
+        // 4. Pending approvals (all staff roles)
+        $pendingApprovals = $this->supabase->count('users', [
+            'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller)',
             'status' => 'eq.pending',
         ]);
 
@@ -151,11 +147,10 @@ class DashboardController extends Controller
             'todayTotalRevenue' => $todayTotalRevenue,
             'totalSalesCount' => count($todaySalesRaw),
             'pendingOrders' => count($pendingOrdersRaw),
-            'pendingCashiers' => $pendingCashiers,
-            'pendingAdmins' => $pendingAdmins,
+            'pendingApprovals' => $pendingApprovals,
             'activeBranches' => $activeBranches,
             'todayFinancials' => $todayFinancials,
-            'pendingCount' => $pendingCashiers + $pendingAdmins,
+            'pendingCount' => $pendingApprovals,
         ]);
     }
 }

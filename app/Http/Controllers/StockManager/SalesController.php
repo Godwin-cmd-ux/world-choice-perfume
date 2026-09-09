@@ -149,7 +149,7 @@ class SalesController extends Controller
             // 2. Fetch ALL stock for this branch in ONE query
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$branchId}",
-                'select' => 'id,product_id,quantity,selling_price,buying_cost',
+                'select' => 'id,product_id,quantity,selling_price,buying_cost,product:products(id,name)',
             ]));
 
             $stockMap = [];
@@ -162,6 +162,7 @@ class SalesController extends Controller
             $saleItems = [];
             $stockUpdates = [];
             $stockMovements = [];
+            $discountDetails = [];
 
             foreach ($validated['items'] as $item) {
                 $stock = $stockMap[$item['product_id']] ?? null;
@@ -186,6 +187,16 @@ class SalesController extends Controller
                 $lineTotal = $unitPrice * $item['quantity'];
                 $subtotal += $lineTotal;
                 $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];
+
+                if ($validated['sale_type'] === 'retail' && !empty($item['discount_price'])) {
+                    $discountDetails[] = [
+                        'product_id' => $item['product_id'],
+                        'product_name' => $stock['product']['name'] ?? ('Product #' . $item['product_id']),
+                        'quantity' => (int) $item['quantity'],
+                        'original_price' => (float) ($stock['selling_price'] ?? 0),
+                        'discount_price' => (float) $item['discount_price'],
+                    ];
+                }
 
                 $saleItems[] = [
                     'sale_id' => null,
@@ -376,23 +387,31 @@ class SalesController extends Controller
             ]);
 
             // 12. Notification for super admin (discount was used)
-            $hasDiscount = false;
-            foreach ($validated['items'] as $item) {
-                if (!empty($item['discount_price'])) {
-                    $hasDiscount = true;
-                    break;
-                }
-            }
-            if ($hasDiscount) {
+            if (!empty($discountDetails)) {
+                $originalTotal = array_sum(array_map(fn($d) => $d['original_price'] * $d['quantity'], $discountDetails));
+                $discountTotal = array_sum(array_map(fn($d) => $d['discount_price'] * $d['quantity'], $discountDetails));
+
+                $lines = array_map(function ($d) {
+                    $name = $d['product_name'] ?? ('Product #' . $d['product_id']);
+                    $qty = $d['quantity'] > 1 ? " x{$d['quantity']}" : '';
+                    return "{$name}{$qty}: " . number_format($d['original_price']) . ' -> ' . number_format($d['discount_price']);
+                }, $discountDetails);
+
                 (new \App\Services\AuditService())->recordCriticalAction(
                     'discount_used',
                     'discount_applied_sale',
                     'Discount Applied',
-                    "A discount was applied in sale {$saleNumber} (Stock Manager).",
-                    ['sale_id' => $sale['id'], 'sale_number' => $saleNumber],
+                    "Discount applied in sale {$saleNumber} (Stock Manager). " . implode('; ', $lines) . '. Total: ' . number_format($originalTotal) . ' -> ' . number_format($discountTotal) . '.',
+                    [
+                        'sale_id' => $sale['id'],
+                        'sale_number' => $saleNumber,
+                        'items' => $discountDetails,
+                        'original_total' => $originalTotal,
+                        'discounted_total' => $discountTotal,
+                    ],
                     'sale',
                     (string) $sale['id'],
-                    ['subtotal' => $subtotal, 'paid' => $subtotal],
+                    ['subtotal' => $subtotal, 'original_total' => $originalTotal, 'discounted_total' => $discountTotal],
                     ['discount_applied' => true]
                 );
             }
