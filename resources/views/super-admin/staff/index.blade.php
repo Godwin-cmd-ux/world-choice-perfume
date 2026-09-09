@@ -19,6 +19,7 @@
         <select name="status" class="px-3 py-2 border rounded-lg text-sm">
             <option value="">All Status</option>
             <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+            <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="blocked" {{ request('status') === 'blocked' ? 'selected' : '' }}>Blocked</option>
             <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
@@ -71,6 +72,7 @@
                         <td class="px-4">
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium
                                 @if(($user->status ?? '') === 'active') bg-green-100 text-green-800
+                                @elseif(($user->status ?? '') === 'approved') bg-blue-100 text-blue-800
                                 @elseif(($user->status ?? '') === 'pending') bg-yellow-100 text-yellow-800
                                 @elseif(($user->status ?? '') === 'blocked') bg-red-100 text-red-800
                                 @else bg-gray-100 text-gray-600 @endif">
@@ -82,11 +84,17 @@
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('super-admin.staff.show', $user->id) }}" class="text-blue-600 hover:text-blue-800" title="View Details"><i class="fas fa-eye"></i></a>
                                 @if(($user->role ?? '') !== 'super_admin')
-                                    <form method="POST" action="{{ route('super-admin.staff.toggle-status', $user->id) }}" class="inline" data-confirm="Are you sure?">
+                                    <form method="POST" action="{{ route('super-admin.staff.change-status', $user->id) }}" class="inline-flex items-center gap-1" data-confirm="Change this user's status?">
                                         @csrf
-                                        <button type="submit" class="{{ ($user->status ?? '') === 'blocked' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800' }}" title="{{ ($user->status ?? '') === 'blocked' ? 'Unblock' : 'Block' }}">
-                                            <i class="fas fa-{{ ($user->status ?? '') === 'blocked' ? 'unlock' : 'ban' }}"></i>
-                                        </button>
+                                        <select name="status" class="px-2 py-1 border rounded-lg text-xs bg-white"
+                                            title="Change status (currently {{ ucfirst($user->status ?? 'unknown') }})">
+                                            <option value="active" {{ ($user->status ?? '') === 'active' ? 'selected' : '' }}>Active</option>
+                                            <option value="approved" {{ ($user->status ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                                            <option value="pending" {{ ($user->status ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="blocked" {{ ($user->status ?? '') === 'blocked' ? 'selected' : '' }}>Blocked</option>
+                                            <option value="rejected" {{ ($user->status ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                        </select>
+                                        <button type="submit" class="text-amber-700 hover:text-amber-900" title="Apply Status"><i class="fas fa-check"></i></button>
                                     </form>
                                 @endif
                             </div>

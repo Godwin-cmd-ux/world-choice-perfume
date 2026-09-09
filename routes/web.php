@@ -182,6 +182,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
         Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
         Route::post('/staff/{user}/toggle-status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
+        Route::post('/staff/{user}/status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'changeStatus'])->name('staff.change-status');
         Route::delete('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'destroy'])->name('staff.destroy');
 
         Route::get('/settings', [\App\Http\Controllers\SuperAdmin\SettingsController::class, 'index'])->name('settings.index');

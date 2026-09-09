@@ -26,6 +26,7 @@
                     </span>
                     <span class="px-2 py-0.5 rounded-full text-xs font-medium
                         @if(($user->status ?? '') === 'active') bg-green-100 text-green-800
+                        @elseif(($user->status ?? '') === 'approved') bg-blue-100 text-blue-800
                         @elseif(($user->status ?? '') === 'pending') bg-yellow-100 text-yellow-800
                         @elseif(($user->status ?? '') === 'blocked') bg-red-100 text-red-800
                         @else bg-gray-100 text-gray-600 @endif">
@@ -42,14 +43,22 @@
 
             {{-- Actions --}}
             @if(($user->role ?? '') !== 'super_admin')
-                <div class="mt-6 space-y-2 border-t pt-4">
-                    <form method="POST" action="{{ route('super-admin.staff.toggle-status', $user->id) }}">
+                <div class="mt-6 space-y-3 border-t pt-4">
+                    <form method="POST" action="{{ route('super-admin.staff.change-status', $user->id) }}" data-confirm="Change this user's status?">
                         @csrf
-                        <button type="submit" data-confirm="Are you sure?"
-                            class="w-full px-4 py-2 rounded-lg text-sm font-medium {{ ($user->status ?? '') === 'blocked' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white' }}">
-                            <i class="fas fa-{{ ($user->status ?? '') === 'blocked' ? 'unlock' : 'ban' }} mr-1"></i>
-                            {{ ($user->status ?? '') === 'blocked' ? 'Unblock User' : 'Block User' }}
-                        </button>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Change Status</label>
+                        <div class="flex gap-2">
+                            <select name="status" class="flex-1 px-3 py-2 border rounded-lg text-sm bg-white">
+                                <option value="active" {{ ($user->status ?? '') === 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="approved" {{ ($user->status ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="pending" {{ ($user->status ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="blocked" {{ ($user->status ?? '') === 'blocked' ? 'selected' : '' }}>Blocked</option>
+                                <option value="rejected" {{ ($user->status ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            </select>
+                            <button type="submit" class="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-medium">
+                                <i class="fas fa-check mr-1"></i> Apply
+                            </button>
+                        </div>
                     </form>
                     <form method="POST" action="{{ route('super-admin.staff.destroy', $user->id) }}">
                         @csrf

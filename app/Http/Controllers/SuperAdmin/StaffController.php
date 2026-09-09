@@ -152,6 +152,73 @@ class StaffController extends Controller
         return back()->with('success', "User has been {$newStatus}.");
     }
 
+    /**
+     * Change a user's status to any allowed value (active, pending, approved,
+     * blocked, rejected).
+     */
+    public function changeStatus(Request $request, $userId)
+    {
+        $request->validate([
+            'status' => 'required|in:active,pending,approved,rejected,blocked',
+        ]);
+
+        $user = $this->supabase->find('users', $userId);
+        if (!$user) abort(404);
+
+        if (($user['role'] ?? '') === 'super_admin') {
+            return back()->with('error', 'The super admin status cannot be changed.');
+        }
+
+        $currentStatus = $user['status'] ?? 'active';
+        $newStatus = $request->status;
+
+        if ($currentStatus === $newStatus) {
+            return back()->with('success', "{$user['name']} status is already {$newStatus}.");
+        }
+
+        // Update user status in Supabase
+        $result = $this->supabase->update('users', [
+            'status' => $newStatus,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $userId]);
+
+        if (empty($result)) {
+            return back()->with(
+                'error',
+                "Could not change {$user['name']} status to {$newStatus}: the database rejected the update. Ensure the \"blocked\" value exists in the user_status enum (run SUPABASE_USER_STATUS_FIX.sql in the Supabase SQL Editor), then try again."
+            );
+        }
+
+        // Keep the local (SQLite) record in sync
+        try {
+            \App\Models\User::where('email', $user['email'])->update(['status' => $newStatus]);
+        } catch (\Exception $e) {
+            // Local sync failure should not block the action
+        }
+
+        // Audit log + admin notification
+        try {
+            $adminUserId = auth()->user()->supabase_id ?? auth()->id();
+            if ($adminUserId) {
+                (new \App\Services\AuditService())->recordCriticalAction(
+                    'staff_status_changed',
+                    'changed_user_status',
+                    'Staff Status Changed',
+                    "Staff {$user['name']} status changed from {$currentStatus} to {$newStatus}.",
+                    ['user_id' => $userId, 'user_name' => $user['name'], 'before' => $currentStatus, 'after' => $newStatus],
+                    'users',
+                    (string) $userId,
+                    ['status' => $currentStatus],
+                    ['status' => $newStatus]
+                );
+            }
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
+
+        return back()->with('success', "{$user['name']} status changed from {$currentStatus} to {$newStatus}.");
+    }
+
     public function destroy($userId)
     {
         $user = $this->supabase->find('users', $userId);
