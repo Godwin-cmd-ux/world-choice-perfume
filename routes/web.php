@@ -266,8 +266,17 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     Route::prefix('customer-care')->name('customer-care.')->middleware('role:customer_care')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CustomerCare\DashboardController::class, 'index'])->name('dashboard');
 
+        // Clients / Customer records
+        Route::get('/customers', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'show'])->name('customers.show');
+
         // Sales
         Route::get('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [\App\Http\Controllers\CustomerCare\SalesController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [\App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
         // News
         Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');

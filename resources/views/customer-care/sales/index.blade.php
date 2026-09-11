@@ -2,6 +2,13 @@
 @section('title', 'Sales')
 @section('header', 'Sales')
 
+@section('header-actions')
+<a href="{{ route('customer-care.sales.create') }}"
+   class="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-medium transition">
+    <i class="fas fa-plus"></i> New Sale
+</a>
+@endsection
+
 @section('content')
 <div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
     <p class="text-sm text-gray-500">Total Revenue: <strong class="text-lg text-green-600">TZS {{ number_format($totalRevenue) }}</strong></p>
