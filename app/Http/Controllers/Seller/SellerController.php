@@ -46,42 +46,4 @@ class SellerController extends Controller
 
         return view('seller.dashboard', compact('totalSales', 'totalTransactions', 'todayTotal', 'mySales', 'products'));
     }
-
-    public function sales(Request $request)
-    {
-        $userId = auth()->user()->supabase_id ?? auth()->id();
-
-        $params = [
-            'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
-            'cashier_id' => "eq.{$userId}",
-            'order' => 'created_at.desc',
-            'limit' => 100,
-        ];
-
-        $sales = $this->supabase->query('sales', $params);
-
-        if ($request->date_from) {
-            $from = $request->date_from;
-            $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) >= $from);
-        }
-        if ($request->date_to) {
-            $to = $request->date_to;
-            $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) <= $to);
-        }
-
-        $sales = collect(array_values($sales))->map(function ($s) {
-            if (isset($s['customer']) && is_array($s['customer'])) $s['customer'] = (object) $s['customer'];
-            if (isset($s['items'])) {
-                $s['items'] = collect($s['items'])->map(function ($item) {
-                    if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                    return (object) $item;
-                });
-            }
-            return (object) $s;
-        });
-
-        $totalSales = $sales->sum('total');
-
-        return view('seller.sales', ['sales' => $sales, 'totalSales' => $totalSales]);
-    }
 }

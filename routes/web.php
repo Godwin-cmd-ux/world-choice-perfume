@@ -256,8 +256,14 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // SELLER ROUTES
     // ========================
     Route::prefix('seller')->name('seller.')->middleware('role:seller')->group(function () {
+        $selSale = \App\Http\Controllers\Seller\SaleController::class;
         Route::get('/dashboard', [\App\Http\Controllers\Seller\SellerController::class, 'dashboard'])->name('dashboard');
-        Route::get('/sales', [\App\Http\Controllers\Seller\SellerController::class, 'sales'])->name('sales');
+
+        // Sales
+        Route::get('/sales', [$selSale, 'index'])->name('sales.index');
+        Route::get('/sales/create', [$selSale, 'create'])->name('sales.create');
+        Route::post('/sales', [$selSale, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
     });
 
     // ========================

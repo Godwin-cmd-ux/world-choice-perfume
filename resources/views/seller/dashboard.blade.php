@@ -26,7 +26,7 @@
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-6 py-4 border-b flex items-center justify-between">
         <h3 class="font-semibold">Recent Sales</h3>
-        <a href="{{ route('seller.sales') }}" class="text-amber-700 hover:underline text-sm">View All</a>
+        <a href="{{ route('seller.sales.index') }}" class="text-amber-700 hover:underline text-sm">View All</a>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
