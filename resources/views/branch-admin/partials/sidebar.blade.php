@@ -27,15 +27,10 @@
             <i class="fas fa-shopping-bag w-5 text-center"></i>
             <span>Orders</span>
         </a>
-        <a href="{{ route('branch-admin.cashiers.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.cashiers.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+        <a href="{{ route('branch-admin.staffs.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.staffs.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-users w-5 text-center"></i>
-            <span>Cashiers</span>
-        </a>
-        <a href="{{ route('branch-admin.stock-managers.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.stock-managers.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-clipboard-check w-5 text-center"></i>
-            <span>Stock Managers</span>
+            <span>Staffs</span>
         </a>
         <a href="{{ route('branch-admin.expenses.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.expenses.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">

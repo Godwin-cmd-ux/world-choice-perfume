@@ -210,18 +210,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('/expenses/{expense}', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'show'])->name('expenses.show');
 
-        // Cashier Management
-        Route::get('/cashiers', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'index'])->name('cashiers.index');
-        Route::get('/cashiers/{cashier}', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'show'])->name('cashiers.show');
-        Route::post('/cashiers/{cashier}/approve', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'approve'])->name('cashiers.approve');
-        Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'reject'])->name('cashiers.reject');
-        Route::get('/cashiers/accountability', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'accountability'])->name('cashiers.accountability');
-        Route::post('/cashiers/accountability', [\App\Http\Controllers\BranchAdmin\CashierManagementController::class, 'storeAccountability'])->name('cashiers.store-accountability');
-
-        // Stock Manager Approval
-        Route::get('/stock-managers', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'index'])->name('stock-managers.index');
-        Route::post('/stock-managers/{user}/approve', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'approve'])->name('stock-managers.approve');
-        Route::post('/stock-managers/{user}/reject', [\App\Http\Controllers\BranchAdmin\StockManagerApprovalController::class, 'reject'])->name('stock-managers.reject');
+        // Staff Management (stock managers, sellers, customer care, cashiers)
+        $baStaff = \App\Http\Controllers\BranchAdmin\StaffController::class;
+        Route::get('/staffs', [$baStaff, 'index'])->name('staffs.index');
+        Route::post('/staffs/{user}/approve', [$baStaff, 'approve'])->name('staffs.approve');
+        Route::post('/staffs/{user}/reject', [$baStaff, 'reject'])->name('staffs.reject');
 
 
     });
