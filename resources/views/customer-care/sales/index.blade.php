@@ -20,6 +20,7 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Customer</th>
                 <th class="text-left px-4">Cashier</th>
+                <th class="text-left px-4">Items Bought</th>
                 <th class="text-right px-4">Total</th>
                 <th class="text-left px-4">Status</th>
                 <th class="text-left px-4">Branch</th>
@@ -30,6 +31,18 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 text-gray-700 font-medium">{{ $sale->customer?->name ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $sale->cashier?->name ?? '—' }}</td>
+                        <td class="px-4">
+                            @php
+                                $names = collect($sale->items ?? [])->pluck('product.name')->filter()->values();
+                                $shown = $names->take(3)->implode(', ');
+                                $extra = $names->count() - 3;
+                            @endphp
+                            @if($shown)
+                                {{ $shown }}@if($extra > 0)<span class="text-xs text-gray-400"> +{{ $extra }} more</span>@endif
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($sale->total) }}</td>
                         <td class="px-4">
                             <span class="px-2 py-1 rounded-full text-xs capitalize
@@ -43,7 +56,7 @@
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No sales recorded</td></tr>
+                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No sales recorded</td></tr>
                 @endforelse
             </tbody>
         </table>

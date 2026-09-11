@@ -53,6 +53,8 @@ class InquiryController extends Controller
             $i['name'] = $i['name'] ?? null;
             $i['reply_message'] = $i['reply_message'] ?? null;
             $i['status'] = $i['status'] ?? 'pending';
+            $i['is_featured'] = $i['is_featured'] ?? false;
+            $i['is_read'] = $i['is_read'] ?? false;
             return (object) $i;
         });
 
@@ -76,6 +78,7 @@ class InquiryController extends Controller
         $inquiry['name'] = $userName;
         $inquiry['reply_message'] = $inquiry['reply_message'] ?? null;
         $inquiry['status'] = $inquiry['status'] ?? 'pending';
+        $inquiry['is_featured'] = $inquiry['is_featured'] ?? false;
 
         // Mark as read
         if (!($inquiry['is_read'] ?? false)) {
@@ -103,5 +106,36 @@ class InquiryController extends Controller
         ], ['id' => $inquiryId]);
 
         return back()->with('success', 'Reply sent successfully.');
+    }
+
+    public function markAsRead($inquiryId)
+    {
+        $inquiry = $this->supabase->find('inquiries', $inquiryId);
+        if (!$inquiry || $inquiry['branch_id'] != auth()->user()->branch_id) {
+            abort(404);
+        }
+
+        $this->supabase->update('inquiries', [
+            'is_read' => true,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $inquiryId]);
+
+        return back()->with('success', 'Inquiry marked as read.');
+    }
+
+    public function markAsComment($inquiryId)
+    {
+        $inquiry = $this->supabase->find('inquiries', $inquiryId);
+        if (!$inquiry || $inquiry['branch_id'] != auth()->user()->branch_id) {
+            abort(404);
+        }
+
+        $this->supabase->update('inquiries', [
+            'is_read' => true,
+            'is_featured' => true,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $inquiryId]);
+
+        return back()->with('success', 'Inquiry added as a homepage remark.');
     }
 }

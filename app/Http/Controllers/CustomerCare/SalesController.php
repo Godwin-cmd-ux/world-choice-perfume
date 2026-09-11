@@ -26,7 +26,7 @@ class SalesController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $sales = collect($this->supabase->query('sales', [
-            'select' => '*',
+            'select' => '*, items:sale_items(*, product:products(id,name,brand))',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -66,6 +66,12 @@ class SalesController extends Controller
 
         $sales = $sales->map(function ($s) use ($branches, $customers, $cashiers) {
             $s = (array) $s;
+            if (isset($s['items']) && is_array($s['items'])) {
+                $s['items'] = collect($s['items'])->map(function ($item) {
+                    if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
+                    return (object) $item;
+                });
+            }
             $s['branch'] = isset($s['branch_id']) && isset($branches[$s['branch_id']])
                 ? (object) ['id' => $s['branch_id'], 'name' => $branches[$s['branch_id']]]
                 : null;

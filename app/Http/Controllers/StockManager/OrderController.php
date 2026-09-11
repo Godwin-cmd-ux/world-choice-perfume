@@ -56,6 +56,7 @@ class OrderController extends Controller
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
             'transitions' => self::TRANSITIONS,
+            'userId' => auth()->user()->supabase_id ?? auth()->id(),
         ]);
     }
 
@@ -78,7 +79,12 @@ class OrderController extends Controller
             });
         }
 
-        return view('stock-manager.orders.show', ['order' => (object) $order, 'inCrossBranch' => $this->scope->inCrossBranchMode(), 'transitions' => self::TRANSITIONS]);
+        return view('stock-manager.orders.show', [
+            'order' => (object) $order,
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+            'transitions' => self::TRANSITIONS,
+            'userId' => auth()->user()->supabase_id ?? auth()->id(),
+        ]);
     }
 
     public function updateStatus(Request $request, $orderId)
@@ -92,16 +98,41 @@ class OrderController extends Controller
 
         $current = $order['status'] ?? 'pending';
         $next = $request->status;
+        $userId = auth()->user()->supabase_id ?? auth()->id();
 
         if (!in_array($next, self::TRANSITIONS[$current] ?? [], true)) {
             return back()->with('error', 'Invalid status transition.');
         }
 
-        $this->supabase->update('orders', [
+        $lockOwner = $order['assigned_to'] ?? $order['cashier_id'] ?? null;
+        if ($current !== 'pending' && $lockOwner && (string) $lockOwner !== (string) $userId) {
+            return back()->with('error', 'This order is assigned to another staff member. Only they can update it.');
+        }
+
+        $updateData = [
             'status' => $next,
-            'cancelled_at' => $next === 'cancelled' ? now()->toIso8601String() : ($order['cancelled_at'] ?? null),
             'updated_at' => now()->toIso8601String(),
-        ], ['id' => $orderId]);
+        ];
+        if ($next === 'assigned') {
+            $updateData['assigned_to'] = $userId;
+            $updateData['assigned_at'] = now()->toIso8601String();
+        }
+        if ($next === 'completed') {
+            $updateData['completed_at'] = now()->toIso8601String();
+        }
+        if ($next === 'served') {
+            $updateData['served_at'] = now()->toIso8601String();
+        }
+        if ($next === 'cancelled') {
+            $updateData['cancelled_at'] = now()->toIso8601String();
+        }
+
+        // Conditional update prevents two staff assigning the same order at once
+        $updated = $this->supabase->update('orders', $updateData, ['id' => $orderId, 'status' => $current]);
+
+        if (empty($updated)) {
+            return back()->with('error', 'This order was just updated by another staff member. Please refresh and try again.');
+        }
 
         (new \App\Services\AuditService())->recordCriticalAction(
             'order_status_changed',

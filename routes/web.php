@@ -15,10 +15,18 @@ Route::get('/', function() {
             'is_active' => 'eq.true',
             'order' => 'name.asc',
         ]))->map(fn($b) => (object) $b);
+
+        $remarks = collect($supabase->query('inquiries', [
+            'select' => 'name,subject,message,created_at',
+            'is_featured' => 'eq.true',
+            'order' => 'created_at.desc',
+            'limit' => 6,
+        ]))->map(fn($r) => (object) $r);
     } catch (\Exception $e) {
         $branches = collect();
+        $remarks = collect();
     }
-    return view('home', compact('branches'));
+    return view('home', compact('branches', 'remarks'));
 })->name('home');
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
@@ -300,6 +308,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
         Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
+        Route::post('/inquiries/{inquiry}/read', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
+        Route::post('/inquiries/{inquiry}/comment', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
     });
 
     // ========================

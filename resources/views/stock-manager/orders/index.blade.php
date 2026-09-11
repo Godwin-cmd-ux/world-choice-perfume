@@ -47,21 +47,27 @@
                             @if(!($inCrossBranch ?? false))
                                 @php
                                     $allowed = $transitions[$order->status] ?? [];
-                                    $next = collect($allowed)->first(fn($s) => $s !== 'cancelled');
+                                    $lockOwner = $order->assigned_to ?? $order->cashier_id ?? null;
+                                    $isLocked = in_array($order->status, ['assigned', 'ready', 'completed']) && (string)($lockOwner ?? '') !== (string)($userId ?? '');
                                 @endphp
-                                @if($next)
-                                    <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <input type="hidden" name="status" value="{{ $next }}">
-                                        <button type="submit" class="text-amber-600 hover:underline mr-2 font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
-                                    </form>
-                                @endif
-                                @if(in_array('cancelled', $allowed))
-                                    <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <input type="hidden" name="status" value="cancelled">
-                                        <button type="submit" class="text-red-600 hover:underline font-medium" onclick="return confirm('Cancel order {{ $order->order_number }}?')"><i class="fas fa-times mr-1"></i>Cancel</button>
-                                    </form>
+                                @if($isLocked)
+                                    <span class="text-xs text-gray-400"><i class="fas fa-lock mr-1"></i>Other staff</span>
+                                @else
+                                    @php $next = collect($allowed)->first(fn($s) => $s !== 'cancelled'); @endphp
+                                    @if($next)
+                                        <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <input type="hidden" name="status" value="{{ $next }}">
+                                            <button type="submit" class="text-amber-600 hover:underline mr-2 font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
+                                        </form>
+                                    @endif
+                                    @if(in_array('cancelled', $allowed))
+                                        <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <input type="hidden" name="status" value="cancelled">
+                                            <button type="submit" class="text-red-600 hover:underline font-medium" onclick="return confirm('Cancel order {{ $order->order_number }}?')"><i class="fas fa-times mr-1"></i>Cancel</button>
+                                        </form>
+                                    @endif
                                 @endif
                             @endif
                         </td>

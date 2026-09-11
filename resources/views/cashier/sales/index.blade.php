@@ -24,7 +24,18 @@
                         <td class="py-3 px-4 font-medium">{{ $sale->sale_number }}</td>
                         <td class="px-4 text-gray-500">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
                         <td class="px-4 text-xs text-gray-600">{{ $sale->payment_summary ?? $sale->payment_method ?? 'N/A' }}</td>
-                        <td class="px-4 text-right">{{ $sale->items->sum('quantity') }}</td>
+                        <td class="px-4">
+                            @php
+                                $names = collect($sale->items ?? [])->pluck('product.name')->filter()->values();
+                                $shown = $names->take(3)->implode(', ');
+                                $extra = $names->count() - 3;
+                            @endphp
+                            @if($shown)
+                                {{ $shown }}@if($extra > 0)<span class="text-xs text-gray-400"> +{{ $extra }} more</span>@endif
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-4 text-right font-bold text-green-700">TZS {{ number_format($sale->total) }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>
                         <td class="px-4 text-center"><a href="{{ route('cashier.sales.show', $sale->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>

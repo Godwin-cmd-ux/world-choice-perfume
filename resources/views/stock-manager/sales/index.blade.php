@@ -30,6 +30,7 @@
                 <tr>
                     <th class="text-left py-3 px-4">Sale #</th>
                     <th class="text-left px-4">Customer</th>
+                    <th class="text-left px-4">Items Bought</th>
                     <th class="text-left px-4">Payment</th>
                     <th class="text-left px-4">Type</th>
                     <th class="text-right px-4">Total</th>
@@ -42,6 +43,18 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $sale->sale_number }}</td>
                         <td class="px-4 text-gray-500">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
+                        <td class="px-4">
+                            @php
+                                $names = collect($sale->items ?? [])->pluck('product.name')->filter()->values();
+                                $shown = $names->take(3)->implode(', ');
+                                $extra = $names->count() - 3;
+                            @endphp
+                            @if($shown)
+                                {{ $shown }}@if($extra > 0)<span class="text-xs text-gray-400"> +{{ $extra }} more</span>@endif
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-4 text-xs">{{ $sale->payment_summary ?? $sale->payment_method ?? '—' }}</td>
                         <td class="px-4">
                             <span class="px-2 py-0.5 rounded-full text-xs {{ ($sale->sale_type ?? '') === 'wholesale' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800' }}">
@@ -56,7 +69,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-12 text-center text-gray-400">
+                        <td colspan="8" class="py-12 text-center text-gray-400">
                             <i class="fas fa-receipt text-3xl mb-2 block"></i>
                             No sales yet
                         </td>

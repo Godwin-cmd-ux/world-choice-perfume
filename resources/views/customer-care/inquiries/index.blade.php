@@ -22,6 +22,7 @@
                     <th class="text-left px-4">From</th>
                     <th class="text-left px-4">Status</th>
                     <th class="text-left px-4">Date</th>
+                    <th class="text-left px-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -47,9 +48,29 @@
                             @endif
                         </td>
                         <td class="px-4 text-xs text-gray-500">{{ $i->created_at ? \Carbon\Carbon::parse($i->created_at)->format('M d, H:i') : '—' }}</td>
+                        <td class="px-4">
+                            <div class="flex items-center gap-2">
+                                @if(!($i->is_read ?? false))
+                                    <form action="{{ route('customer-care.inquiries.mark-read', $i->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-blue-600 hover:underline text-xs font-medium"><i class="fas fa-check mr-1"></i>Mark as Read</button>
+                                    </form>
+                                @else
+                                    <span class="text-xs text-gray-400"><i class="fas fa-check mr-1"></i>Read</span>
+                                @endif
+                                @if(!($i->is_featured ?? false))
+                                    <form action="{{ route('customer-care.inquiries.comment', $i->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-amber-600 hover:underline text-xs font-medium"><i class="fas fa-star mr-1"></i>Mark as Comment</button>
+                                    </form>
+                                @else
+                                    <span class="text-xs text-amber-600 font-medium"><i class="fas fa-star mr-1"></i>Featured</span>
+                                @endif
+                            </div>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-12 text-center text-gray-400"><i class="fas fa-envelope-open text-3xl mb-2 block"></i>No inquiries</td></tr>
+                    <tr><td colspan="6" class="py-12 text-center text-gray-400"><i class="fas fa-envelope-open text-3xl mb-2 block"></i>No inquiries</td></tr>
                 @endforelse
             </tbody>
         </table>

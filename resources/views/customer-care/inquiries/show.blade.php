@@ -37,6 +37,28 @@
 
     <div class="space-y-6">
         <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="font-semibold mb-3">Actions</h3>
+            <div class="flex flex-col gap-2">
+                @if(!($inquiry->is_read ?? false))
+                    <form action="{{ route('customer-care.inquiries.mark-read', $inquiry->id) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-check mr-1"></i> Mark as Read</button>
+                    </form>
+                @else
+                    <span class="text-sm text-gray-400"><i class="fas fa-check mr-1"></i> Already read</span>
+                @endif
+                @if(!($inquiry->is_featured ?? false))
+                    <form action="{{ route('customer-care.inquiries.comment', $inquiry->id) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-star mr-1"></i> Mark as Comment</button>
+                    </form>
+                    <p class="text-xs text-gray-400">Featured comments appear on the public homepage as customer remarks.</p>
+                @else
+                    <span class="text-sm text-amber-600 font-medium"><i class="fas fa-star mr-1"></i> Featured on homepage</span>
+                @endif
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-6">
             <h3 class="font-semibold mb-3">Details</h3>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between"><span class="text-gray-500">From:</span><span>{{ $inquiry->name ?? $inquiry->user?->name ?? 'Customer' }}</span></div>

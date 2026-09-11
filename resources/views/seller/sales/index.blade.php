@@ -27,6 +27,7 @@
                 <tr>
                     <th class="text-left py-3 px-4">Sale #</th>
                     <th class="text-left px-4">Customer</th>
+                    <th class="text-left px-4">Items Bought</th>
                     <th class="text-left px-4">Type</th>
                     <th class="text-right px-4">Total</th>
                     <th class="text-left px-4">Date</th>
@@ -39,12 +40,24 @@
                             <a href="{{ route('seller.sales.show', $sale->id) }}" class="text-cyan-700 hover:underline">{{ $sale->sale_number ?? '—' }}</a>
                         </td>
                         <td class="px-4 text-gray-500">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
+                        <td class="px-4">
+                            @php
+                                $names = collect($sale->items ?? [])->pluck('product.name')->filter()->values();
+                                $shown = $names->take(3)->implode(', ');
+                                $extra = $names->count() - 3;
+                            @endphp
+                            @if($shown)
+                                {{ $shown }}@if($extra > 0)<span class="text-xs text-gray-400"> +{{ $extra }} more</span>@endif
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-4"><span class="px-2 py-0.5 rounded-full text-xs {{ ($sale->sale_type ?? '') === 'wholesale' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">{{ ucfirst($sale->sale_type ?? 'retail') }}</span></td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale->total ?? 0) }}</td>
                         <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->format('M d, H:i') : '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-12 text-center text-gray-400"><i class="fas fa-receipt text-3xl mb-2 block"></i>No sales found</td></tr>
+                    <tr><td colspan="6" class="py-12 text-center text-gray-400"><i class="fas fa-receipt text-3xl mb-2 block"></i>No sales found</td></tr>
                 @endforelse
             </tbody>
         </table>

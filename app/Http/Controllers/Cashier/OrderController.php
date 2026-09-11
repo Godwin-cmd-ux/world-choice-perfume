@@ -89,6 +89,7 @@ class OrderController extends Controller
         // Try to assign
         $this->supabase->update('orders', [
             'cashier_id' => auth()->user()->supabase_id ?? auth()->id(),
+            'assigned_to' => auth()->user()->supabase_id ?? auth()->id(),
             'status' => 'assigned',
             'assigned_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),

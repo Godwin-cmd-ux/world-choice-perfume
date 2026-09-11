@@ -30,8 +30,16 @@
         </table>
         <div class="text-right text-lg font-bold text-cyan-700">Total: TZS {{ number_format($order->total) }}</div>
 
-        @php $allowed = $transitions[$order->status] ?? []; @endphp
-        @if($allowed)
+        @php
+            $allowed = $transitions[$order->status] ?? [];
+            $lockOwner = $order->assigned_to ?? $order->cashier_id ?? null;
+            $isLocked = in_array($order->status, ['assigned', 'ready', 'completed']) && (string)($lockOwner ?? '') !== (string)($userId ?? '');
+        @endphp
+        @if($isLocked)
+            <div class="mt-4 bg-gray-50 border border-gray-200 text-gray-500 px-4 py-3 rounded-lg text-sm">
+                <i class="fas fa-lock mr-1"></i> This order is assigned to another staff member. Only they can update it.
+            </div>
+        @elseif($allowed)
             <div class="mt-4 flex gap-3 flex-wrap">
                 @foreach($allowed as $s)
                     <form action="{{ route('seller.orders.update-status', $order->id) }}" method="POST">@csrf

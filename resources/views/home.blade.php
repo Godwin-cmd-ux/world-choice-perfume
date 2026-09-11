@@ -326,6 +326,36 @@
     </div>
 </section>
 
+<!-- Customer Remarks -->
+@if($remarks->count() > 0)
+<section id="remarks" class="py-20 bg-dark-950">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16 scroll-hidden">
+            <span class="text-xs font-semibold tracking-[0.3em] uppercase text-gold-400/60">What Our Customers Say</span>
+            <h2 class="font-display text-4xl sm:text-5xl font-bold mt-3 mb-4">
+                <span class="text-white">Customer </span><span class="gold-text">Remarks</span>
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scroll-hidden">
+            @foreach($remarks as $remark)
+                <div class="bg-dark-800 border border-dark-600 rounded-2xl p-6 card-hover">
+                    <div class="flex items-center gap-1 mb-4">
+                        @for($i = 0; $i < 5; $i++)
+                            <i class="fas fa-star text-gold-400 text-xs"></i>
+                        @endfor
+                    </div>
+                    <p class="text-gray-300 mb-4 leading-relaxed">
+                        "{{ $remark->message ?? $remark->subject ?? '' }}"
+                    </p>
+                    <p class="text-sm font-semibold text-gold-400">{{ $remark->name ?? 'A happy customer' }}</p>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
+
 <!-- CTA Section -->
 <section class="py-20 bg-gradient-to-r from-dark-900 via-dark-800 to-dark-900 border-y border-dark-700">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center scroll-hidden">
