@@ -114,6 +114,61 @@ class BottleAccessoriesController extends Controller
         return redirect()->route('stock-manager.bottle-accessories.index')->with('success', ucfirst(str_replace('_', ' ', $validated['type'])) . ' (' . ucfirst($validated['color']) . ') stock added successfully.');
     }
 
+    public function update(Request $request, $accessoryId)
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+
+        $item = $this->supabase->findOne('bottle_accessories', [
+            'id' => $accessoryId,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$item) {
+            return back()->withErrors(['error' => 'Accessory stock record not found.'])->withInput();
+        }
+
+        $this->supabase->update('bottle_accessories', [
+            'quantity' => $validated['quantity'],
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $accessoryId]);
+
+        return redirect()->route('stock-manager.bottle-accessories.index')->with('success', 'Accessory stock updated.');
+    }
+
+    public function destroy($accessoryId)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $item = $this->supabase->findOne('bottle_accessories', [
+            'id' => $accessoryId,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$item) {
+            return back()->withErrors(['error' => 'Accessory stock record not found.']);
+        }
+
+        $this->supabase->delete('bottle_accessories', ['id' => $accessoryId]);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'stock_deleted',
+            'bottle_accessories_stock_deleted',
+            'Bottle Accessories Stock Deleted',
+            "Bottle accessories stock record deleted ({$item['type']} {$item['color']}, {$item['quantity']} units).",
+            ['bottle_accessories_id' => $accessoryId, 'type' => $item['type'] ?? '', 'color' => $item['color'] ?? '', 'quantity' => $item['quantity'] ?? 0],
+            'bottle_accessories',
+            (string) $accessoryId,
+            ['type' => $item['type'] ?? '', 'color' => $item['color'] ?? '', 'quantity' => $item['quantity'] ?? 0],
+            []
+        );
+
+        return redirect()->route('stock-manager.bottle-accessories.index')->with('success', 'Accessory stock record deleted.');
+    }
+
     public function stockOut(Request $request)
     {
         $branchId = auth()->user()->branch_id;

@@ -35,6 +35,7 @@
                     <tr>
                         <th class="text-left py-3 px-6">Color</th>
                         <th class="text-right px-6">Packets</th>
+                        <th class="text-right px-6">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,6 +52,34 @@
                             </td>
                             <td class="px-6 text-right font-bold {{ ($item->quantity ?? 0) <= 5 ? 'text-red-600' : 'text-gray-800' }}">
                                 {{ number_format($item->quantity ?? 0) }}
+                            </td>
+                            <td class="px-6 text-right">
+                                @if($item && !($inCrossBranch ?? false))
+                                    <div class="flex items-center justify-end gap-2">
+                                        <form method="POST" action="{{ route('stock-manager.bottle-accessories.update', $item->id) }}" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="number" name="quantity" value="{{ $item->quantity }}" min="0"
+                                                class="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-emerald-500"
+                                                title="Edit quantity">
+                                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
+                                                <i class="fas fa-pen mr-0.5"></i> Edit
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('stock-manager.bottle-accessories.destroy', $item->id) }}" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
+                                                data-confirm="Delete this accessory stock record? The quantity will be lost.">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @elseif($item)
+                                    <span class="text-xs text-gray-400 italic">Read only</span>
+                                @else
+                                    <span class="text-gray-300">—</span>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

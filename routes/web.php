@@ -338,6 +338,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/bottle-accessories/create', [$bac, 'create'])->name('bottle-accessories.create');
             Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
             Route::match(['get', 'post'], '/bottle-accessories/stock-out', [$bac, 'stockOut'])->name('bottle-accessories.stock-out');
+            Route::patch('/bottle-accessories/{accessory}', [$bac, 'update'])->name('bottle-accessories.update');
+            Route::delete('/bottle-accessories/{accessory}', [$bac, 'destroy'])->name('bottle-accessories.destroy');
             Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
         });
 
