@@ -25,6 +25,11 @@
             <i class="fas fa-shopping-cart w-5 text-center"></i>
             <span>Sales</span>
         </a>
+        <a href="{{ route('customer-care.orders.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.orders.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-clipboard-list w-5 text-center"></i>
+            <span>Orders</span>
+        </a>
         <a href="{{ route('customer-care.news.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.news.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-newspaper w-5 text-center"></i>

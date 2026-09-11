@@ -257,6 +257,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     Route::prefix('seller')->name('seller.')->middleware('role:seller')->group(function () {
         $selSale = \App\Http\Controllers\Seller\SaleController::class;
+        $selOrder = \App\Http\Controllers\Seller\OrderController::class;
         Route::get('/dashboard', [\App\Http\Controllers\Seller\SellerController::class, 'dashboard'])->name('dashboard');
 
         // Sales
@@ -264,6 +265,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales/create', [$selSale, 'create'])->name('sales.create');
         Route::post('/sales', [$selSale, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
+
+        // Orders
+        Route::get('/orders', [$selOrder, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [$selOrder, 'show'])->name('orders.show');
     });
 
     // ========================
@@ -283,6 +288,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales/create', [\App\Http\Controllers\CustomerCare\SalesController::class, 'create'])->name('sales.create');
         Route::post('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [\App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
+
+        // Orders
+        Route::get('/orders', [\App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [\App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
 
         // News
         Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');
@@ -359,6 +368,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales/create', [$smSales, 'create'])->name('sales.create');
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
+
+        // Orders
+        $smOrder = \App\Http\Controllers\StockManager\OrderController::class;
+        Route::get('/orders', [$smOrder, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [$smOrder, 'show'])->name('orders.show');
 
         $pmc = \App\Http\Controllers\StockManager\ProductController::class;
         Route::get('/products', [$pmc, 'index'])->name('products.index');
