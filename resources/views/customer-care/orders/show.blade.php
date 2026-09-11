@@ -29,6 +29,23 @@
             </tbody>
         </table>
         <div class="text-right text-lg font-bold text-blue-700">Total: TZS {{ number_format($order->total) }}</div>
+
+        @php $allowed = $transitions[$order->status] ?? []; @endphp
+        @if($allowed)
+            <div class="mt-4 flex gap-3 flex-wrap">
+                @foreach($allowed as $s)
+                    <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST">@csrf
+                        <input type="hidden" name="status" value="{{ $s }}">
+                        <button type="submit"
+                            class="{{ $s === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white px-4 py-2 rounded-lg"
+                            {{ $s === 'cancelled' ? 'onclick="return confirm(\'Cancel order?\')"' : '' }}>
+                            <i class="fas {{ $s === 'cancelled' ? 'fa-times' : 'fa-arrow-right' }} mr-1"></i>
+                            {{ $s === 'cancelled' ? 'Cancel Order' : 'Mark ' . ucfirst($s) }}
+                        </button>
+                    </form>
+                @endforeach
+            </div>
+        @endif
     </div>
     <a href="{{ route('customer-care.orders.index') }}" class="mt-4 inline-block text-blue-700 hover:underline">&larr; Back to Orders</a>
 </div>

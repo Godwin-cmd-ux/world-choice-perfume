@@ -8,6 +8,15 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    private const TRANSITIONS = [
+        'pending' => ['assigned', 'cancelled'],
+        'assigned' => ['ready', 'cancelled'],
+        'ready' => ['completed', 'cancelled'],
+        'completed' => ['served'],
+        'served' => [],
+        'cancelled' => [],
+    ];
+
     private SupabaseService $supabase;
 
     public function __construct()
@@ -42,7 +51,7 @@ class OrderController extends Controller
             return (object) $o;
         });
 
-        return view('customer-care.orders.index', compact('orders'));
+        return view('customer-care.orders.index', ['orders' => $orders, 'transitions' => self::TRANSITIONS]);
     }
 
     public function show($orderId)
@@ -62,6 +71,43 @@ class OrderController extends Controller
             });
         }
 
-        return view('customer-care.orders.show', ['order' => (object) $order]);
+        return view('customer-care.orders.show', ['order' => (object) $order, 'transitions' => self::TRANSITIONS]);
+    }
+
+    public function updateStatus(Request $request, $orderId)
+    {
+        $request->validate(['status' => 'required|in:pending,assigned,ready,completed,served,cancelled']);
+
+        $order = $this->supabase->find('orders', $orderId);
+        if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
+            abort(404);
+        }
+
+        $current = $order['status'] ?? 'pending';
+        $next = $request->status;
+
+        if (!in_array($next, self::TRANSITIONS[$current] ?? [], true)) {
+            return back()->with('error', 'Invalid status transition.');
+        }
+
+        $this->supabase->update('orders', [
+            'status' => $next,
+            'cancelled_at' => $next === 'cancelled' ? now()->toIso8601String() : ($order['cancelled_at'] ?? null),
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $orderId]);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'order_status_changed',
+            'order_status_changed',
+            'Order Status Changed',
+            "Order {$order['order_number']} status changed to {$next}.",
+            ['order_id' => $orderId, 'order_number' => $order['order_number'], 'total' => $order['total'] ?? null],
+            'orders',
+            (string) $orderId,
+            ['status' => $current],
+            ['status' => $next]
+        );
+
+        return back()->with('success', 'Order status updated.');
     }
 }

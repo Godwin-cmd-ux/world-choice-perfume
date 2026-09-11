@@ -42,7 +42,25 @@
                             </span>
                         </td>
                         <td class="px-4 text-center">
-                            <a href="{{ route('customer-care.orders.show', $order->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a>
+                            <a href="{{ route('customer-care.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
+                            @php
+                                $allowed = $transitions[$order->status] ?? [];
+                                $next = collect($allowed)->first(fn($s) => $s !== 'cancelled');
+                            @endphp
+                            @if($next)
+                                <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="status" value="{{ $next }}">
+                                    <button type="submit" class="text-amber-600 hover:underline mr-2 font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
+                                </form>
+                            @endif
+                            @if(in_array('cancelled', $allowed))
+                                <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="status" value="cancelled">
+                                    <button type="submit" class="text-red-600 hover:underline font-medium" onclick="return confirm('Cancel order {{ $order->order_number }}?')"><i class="fas fa-times mr-1"></i>Cancel</button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty

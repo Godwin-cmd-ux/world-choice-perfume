@@ -269,6 +269,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Orders
         Route::get('/orders', [$selOrder, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [$selOrder, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status', [$selOrder, 'updateStatus'])->name('orders.update-status');
     });
 
     // ========================
@@ -292,6 +293,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Orders
         Route::get('/orders', [\App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [\App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status', [\App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
 
         // News
         Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');
@@ -373,6 +375,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         $smOrder = \App\Http\Controllers\StockManager\OrderController::class;
         Route::get('/orders', [$smOrder, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [$smOrder, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status', [$smOrder, 'updateStatus'])->name('orders.update-status');
 
         $pmc = \App\Http\Controllers\StockManager\ProductController::class;
         Route::get('/products', [$pmc, 'index'])->name('products.index');
