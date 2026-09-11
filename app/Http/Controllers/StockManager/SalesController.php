@@ -23,14 +23,13 @@ class SalesController extends Controller
 
     public function index(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
             'order' => 'created_at.desc',
             'limit' => 50,
-        ], $branchId);
+        ]);
 
         if ($request->cashier_id) {
             $params['cashier_id'] = "eq.{$request->cashier_id}";
@@ -51,9 +50,7 @@ class SalesController extends Controller
         $sales = array_values($sales);
         $totalSales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $sales));
 
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($sales, 'branch_id')) : [];
-
-        $sales = collect($sales)->map(function ($s) use ($isGlobal, $branchNames) {
+        $sales = collect($sales)->map(function ($s) {
             if (isset($s['customer']) && is_array($s['customer'])) $s['customer'] = (object) $s['customer'];
             if (isset($s['items'])) {
                 $s['items'] = collect($s['items'])->map(function ($item) {
@@ -61,29 +58,26 @@ class SalesController extends Controller
                     return (object) $item;
                 });
             }
-            if ($isGlobal) {
-                $s['branchName'] = $branchNames[(int) ($s['branch_id'] ?? 0)] ?? null;
-            }
             return (object) $s;
         });
 
         return view('stock-manager.sales.index', [
             'sales' => $sales,
             'totalSales' => $totalSales,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
     public function create()
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = $this->scope->activeBranchId();
 
-        $rawStock = $this->supabase->query('branch_stock', [
+        $rawStock = $this->supabase->query('branch_stock', $this->scope->branchParams([
             'select' => '*, product:products(id,name,brand,category,images:product_images(image_url))',
-            'branch_id' => "eq.{$branchId}",
             'quantity' => 'gt.0',
             'order' => 'created_at.desc',
-        ]);
+        ]));
 
         $products = collect($rawStock)->map(function ($item) {
             return (object) [
@@ -438,9 +432,9 @@ class SalesController extends Controller
 
     public function show($saleId)
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = $this->scope->activeBranchId();
         $sale = $this->supabase->find('sales', $saleId, '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(*), cashier:users(id,name), branch:branches(id,name,address)');
-        if (!$sale || ($sale['branch_id'] != $branchId && !$this->scope->isGlobalStockManager())) abort(404);
+        if (!$sale || $sale['branch_id'] != $branchId) abort(404);
 
         if (isset($sale['customer']) && is_array($sale['customer'])) $sale['customer'] = (object) $sale['customer'];
         if (isset($sale['cashier']) && is_array($sale['cashier'])) $sale['cashier'] = (object) $sale['cashier'];

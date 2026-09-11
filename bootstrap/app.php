@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'cashier.approved' => \App\Http\Middleware\EnsureCashierApproved::class,
             'staff.access' => \App\Http\Middleware\EnsureStaffAccess::class,
             'stock-manager.bottle-access' => \App\Http\Middleware\EnsureStockManagerBottleAccess::class,
+            'cross-branch.access' => \App\Http\Middleware\EnsureCrossBranchAccess::class,
+            'cross-branch.readonly' => \App\Http\Middleware\EnsureCrossBranchReadOnly::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

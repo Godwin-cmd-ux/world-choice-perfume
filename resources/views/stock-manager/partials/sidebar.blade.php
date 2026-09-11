@@ -2,7 +2,9 @@
     @php
         $smScope = new \App\Services\StockManagerScope();
         $stockManagerIsHQ = $smScope->isHQStockManager();
-        $stockManagerIsGlobal = $smScope->isGlobalStockManager();
+        $stockManagerIsKinondoni = $smScope->isKinondoniStockManager();
+        $stockManagerInCrossBranch = $smScope->inCrossBranchMode();
+        $stockManagerActiveBranch = $smScope->activeBranchName();
     @endphp
 
     {{-- Logo --}}
@@ -14,10 +16,15 @@
                 <p class="text-[10px] text-emerald-400 tracking-widest uppercase">Stock Manager</p>
             </div>
         </a>
-        @if($stockManagerIsGlobal)
-            <span class="inline-flex items-center gap-1.5 mt-2 px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                <i class="fas fa-globe-africa text-[10px]"></i> Monitoring All Branches
-            </span>
+
+        @if($stockManagerInCrossBranch)
+            <div class="mt-3 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                <p class="text-[10px] text-emerald-300 uppercase tracking-widest">Monitoring</p>
+                <p class="text-sm font-semibold text-white truncate">{{ $stockManagerActiveBranch }}</p>
+                <a href="{{ route('stock-manager.cross-branch.exit') }}" class="inline-flex items-center gap-1 mt-1.5 text-[11px] text-emerald-300 hover:text-white">
+                    <i class="fas fa-arrow-left text-[10px]"></i> Exit branch
+                </a>
+            </div>
         @endif
     </div>
 
@@ -51,24 +58,32 @@
             <span>Product Stock</span>
         </a>
 
+        @if($stockManagerIsKinondoni)
+            <a href="{{ route('stock-manager.cross-branch') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.cross-branch*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-code-branch w-5 text-center"></i>
+                <span>Cross-Branch Stock</span>
+            </a>
+        @endif
+
         @unless($stockManagerIsHQ)
-            <a href="{{ route('stock-manager.bottle-stock') }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                <i class="fas fa-wine-bottle w-5 text-center"></i>
-                <span>Bottle Stock</span>
-            </a>
+        <a href="{{ route('stock-manager.bottle-stock') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-wine-bottle w-5 text-center"></i>
+            <span>Bottle Stock</span>
+        </a>
 
-            <a href="{{ route('stock-manager.oil-fragrance') }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.oil-fragrance*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                <i class="fas fa-flask w-5 text-center"></i>
-                <span>Oil Fragrance</span>
-            </a>
+        <a href="{{ route('stock-manager.oil-fragrance') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.oil-fragrance*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-flask w-5 text-center"></i>
+            <span>Oil Fragrance</span>
+        </a>
 
-            <a href="{{ route('stock-manager.bottle-accessories.index') }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-accessories.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                <i class="fas fa-cogs w-5 text-center"></i>
-                <span>Bottle Accessories</span>
-            </a>
+        <a href="{{ route('stock-manager.bottle-accessories.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-accessories.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-cogs w-5 text-center"></i>
+            <span>Bottle Accessories</span>
+        </a>
         @endunless
 
         <div class="pt-3 mt-3 border-t border-gray-700">

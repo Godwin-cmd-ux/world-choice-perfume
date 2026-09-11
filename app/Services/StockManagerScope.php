@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class StockManagerScope
 {
     public const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
-    public const GLOBAL_BRANCH_NAME = 'Kinondoni branch';
+    public const KINONDONI_BRANCH_NAME = 'Kinondoni branch';
 
     private SupabaseService $supabase;
 
@@ -72,9 +72,10 @@ class StockManagerScope
     }
 
     /**
-     * Kinondoni branch stock manager monitors the activities of all branches.
+     * The Kinondoni branch stock manager is the only one allowed to monitor
+     * other branches.
      */
-    public function isGlobalStockManager(): bool
+    public function isKinondoniStockManager(): bool
     {
         if (!$this->isStockManager()) {
             return false;
@@ -82,7 +83,7 @@ class StockManagerScope
 
         $name = $this->branchName((int) $this->user()->branch_id);
 
-        return $name !== null && $this->matches($name, self::GLOBAL_BRANCH_NAME);
+        return $name !== null && $this->matches($name, self::KINONDONI_BRANCH_NAME);
     }
 
     /**
@@ -100,20 +101,55 @@ class StockManagerScope
         return $name !== null && $this->matches($name, self::HQ_BRANCH_NAME);
     }
 
-    /**
-     * Apply the branch filter for a query. The global (Kinondoni) stock manager
-     * sees every branch, so the branch filter is stripped for him.
-     */
-    public function branchParams(array $params, ?int $branchId): array
+    // ========================
+    // Cross-branch context
+    // ========================
+
+    public function enterBranch(int $branchId): void
     {
-        if ($this->isGlobalStockManager()) {
-            unset($params['branch_id']);
-            return $params;
+        if ($this->isKinondoniStockManager() && $branchId !== (int) ($this->user()->branch_id ?? 0)) {
+            session(['cross_branch_id' => $branchId]);
+        }
+    }
+
+    public function exitBranch(): void
+    {
+        session()->forget('cross_branch_id');
+    }
+
+    /**
+     * Branch id in use by the current pages. Defaults to the manager's own
+     * branch unless he has entered a cross-branch monitoring session.
+     */
+    public function activeBranchId(): int
+    {
+        if ($this->isKinondoniStockManager() && !empty(session('cross_branch_id'))) {
+            return (int) session('cross_branch_id');
         }
 
-        if ($branchId) {
-            $params['branch_id'] = "eq.{$branchId}";
-        }
+        return (int) ($this->user()->branch_id ?? 0);
+    }
+
+    public function activeBranchName(): ?string
+    {
+        return $this->branchName($this->activeBranchId());
+    }
+
+    /**
+     * True while the Kinondoni stock manager is actively monitoring another
+     * branch. All writes are blocked during this state.
+     */
+    public function inCrossBranchMode(): bool
+    {
+        return $this->isKinondoniStockManager() && !empty(session('cross_branch_id'));
+    }
+
+    /**
+     * Apply the active branch filter for a query.
+     */
+    public function branchParams(array $params): array
+    {
+        $params['branch_id'] = 'eq.' . $this->activeBranchId();
 
         return $params;
     }

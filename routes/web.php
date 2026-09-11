@@ -295,8 +295,15 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     // STOCK MANAGER ROUTES
     // ========================
-    Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager')->group(function () {
+    Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager', 'cross-branch.readonly')->group(function () {
         $smc = \App\Http\Controllers\StockManager\StockManagerController::class;
+
+        // Cross-Branch Monitoring (Kinondoni branch stock manager only)
+        Route::middleware('cross-branch.access')->group(function () use ($smc) {
+            Route::get('/cross-branch', [$smc, 'crossBranchDashboard'])->name('cross-branch');
+            Route::get('/cross-branch/exit', [$smc, 'exitCrossBranch'])->name('cross-branch.exit');
+            Route::get('/cross-branch/{branch}', [$smc, 'enterCrossBranch'])->name('cross-branch.enter');
+        });
 
         Route::get('/dashboard', [$smc, 'dashboard'])->name('dashboard');
 

@@ -3,12 +3,14 @@
 @section('header', 'Oil Fragrance Stock')
 
 @section('header-actions')
-    <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-plus mr-1"></i> Stock In
-    </a>
-    <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-arrow-right mr-1"></i> Stock Out
-    </a>
+    @if(!($inCrossBranch ?? false))
+        <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-plus mr-1"></i> Stock In
+        </a>
+        <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-arrow-right mr-1"></i> Stock Out
+        </a>
+    @endif
     <a href="{{ route('stock-manager.oil-fragrance-movements') }}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-history mr-1"></i> History
     </a>
@@ -52,9 +54,6 @@
             <thead>
                 <tr class="bg-gray-50 text-left">
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fragrance Name</th>
-                    @if($isGlobalScope ?? false)
-                        <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
-                    @endif
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Quantity</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -64,9 +63,6 @@
                 @forelse($oils as $oil)
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-6 py-4 font-medium text-gray-800">{{ $oil->name }}</td>
-                        @if($isGlobalScope ?? false)
-                            <td class="px-6 py-4 text-gray-500">{{ $oil->branchName ?? '—' }}</td>
-                        @endif
                         <td class="px-6 py-4 text-right">
                             <span class="font-bold text-lg text-purple-700">{{ number_format($oil->quantity ?? 0) }}</span>
                         </td>
@@ -74,39 +70,39 @@
                             <span class="text-gray-600">{{ $oil->volume === 500 ? '500ml' : ($oil->volume === 1000 ? '1000ml' : ($oil->volume ?? '-')) }}</span>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                @if(($isGlobalScope ?? false) && (int) ($oil->branch_id ?? 0) !== (int) ($ownBranchId ?? 0))
-                                    <span class="text-xs text-gray-400 italic">Read only</span>
-                                @else
-                                {{-- Edit --}}
-                                <form method="POST" action="{{ route('stock-manager.oil-fragrance.update', $oil->id) }}" class="inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <div class="flex items-center gap-1.5">
-                                        <input type="number" name="quantity" value="{{ $oil->quantity }}" min="0"
-                                            class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-purple-500"
-                                            placeholder="Qty">
-                                        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                            <i class="fas fa-pen mr-0.5"></i> Edit
+                            @if(!($inCrossBranch ?? false))
+                                <div class="flex items-center gap-2">
+                                    {{-- Edit --}}
+                                    <form method="POST" action="{{ route('stock-manager.oil-fragrance.update', $oil->id) }}" class="inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="flex items-center gap-1.5">
+                                            <input type="number" name="quantity" value="{{ $oil->quantity }}" min="0"
+                                                class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-purple-500"
+                                                placeholder="Qty">
+                                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded text-xs font-medium">
+                                                <i class="fas fa-pen mr-0.5"></i> Edit
+                                            </button>
+                                        </div>
+                                    </form>
+                                    {{-- Delete --}}
+                                    <form method="POST" action="{{ route('stock-manager.oil-fragrance.destroy', $oil->id) }}" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
+                                            data-confirm="Delete oil fragrance '{{ $oil->name }}'? This will remove the stock record.">
+                                            <i class="fas fa-trash-alt"></i>
                                         </button>
-                                    </div>
-                                </form>
-                                {{-- Delete --}}
-                                <form method="POST" action="{{ route('stock-manager.oil-fragrance.destroy', $oil->id) }}" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
-                                        data-confirm="Delete oil fragrance '{{ $oil->name }}'? This will remove the stock record.">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                                @endif
-                            </div>
+                                    </form>
+                                </div>
+                            @else
+                                <span class="text-xs text-gray-400 italic">Read only</span>
+                            @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ ($isGlobalScope ?? false) ? 5 : 4 }}" class="px-6 py-10 text-center text-gray-400">
+                        <td colspan="4" class="px-6 py-10 text-center text-gray-400">
                             <i class="fas fa-inbox text-2xl mb-2 block"></i>
                             No oil fragrance stock records found.
                         </td>

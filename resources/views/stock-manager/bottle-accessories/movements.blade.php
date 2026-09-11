@@ -11,9 +11,6 @@
                     <th class="text-left py-3 px-4">Date</th>
                     <th class="text-left px-4">Type</th>
                     <th class="text-left px-4">Color</th>
-                    @if($isGlobalScope ?? false)
-                        <th class="text-left px-4">Branch</th>
-                    @endif
                     <th class="text-left px-4">Action</th>
                     <th class="text-right px-4">Packets</th>
                     <th class="text-left px-4">Reason</th>
@@ -26,9 +23,6 @@
                         <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->format('M d, Y H:i') }}</td>
                         <td class="px-4 font-medium capitalize">{{ str_replace('_', ' ', $m->type ?? '') }}</td>
                         <td class="px-4 capitalize">{{ $m->color ?? '—' }}</td>
-                        @if($isGlobalScope ?? false)
-                            <td class="px-4 text-gray-500">{{ $m->branchName ?? '—' }}</td>
-                        @endif
                         <td class="px-4">
                             @if(($m->movement_type ?? '') === 'stock_in')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Stock In</span>
@@ -41,7 +35,7 @@
                         <td class="px-4 text-gray-500">{{ $m->performedBy->name ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ ($isGlobalScope ?? false) ? 8 : 7 }}" class="py-8 text-center text-gray-400">No movements recorded</td></tr>
+                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No movements recorded</td></tr>
                 @endforelse
             </tbody>
         </table>

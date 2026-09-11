@@ -3,24 +3,20 @@
 @section('header', 'Bottle Accessories')
 
 @section('header-actions')
-    <a href="{{ route('stock-manager.bottle-accessories.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-plus mr-1"></i> Stock In
-    </a>
-    <a href="{{ route('stock-manager.bottle-accessories.stock-out') }}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-minus mr-1"></i> Stock Out
-    </a>
+    @if(!($inCrossBranch ?? false))
+        <a href="{{ route('stock-manager.bottle-accessories.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-plus mr-1"></i> Stock In
+        </a>
+        <a href="{{ route('stock-manager.bottle-accessories.stock-out') }}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-minus mr-1"></i> Stock Out
+        </a>
+    @endif
     <a href="{{ route('stock-manager.bottle-accessories.movements') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-exchange-alt mr-1"></i> Movements
     </a>
 @endsection
 
 @section('content')
-@if($isGlobalScope ?? false)
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6">
-        <i class="fas fa-globe-africa mr-2"></i> Showing aggregate totals across <strong>all branches</strong>.
-    </div>
-@endif
-
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <div class="flex justify-between items-center">
         <span class="text-sm text-gray-500">Total Accessories:</span>

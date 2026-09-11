@@ -3,12 +3,14 @@
 @section('header', 'Bottle Stock')
 
 @section('header-actions')
-    <a href="{{ route('stock-manager.bottle-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-plus mr-1"></i> Stock In
-    </a>
-    <a href="{{ route('stock-manager.bottle-broken') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
-        <i class="fas fa-broken-image mr-1"></i> Broken
-    </a>
+    @if(!($inCrossBranch ?? false))
+        <a href="{{ route('stock-manager.bottle-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-plus mr-1"></i> Stock In
+        </a>
+        <a href="{{ route('stock-manager.bottle-broken') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-broken-image mr-1"></i> Broken
+        </a>
+    @endif
     <a href="{{ route('stock-manager.bottle-movements') }}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-history mr-1"></i> History
     </a>
@@ -58,9 +60,6 @@
             <thead>
                 <tr class="bg-gray-50 text-left">
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
-                    @if($isGlobalScope ?? false)
-                        <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
-                    @endif
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -74,46 +73,43 @@
                                 <span class="font-medium text-gray-800">{{ $record->volume }}</span>
                             </span>
                         </td>
-                        @if($isGlobalScope ?? false)
-                            <td class="px-6 py-4 text-gray-500">{{ $record->branchName ?? '—' }}</td>
-                        @endif
                         <td class="px-6 py-4">
                             <span class="text-gray-700 font-medium">{{ number_format($record->quantity ?? 0) }}</span>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                @if(($isGlobalScope ?? false) && (int) ($record->branch_id ?? 0) !== (int) ($ownBranchId ?? 0))
-                                    <span class="text-xs text-gray-400 italic">Read only</span>
-                                @else
-                                {{-- Edit --}}
-                                <form method="POST" action="{{ route('stock-manager.bottle-stock.update', $record->id) }}" class="inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <div class="flex items-center gap-1.5">
-                                        <input type="number" name="quantity" value="{{ $record->quantity }}" min="0"
-                                            class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-emerald-500"
-                                            placeholder="Qty">
-                                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                            <i class="fas fa-pen mr-0.5"></i> Edit
+                            @if(!($inCrossBranch ?? false))
+                                <div class="flex items-center gap-2">
+                                    {{-- Edit --}}
+                                    <form method="POST" action="{{ route('stock-manager.bottle-stock.update', $record->id) }}" class="inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="flex items-center gap-1.5">
+                                            <input type="number" name="quantity" value="{{ $record->quantity }}" min="0"
+                                                class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-emerald-500"
+                                                placeholder="Qty">
+                                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
+                                                <i class="fas fa-pen mr-0.5"></i> Edit
+                                            </button>
+                                        </div>
+                                    </form>
+                                    {{-- Delete --}}
+                                    <form method="POST" action="{{ route('stock-manager.bottle-stock.destroy', $record->id) }}" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
+                                            data-confirm="Delete this bottle stock record? The quantity will be lost.">
+                                            <i class="fas fa-trash-alt"></i>
                                         </button>
-                                    </div>
-                                </form>
-                                {{-- Delete --}}
-                                <form method="POST" action="{{ route('stock-manager.bottle-stock.destroy', $record->id) }}" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800 text-xs"
-                                        data-confirm="Delete this bottle stock record? The quantity will be lost.">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                                @endif
-                            </div>
+                                    </form>
+                                </div>
+                            @else
+                                <span class="text-xs text-gray-400 italic">Read only</span>
+                            @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ ($isGlobalScope ?? false) ? 4 : 3 }}" class="px-6 py-10 text-center text-gray-400">
+                        <td colspan="3" class="px-6 py-10 text-center text-gray-400">
                             <i class="fas fa-inbox text-2xl mb-2 block"></i>
                             No bottle stock records found.
                         </td>

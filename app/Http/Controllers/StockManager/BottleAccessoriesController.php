@@ -20,49 +20,41 @@ class BottleAccessoriesController extends Controller
 
     public function index()
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $accessories = $this->supabase->query('bottle_accessories', $this->scope->branchParams([
             'select' => '*',
             'order' => 'type.asc,color.asc',
-        ], $branchId));
+        ]));
 
         // Guard: if PostgREST returns empty (RLS/filter issue), fall back to all rows
-        if (!$isGlobal && empty($accessories)) {
+        if (empty($accessories)) {
             $accessories = $this->supabase->query('bottle_accessories', [
                 'select' => '*',
                 'order' => 'type.asc,color.asc',
             ]);
         }
 
-        // Group by type + color, aggregating quantities across branches for the
-        // global (Kinondoni) stock manager.
+        // Group by type
         $grouped = [
             'straws' => [],
             'bottlenecks' => [],
             'bottle_tops' => [],
         ];
 
-        $totals = [];
         foreach ($accessories as $a) {
             $type = $a['type'] ?? 'straws';
-            $color = $a['color'] ?? 'silver';
-            $key = $type . '|' . $color;
-            $totals[$key] = ($totals[$key] ?? 0) + (int) ($a['quantity'] ?? 0);
+            if (!isset($grouped[$type])) $grouped[$type] = [];
+            $grouped[$type][] = (object) $a;
         }
 
-        foreach ($totals as $key => $qty) {
-            [$type, $color] = explode('|', $key);
-            $grouped[$type][] = (object) ['color' => $color, 'quantity' => $qty];
-        }
-
-        $totalPackets = array_sum($totals);
+        $totalPackets = array_sum(array_map(fn($a) => $a['quantity'] ?? 0, $accessories));
 
         return view('stock-manager.bottle-accessories.index', [
             'grouped' => $grouped,
             'totalPackets' => $totalPackets,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -184,14 +176,13 @@ class BottleAccessoriesController extends Controller
 
     public function movements(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*',
             'order' => 'created_at.desc',
             'limit' => 50,
-        ], $branchId);
+        ]);
 
         if ($request->type) {
             $params['type'] = "eq.{$request->type}";
@@ -218,21 +209,17 @@ class BottleAccessoriesController extends Controller
             }
         }
 
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($movements, 'branch_id')) : [];
-
-        $movements = collect($movements)->map(function ($m) use ($users, $isGlobal, $branchNames) {
+        $movements = collect($movements)->map(function ($m) use ($users) {
             $m['performedBy'] = isset($m['performed_by']) && isset($users[$m['performed_by']])
                 ? (object) ['id' => $users[$m['performed_by']]['id'], 'name' => $users[$m['performed_by']]['name']]
                 : null;
-            if ($isGlobal) {
-                $m['branchName'] = $branchNames[(int) ($m['branch_id'] ?? 0)] ?? null;
-            }
             return (object) $m;
         })->all();
 
         return view('stock-manager.bottle-accessories.movements', [
             'movements' => $movements,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 }

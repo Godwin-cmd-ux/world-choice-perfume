@@ -3,9 +3,12 @@
 @section('header', 'Stock Manager Dashboard')
 
 @section('content')
-@if($isGlobal ?? false)
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6">
-        <i class="fas fa-globe-africa mr-2"></i> You are monitoring the activities of <strong>all branches</strong>.
+@if($inCrossBranch ?? false)
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6 flex flex-wrap items-center justify-between gap-2">
+        <span><i class="fas fa-globe-africa mr-2"></i> Monitoring <strong>{{ $activeBranchName ?? 'this branch' }}</strong> — read only.</span>
+        <a href="{{ route('stock-manager.cross-branch.exit') }}" class="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline">
+            <i class="fas fa-arrow-left mr-1"></i> Exit branch
+        </a>
     </div>
 @endif
 
@@ -65,6 +68,9 @@
     <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white">
         <p class="text-sm font-medium text-emerald-100">Quick Actions</p>
         <div class="mt-3 space-y-2">
+            @if($inCrossBranch ?? false)
+                <p class="text-sm text-emerald-100"><i class="fas fa-eye mr-2"></i> Read-only monitoring</p>
+            @else
             <a href="{{ route('stock-manager.product-stock.entry') }}" class="block text-sm text-white hover:text-emerald-100">
                 <i class="fas fa-plus mr-2"></i> Add Product Stock
             </a>
@@ -76,6 +82,7 @@
                 <i class="fas fa-plus mr-2"></i> Add Oil Fragrance
             </a>
             @endunless
+            @endif
         </div>
     </div>
 </div>
@@ -128,8 +135,8 @@
 </div>
 @endunless
 
-@unless($isHQ ?? false)
 {{-- Recent Movements --}}
+@unless($isHQ ?? false)
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
         <i class="fas fa-history text-gray-400 mr-2"></i> Recent Bottle Movements
@@ -140,9 +147,6 @@
                 <tr>
                     <th class="text-left py-3 px-4">Date</th>
                     <th class="text-left px-4">Volume</th>
-                    @if($isGlobal ?? false)
-                        <th class="text-left px-4">Branch</th>
-                    @endif
                     <th class="text-left px-4">Type</th>
                     <th class="text-right px-4">Quantity</th>
                     <th class="text-left px-4">Reason</th>
@@ -154,9 +158,6 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->format('M d, Y H:i') }}</td>
                         <td class="px-4 font-medium">{{ $m->volume }}</td>
-                        @if($isGlobal ?? false)
-                            <td class="px-4 text-gray-500">{{ $m->branchName ?? '—' }}</td>
-                        @endif
                         <td class="px-4">
                             @if($m->type === 'stock_in')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Stock In</span>
@@ -171,7 +172,7 @@
                         <td class="px-4 text-gray-500">{{ $m->performedBy->name ?? '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ ($isGlobal ?? false) ? 7 : 6 }}" class="py-8 text-center text-gray-400">No recent movements</td></tr>
+                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No recent movements</td></tr>
                 @endforelse
             </tbody>
         </table>

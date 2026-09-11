@@ -28,27 +28,28 @@ class StockManagerController extends Controller
 
     public function dashboard()
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
         $isHQ = $this->scope->isHQStockManager();
+        $inCrossBranch = $this->scope->inCrossBranchMode();
+        $activeBranchName = $this->scope->activeBranchName();
 
         // Product stock stats
         $productStock = $this->supabase->query('branch_stock', $this->scope->branchParams([
-            'select' => 'quantity,selling_price,branch_id',
-        ], $branchId));
+            'select' => 'quantity,selling_price',
+        ]));
         $totalProductItems = array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $productStock));
         $lowStockProducts = count(array_filter($productStock, fn($s) => ($s['quantity'] ?? 0) <= 5));
 
         // Bottle stock stats
         $bottleStock = $isHQ ? [] : $this->supabase->query('bottle_stock', $this->scope->branchParams([
             'select' => '*',
-        ], $branchId));
+        ]));
         $totalBottles = array_sum(array_map(fn($b) => $b['quantity'] ?? 0, $bottleStock));
 
         // Oil fragrance stats
         $oilStock = $isHQ ? [] : $this->supabase->query('oil_fragrance_stock', $this->scope->branchParams([
             'select' => '*',
-        ], $branchId));
+        ]));
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
         // Recent movements
@@ -59,8 +60,71 @@ class StockManagerController extends Controller
             'totalProductItems', 'lowStockProducts',
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements',
-            'isGlobal', 'isHQ'
+            'isHQ', 'inCrossBranch', 'activeBranchName'
         ));
+    }
+
+    // ========================
+    // CROSS-BRANCH MONITORING (Kinondoni branch stock manager)
+    // ========================
+
+    public function crossBranchDashboard()
+    {
+        $branches = $this->supabase->query('branches', [
+            'select' => 'id,name,address,phone',
+            'order' => 'name.asc',
+        ]);
+
+        $rows = collect($branches)->map(function ($b) {
+            $id = (int) $b['id'];
+
+            $branchStock = $this->supabase->query('branch_stock', [
+                'select' => 'quantity,selling_price',
+                'branch_id' => "eq.{$id}",
+            ]);
+            $bottleStock = $this->supabase->query('bottle_stock', [
+                'select' => 'quantity',
+                'branch_id' => "eq.{$id}",
+            ]);
+            $oilStock = $this->supabase->query('oil_fragrance_stock', [
+                'select' => 'quantity',
+                'branch_id' => "eq.{$id}",
+            ]);
+
+            return (object) [
+                'id' => $id,
+                'name' => $b['name'] ?? '',
+                'address' => $b['address'] ?? null,
+                'phone' => $b['phone'] ?? null,
+                'totalProducts' => array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $branchStock)),
+                'lowStock' => count(array_filter($branchStock, fn($s) => ($s['quantity'] ?? 0) <= 5)),
+                'totalBottles' => array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $bottleStock)),
+                'totalOils' => array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $oilStock)),
+            ];
+        });
+
+        return view('stock-manager.cross-branch', ['rows' => $rows]);
+    }
+
+    public function enterCrossBranch($branch)
+    {
+        $branchId = (int) $branch;
+        $branchRow = $this->supabase->find('branches', $branchId, 'id,name');
+        if (!$branchRow) {
+            abort(404);
+        }
+
+        $this->scope->enterBranch($branchId);
+
+        return redirect()->route('stock-manager.dashboard')
+            ->with('success', 'Now monitoring: ' . ($branchRow['name'] ?? 'Branch #' . $branchId));
+    }
+
+    public function exitCrossBranch()
+    {
+        $this->scope->exitBranch();
+
+        return redirect()->route('stock-manager.dashboard')->with('success', 'You are back to your own branch.');
     }
 
     /**
@@ -68,14 +132,14 @@ class StockManagerController extends Controller
      * PostgREST expansions like performedBy:users(id,name) silently return 0 rows,
      * so we fetch the user data separately and join in PHP.
      */
-    private function loadMovementsWithUser(string $table, ?int $branchId, int $limit, array $extraParams = []): array
+    private function loadMovementsWithUser(string $table, int $branchId, int $limit, array $extraParams = []): array
     {
         $params = array_merge([
             'select' => '*',
             'order' => 'created_at.desc',
             'limit' => $limit,
         ], $extraParams);
-        $params = $this->scope->branchParams($params, $branchId);
+        $params['branch_id'] = "eq.{$branchId}";
 
         $rows = $this->supabase->query($table, $params);
 
@@ -99,16 +163,10 @@ class StockManagerController extends Controller
             }
         }
 
-        $isGlobal = $this->scope->isGlobalStockManager();
-        $branchMap = $isGlobal ? $this->scope->branchNameMap(array_column($rows, 'branch_id')) : [];
-
-        return collect($rows)->map(function ($r) use ($users, $isGlobal, $branchMap) {
+        return collect($rows)->map(function ($r) use ($users) {
             $r['performedBy'] = !empty($r['performed_by']) && isset($users[$r['performed_by']])
                 ? (object) ['id' => $users[$r['performed_by']]['id'], 'name' => $users[$r['performed_by']]['name']]
                 : null;
-            if ($isGlobal) {
-                $r['branchName'] = $branchMap[(int) ($r['branch_id'] ?? 0)] ?? null;
-            }
             return (object) $r;
         })->all();
     }
@@ -119,13 +177,12 @@ class StockManagerController extends Controller
 
     public function productStock(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*, product:products(id,name,brand,category,images:product_images(image_url))',
             'order' => 'created_at.desc',
-        ], $branchId);
+        ]);
 
         $stocks = $this->supabase->query('branch_stock', $params);
 
@@ -141,17 +198,12 @@ class StockManagerController extends Controller
         $stocks = array_values($stocks);
         $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
 
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($stocks, 'branch_id')) : [];
-
-        $stocks = collect($stocks)->map(function ($s) use ($isGlobal, $branchNames) {
+        $stocks = collect($stocks)->map(function ($s) {
             if (isset($s['product']) && is_array($s['product'])) {
                 if (isset($s['product']['images']) && is_array($s['product']['images'])) {
                     $s['product']['images'] = collect($s['product']['images']);
                 }
                 $s['product'] = (object) $s['product'];
-            }
-            if ($isGlobal) {
-                $s['branchName'] = $branchNames[(int) ($s['branch_id'] ?? 0)] ?? null;
             }
             return (object) $s;
         });
@@ -159,8 +211,8 @@ class StockManagerController extends Controller
         return view('stock-manager.product-stock', [
             'stocks' => $stocks,
             'totalValue' => $totalValue,
-            'isGlobalScope' => $isGlobal,
-            'ownBranchId' => (int) $branchId,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -392,14 +444,13 @@ class StockManagerController extends Controller
 
     public function productStockMovements(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*, product:products(id,name,brand), performedBy:users(id,name)',
             'order' => 'created_at.desc',
             'limit' => 50,
-        ], $branchId);
+        ]);
 
         if ($request->product_id) {
             $params['product_id'] = "eq.{$request->product_id}";
@@ -410,14 +461,10 @@ class StockManagerController extends Controller
         }
 
         $movements = $this->supabase->query('stock_movements', $params);
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($movements, 'branch_id')) : [];
 
-        $movements = collect($movements)->map(function ($m) use ($isGlobal, $branchNames) {
+        $movements = collect($movements)->map(function ($m) {
             if (isset($m['product']) && is_array($m['product'])) $m['product'] = (object) $m['product'];
             if (isset($m['performedBy']) && is_array($m['performedBy'])) $m['performedBy'] = (object) $m['performedBy'];
-            if ($isGlobal) {
-                $m['branchName'] = $branchNames[(int) ($m['branch_id'] ?? 0)] ?? null;
-            }
             return (object) $m;
         });
 
@@ -435,7 +482,8 @@ class StockManagerController extends Controller
         return view('stock-manager.product-stock-movements', [
             'movements' => $movements,
             'products' => $productObjects,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -445,13 +493,12 @@ class StockManagerController extends Controller
 
     public function bottleStock(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*',
             'order' => 'volume.asc',
-        ], $branchId);
+        ]);
 
         $bottles = $this->supabase->query('bottle_stock', $params);
 
@@ -471,17 +518,12 @@ class StockManagerController extends Controller
             $bottleMap[$b['volume']] = ($bottleMap[$b['volume']] ?? 0) + ($b['quantity'] ?? 0);
         }
 
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($bottles, 'branch_id')) : [];
-
         return view('stock-manager.bottle-stock', [
             'volumes' => $volumes,
             'bottleMap' => $bottleMap,
-            'bottleRecords' => collect($bottles)->map(function ($b) use ($isGlobal, $branchNames) {
-                $b['branchName'] = $isGlobal ? ($branchNames[(int) ($b['branch_id'] ?? 0)] ?? null) : null;
-                return (object) $b;
-            }),
-            'isGlobalScope' => $isGlobal,
-            'ownBranchId' => (int) $branchId,
+            'bottleRecords' => collect($bottles)->map(fn($b) => (object) $b),
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -667,8 +709,7 @@ class StockManagerController extends Controller
 
     public function bottleMovements(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = [
             'select' => '*',
@@ -690,7 +731,8 @@ class StockManagerController extends Controller
         return view('stock-manager.bottle-movements', [
             'movements' => $movements,
             'volumes' => $volumes,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -700,13 +742,12 @@ class StockManagerController extends Controller
 
     public function oilFragranceStock(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
             'select' => '*',
             'order' => 'name.asc',
-        ], $branchId);
+        ]);
 
         $oils = $this->supabase->query('oil_fragrance_stock', $params);
 
@@ -719,16 +760,11 @@ class StockManagerController extends Controller
         $oils = array_values($oils);
         $totalQuantity = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oils));
 
-        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($oils, 'branch_id')) : [];
-
         return view('stock-manager.oil-fragrance-stock', [
-            'oils' => collect($oils)->map(function ($o) use ($isGlobal, $branchNames) {
-                $o['branchName'] = $isGlobal ? ($branchNames[(int) ($o['branch_id'] ?? 0)] ?? null) : null;
-                return (object) $o;
-            }),
+            'oils' => collect($oils)->map(fn($o) => (object) $o),
             'totalQuantity' => $totalQuantity,
-            'isGlobalScope' => $isGlobal,
-            'ownBranchId' => (int) $branchId,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
@@ -975,8 +1011,7 @@ class StockManagerController extends Controller
 
     public function oilFragranceMovements(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        $isGlobal = $this->scope->isGlobalStockManager();
+        $branchId = $this->scope->activeBranchId();
 
         $params = [
             'select' => '*',
@@ -992,7 +1027,8 @@ class StockManagerController extends Controller
 
         return view('stock-manager.oil-fragrance-movements', [
             'movements' => $movements,
-            'isGlobalScope' => $isGlobal,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
 
