@@ -15,6 +15,12 @@
 @endsection
 
 @section('content')
+@if($isGlobalScope ?? false)
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6">
+        <i class="fas fa-globe-africa mr-2"></i> Showing aggregate totals across <strong>all branches</strong>.
+    </div>
+@endif
+
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <div class="flex justify-between items-center">
         <span class="text-sm text-gray-500">Total Accessories:</span>

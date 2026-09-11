@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'branch.access' => \App\Http\Middleware\BranchAccessMiddleware::class,
             'cashier.approved' => \App\Http\Middleware\EnsureCashierApproved::class,
             'staff.access' => \App\Http\Middleware\EnsureStaffAccess::class,
+            'stock-manager.bottle-access' => \App\Http\Middleware\EnsureStockManagerBottleAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

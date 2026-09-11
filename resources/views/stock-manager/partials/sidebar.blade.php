@@ -1,4 +1,10 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
+    @php
+        $smScope = new \App\Services\StockManagerScope();
+        $stockManagerIsHQ = $smScope->isHQStockManager();
+        $stockManagerIsGlobal = $smScope->isGlobalStockManager();
+    @endphp
+
     {{-- Logo --}}
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('stock-manager.dashboard') }}" class="flex items-center gap-3">
@@ -8,6 +14,11 @@
                 <p class="text-[10px] text-emerald-400 tracking-widest uppercase">Stock Manager</p>
             </div>
         </a>
+        @if($stockManagerIsGlobal)
+            <span class="inline-flex items-center gap-1.5 mt-2 px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                <i class="fas fa-globe-africa text-[10px]"></i> Monitoring All Branches
+            </span>
+        @endif
     </div>
 
     {{-- Navigation --}}
@@ -40,23 +51,25 @@
             <span>Product Stock</span>
         </a>
 
-        <a href="{{ route('stock-manager.bottle-stock') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-wine-bottle w-5 text-center"></i>
-            <span>Bottle Stock</span>
-        </a>
+        @unless($stockManagerIsHQ)
+            <a href="{{ route('stock-manager.bottle-stock') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-wine-bottle w-5 text-center"></i>
+                <span>Bottle Stock</span>
+            </a>
 
-        <a href="{{ route('stock-manager.oil-fragrance') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.oil-fragrance*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-flask w-5 text-center"></i>
-            <span>Oil Fragrance</span>
-        </a>
+            <a href="{{ route('stock-manager.oil-fragrance') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.oil-fragrance*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-flask w-5 text-center"></i>
+                <span>Oil Fragrance</span>
+            </a>
 
-        <a href="{{ route('stock-manager.bottle-accessories.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-accessories.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-            <i class="fas fa-cogs w-5 text-center"></i>
-            <span>Bottle Accessories</span>
-        </a>
+            <a href="{{ route('stock-manager.bottle-accessories.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-accessories.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-cogs w-5 text-center"></i>
+                <span>Bottle Accessories</span>
+            </a>
+        @endunless
 
         <div class="pt-3 mt-3 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Tools</p>

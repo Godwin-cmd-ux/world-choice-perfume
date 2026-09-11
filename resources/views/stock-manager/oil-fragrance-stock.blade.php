@@ -52,6 +52,9 @@
             <thead>
                 <tr class="bg-gray-50 text-left">
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fragrance Name</th>
+                    @if($isGlobalScope ?? false)
+                        <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
+                    @endif
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Quantity</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -61,6 +64,9 @@
                 @forelse($oils as $oil)
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-6 py-4 font-medium text-gray-800">{{ $oil->name }}</td>
+                        @if($isGlobalScope ?? false)
+                            <td class="px-6 py-4 text-gray-500">{{ $oil->branchName ?? '—' }}</td>
+                        @endif
                         <td class="px-6 py-4 text-right">
                             <span class="font-bold text-lg text-purple-700">{{ number_format($oil->quantity ?? 0) }}</span>
                         </td>
@@ -69,6 +75,9 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
+                                @if(($isGlobalScope ?? false) && (int) ($oil->branch_id ?? 0) !== (int) ($ownBranchId ?? 0))
+                                    <span class="text-xs text-gray-400 italic">Read only</span>
+                                @else
                                 {{-- Edit --}}
                                 <form method="POST" action="{{ route('stock-manager.oil-fragrance.update', $oil->id) }}" class="inline">
                                     @csrf
@@ -91,12 +100,13 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-6 py-10 text-center text-gray-400">
+                        <td colspan="{{ ($isGlobalScope ?? false) ? 5 : 4 }}" class="px-6 py-10 text-center text-gray-400">
                             <i class="fas fa-inbox text-2xl mb-2 block"></i>
                             No oil fragrance stock records found.
                         </td>

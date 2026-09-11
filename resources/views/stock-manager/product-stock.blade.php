@@ -35,6 +35,9 @@
         <table class="w-full text-sm">
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Product</th>
+                @if($isGlobalScope ?? false)
+                    <th class="text-left px-4">Branch</th>
+                @endif
                 <th class="text-right px-4">Quantity</th>
                 <th class="text-right px-4">Selling Price</th>
                 <th class="text-right px-4">Stock Value</th>
@@ -50,6 +53,9 @@
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $stock->product->name }}</td>
+                        @if($isGlobalScope ?? false)
+                            <td class="px-4 text-gray-500">{{ $stock->branchName ?? '—' }}</td>
+                        @endif
                         <td class="px-4 text-right">
                             <span class="{{ $lowQty ? 'text-red-600 font-bold' : '' }}">{{ $stock->quantity }}</span>
                         </td>
@@ -59,6 +65,9 @@
                         <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->format('M d, Y') : '-' }}</td>
                         <td class="px-4 text-right">
                             <div class="flex items-center justify-end gap-2">
+                                @if(($isGlobalScope ?? false) && (int) ($stock->branch_id ?? 0) !== (int) ($ownBranchId ?? 0))
+                                    <span class="text-xs text-gray-400 italic">Read only</span>
+                                @else
                                 <form method="POST" action="{{ route('stock-manager.product-stock.update', $stock->id) }}" class="inline-flex items-center gap-1">
                                     @csrf
                                     @method('PATCH')
@@ -75,11 +84,12 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
+                    <tr><td colspan="{{ ($isGlobalScope ?? false) ? 8 : 7 }}" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
             </tbody>
         </table>

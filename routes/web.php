@@ -309,28 +309,30 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/product-stock/movements', [$smc, 'productStockMovements'])->name('product-stock-movements');
 
         // Bottle Stock
-        Route::get('/bottle-stock', [$smc, 'bottleStock'])->name('bottle-stock');
-        Route::match(['get', 'post'], '/bottle-stock/in', [$smc, 'bottleStockIn'])->name('bottle-stock-in');
-        Route::match(['get', 'post'], '/bottle-stock/broken', [$smc, 'bottleBroken'])->name('bottle-broken');
-        Route::patch('/bottle-stock/{stock}', [$smc, 'updateBottleStock'])->name('bottle-stock.update');
-        Route::delete('/bottle-stock/{stock}', [$smc, 'destroyBottleStock'])->name('bottle-stock.destroy');
-        Route::get('/bottle-stock/movements', [$smc, 'bottleMovements'])->name('bottle-movements');
+        Route::middleware('stock-manager.bottle-access')->group(function () use ($smc) {
+            Route::get('/bottle-stock', [$smc, 'bottleStock'])->name('bottle-stock');
+            Route::match(['get', 'post'], '/bottle-stock/in', [$smc, 'bottleStockIn'])->name('bottle-stock-in');
+            Route::match(['get', 'post'], '/bottle-stock/broken', [$smc, 'bottleBroken'])->name('bottle-broken');
+            Route::patch('/bottle-stock/{stock}', [$smc, 'updateBottleStock'])->name('bottle-stock.update');
+            Route::delete('/bottle-stock/{stock}', [$smc, 'destroyBottleStock'])->name('bottle-stock.destroy');
+            Route::get('/bottle-stock/movements', [$smc, 'bottleMovements'])->name('bottle-movements');
 
-        // Oil Fragrance
-        Route::get('/oil-fragrance', [$smc, 'oilFragranceStock'])->name('oil-fragrance');
-        Route::match(['get', 'post'], '/oil-fragrance/in', [$smc, 'oilFragranceStockIn'])->name('oil-fragrance-stock-in');
-        Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
-        Route::patch('/oil-fragrance/{stock}', [$smc, 'updateOilFragranceStock'])->name('oil-fragrance.update');
-        Route::delete('/oil-fragrance/{stock}', [$smc, 'destroyOilFragranceStock'])->name('oil-fragrance.destroy');
-        Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
+            // Oil Fragrance
+            Route::get('/oil-fragrance', [$smc, 'oilFragranceStock'])->name('oil-fragrance');
+            Route::match(['get', 'post'], '/oil-fragrance/in', [$smc, 'oilFragranceStockIn'])->name('oil-fragrance-stock-in');
+            Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
+            Route::patch('/oil-fragrance/{stock}', [$smc, 'updateOilFragranceStock'])->name('oil-fragrance.update');
+            Route::delete('/oil-fragrance/{stock}', [$smc, 'destroyOilFragranceStock'])->name('oil-fragrance.destroy');
+            Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 
-        // Bottle Accessories
-        $bac = \App\Http\Controllers\StockManager\BottleAccessoriesController::class;
-        Route::get('/bottle-accessories', [$bac, 'index'])->name('bottle-accessories.index');
-        Route::get('/bottle-accessories/create', [$bac, 'create'])->name('bottle-accessories.create');
-        Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
-        Route::match(['get', 'post'], '/bottle-accessories/stock-out', [$bac, 'stockOut'])->name('bottle-accessories.stock-out');
-        Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
+            // Bottle Accessories
+            $bac = \App\Http\Controllers\StockManager\BottleAccessoriesController::class;
+            Route::get('/bottle-accessories', [$bac, 'index'])->name('bottle-accessories.index');
+            Route::get('/bottle-accessories/create', [$bac, 'create'])->name('bottle-accessories.create');
+            Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
+            Route::match(['get', 'post'], '/bottle-accessories/stock-out', [$bac, 'stockOut'])->name('bottle-accessories.stock-out');
+            Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
+        });
 
         // QR Code
         Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');

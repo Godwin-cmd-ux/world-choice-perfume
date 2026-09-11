@@ -3,68 +3,67 @@
 namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
+use App\Services\StockManagerScope;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class BottleAccessoriesController extends Controller
 {
     private SupabaseService $supabase;
+    private StockManagerScope $scope;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->scope = new StockManagerScope($this->supabase);
     }
 
     public function index()
     {
         $branchId = auth()->user()->branch_id;
+        $isGlobal = $this->scope->isGlobalStockManager();
 
-        $accessories = $this->supabase->query('bottle_accessories', [
+        $accessories = $this->supabase->query('bottle_accessories', $this->scope->branchParams([
             'select' => '*',
-            'branch_id' => "eq.{$branchId}",
             'order' => 'type.asc,color.asc',
-        ]);
+        ], $branchId));
 
         // Guard: if PostgREST returns empty (RLS/filter issue), fall back to all rows
-        if (empty($accessories)) {
+        if (!$isGlobal && empty($accessories)) {
             $accessories = $this->supabase->query('bottle_accessories', [
                 'select' => '*',
                 'order' => 'type.asc,color.asc',
             ]);
         }
 
-        // Group by type
+        // Group by type + color, aggregating quantities across branches for the
+        // global (Kinondoni) stock manager.
         $grouped = [
             'straws' => [],
             'bottlenecks' => [],
             'bottle_tops' => [],
         ];
 
+        $totals = [];
         foreach ($accessories as $a) {
             $type = $a['type'] ?? 'straws';
-            if (!isset($grouped[$type])) $grouped[$type] = [];
-            $grouped[$type][] = (object) $a;
+            $color = $a['color'] ?? 'silver';
+            $key = $type . '|' . $color;
+            $totals[$key] = ($totals[$key] ?? 0) + (int) ($a['quantity'] ?? 0);
         }
 
-        // Summary stats
-        $totalPackets = array_sum(array_map(fn($a) => $a['quantity'] ?? 0, $accessories));
-
-        // If no rows found with branch filter, fall back to all rows (in case branch_id column has issues)
-        if (empty($accessories)) {
-            $accessories = $this->supabase->query('bottle_accessories', [
-                'select' => '*',
-                'order' => 'type.asc,color.asc',
-            ]);
-            foreach ($accessories as $a) {
-                $type = $a['type'] ?? 'straws';
-                if (isset($grouped[$type])) {
-                    $grouped[$type][] = (object) $a;
-                }
-            }
-            $totalPackets = array_sum(array_map(fn($a) => $a['quantity'] ?? 0, $accessories));
+        foreach ($totals as $key => $qty) {
+            [$type, $color] = explode('|', $key);
+            $grouped[$type][] = (object) ['color' => $color, 'quantity' => $qty];
         }
 
-        return view('stock-manager.bottle-accessories.index', ['grouped' => $grouped, 'totalPackets' => $totalPackets]);
+        $totalPackets = array_sum($totals);
+
+        return view('stock-manager.bottle-accessories.index', [
+            'grouped' => $grouped,
+            'totalPackets' => $totalPackets,
+            'isGlobalScope' => $isGlobal,
+        ]);
     }
 
     public function create()
@@ -186,13 +185,13 @@ class BottleAccessoriesController extends Controller
     public function movements(Request $request)
     {
         $branchId = auth()->user()->branch_id;
+        $isGlobal = $this->scope->isGlobalStockManager();
 
-        $params = [
+        $params = $this->scope->branchParams([
             'select' => '*',
-            'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
-        ];
+        ], $branchId);
 
         if ($request->type) {
             $params['type'] = "eq.{$request->type}";
@@ -219,13 +218,21 @@ class BottleAccessoriesController extends Controller
             }
         }
 
-        $movements = collect($movements)->map(function ($m) use ($users) {
+        $branchNames = $isGlobal ? $this->scope->branchNameMap(array_column($movements, 'branch_id')) : [];
+
+        $movements = collect($movements)->map(function ($m) use ($users, $isGlobal, $branchNames) {
             $m['performedBy'] = isset($m['performed_by']) && isset($users[$m['performed_by']])
                 ? (object) ['id' => $users[$m['performed_by']]['id'], 'name' => $users[$m['performed_by']]['name']]
                 : null;
+            if ($isGlobal) {
+                $m['branchName'] = $branchNames[(int) ($m['branch_id'] ?? 0)] ?? null;
+            }
             return (object) $m;
         })->all();
 
-        return view('stock-manager.bottle-accessories.movements', ['movements' => $movements]);
+        return view('stock-manager.bottle-accessories.movements', [
+            'movements' => $movements,
+            'isGlobalScope' => $isGlobal,
+        ]);
     }
 }
