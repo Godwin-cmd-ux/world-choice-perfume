@@ -71,7 +71,7 @@ class StockManagerController extends Controller
     public function crossBranchDashboard()
     {
         $branches = $this->supabase->query('branches', [
-            'select' => 'id,name,address,phone',
+            'select' => 'id,name,address',
             'order' => 'name.asc',
         ]);
 
@@ -95,7 +95,6 @@ class StockManagerController extends Controller
                 'id' => $id,
                 'name' => $b['name'] ?? '',
                 'address' => $b['address'] ?? null,
-                'phone' => $b['phone'] ?? null,
                 'totalProducts' => array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $branchStock)),
                 'lowStock' => count(array_filter($branchStock, fn($s) => ($s['quantity'] ?? 0) <= 5)),
                 'totalBottles' => array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $bottleStock)),
