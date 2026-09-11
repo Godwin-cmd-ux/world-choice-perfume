@@ -18,7 +18,7 @@
         }
     </script>
     <style>
-        .sidebar { width: 250px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: hidden; overflow-x: hidden; }
+        .sidebar { width: 250px; height: 100vh; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: auto; overflow-x: hidden; }
         .main-content { margin-left: 250px; min-height: 100vh; }
         @media (max-width: 768px) {
             .sidebar { position: fixed; z-index: 50; transform: translateX(-100%); transition: transform 0.3s; }
