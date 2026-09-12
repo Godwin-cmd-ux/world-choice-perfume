@@ -348,7 +348,7 @@
                     <p class="text-gray-300 mb-4 leading-relaxed">
                         "{{ $remark->message ?? $remark->subject ?? '' }}"
                     </p>
-                    <p class="text-sm font-semibold text-gold-400">{{ $remark->name ?? 'A happy customer' }}</p>
+                    <p class="text-sm font-semibold text-gold-400">{{ $remark->email ?? 'A happy customer' }}</p>
                 </div>
             @endforeach
         </div>

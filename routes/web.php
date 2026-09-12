@@ -17,7 +17,7 @@ Route::get('/', function() {
         ]))->map(fn($b) => (object) $b);
 
         $remarks = collect($supabase->query('inquiries', [
-            'select' => 'name,subject,message,created_at',
+            'select' => 'email,subject,message,created_at',
             'is_featured' => 'eq.true',
             'order' => 'created_at.desc',
             'limit' => 6,
