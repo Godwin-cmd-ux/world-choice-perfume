@@ -7,6 +7,7 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <title>@yield('title', 'World Choice Perfumes') — Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    @include('partials.theme')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar { width: 260px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: hidden; overflow-x: hidden; }

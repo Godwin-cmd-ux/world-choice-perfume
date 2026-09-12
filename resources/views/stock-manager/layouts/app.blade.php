@@ -6,17 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Stock Manager — World Choice Perfumes')</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    @include('partials.theme')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] }
-                }
-            }
-        }
-    </script>
     <style>
         .sidebar { width: 250px; height: 100vh; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: auto; overflow-x: hidden; }
         .main-content { margin-left: 250px; min-height: 100vh; }
