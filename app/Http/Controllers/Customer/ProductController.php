@@ -58,6 +58,7 @@ class ProductController extends Controller
                 $missing = collect($allProducts)
                     ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
                     ->map(fn($p) => [
+                        'id' => null,
                         'branch_id' => $selectedBranch->id,
                         'product_id' => $p['id'],
                         'quantity' => 0,
@@ -84,13 +85,14 @@ class ProductController extends Controller
             $stockedIds = $stockCollection->pluck('product_id')->map(fn($id) => (int) $id)->all();
             $missing = collect($allProducts)
                 ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
-                ->map(fn($p) => [
-                    'branch_id' => null,
-                    'product_id' => $p['id'],
-                    'quantity' => 0,
-                    'selling_price' => null,
-                    'product' => $p,
-                ]);
+->map(fn($p) => [
+                        'id' => null,
+                        'branch_id' => null,
+                        'product_id' => $p['id'],
+                        'quantity' => 0,
+                        'selling_price' => null,
+                        'product' => $p,
+                    ]);
 
             // Deduplicate by product_id — keep only one entry per product
             $stockCollection = $stockCollection->concat($missing)->unique('product_id')->values();
@@ -192,11 +194,11 @@ class ProductController extends Controller
         }
 
         return $stockCollection->values()->map(fn($item) => (object) [
-            'id' => $item['id'],
-            'branch_id' => $item['branch_id'],
-            'product_id' => $item['product_id'],
-            'quantity' => $item['quantity'],
-            'selling_price' => $item['selling_price'],
+            'id' => $item['id'] ?? null,
+            'branch_id' => $item['branch_id'] ?? null,
+            'product_id' => $item['product_id'] ?? null,
+            'quantity' => $item['quantity'] ?? 0,
+            'selling_price' => $item['selling_price'] ?? null,
             'product' => (object) array_merge($item['product'] ?? [], [
                 'images' => collect($item['product']['images'] ?? []),
             ]),
