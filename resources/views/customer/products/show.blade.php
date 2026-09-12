@@ -71,7 +71,6 @@
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium text-white">{{ $bs->branch->name ?? 'Branch #' . $bs->branch_id }}</p>
-                                        <p class="text-xs text-gray-500">{{ $bs->quantity }} in stock</p>
                                     </div>
                                 </div>
                                 <p class="text-lg font-bold text-gold-400">TZS {{ number_format($bs->selling_price) }}</p>
@@ -125,10 +124,6 @@
                             <p class="text-sm font-medium {{ $branchStocks->filter(fn($s) => $s->quantity > 0)->count() ? 'text-green-400' : 'text-red-400' }}">
                                 {{ $branchStocks->filter(fn($s) => $s->quantity > 0)->count() ? 'In Stock' : 'Out of Stock' }}
                             </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 mb-1">Total Stock</p>
-                            <p class="text-sm font-medium text-white">{{ $branchStocks->sum('quantity') }} units</p>
                         </div>
                     </div>
                 </div>

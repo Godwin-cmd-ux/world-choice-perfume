@@ -56,7 +56,6 @@
                             </div>
                             <div class="text-right">
                                 <p class="font-bold text-amber-700">TZS {{ number_format($stock->selling_price) }}</p>
-                                <p class="text-xs text-gray-400">{{ $stock->quantity }} in stock</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <button type="button" onclick="changeQty(this, -1)" class="w-6 h-6 rounded bg-gray-200 text-sm">-</button>

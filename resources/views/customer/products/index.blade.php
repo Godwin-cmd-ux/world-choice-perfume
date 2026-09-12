@@ -151,10 +151,10 @@
                                                 <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                             </div>
                                         @endif
-                                        <!-- Stock Badge -->
-                                        @if($stock->quantity <= 5)
-                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-500/20 text-red-400 text-[10px] font-semibold rounded-full border border-red-500/30">
-                                                Only {{ $stock->quantity }} left
+                                        <!-- Availability -->
+                                        @if($stock->quantity <= 0)
+                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                                Out of Stock
                                             </span>
                                         @endif
                                         <!-- Category Badge -->
@@ -173,7 +173,11 @@
 
                                         <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
                                             <div>
-                                                <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                                @if($stock->quantity > 0)
+                                                    <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                                @else
+                                                    <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                                @endif
                                             </div>
                                             <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
                                                 View Details
@@ -215,10 +219,10 @@
                                             <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                         </div>
                                     @endif
-                                    <!-- Stock Badge -->
-                                    @if($stock->quantity <= 5)
-                                        <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-500/20 text-red-400 text-[10px] font-semibold rounded-full border border-red-500/30">
-                                            Only {{ $stock->quantity }} left
+                                    <!-- Availability -->
+                                    @if($stock->quantity <= 0)
+                                        <span class="absolute top-3 right-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                            Out of Stock
                                         </span>
                                     @endif
                                     <!-- Category Badge -->
@@ -237,7 +241,11 @@
 
                                     <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
                                         <div>
-                                            <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                            @if($stock->quantity > 0)
+                                                <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                            @else
+                                                <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                            @endif
                                         </div>
                                         <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
                                             View Details

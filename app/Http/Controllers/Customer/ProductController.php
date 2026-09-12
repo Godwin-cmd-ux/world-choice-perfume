@@ -24,6 +24,14 @@ class ProductController extends Controller
             'order' => 'name.asc',
         ]))->map(fn($b) => (object) $b);
 
+        // Full active product catalogue (independent of stock) — so out-of-stock
+        // products still appear on the shop.
+        $allProducts = $this->supabase->query('products', [
+            'select' => '*, images:product_images(*)',
+            'is_active' => 'eq.true',
+            'order' => 'created_at.desc',
+        ]);
+
         $products = collect();
         $selectedBranch = null;
         $showAllBranches = false;
@@ -36,36 +44,56 @@ class ProductController extends Controller
             }
 
             if ($selectedBranch) {
-                // Fetch products with stock at this branch (quantity > 0)
-                $params = [
+                // All stock rows at this branch (including 0 quantity)
+                $rawStock = $this->supabase->query('branch_stock', [
                     'select' => '*, product:products(*, images:product_images(*))',
                     'branch_id' => "eq.{$selectedBranch->id}",
-                    'quantity' => 'gt.0',
                     'order' => 'created_at.desc',
-                ];
-
-                $rawStock = $this->supabase->query('branch_stock', $params);
+                ]);
 
                 $stockCollection = collect($rawStock);
+
+                // Merge in catalogue products that have no stock row at this branch
+                $stockedIds = $stockCollection->pluck('product_id')->map(fn($id) => (int) $id)->all();
+                $missing = collect($allProducts)
+                    ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
+                    ->map(fn($p) => [
+                        'branch_id' => $selectedBranch->id,
+                        'product_id' => $p['id'],
+                        'quantity' => 0,
+                        'selling_price' => null,
+                        'product' => $p,
+                    ]);
+
+                $stockCollection = $stockCollection->concat($missing);
 
                 $products = $this->applyFilters($stockCollection, $request);
             }
         } else {
-            // All Branches — fetch all branch_stock with quantity > 0
+            // All Branches — fetch all branch_stock (including 0 quantity)
             $showAllBranches = true;
 
-            $params = [
+            $rawStock = $this->supabase->query('branch_stock', [
                 'select' => '*, product:products(*, images:product_images(*))',
-                'quantity' => 'gt.0',
                 'order' => 'created_at.desc',
-            ];
-
-            $rawStock = $this->supabase->query('branch_stock', $params);
+            ]);
 
             $stockCollection = collect($rawStock);
 
+            // Merge in catalogue products that have no stock row anywhere
+            $stockedIds = $stockCollection->pluck('product_id')->map(fn($id) => (int) $id)->all();
+            $missing = collect($allProducts)
+                ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
+                ->map(fn($p) => [
+                    'branch_id' => null,
+                    'product_id' => $p['id'],
+                    'quantity' => 0,
+                    'selling_price' => null,
+                    'product' => $p,
+                ]);
+
             // Deduplicate by product_id — keep only one entry per product
-            $stockCollection = $stockCollection->unique('product_id')->values();
+            $stockCollection = $stockCollection->concat($missing)->unique('product_id')->values();
 
             $products = $this->applyFilters($stockCollection, $request);
         }
