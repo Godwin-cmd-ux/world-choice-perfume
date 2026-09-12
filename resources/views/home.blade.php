@@ -326,14 +326,14 @@
     </div>
 </section>
 
-<!-- Customer Remarks -->
+<!-- Customer Reviews -->
 @if($remarks->count() > 0)
-<section id="remarks" class="py-20 bg-dark-950">
+<section id="reviews" class="py-20 bg-dark-950">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16 scroll-hidden">
             <span class="text-xs font-semibold tracking-[0.3em] uppercase text-gold-400/60">What Our Customers Say</span>
             <h2 class="font-display text-4xl sm:text-5xl font-bold mt-3 mb-4">
-                <span class="text-white">Customer </span><span class="gold-text">Remarks</span>
+                <span class="text-white">Customer </span><span class="gold-text">Reviews</span>
             </h2>
         </div>
 

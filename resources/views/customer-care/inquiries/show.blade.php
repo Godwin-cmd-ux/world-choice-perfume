@@ -52,7 +52,7 @@
                         @csrf
                         <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-star mr-1"></i> Mark as Comment</button>
                     </form>
-                    <p class="text-xs text-gray-400">Featured comments appear on the public homepage as customer remarks.</p>
+                    <p class="text-xs text-gray-400">Featured comments appear on the public homepage as customer reviews.</p>
                 @else
                     <span class="text-sm text-amber-600 font-medium"><i class="fas fa-star mr-1"></i> Featured on homepage</span>
                 @endif
