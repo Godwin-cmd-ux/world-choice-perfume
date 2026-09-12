@@ -118,42 +118,9 @@
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center gap-2">
                                     {{-- Edit --}}
-                                    <form method="POST" action="{{ route('stock-manager.bottle-stock.update', $record->id) }}" class="inline">
-                                        @csrf
-                                        @method('PATCH')
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-                                            <input type="number" name="quantity" value="{{ $record->quantity }}" min="0"
-                                                class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-emerald-500"
-                                                placeholder="Qty">
-                                            <select name="has_logo"
-                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
-                                                <option value="">Logo?</option>
-                                                <option value="yes" {{ ($record->has_logo ?? '') === 'yes' ? 'selected' : '' }}>Yes</option>
-                                                <option value="no" {{ ($record->has_logo ?? '') === 'no' ? 'selected' : '' }}>No</option>
-                                            </select>
-                                            <select name="logo_color"
-                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
-                                                <option value="">Logo color</option>
-                                                <option value="yellow" {{ ($record->logo_color ?? '') === 'yellow' ? 'selected' : '' }}>Yellow</option>
-                                                <option value="black" {{ ($record->logo_color ?? '') === 'black' ? 'selected' : '' }}>Black</option>
-                                            </select>
-                                            <select name="has_box"
-                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
-                                                <option value="">Box?</option>
-                                                <option value="yes" {{ ($record->has_box ?? '') === 'yes' ? 'selected' : '' }}>Yes</option>
-                                                <option value="no" {{ ($record->has_box ?? '') === 'no' ? 'selected' : '' }}>No</option>
-                                            </select>
-                                            <select name="box_color"
-                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
-                                                <option value="">Box color</option>
-                                                <option value="black" {{ ($record->box_color ?? '') === 'black' ? 'selected' : '' }}>Black</option>
-                                                <option value="white" {{ ($record->box_color ?? '') === 'white' ? 'selected' : '' }}>White</option>
-                                            </select>
-                                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                                <i class="fas fa-pen mr-0.5"></i> Save
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <a href="{{ route('stock-manager.bottle-stock.edit', $record->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                        <i class="fas fa-pen mr-0.5"></i> Edit
+                                    </a>
                                     {{-- Delete --}}
                                     <form method="POST" action="{{ route('stock-manager.bottle-stock.destroy', $record->id) }}" class="inline">
                                         @csrf

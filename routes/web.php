@@ -350,6 +350,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::match(['get', 'post'], '/bottle-stock/in', [$smc, 'bottleStockIn'])->name('bottle-stock-in');
             Route::match(['get', 'post'], '/bottle-stock/broken', [$smc, 'bottleBroken'])->name('bottle-broken');
             Route::patch('/bottle-stock/{stock}', [$smc, 'updateBottleStock'])->name('bottle-stock.update');
+            Route::get('/bottle-stock/{stock}/edit', [$smc, 'editBottleStock'])->name('bottle-stock.edit');
             Route::delete('/bottle-stock/{stock}', [$smc, 'destroyBottleStock'])->name('bottle-stock.destroy');
             Route::get('/bottle-stock/movements', [$smc, 'bottleMovements'])->name('bottle-movements');
 
@@ -369,6 +370,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
             Route::match(['get', 'post'], '/bottle-accessories/stock-out', [$bac, 'stockOut'])->name('bottle-accessories.stock-out');
             Route::patch('/bottle-accessories/{accessory}', [$bac, 'update'])->name('bottle-accessories.update');
+            Route::get('/bottle-accessories/{accessory}/edit', [$bac, 'edit'])->name('bottle-accessories.edit');
             Route::delete('/bottle-accessories/{accessory}', [$bac, 'destroy'])->name('bottle-accessories.destroy');
             Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
         });

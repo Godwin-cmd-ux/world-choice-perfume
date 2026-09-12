@@ -56,16 +56,9 @@
                             <td class="px-6 text-right">
                                 @if($item && !($inCrossBranch ?? false))
                                     <div class="flex items-center justify-end gap-2">
-                                        <form method="POST" action="{{ route('stock-manager.bottle-accessories.update', $item->id) }}" class="inline">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="number" name="quantity" value="{{ $item->quantity }}" min="0"
-                                                class="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-emerald-500"
-                                                title="Edit quantity">
-                                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                                <i class="fas fa-pen mr-0.5"></i> Edit
-                                            </button>
-                                        </form>
+                                        <a href="{{ route('stock-manager.bottle-accessories.edit', $item->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                            <i class="fas fa-pen mr-0.5"></i> Edit
+                                        </a>
                                         <form method="POST" action="{{ route('stock-manager.bottle-accessories.destroy', $item->id) }}" class="inline">
                                             @csrf
                                             @method('DELETE')

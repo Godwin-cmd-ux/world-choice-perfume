@@ -114,6 +114,25 @@ class BottleAccessoriesController extends Controller
         return redirect()->route('stock-manager.bottle-accessories.index')->with('success', ucfirst(str_replace('_', ' ', $validated['type'])) . ' (' . ucfirst($validated['color']) . ') stock added successfully.');
     }
 
+    public function edit($accessoryId)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $item = $this->supabase->findOne('bottle_accessories', [
+            'id' => $accessoryId,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$item) {
+            return back()->withErrors(['error' => 'Accessory stock record not found.']);
+        }
+
+        return view('stock-manager.bottle-accessories.edit', [
+            'item' => (object) $item,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
+    }
+
     public function update(Request $request, $accessoryId)
     {
         $validated = $request->validate([

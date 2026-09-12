@@ -526,6 +526,25 @@ class StockManagerController extends Controller
         ]);
     }
 
+    public function editBottleStock($id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('bottle_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Bottle stock record not found.']);
+        }
+
+        return view('stock-manager.bottle-stock-edit', [
+            'record' => (object) $stock,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
+    }
+
     public function updateBottleStock(Request $request, $id)
     {
         $branchId = auth()->user()->branch_id;
