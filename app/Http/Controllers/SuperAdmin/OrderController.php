@@ -18,7 +18,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $params = [
-            'select' => '*, branch:branches(id,name), customer:customers(id,name,phone), cashier:users(id,name)',
+            'select' => '*, branch:branches(id,name), customer:customers(id,name,phone), cashier:users!orders_cashier_id_fkey(id,name)',
             'order' => 'created_at.desc',
             'limit' => 100,
         ];
@@ -59,7 +59,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users(id,name), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address)');
         if (!$order) abort(404);
 
         if (isset($order['customer']) && is_array($order['customer'])) $order['customer'] = (object) $order['customer'];

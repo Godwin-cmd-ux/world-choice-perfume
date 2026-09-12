@@ -20,7 +20,7 @@ class OrderController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $params = [
-            'select' => '*, cashier:users(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
+            'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
             'branch_id' => "eq.{$branchId}",
             'order' => 'created_at.desc',
             'limit' => 50,
@@ -50,7 +50,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, cashier:users(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
         if (!$order) abort(404);
 
         if (isset($order['cashier']) && is_array($order['cashier'])) $order['cashier'] = (object) $order['cashier'];

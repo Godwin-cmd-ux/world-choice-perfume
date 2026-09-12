@@ -32,7 +32,7 @@
             <tbody>
                 @forelse($orders as $order)
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
+                        <td class="py-3 px-4 font-medium">{{ $order->order_number ?? 'N/A' }}</td>
                         <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">

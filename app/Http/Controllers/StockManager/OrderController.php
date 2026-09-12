@@ -30,7 +30,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $params = $this->scope->branchParams([
-            'select' => '*, cashier:users(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
+            'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
             'order' => 'created_at.desc',
             'limit' => 50,
         ]);
@@ -64,7 +64,7 @@ class OrderController extends Controller
     {
         $branchId = $this->scope->activeBranchId();
 
-        $order = $this->supabase->find('orders', $orderId, '*, cashier:users(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
         if (!$order || $order['branch_id'] != $branchId) {
             abort(404);
         }
