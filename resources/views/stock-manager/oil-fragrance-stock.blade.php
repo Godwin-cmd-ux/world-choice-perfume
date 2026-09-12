@@ -85,18 +85,9 @@
                                         </div>
                                     </form>
                                     {{-- Edit --}}
-                                    <form method="POST" action="{{ route('stock-manager.oil-fragrance.update', $oil->id) }}" class="inline">
-                                        @csrf
-                                        @method('PATCH')
-                                        <div class="flex items-center gap-1.5">
-                                            <input type="number" name="quantity" value="{{ $oil->quantity }}" min="0"
-                                                class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-purple-500"
-                                                placeholder="Qty">
-                                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                                <i class="fas fa-pen mr-0.5"></i> Edit
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                        <i class="fas fa-pen mr-0.5"></i> Edit
+                                    </a>
                                     {{-- Delete --}}
                                     <form method="POST" action="{{ route('stock-manager.oil-fragrance.destroy', $oil->id) }}" class="inline">
                                         @csrf

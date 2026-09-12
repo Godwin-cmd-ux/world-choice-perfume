@@ -798,6 +798,25 @@ class StockManagerController extends Controller
         ]);
     }
 
+    public function editOilFragranceStock($id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $stock = $this->supabase->findOne('oil_fragrance_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Oil fragrance stock record not found.']);
+        }
+
+        return view('stock-manager.oil-fragrance-stock-edit', [
+            'record' => (object) $stock,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
+    }
+
     public function updateOilFragranceStock(Request $request, $id)
     {
         $branchId = auth()->user()->branch_id;
