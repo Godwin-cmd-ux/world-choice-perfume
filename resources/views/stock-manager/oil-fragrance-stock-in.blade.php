@@ -23,7 +23,7 @@
                 @include('partials.searchable-select', [
                     'name' => 'product_id',
                     'placeholder' => 'Select Fragrance',
-                    'selected' => old('product_id'),
+                    'selected' => old('product_id', $selectedProduct->id ?? ''),
                     'error' => $errors->first('product_id'),
                     'options' => $oilProducts->map(fn($p) => [
                         'value' => (string) $p->id,
@@ -53,8 +53,8 @@
                 <select name="bottle_volume" id="bottle_volume" required
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                     <option value="">Select Volume</option>
-                    <option value="500" {{ old('bottle_volume') == '500' ? 'selected' : '' }}>500ml</option>
-                    <option value="1000" {{ old('bottle_volume') == '1000' ? 'selected' : '' }}>1000ml</option>
+                    <option value="500" {{ old('bottle_volume', $preselectVolume) == '500' ? 'selected' : '' }}>500ml</option>
+                    <option value="1000" {{ old('bottle_volume', $preselectVolume) == '1000' ? 'selected' : '' }}>1000ml</option>
                 </select>
                 @error('bottle_volume')
                     <p class="text-xs text-red-600 mt-1">{{ $message }}</p>

@@ -361,7 +361,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/oil-fragrance/{stock}/edit', [$smc, 'editOilFragranceStock'])->name('oil-fragrance.edit');
 
             Route::patch('/oil-fragrance/{stock}', [$smc, 'updateOilFragranceStock'])->name('oil-fragrance.update');
-            Route::post('/oil-fragrance/{stock}/add', [$smc, 'addOilFragranceStock'])->name('oil-fragrance.add');
             Route::delete('/oil-fragrance/{stock}', [$smc, 'destroyOilFragranceStock'])->name('oil-fragrance.destroy');
             Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 

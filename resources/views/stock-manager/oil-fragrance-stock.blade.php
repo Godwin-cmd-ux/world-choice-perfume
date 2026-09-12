@@ -72,18 +72,11 @@
                         <td class="px-6 py-4">
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center gap-2">
-                                    {{-- Add (increase quantity) --}}
-                                    <form method="POST" action="{{ route('stock-manager.oil-fragrance.add', $oil->id) }}" class="inline">
-                                        @csrf
-                                        <div class="flex items-center gap-1.5">
-                                            <input type="number" name="quantity" value="1" min="1"
-                                                class="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-green-500"
-                                                placeholder="Qty">
-                                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                                <i class="fas fa-plus mr-0.5"></i> Add
-                                            </button>
-                                        </div>
-                                    </form>
+                                    {{-- Add (open prefilled stock-in page) --}}
+                                    <a href="{{ route('stock-manager.oil-fragrance-stock-in', ['name' => $oil->name, 'volume' => $oil->volume ?? '']) }}"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                        <i class="fas fa-plus mr-0.5"></i> Add
+                                    </a>
                                     {{-- Edit --}}
                                     <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                         <i class="fas fa-pen mr-0.5"></i> Edit
