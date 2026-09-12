@@ -38,7 +38,7 @@
                         <td class="px-4 text-right font-medium text-red-600">TZS {{ number_format($expense->amount) }}</td>
                         <td class="px-4">{{ $expense->user->name }}</td>
                         <td class="px-4 text-gray-500 max-w-xs truncate">{{ $expense->description }}</td>
-                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->format('M d, Y') }}</td>
+                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
                         <td class="px-4 text-center"><a href="{{ route('branch-admin.expenses.show', $expense->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
                     </tr>
                 @empty

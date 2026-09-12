@@ -18,7 +18,7 @@
             <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}</span></div>
             <div class="flex justify-between"><span>Phone:</span><span>{{ $order->customer?->phone ?? 'N/A' }}</span></div>
             <div class="flex justify-between"><span>Cashier:</span><span>{{ $order->cashier?->name ?? 'Not assigned' }}</span></div>
-            <div class="flex justify-between"><span>Placed:</span><span>{{ \Carbon\Carbon::parse($order->created_at)->format('M d, Y H:i') }}</span></div>
+            <div class="flex justify-between"><span>Placed:</span><span>{{ \Carbon\Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</span></div>
             @if($order->delivery_notes)<div class="flex justify-between"><span>Notes:</span><span>{{ $order->delivery_notes }}</span></div>@endif
         </div>
         <table class="w-full text-sm mb-4">

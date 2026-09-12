@@ -75,7 +75,7 @@
                         <td class="px-4">{{ $n->message ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $n->branch_name ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $n->user_name ?? '—' }}</td>
-                        <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->format('M d, Y H:i') : '—' }}</td>
+                        <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') : '—' }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-8 text-center text-gray-400">No notifications found for the selected filters.</td></tr>
@@ -85,5 +85,5 @@
     </div>
 </div>
 
-<div class="mt-4 text-xs text-gray-400 no-print">Generated: {{ now()->format('M d, Y \a\t h:i A') }}</div>
+<div class="mt-4 text-xs text-gray-400 no-print">Generated: {{ now()->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') }}</div>
 @endsection

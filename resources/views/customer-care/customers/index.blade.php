@@ -46,7 +46,7 @@
                         <td class="px-4 text-gray-500">{{ $customer->phone ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $customer->whatsapp ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $customer->email ?? '—' }}</td>
-                        <td class="px-4 text-gray-500">{{ $customer->created_at ? \Carbon\Carbon::parse($customer->created_at)->format('M d, Y') : '—' }}</td>
+                        <td class="px-4 text-gray-500">{{ $customer->created_at ? \Carbon\Carbon::parse($customer->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</td>
                         <td class="px-4 text-center">
                             <a href="{{ route('customer-care.customers.show', $customer->id) }}"
                                class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium">

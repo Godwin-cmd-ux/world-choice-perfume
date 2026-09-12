@@ -57,7 +57,7 @@
                         </td>
                         <td class="px-4 text-xs text-gray-600">{{ $sale->payment_summary ?? $sale->payment_method ?? 'N/A' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale->total) }}</td>
-                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>
+                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                         <td class="px-4 text-center"><a href="{{ route('branch-admin.sales.show', $sale->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
                     </tr>
                 @empty

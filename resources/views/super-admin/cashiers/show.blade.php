@@ -61,7 +61,7 @@
                     <p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Registered</p>
                     <p class="text-gray-900">
                         @if($cashier->created_at && is_object($cashier->created_at))
-                            {{ \Carbon\Carbon::parse($cashier->created_at)->format('M d, Y') }}
+                            {{ \Carbon\Carbon::parse($cashier->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}
                         @else
                             {{ $cashier->created_at ?? '—' }}
                         @endif

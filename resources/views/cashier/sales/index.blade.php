@@ -37,7 +37,7 @@
                             @endif
                         </td>
                         <td class="px-4 text-right font-bold text-green-700">TZS {{ number_format($sale->total) }}</td>
-                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>
+                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                         <td class="px-4 text-center"><a href="{{ route('cashier.sales.show', $sale->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
                     </tr>
                 @empty

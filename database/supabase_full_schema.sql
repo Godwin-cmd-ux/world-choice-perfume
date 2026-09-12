@@ -243,6 +243,72 @@ CREATE INDEX idx_stock_movements_branch_product_type ON stock_movements(branch_i
 CREATE INDEX idx_stock_movements_reference ON stock_movements(reference_type, reference_id);
 
 -- ============================================================================
+-- TABLE: bottle_stock
+-- ============================================================================
+CREATE TABLE bottle_stock (
+    id BIGSERIAL PRIMARY KEY,
+    branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    volume VARCHAR(20) NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    has_logo TEXT,
+    logo_color TEXT,
+    has_box TEXT,
+    box_color TEXT,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE (branch_id, volume)
+);
+
+-- ============================================================================
+-- TABLE: bottle_stock_movements
+-- ============================================================================
+CREATE TABLE bottle_stock_movements (
+    id BIGSERIAL PRIMARY KEY,
+    branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    volume VARCHAR(20) NOT NULL,
+    type TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    reason TEXT,
+    has_logo TEXT,
+    logo_color TEXT,
+    has_box TEXT,
+    box_color TEXT,
+    performed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+-- ============================================================================
+-- TABLE: oil_fragrance_stock
+-- ============================================================================
+CREATE TABLE oil_fragrance_stock (
+    id BIGSERIAL PRIMARY KEY,
+    branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    volume INTEGER,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    UNIQUE (branch_id, name)
+);
+
+-- ============================================================================
+-- TABLE: oil_fragrance_movements
+-- ============================================================================
+CREATE TABLE oil_fragrance_movements (
+    id BIGSERIAL PRIMARY KEY,
+    branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    volume INTEGER,
+    type TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    reason TEXT,
+    performed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+
+-- ============================================================================
 -- TABLE: customers
 -- ============================================================================
 CREATE TABLE customers (

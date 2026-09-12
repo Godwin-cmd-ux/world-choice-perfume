@@ -79,7 +79,7 @@
                                 {{ ucfirst($user->status ?? 'unknown') }}
                             </span>
                         </td>
-                        <td class="px-4 text-xs text-gray-500">{{ $user->created_at ? \Carbon\Carbon::parse($user->created_at)->format('M d, Y') : '—' }}</td>
+                        <td class="px-4 text-xs text-gray-500">{{ $user->created_at ? \Carbon\Carbon::parse($user->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</td>
                         <td class="px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('super-admin.staff.show', $user->id) }}" class="text-blue-600 hover:text-blue-800" title="View Details"><i class="fas fa-eye"></i></a>

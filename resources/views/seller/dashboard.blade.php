@@ -44,7 +44,7 @@
                         <td class="py-3 px-4 font-medium">{{ $sale['sale_number'] ?? '—' }}</td>
                         <td class="px-4"><span class="px-2 py-0.5 rounded-full text-xs {{ ($sale['sale_type'] ?? '') === 'wholesale' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">{{ ucfirst($sale['sale_type'] ?? 'retail') }}</span></td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale['total'] ?? 0) }}</td>
-                        <td class="px-4 text-gray-500 text-xs">{{ $sale['created_at'] ? \Carbon\Carbon::parse($sale['created_at'])->format('M d, H:i') : '—' }}</td>
+                        <td class="px-4 text-gray-500 text-xs">{{ $sale['created_at'] ? \Carbon\Carbon::parse($sale['created_at'])->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-8 text-center text-gray-400">No sales yet</td></tr>

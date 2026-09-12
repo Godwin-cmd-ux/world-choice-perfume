@@ -20,7 +20,7 @@
             <tbody>
                 @forelse($movements as $m)
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->format('M d, Y H:i') }}</td>
+                        <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                         <td class="px-4 font-medium capitalize">{{ str_replace('_', ' ', $m->type ?? '') }}</td>
                         <td class="px-4 capitalize">{{ $m->color ?? '—' }}</td>
                         <td class="px-4">

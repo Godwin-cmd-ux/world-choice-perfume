@@ -9,7 +9,7 @@
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold text-lg">{{ $sale->sale_number }}</h3>
-                    <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y \a\t h:i A') }}</p>
+                    <p class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') }}</p>
                 </div>
                 <span class="px-3 py-1 rounded-full text-xs font-medium {{ ($sale->payment_status ?? '') === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
                     {{ ucfirst($sale->payment_status ?? 'pending') }}

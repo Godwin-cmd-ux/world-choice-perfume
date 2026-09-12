@@ -13,7 +13,7 @@
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">
             <div class="flex justify-between"><span>Sale #:</span><strong>{{ $sale->sale_number }}</strong></div>
             <div class="flex justify-between"><span>Type:</span><span class="px-2 py-0.5 rounded-full text-xs @if(($sale->sale_type ?? '') === 'wholesale') bg-blue-100 text-blue-800 @else bg-amber-100 text-amber-800 @endif">{{ ucfirst($sale->sale_type ?? 'retail') }}</span></div>
-            <div class="flex justify-between"><span>Date:</span><span>{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</span></div>
+            <div class="flex justify-between"><span>Date:</span><span>{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</span></div>
             <div class="flex justify-between"><span>Cashier:</span><span>{{ $sale->cashier->name }}</span></div>
             @if(!empty($sale->notes))
                 <div class="flex justify-between"><span>Notes:</span><span>{{ $sale->notes }}</span></div>

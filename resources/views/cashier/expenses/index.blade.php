@@ -47,7 +47,7 @@
                         <td class="px-4 text-right font-medium text-red-600">TZS {{ number_format($expense->amount) }}</td>
                         <td class="px-4 text-gray-700 font-medium">{{ $expense->user?->name ?? '—' }}</td>
                         <td class="px-4 text-gray-500 max-w-xs truncate">{{ $expense->description }}</td>
-                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->format('M d, Y') }}</td>
+                        <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-8 text-center text-gray-400">No expenses recorded</td></tr>

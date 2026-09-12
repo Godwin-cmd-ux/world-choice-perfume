@@ -55,7 +55,7 @@
                         <td class="px-4 text-gray-500">{{ $sale->cashier?->name ?? '—' }}</td>
                         <td class="px-4 text-xs">{{ $sale->payment_summary ?? '—' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale->total ?? 0) }}</td>
-                        <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->format('M d, H:i') : '—' }}</td>
+                        <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-8 text-center text-gray-400">No sales data</td></tr>

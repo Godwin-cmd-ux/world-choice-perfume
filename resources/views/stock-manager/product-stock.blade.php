@@ -58,7 +58,7 @@
                         <td class="px-4 text-right">TZS {{ number_format($stock->selling_price) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($stockValue) }}</td>
                         <td class="px-4">@if(!empty($stock->category))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $stock->category }}</span>@else <span class="text-gray-400">—</span> @endif</td>
-                        <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->format('M d, Y') : '-' }}</td>
+                        <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '-' }}</td>
                         <td class="px-4 text-right">
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center justify-end gap-2">

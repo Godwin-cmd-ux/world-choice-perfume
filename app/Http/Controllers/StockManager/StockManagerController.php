@@ -549,6 +549,10 @@ class StockManagerController extends Controller
 
         $this->supabase->update('bottle_stock', [
             'quantity' => $validated['quantity'],
+            'has_logo' => $validated['has_logo'] ?? null,
+            'logo_color' => $validated['logo_color'] ?? null,
+            'has_box' => $validated['has_box'] ?? null,
+            'box_color' => $validated['box_color'] ?? null,
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $id]);
 
@@ -622,6 +626,10 @@ class StockManagerController extends Controller
                 $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
                 $this->supabase->update('bottle_stock', [
                     'quantity' => $newQty,
+                    'has_logo' => $validated['has_logo'],
+                    'logo_color' => $validated['logo_color'] ?? null,
+                    'has_box' => $validated['has_box'] ?? null,
+                    'box_color' => $validated['box_color'] ?? null,
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $existing['id']]);
             } else {
@@ -629,6 +637,10 @@ class StockManagerController extends Controller
                     'branch_id' => $branchId,
                     'volume' => $validated['volume'],
                     'quantity' => $validated['quantity'],
+                    'has_logo' => $validated['has_logo'],
+                    'logo_color' => $validated['logo_color'] ?? null,
+                    'has_box' => $validated['has_box'] ?? null,
+                    'box_color' => $validated['box_color'] ?? null,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ]);
@@ -808,6 +820,45 @@ class StockManagerController extends Controller
         }
 
         return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock updated.');
+    }
+
+    public function addOilFragranceStock(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $stock = $this->supabase->findOne('oil_fragrance_stock', [
+            'id' => $id,
+            'branch_id' => $branchId,
+        ]);
+
+        if (!$stock) {
+            return back()->withErrors(['error' => 'Oil fragrance stock record not found.'])->withInput();
+        }
+
+        $newQty = ($stock['quantity'] ?? 0) + $validated['quantity'];
+
+        $this->supabase->update('oil_fragrance_stock', [
+            'quantity' => $newQty,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $id]);
+
+        $this->supabase->insert('oil_fragrance_movements', [
+            'branch_id' => $branchId,
+            'name' => $stock['name'],
+            'volume' => $stock['volume'] ?? null,
+            'type' => 'stock_in',
+            'quantity' => $validated['quantity'],
+            'reason' => 'Manual stock addition',
+            'performed_by' => auth()->id(),
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        return redirect()->route('stock-manager.oil-fragrance')->with('success', 'Oil fragrance stock increased.');
     }
 
     public function destroyOilFragranceStock($id)

@@ -44,7 +44,7 @@
                     <i class="fas fa-calendar-plus text-gray-400 mt-0.5"></i>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">Registered</p>
-                        <p class="font-medium">{{ $customer->created_at ? \Carbon\Carbon::parse($customer->created_at)->format('M d, Y') : '—' }}</p>
+                        <p class="font-medium">{{ $customer->created_at ? \Carbon\Carbon::parse($customer->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</p>
                     </div>
                 </div>
             </div>
@@ -85,8 +85,8 @@
                                 <td class="px-4 text-gray-500">{{ $visit->branch->address ?? '—' }}</td>
                                 <td class="px-4">
                                     @if($visit->last_visit)
-                                        <span class="text-gray-600">{{ \Carbon\Carbon::parse($visit->last_visit)->format('M d, Y') }}</span>
-                                        <span class="text-[10px] text-gray-400 block">{{ \Carbon\Carbon::parse($visit->last_visit)->diffForHumans() }}</span>
+                                        <span class="text-gray-600">{{ \Carbon\Carbon::parse($visit->last_visit)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</span>
+                                        <span class="text-[10px] text-gray-400 block">{{ \Carbon\Carbon::parse($visit->last_visit)->setTimezone('Africa/Dar_es_Salaam')->diffForHumans() }}</span>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
@@ -118,7 +118,7 @@
                                 <td class="py-3 px-4 font-medium text-gray-700">{{ $sale->sale_number }}</td>
                                 <td class="px-4 text-gray-500">{{ $sale->branch_name ?? '—' }}</td>
                                 <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($sale->total) }}</td>
-                                <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y H:i') }}</td>
+                                <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="py-8 text-center text-gray-400">No purchases recorded yet.</td></tr>

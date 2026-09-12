@@ -9,7 +9,7 @@
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold text-lg">{{ $order->order_number ?? 'N/A' }}</h3>
-                    <p class="text-xs text-gray-500">{{ $order->created_at ? \Carbon\Carbon::parse($order->created_at)->format('M d, Y \a\t h:i A') : '—' }}</p>
+                    <p class="text-xs text-gray-500">{{ $order->created_at ? \Carbon\Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') : '—' }}</p>
                 </div>
                 <span class="px-3 py-1 rounded-full text-xs font-medium
                     @if(($order->status ?? '') === 'pending') bg-yellow-100 text-yellow-800

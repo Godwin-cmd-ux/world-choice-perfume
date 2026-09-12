@@ -47,7 +47,7 @@
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-600">Unread</span>
                             @endif
                         </td>
-                        <td class="px-4 text-xs text-gray-500">{{ $i->created_at ? \Carbon\Carbon::parse($i->created_at)->format('M d, H:i') : '—' }}</td>
+                        <td class="px-4 text-xs text-gray-500">{{ $i->created_at ? \Carbon\Carbon::parse($i->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
                         <td class="px-4">
                             <div class="flex items-center gap-2">
                                 @if(!($i->is_read ?? false))

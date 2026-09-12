@@ -130,6 +130,8 @@ class OrderController extends Controller
                 'delivery_notes' => $validated['delivery_notes'] ?? null,
                 'payment_status' => 'unpaid',
                 'payment_method' => 'pesapal',
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
             ]);
 
             // 6. Batch insert order items (1 HTTP call instead of N)
@@ -139,6 +141,8 @@ class OrderController extends Controller
                 'quantity' => $oi['quantity'],
                 'unit_price' => $oi['unit_price'],
                 'total' => $oi['total'],
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
             ], $orderItems);
             $this->supabase->insertMany('order_items', $itemsToInsert);
 

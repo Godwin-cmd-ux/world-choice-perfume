@@ -26,7 +26,7 @@
                                     <i class="fas fa-store mr-1"></i>{{ $post->branch->name }}
                                 </span>
                             @endif
-                            <span class="text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->format('M d, Y') : '' }}</span>
+                            <span class="text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '' }}</span>
                         </div>
                         <h2 class="font-display text-xl font-bold text-white mb-3">{{ $post->title }}</h2>
                         <p class="text-gray-400 leading-relaxed">{{ $post->content }}</p>

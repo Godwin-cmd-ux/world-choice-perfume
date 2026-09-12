@@ -64,7 +64,7 @@
                 <div class="flex justify-between"><span class="text-gray-500">From:</span><span>{{ $inquiry->name ?? $inquiry->user?->name ?? 'Customer' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Email:</span><span>{{ $inquiry->email ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Phone:</span><span>{{ $inquiry->phone ?? '—' }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Date:</span><span>{{ $inquiry->created_at ? \Carbon\Carbon::parse($inquiry->created_at)->format('M d, Y H:i') : '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Date:</span><span>{{ $inquiry->created_at ? \Carbon\Carbon::parse($inquiry->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') : '—' }}</span></div>
             </div>
         </div>
     </div>

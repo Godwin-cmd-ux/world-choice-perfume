@@ -69,7 +69,7 @@
 <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
     <div class="flex items-center justify-between mb-5">
         <h3 class="text-base font-semibold text-gray-800">Today's Financial Summary</h3>
-        <span class="text-xs text-gray-400">{{ now()->format('l, M d, Y') }}</span>
+        <span class="text-xs text-gray-400">{{ now()->setTimezone('Africa/Dar_es_Salaam')->format('l, M d, Y') }}</span>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="text-center p-4 bg-gray-50 rounded-xl">

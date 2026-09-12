@@ -33,7 +33,7 @@
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">Draft</span>
                             @endif
                         </td>
-                        <td class="px-4 text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->format('M d, Y') : '—' }}</td>
+                        <td class="px-4 text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</td>
                         <td class="px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('graphic-designer.news.edit', $post->id) }}" class="text-purple-600 hover:text-purple-800"><i class="fas fa-edit"></i></a>

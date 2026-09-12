@@ -156,7 +156,7 @@
             <tbody>
                 @forelse($recentBottleMovements as $m)
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->format('M d, Y H:i') }}</td>
+                        <td class="py-3 px-4 text-gray-500">{{ \Carbon\Carbon::parse($m->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                         <td class="px-4 font-medium">{{ $m->volume }}</td>
                         <td class="px-4">
                             @if($m->type === 'stock_in')

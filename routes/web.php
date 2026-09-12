@@ -358,6 +358,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::match(['get', 'post'], '/oil-fragrance/in', [$smc, 'oilFragranceStockIn'])->name('oil-fragrance-stock-in');
             Route::match(['get', 'post'], '/oil-fragrance/out', [$smc, 'oilFragranceStockOut'])->name('oil-fragrance-stock-out');
             Route::patch('/oil-fragrance/{stock}', [$smc, 'updateOilFragranceStock'])->name('oil-fragrance.update');
+            Route::post('/oil-fragrance/{stock}/add', [$smc, 'addOilFragranceStock'])->name('oil-fragrance.add');
             Route::delete('/oil-fragrance/{stock}', [$smc, 'destroyOilFragranceStock'])->name('oil-fragrance.destroy');
             Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 

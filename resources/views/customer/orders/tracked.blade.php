@@ -23,7 +23,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="font-semibold">{{ $order->order_number }}</p>
-                        <p class="text-sm text-gray-500">{{ $order->branch->name }} | {{ \Carbon\Carbon::parse($order->created_at)->format('M d, Y H:i') }}</p>
+                        <p class="text-sm text-gray-500">{{ $order->branch->name }} | {{ \Carbon\Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <span class="px-3 py-1 rounded-full text-xs font-medium

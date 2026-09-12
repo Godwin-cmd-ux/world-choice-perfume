@@ -87,7 +87,7 @@
                         <td class="px-4" title="{{ $n->message ?? '' }}">{{ $n->message ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $n->branch_name ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ $n->user_name ?? '—' }}</td>
-                        <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->format('M d, Y H:i') : '—' }}</td>
+                        <td class="px-4 text-xs text-gray-500">{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') : '—' }}</td>
                         <td class="px-4 text-center">
                             @if(!($n->is_read ?? false))
                                 <form method="POST" action="{{ route('super-admin.notifications.mark-read', $n->id) }}" class="inline">

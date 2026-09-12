@@ -121,7 +121,7 @@
                 <h1>World Choice Perfumes</h1>
                 <p>Be Smart, Nukia Kijanja</p>
                 <p style="font-size:11px; margin-top:2px;">@yield('header', 'Report')</p>
-                <p style="font-size:11px;">Generated: {{ now()->format('M d, Y \a\t h:i A') }} | Branch: {{ auth()->user()->branch_id ? 'Branch #' . auth()->user()->branch_id : 'All' }}</p>
+                <p style="font-size:11px;">Generated: {{ now()->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') }} | Branch: {{ auth()->user()->branch_id ? 'Branch #' . auth()->user()->branch_id : 'All' }}</p>
             </div>
         </div>
     </div>

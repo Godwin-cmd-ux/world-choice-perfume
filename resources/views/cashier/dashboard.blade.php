@@ -40,7 +40,7 @@
                         <td class="py-2">{{ $sale->sale_number }}</td>
                         <td class="text-right font-medium">TZS {{ number_format($sale->total) }}</td>
                         <td class="text-right">{{ $sale->items->sum('quantity') }}</td>
-                        <td class="text-right text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, H:i') }}</td>
+                        <td class="text-right text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-4 text-center text-gray-400">No sales yet today</td></tr>

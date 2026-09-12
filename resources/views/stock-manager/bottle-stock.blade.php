@@ -60,6 +60,8 @@
             <thead>
                 <tr class="bg-gray-50 text-left">
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Logo</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Box</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -74,6 +76,42 @@
                             </span>
                         </td>
                         <td class="px-6 py-4">
+                            @if(($record->has_logo ?? '') === 'yes')
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                                        <i class="fas fa-tag"></i> Logo
+                                    </span>
+                                    @php $logoColor = ($record->logo_color ?? ''); @endphp
+                                    @if($logoColor)
+                                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                                            <span class="w-3 h-3 rounded-full border {{ $logoColor === 'yellow' ? 'bg-yellow-400 border-yellow-500' : 'bg-gray-800 border-gray-600' }}"></span>
+                                            {{ ucfirst($logoColor) }}
+                                        </span>
+                                    @endif
+                                </span>
+                            @else
+                                <span class="text-xs text-gray-400">No Logo</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4">
+                            @if(($record->has_box ?? '') === 'yes')
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+                                        <i class="fas fa-box"></i> Box
+                                    </span>
+                                    @php $boxColor = ($record->box_color ?? ''); @endphp
+                                    @if($boxColor)
+                                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                                            <span class="w-3 h-3 rounded-full border {{ $boxColor === 'black' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300' }}"></span>
+                                            {{ ucfirst($boxColor) }}
+                                        </span>
+                                    @endif
+                                </span>
+                            @else
+                                <span class="text-xs text-gray-400">No Box</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4">
                             <span class="text-gray-700 font-medium">{{ number_format($record->quantity ?? 0) }}</span>
                         </td>
                         <td class="px-6 py-4">
@@ -83,12 +121,36 @@
                                     <form method="POST" action="{{ route('stock-manager.bottle-stock.update', $record->id) }}" class="inline">
                                         @csrf
                                         @method('PATCH')
-                                        <div class="flex items-center gap-1.5">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
                                             <input type="number" name="quantity" value="{{ $record->quantity }}" min="0"
                                                 class="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-emerald-500"
                                                 placeholder="Qty">
+                                            <select name="has_logo"
+                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
+                                                <option value="">Logo?</option>
+                                                <option value="yes" {{ ($record->has_logo ?? '') === 'yes' ? 'selected' : '' }}>Yes</option>
+                                                <option value="no" {{ ($record->has_logo ?? '') === 'no' ? 'selected' : '' }}>No</option>
+                                            </select>
+                                            <select name="logo_color"
+                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
+                                                <option value="">Logo color</option>
+                                                <option value="yellow" {{ ($record->logo_color ?? '') === 'yellow' ? 'selected' : '' }}>Yellow</option>
+                                                <option value="black" {{ ($record->logo_color ?? '') === 'black' ? 'selected' : '' }}>Black</option>
+                                            </select>
+                                            <select name="has_box"
+                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
+                                                <option value="">Box?</option>
+                                                <option value="yes" {{ ($record->has_box ?? '') === 'yes' ? 'selected' : '' }}>Yes</option>
+                                                <option value="no" {{ ($record->has_box ?? '') === 'no' ? 'selected' : '' }}>No</option>
+                                            </select>
+                                            <select name="box_color"
+                                                class="px-1.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-emerald-500 text-gray-700">
+                                                <option value="">Box color</option>
+                                                <option value="black" {{ ($record->box_color ?? '') === 'black' ? 'selected' : '' }}>Black</option>
+                                                <option value="white" {{ ($record->box_color ?? '') === 'white' ? 'selected' : '' }}>White</option>
+                                            </select>
                                             <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium">
-                                                <i class="fas fa-pen mr-0.5"></i> Edit
+                                                <i class="fas fa-pen mr-0.5"></i> Save
                                             </button>
                                         </div>
                                     </form>
@@ -109,7 +171,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="px-6 py-10 text-center text-gray-400">
+                        <td colspan="5" class="px-6 py-10 text-center text-gray-400">
                             <i class="fas fa-inbox text-2xl mb-2 block"></i>
                             No bottle stock records found.
                         </td>

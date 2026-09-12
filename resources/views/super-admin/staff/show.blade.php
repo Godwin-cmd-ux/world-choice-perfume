@@ -38,7 +38,7 @@
             <div class="space-y-3 text-sm border-t pt-4">
                 <div class="flex justify-between"><span class="text-gray-500">Phone</span><span>{{ $user->phone ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Branch</span><span>{{ $user->branch?->name ?? '—' }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Joined</span><span>{{ $user->created_at ? \Carbon\Carbon::parse($user->created_at)->format('M d, Y') : '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Joined</span><span>{{ $user->created_at ? \Carbon\Carbon::parse($user->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</span></div>
             </div>
 
             {{-- Actions --}}
@@ -113,7 +113,7 @@
                                 <td class="px-4 text-xs text-gray-500">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
                                 <td class="px-4 text-xs">{{ $sale->payment_summary ?? $sale->payment_method ?? '—' }}</td>
                                 <td class="px-4 text-right font-medium text-xs">TZS {{ number_format($sale->total) }}</td>
-                                <td class="px-4 text-xs text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->format('M d, H:i') }}</td>
+                                <td class="px-4 text-xs text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="5" class="py-6 text-center text-gray-400 text-xs">No sales yet</td></tr>
@@ -146,7 +146,7 @@
                                 <td class="py-2 px-4"><span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 capitalize">{{ $expense->category }}</span></td>
                                 <td class="px-4 text-right font-medium text-xs text-red-600">TZS {{ number_format($expense->amount) }}</td>
                                 <td class="px-4 text-xs text-gray-500 max-w-xs truncate">{{ $expense->description }}</td>
-                                <td class="px-4 text-xs text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->format('M d, Y') }}</td>
+                                <td class="px-4 text-xs text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="py-6 text-center text-gray-400 text-xs">No expenses yet</td></tr>
@@ -167,7 +167,7 @@
                 @foreach($auditLogs as $log)
                     <div class="flex items-center justify-between px-6 py-2 border-b last:border-0 hover:bg-gray-50">
                         <span class="text-xs text-gray-700">{{ str_replace('_', ' ', $log->action) }}</span>
-                        <span class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('M d, H:i') }}</span>
+                        <span class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</span>
                     </div>
                 @endforeach
             </div>
