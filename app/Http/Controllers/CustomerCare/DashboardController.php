@@ -18,9 +18,6 @@ class DashboardController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
-        // News posts count
-        $newsCount = $this->supabase->count('news_posts', []);
-
         // Inquiries count
         $inquiriesCount = $this->supabase->count('inquiries', [
             'branch_id' => "eq.{$branchId}",
@@ -58,6 +55,6 @@ class DashboardController extends Controller
             return (object) $i;
         });
 
-        return view('customer-care.dashboard', compact('newsCount', 'inquiriesCount', 'unreadInquiries', 'recentInquiries'));
+        return view('customer-care.dashboard', compact('inquiriesCount', 'unreadInquiries', 'recentInquiries'));
     }
 }

@@ -503,6 +503,77 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showGraphicDesignerRegistration()
+    {
+        return view('auth.register-graphic-designer');
+    }
+
+    public function registerGraphicDesigner(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'secret_code' => 'required|string',
+        ]);
+
+        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
+            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+        }
+
+        // Check if email already exists in Supabase
+        $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
+        if ($existing) {
+            return back()->withErrors(['email' => 'This email is already registered.']);
+        }
+
+        $hashedPassword = Hash::make($validated['password']);
+
+        // Create in Supabase (primary) — branch independent, approved by super admin
+        $sbUser = $this->supabase->insert('users', [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'password' => $hashedPassword,
+            'role' => 'graphic_designer',
+            'status' => 'pending',
+            'branch_id' => null,
+            'otp_verified' => false,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        if (!$sbUser || !isset($sbUser['id'])) {
+            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+        }
+
+        // Also create/update in SQLite for Auth::login()
+        $user = User::updateOrCreate(
+            ['email' => $validated['email']],
+            [
+                'name' => $validated['name'],
+                'phone' => $validated['phone'],
+                'password' => $hashedPassword,
+                'role' => 'graphic_designer',
+                'status' => 'pending',
+                'branch_id' => null,
+                'otp_verified' => false,
+                'supabase_id' => $sbUser['id'],
+            ]
+        );
+
+        $otpService = new OtpService();
+        $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
+
+        return view('auth.verify-otp', [
+            'email' => $validated['email'],
+            'type' => 'registration',
+            'user_id' => $user->id,
+            'message' => 'A verification code has been sent to your email.',
+        ]);
+    }
+
     public function registerStockManager(Request $request)
     {
         $validated = $request->validate([
@@ -809,6 +880,7 @@ class AuthController extends Controller
             'stock_manager' => redirect()->route('stock-manager.dashboard'),
             'customer_care' => redirect()->route('customer-care.dashboard'),
             'seller' => redirect()->route('seller.dashboard'),
+            'graphic_designer' => redirect()->route('graphic-designer.news.index'),
             default => redirect()->route('login'),
         };
     }

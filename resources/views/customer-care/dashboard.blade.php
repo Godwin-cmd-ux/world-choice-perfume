@@ -5,12 +5,6 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><i class="fas fa-newspaper text-blue-700 text-xl"></i></div>
-            <div><p class="text-2xl font-bold">{{ $newsCount }}</p><p class="text-sm text-gray-500">News Posts</p></div>
-        </div>
-    </div>
-    <div class="bg-white rounded-xl shadow p-6">
-        <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center"><i class="fas fa-envelope text-amber-700 text-xl"></i></div>
             <div><p class="text-2xl font-bold">{{ $inquiriesCount }}</p><p class="text-sm text-gray-500">Total Inquiries</p></div>
         </div>

@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
             try {
                 $supabase = new SupabaseService();
                 $pendingCount = $supabase->count('users', [
-                    'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller)',
+                    'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller,graphic_designer)',
                     'status' => 'eq.pending',
                 ]);
                 $view->with('pendingCount', $pendingCount);

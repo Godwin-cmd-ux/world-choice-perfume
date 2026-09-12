@@ -2,7 +2,7 @@
 @section('title', 'News Posts')
 @section('header', 'News Posts')
 @section('header-actions')
-    <a href="{{ route('customer-care.news.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+    <a href="{{ route('graphic-designer.news.create') }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-plus mr-1"></i> New Post
     </a>
 @endsection
@@ -36,8 +36,8 @@
                         <td class="px-4 text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->format('M d, Y') : '—' }}</td>
                         <td class="px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <a href="{{ route('customer-care.news.edit', $post->id) }}" class="text-blue-600 hover:text-blue-800"><i class="fas fa-edit"></i></a>
-                                <form method="POST" action="{{ route('customer-care.news.destroy', $post->id) }}" class="inline" data-confirm="Delete this post?">
+                                <a href="{{ route('graphic-designer.news.edit', $post->id) }}" class="text-purple-600 hover:text-purple-800"><i class="fas fa-edit"></i></a>
+                                <form method="POST" action="{{ route('graphic-designer.news.destroy', $post->id) }}" class="inline" data-confirm="Delete this post?">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
                                 </form>

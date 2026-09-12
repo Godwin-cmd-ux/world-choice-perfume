@@ -71,7 +71,7 @@ class DashboardController extends Controller
 
         // 4. Pending approvals (all staff roles)
         $pendingApprovals = $this->supabase->count('users', [
-            'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller)',
+            'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller,graphic_designer)',
             'status' => 'eq.pending',
         ]);
 

@@ -12,7 +12,7 @@ return new class extends Migration
         // Idempotency: inspect the actual CHECK constraint in the schema
         // (a SELECT with WHERE does not trigger CHECK, so it can't detect this)
         $schemaSql = DB::select("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'")[0]->sql ?? '';
-        if (str_contains($schemaSql, 'customer_care')) {
+        if (str_contains($schemaSql, 'customer_care') && str_contains($schemaSql, 'graphic_designer')) {
             return; // already fixed
         }
 
@@ -33,7 +33,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('phone')->nullable();
-            $table->enum('role', ['super_admin', 'branch_admin', 'cashier', 'stock_manager', 'customer_care', 'seller'])->default('cashier');
+            $table->enum('role', ['super_admin', 'branch_admin', 'cashier', 'stock_manager', 'customer_care', 'seller', 'graphic_designer'])->default('cashier');
             $table->enum('status', ['pending', 'approved', 'rejected', 'active', 'blocked'])->default('pending');
             $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
             $table->string('profile_picture')->nullable();

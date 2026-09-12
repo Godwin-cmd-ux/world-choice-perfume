@@ -12,6 +12,7 @@
         'stock_manager' => ['label' => 'Stock Managers', 'icon' => 'fa-boxes-stacked'],
         'customer_care' => ['label' => 'Customer Care', 'icon' => 'fa-headset'],
         'seller' => ['label' => 'Sellers', 'icon' => 'fa-store'],
+        'graphic_designer' => ['label' => 'Graphic Designers', 'icon' => 'fa-palette'],
         'all' => ['label' => 'All Staff', 'icon' => 'fa-users'],
     ];
 @endphp

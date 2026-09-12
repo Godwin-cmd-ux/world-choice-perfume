@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\CustomerCare;
+namespace App\Http\Controllers\GraphicDesigner;
 
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
@@ -53,7 +53,7 @@ class NewsController extends Controller
             return (object) $p;
         });
 
-        return view('customer-care.news.index', ['posts' => $posts]);
+        return view('graphic-designer.news.index', ['posts' => $posts]);
     }
 
     public function create()
@@ -64,7 +64,7 @@ class NewsController extends Controller
             'order' => 'name.asc',
         ]))->map(fn($b) => (object) $b);
 
-        return view('customer-care.news.create', ['branches' => $branches]);
+        return view('graphic-designer.news.create', ['branches' => $branches]);
     }
 
     public function store(Request $request)
@@ -95,7 +95,7 @@ class NewsController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        return redirect()->route('customer-care.news.index')->with('success', 'News post published successfully!');
+        return redirect()->route('graphic-designer.news.index')->with('success', 'News post published successfully!');
     }
 
     public function edit($postId)
@@ -109,7 +109,7 @@ class NewsController extends Controller
             'order' => 'name.asc',
         ]))->map(fn($b) => (object) $b);
 
-        return view('customer-care.news.edit', ['post' => (object) $post, 'branches' => $branches]);
+        return view('graphic-designer.news.edit', ['post' => (object) $post, 'branches' => $branches]);
     }
 
     public function update(Request $request, $postId)
@@ -127,7 +127,7 @@ class NewsController extends Controller
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $postId]);
 
-        return redirect()->route('customer-care.news.index')->with('success', 'Post updated successfully!');
+        return redirect()->route('graphic-designer.news.index')->with('success', 'Post updated successfully!');
     }
 
     public function destroy($postId)
@@ -148,6 +148,6 @@ class NewsController extends Controller
             []
         );
 
-        return redirect()->route('customer-care.news.index')->with('success', 'Post deleted.');
+        return redirect()->route('graphic-designer.news.index')->with('success', 'Post deleted.');
     }
 }

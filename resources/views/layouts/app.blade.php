@@ -54,6 +54,8 @@
                 @include('customer-care.partials.sidebar')
             @elseif(auth()->user()->role === 'seller')
                 @include('seller.partials.sidebar')
+            @elseif(auth()->user()->isGraphicDesigner())
+                @include('graphic-designer.partials.sidebar')
             @endif
         @endauth
 

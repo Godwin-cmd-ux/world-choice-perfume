@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 class CashierApprovalController extends Controller
 {
     /** All approval-eligible staff roles (everything except super_admin) */
-    private const APPROVAL_ROLES = ['cashier', 'branch_admin', 'stock_manager', 'customer_care', 'seller'];
+    private const APPROVAL_ROLES = ['cashier', 'branch_admin', 'stock_manager', 'customer_care', 'seller', 'graphic_designer'];
 
     private SupabaseService $supabase;
 

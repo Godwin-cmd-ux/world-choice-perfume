@@ -122,6 +122,8 @@ Route::middleware('guest')->group(function () {
         Route::post('/register/customer-care', [AuthController::class, 'registerCustomerCare']);
         Route::get('/register/seller', [AuthController::class, 'showSellerRegistration'])->name('register.seller');
         Route::post('/register/seller', [AuthController::class, 'registerSeller']);
+        Route::get('/register/graphic-designer', [AuthController::class, 'showGraphicDesignerRegistration'])->name('register.graphic-designer');
+        Route::post('/register/graphic-designer', [AuthController::class, 'registerGraphicDesigner']);
     });
 
     // OTP
@@ -296,20 +298,27 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/orders/{order}', [\App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [\App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
 
-        // News
-        Route::get('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'index'])->name('news.index');
-        Route::get('/news/create', [\App\Http\Controllers\CustomerCare\NewsController::class, 'create'])->name('news.create');
-        Route::post('/news', [\App\Http\Controllers\CustomerCare\NewsController::class, 'store'])->name('news.store');
-        Route::get('/news/{post}/edit', [\App\Http\Controllers\CustomerCare\NewsController::class, 'edit'])->name('news.edit');
-        Route::put('/news/{post}', [\App\Http\Controllers\CustomerCare\NewsController::class, 'update'])->name('news.update');
-        Route::delete('/news/{post}', [\App\Http\Controllers\CustomerCare\NewsController::class, 'destroy'])->name('news.destroy');
-
         // Inquiries
         Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
         Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
         Route::post('/inquiries/{inquiry}/read', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
         Route::post('/inquiries/{inquiry}/comment', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
+    });
+
+    // ========================
+    // GRAPHIC DESIGNER ROUTES
+    // ========================
+    Route::prefix('graphic-designer')->name('graphic-designer.')->middleware('role:graphic_designer')->group(function () {
+        $gdn = \App\Http\Controllers\GraphicDesigner\NewsController::class;
+
+        // News
+        Route::get('/news', [$gdn, 'index'])->name('news.index');
+        Route::get('/news/create', [$gdn, 'create'])->name('news.create');
+        Route::post('/news', [$gdn, 'store'])->name('news.store');
+        Route::get('/news/{post}/edit', [$gdn, 'edit'])->name('news.edit');
+        Route::put('/news/{post}', [$gdn, 'update'])->name('news.update');
+        Route::delete('/news/{post}', [$gdn, 'destroy'])->name('news.destroy');
     });
 
     // ========================
