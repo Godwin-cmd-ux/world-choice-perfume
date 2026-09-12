@@ -44,7 +44,7 @@
             <div class="fade-in">
                 <div class="mb-4">
                     <span class="inline-block px-3 py-1 bg-gold-500/10 text-gold-400 text-xs font-semibold rounded-full border border-gold-500/20 mb-3">
-                        {{ $product->category }}
+                        {{ $product->sex_category ? ucwords($product->sex_category) : ($product->category ?? '') }}
                     </span>
                     <span class="inline-block px-3 py-1 bg-dark-700 text-gray-400 text-xs font-semibold rounded-full border border-dark-600 mb-3 ml-2">
                         {{ $product->brand }}
@@ -118,7 +118,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 mb-1">Category</p>
-                            <p class="text-sm font-medium text-white">{{ $product->category ?? 'N/A' }}</p>
+                            <p class="text-sm font-medium text-white capitalize">{{ $product->sex_category ?? ($product->category ?? 'N/A') }}</p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 mb-1">Availability</p>

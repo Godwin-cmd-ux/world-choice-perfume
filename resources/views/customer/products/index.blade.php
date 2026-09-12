@@ -28,8 +28,8 @@
                 @if(request('branch_id'))
                     <input type="hidden" name="branch_id" value="{{ request('branch_id') }}">
                 @endif
-                @if(request('category'))
-                    <input type="hidden" name="category" value="{{ request('category') }}">
+                @if(request('sex_category'))
+                    <input type="hidden" name="sex_category" value="{{ request('sex_category') }}">
                 @endif
                 <div class="relative">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name, brand, or category..."
@@ -77,29 +77,29 @@
                         </div>
                     </div>
 
-                    <!-- Category Filter -->
+                    <!-- Sex Category Filter -->
                     <div class="mb-6">
                         <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-filter mr-2"></i> Category
+                            <i class="fas fa-filter mr-2"></i> Sex Category
                         </h3>
                         <div class="space-y-1">
-                            @foreach(['Men', 'Women', 'Unisex', 'Gift Set', 'Accessories'] as $cat)
+                            @foreach(['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'gift sets' => 'Gift Sets', 'accessories' => 'Accessories'] as $value => $label)
                                 @php
-                                    $catParams = request()->except('category');
-                                    if (request('category') !== $cat) {
-                                        $catParams['category'] = $cat;
+                                    $catParams = request()->except('sex_category');
+                                    if (request('sex_category') !== $value) {
+                                        $catParams['sex_category'] = $value;
                                     }
                                 @endphp
                                 <a href="{{ route('customer.products.index', $catParams) }}"
-                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('category') === $cat ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                    {{ $cat }}
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('sex_category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    {{ $label }}
                                 </a>
                             @endforeach
                         </div>
                     </div>
 
                     <!-- Clear Filters -->
-                    @if(request()->hasAny(['branch_id', 'category', 'search']))
+                    @if(request()->hasAny(['branch_id', 'sex_category', 'search']))
                         <a href="{{ route('customer.products.index') }}" class="block w-full text-center px-4 py-3 rounded-xl border border-dark-600 text-gray-400 hover:text-white hover:border-gray-500 transition text-sm">
                             <i class="fas fa-times mr-1"></i> Clear All Filters
                         </a>
@@ -159,7 +159,7 @@
                                         @endif
                                         <!-- Category Badge -->
                                         <span class="absolute top-3 left-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gold-400 text-[10px] font-semibold rounded-full border border-dark-600">
-                                            {{ $stock->product->category }}
+                                            {{ $stock->product->sex_category ? ucwords($stock->product->sex_category) : ($stock->product->category ?? '') }}
                                         </span>
                                     </div>
 
@@ -223,7 +223,7 @@
                                     @endif
                                     <!-- Category Badge -->
                                     <span class="absolute top-3 left-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gold-400 text-[10px] font-semibold rounded-full border border-dark-600">
-                                        {{ $stock->product->category }}
+                                        {{ $stock->product->sex_category ? ucwords($stock->product->sex_category) : ($stock->product->category ?? '') }}
                                     </span>
                                 </div>
 

@@ -52,6 +52,19 @@
                     @error('category') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sex Category</label>
+                    <select name="sex_category"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 @error('sex_category') border-red-500 @enderror">
+                        <option value="">Select a category</option>
+                        @foreach(['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'accessories' => 'Accessories', 'gift sets' => 'Gift Sets'] as $value => $label)
+                            <option value="{{ $value }}" {{ old('sex_category', $product->sex_category) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">Helps customers filter products on the website shop.</p>
+                    @error('sex_category') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
                 <label class="flex items-center gap-2">
                     <input type="checkbox" name="is_active" value="1" {{ $product->is_active ? 'checked' : '' }} class="rounded text-emerald-600 focus:ring-emerald-500">
                     <span class="text-sm text-gray-700">Active</span>

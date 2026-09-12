@@ -61,6 +61,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
+            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
             'images.*' => 'nullable|image|max:2048',
         ]);
 
@@ -70,6 +71,7 @@ class ProductController extends Controller
             'description' => $validated['description'] ?? null,
             'brand' => $validated['brand'] ?? null,
             'category' => $validated['category'],
+            'sex_category' => $validated['sex_category'] ?? null,
             'is_active' => true,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
@@ -81,6 +83,7 @@ class ProductController extends Controller
             'description' => $validated['description'] ?? null,
             'brand' => $validated['brand'] ?? null,
             'category' => $validated['category'],
+            'sex_category' => $validated['sex_category'] ?? null,
         ]);
 
         // Upload images to Cloudinary
@@ -130,6 +133,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
+            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:2048',
         ]);

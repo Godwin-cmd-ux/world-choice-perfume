@@ -142,11 +142,20 @@ class ProductController extends Controller
                 $product = $item['product'] ?? [];
                 return str_contains(strtolower($product['name'] ?? ''), $search)
                     || str_contains(strtolower($product['brand'] ?? ''), $search)
-                    || str_contains(strtolower($product['category'] ?? ''), $search);
+                    || str_contains(strtolower($product['category'] ?? ''), $search)
+                    || str_contains(strtolower($product['sex_category'] ?? ''), $search);
             });
         }
 
-        // Category filter
+        // Sex category filter (male, female, unisex, accessories, gift sets)
+        if ($request->sex_category) {
+            $sexCategory = $request->sex_category;
+            $stockCollection = $stockCollection->filter(function ($item) use ($sexCategory) {
+                return ($item['product']['sex_category'] ?? null) === $sexCategory;
+            });
+        }
+
+        // Category filter (legacy — Oil Fragrance / Brand Perfume)
         if ($request->category) {
             $category = $request->category;
             $stockCollection = $stockCollection->filter(function ($item) use ($category) {

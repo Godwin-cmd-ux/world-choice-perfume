@@ -123,7 +123,7 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 scroll-hidden">
-            <a href="{{ route('customer.products.index', ['category' => 'Men']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+            <a href="{{ route('customer.products.index', ['sex_category' => 'male']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -138,7 +138,7 @@
                 </div>
             </a>
 
-            <a href="{{ route('customer.products.index', ['category' => 'Women']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+            <a href="{{ route('customer.products.index', ['sex_category' => 'female']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-pink-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -153,7 +153,7 @@
                 </div>
             </a>
 
-            <a href="{{ route('customer.products.index', ['category' => 'Unisex']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+            <a href="{{ route('customer.products.index', ['sex_category' => 'unisex']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -168,15 +168,30 @@
                 </div>
             </a>
 
-            <a href="{{ route('customer.products.index', ['category' => 'Gift Set']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+            <a href="{{ route('customer.products.index', ['sex_category' => 'gift sets']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-gold-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
                     <div class="w-12 h-12 rounded-xl bg-gold-500/10 flex items-center justify-center mb-4">
                         <i class="fas fa-gift text-gold-400 text-xl"></i>
                     </div>
-                    <h3 class="font-display text-xl font-bold text-white mb-1">Gift Sets & Accessories</h3>
+                    <h3 class="font-display text-xl font-bold text-white mb-1">Gift Sets</h3>
                     <p class="text-sm text-gray-400">The perfect present</p>
+                    <div class="mt-3 flex items-center gap-2 text-gold-400 text-sm font-medium group-hover:gap-3 transition-all">
+                        Explore <i class="fas fa-arrow-right text-xs"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{{ route('customer.products.index', ['sex_category' => 'accessories']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
+                <div class="absolute inset-0 bg-gradient-to-br from-teal-900/20 to-dark-800"></div>
+                <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
+                    <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center mb-4">
+                        <i class="fas fa-spray-can-sparkles text-teal-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-white mb-1">Accessories</h3>
+                    <p class="text-sm text-gray-400">Bottles & more</p>
                     <div class="mt-3 flex items-center gap-2 text-gold-400 text-sm font-medium group-hover:gap-3 transition-all">
                         Explore <i class="fas fa-arrow-right text-xs"></i>
                     </div>

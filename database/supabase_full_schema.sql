@@ -185,6 +185,7 @@ CREATE TABLE products (
     description TEXT,
     brand VARCHAR(255),
     category VARCHAR(255),
+    sex_category VARCHAR(20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
