@@ -306,9 +306,16 @@
                     <div class="group bg-dark-800 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                         <div class="h-48 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center relative overflow-hidden">
                             <div class="absolute inset-0 bg-gradient-to-br from-gold-500/5 to-transparent"></div>
-                            <div class="w-20 h-20 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center z-10">
-                                <i class="fas fa-store text-gold-400 text-2xl"></i>
-                            </div>
+                            @if($branch->profile_picture)
+                                <div class="absolute inset-0 z-0">
+                                    <img src="{{ $branch->profile_picture }}" alt="{{ $branch->name }}" class="w-full h-full object-cover">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-dark-900/70 via-transparent to-transparent"></div>
+                                </div>
+                            @else
+                                <div class="w-20 h-20 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center z-10">
+                                    <i class="fas fa-store text-gold-400 text-2xl"></i>
+                                </div>
+                            @endif
                             <div class="absolute top-4 right-4">
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                             </div>
