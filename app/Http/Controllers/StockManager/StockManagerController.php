@@ -96,12 +96,16 @@ class StockManagerController extends Controller
 
     public function crossBranchDashboard()
     {
+        $myBranchId = (int) (auth()->user()->branch_id ?? 0);
+
         $branches = $this->supabase->query('branches', [
             'select' => 'id,name,address',
             'order' => 'name.asc',
         ]);
 
-        $rows = collect($branches)->map(function ($b) {
+        $rows = collect($branches)
+            ->reject(fn ($b) => (int) $b['id'] === $myBranchId)
+            ->map(function ($b) {
             $id = (int) $b['id'];
 
             $branchStock = $this->supabase->query('branch_stock', [
