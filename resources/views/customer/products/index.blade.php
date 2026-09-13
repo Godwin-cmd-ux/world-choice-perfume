@@ -130,11 +130,6 @@
                             </p>
                         </div>
                     @else
-                        <div class="mb-6 flex items-center justify-between">
-                            <p class="text-sm text-gray-400">
-                                <span class="font-semibold text-white">{{ $products->count() }}</span> products across all branches
-                            </p>
-                        </div>
                         <!-- Products Grid -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach($products as $stock)
