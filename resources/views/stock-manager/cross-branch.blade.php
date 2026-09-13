@@ -5,13 +5,13 @@
 @section('content')
 <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6">
     <i class="fas fa-globe-africa mr-2"></i>
-    Monitor the stock of <strong>all other branches</strong>. Click a branch to open it and view its stock exactly like that
+    Monitor the stock of <strong>@if($isSuperAdmin) all branches @else all other branches @endif</strong>. Click a branch to open it and view its stock exactly like that
     branch's stock manager. Monitoring is <strong>read-only</strong> — no changes can be made while inside a branch.
 </div>
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-6 py-4 border-b flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Other Branches</h3>
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">@if($isSuperAdmin) All Branches @else Other Branches @endif</h3>
         <span class="text-xs text-gray-400">{{ $rows->count() }} branch(es)</span>
     </div>
     <div class="overflow-x-auto">

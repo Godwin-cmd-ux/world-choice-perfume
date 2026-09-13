@@ -168,9 +168,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/cashiers/{cashier}/approve', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'approve'])->name('cashiers.approve');
         Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'reject'])->name('cashiers.reject');
 
-        // Cross-Branch Stock (all branches, including Kinondoni)
-        Route::get('/stock/cross-branch', [\App\Http\Controllers\SuperAdmin\StockController::class, 'crossBranch'])->name('stock.cross-branch');
-
         // Orders Monitor
         Route::get('/orders', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'show'])->name('orders.show');
@@ -346,7 +343,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     // STOCK MANAGER ROUTES
     // ========================
-    Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager', 'cross-branch.readonly')->group(function () {
+    Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager,super_admin', 'cross-branch.readonly')->group(function () {
         $smc = \App\Http\Controllers\StockManager\StockManagerController::class;
 
         // Cross-Branch Monitoring (Kinondoni branch stock manager only)

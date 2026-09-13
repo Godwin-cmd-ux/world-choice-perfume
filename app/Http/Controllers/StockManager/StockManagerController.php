@@ -97,6 +97,7 @@ class StockManagerController extends Controller
     public function crossBranchDashboard()
     {
         $myBranchId = (int) (auth()->user()->branch_id ?? 0);
+        $isSuperAdmin = $this->scope->isSuperAdmin();
 
         $branches = $this->supabase->query('branches', [
             'select' => 'id,name,address',
@@ -104,7 +105,10 @@ class StockManagerController extends Controller
         ]);
 
         $rows = collect($branches)
-            ->reject(fn ($b) => (int) $b['id'] === $myBranchId)
+            ->when(
+                !$isSuperAdmin,
+                fn ($branches) => $branches->reject(fn ($b) => (int) $b['id'] === $myBranchId)
+            )
             ->map(function ($b) {
             $id = (int) $b['id'];
 
@@ -132,7 +136,10 @@ class StockManagerController extends Controller
             ];
         });
 
-        return view('stock-manager.cross-branch', ['rows' => $rows]);
+        return view('stock-manager.cross-branch', [
+            'rows' => $rows,
+            'isSuperAdmin' => $isSuperAdmin,
+        ]);
     }
 
     public function enterCrossBranch($branch)
@@ -152,6 +159,11 @@ class StockManagerController extends Controller
     public function exitCrossBranch()
     {
         $this->scope->exitBranch();
+
+        if ($this->scope->isSuperAdmin()) {
+            return redirect()->route('stock-manager.cross-branch')
+                ->with('success', 'You are back on the branch list.');
+        }
 
         return redirect()->route('stock-manager.dashboard')->with('success', 'You are back to your own branch.');
     }

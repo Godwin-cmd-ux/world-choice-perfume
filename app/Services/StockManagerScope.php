@@ -86,6 +86,20 @@ class StockManagerScope
         return $name !== null && $this->matches($name, self::KINONDONI_BRANCH_NAME);
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return auth()->check() && auth()->user()->role === 'super_admin';
+    }
+
+    /**
+     * Users who may monitor other branches read-only: the Kinondoni branch
+     * stock manager and the Super Admin.
+     */
+    public function isCrossBranchMonitor(): bool
+    {
+        return $this->isKinondoniStockManager() || $this->isSuperAdmin();
+    }
+
     /**
      * Head Quarters-Mikocheni stock manager no longer handles bottles, oil
      * fragrance or bottle accessories.
@@ -107,7 +121,9 @@ class StockManagerScope
 
     public function enterBranch(int $branchId): void
     {
-        if ($this->isKinondoniStockManager() && $branchId !== (int) ($this->user()->branch_id ?? 0)) {
+        if ($this->isSuperAdmin()) {
+            session(['cross_branch_id' => $branchId]);
+        } elseif ($this->isKinondoniStockManager() && $branchId !== (int) ($this->user()->branch_id ?? 0)) {
             session(['cross_branch_id' => $branchId]);
         }
     }
@@ -123,7 +139,7 @@ class StockManagerScope
      */
     public function activeBranchId(): int
     {
-        if ($this->isKinondoniStockManager() && !empty(session('cross_branch_id'))) {
+        if ($this->isCrossBranchMonitor() && !empty(session('cross_branch_id'))) {
             return (int) session('cross_branch_id');
         }
 
@@ -141,7 +157,7 @@ class StockManagerScope
      */
     public function inCrossBranchMode(): bool
     {
-        return $this->isKinondoniStockManager() && !empty(session('cross_branch_id'));
+        return $this->isCrossBranchMonitor() && !empty(session('cross_branch_id'));
     }
 
     /**
