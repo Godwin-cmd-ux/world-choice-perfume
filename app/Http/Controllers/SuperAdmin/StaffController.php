@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\User;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
@@ -49,6 +52,103 @@ class StaffController extends Controller
         });
 
         return view('super-admin.staff.index', ['users' => $users]);
+    }
+
+    public function create()
+    {
+        $branches = collect($this->supabase->query('branches', [
+            'select' => 'id,name',
+            'is_active' => 'eq.true',
+            'order' => 'name.asc',
+        ]))->map(fn($b) => (object) $b);
+
+        $roles = ['branch_admin', 'cashier', 'stock_manager', 'seller', 'customer_care', 'graphic_designer'];
+
+        return view('super-admin.staff.create', ['branches' => $branches, 'roles' => $roles]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'nullable|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|in:branch_admin,cashier,stock_manager,seller,customer_care,graphic_designer',
+            'branch_id' => 'required',
+        ]);
+
+        $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
+        if ($existing) {
+            return back()->withErrors(['email' => 'This email is already registered.']);
+        }
+
+        $branch = $this->supabase->find('branches', $validated['branch_id']);
+        if (!$branch) {
+            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+        }
+
+        // Sync the branch to SQLite
+        if (!Branch::find($validated['branch_id'])) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
+
+        $hashedPassword = Hash::make($validated['password']);
+
+        // Create in Supabase (primary)
+        $sbUser = $this->supabase->insert('users', [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'password' => $hashedPassword,
+            'role' => $validated['role'],
+            'status' => 'active',
+            'branch_id' => (int) $validated['branch_id'],
+            'otp_verified' => false,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        if (!$sbUser || !isset($sbUser['id'])) {
+            return back()->withErrors(['email' => 'Failed to create the staff account. Please contact support.']);
+        }
+
+        // Also create/update in SQLite so Auth::login() works
+        User::updateOrCreate(
+            ['email' => $validated['email']],
+            [
+                'name' => $validated['name'],
+                'phone' => $validated['phone'],
+                'password' => $hashedPassword,
+                'role' => $validated['role'],
+                'status' => 'active',
+                'branch_id' => (int) $validated['branch_id'],
+                'otp_verified' => false,
+                'supabase_id' => $sbUser['id'],
+            ]
+        );
+
+        try {
+            (new \App\Services\AuditService())->recordCriticalAction(
+                'staff_created',
+                'created_user',
+                'Staff Created',
+                "Staff {$validated['name']} ({$validated['role']}) registered into branch #{$validated['branch_id']} by super admin.",
+                ['user_name' => $validated['name'], 'role' => $validated['role'], 'branch_id' => $validated['branch_id']],
+                'users',
+                (string) $sbUser['id'],
+                [],
+                ['status' => 'active']
+            );
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
+
+        return redirect()->route('super-admin.staff.index')
+            ->with('success', "Staff account for {$validated['name']} created successfully. They can now log in with the password you provided.");
     }
 
     public function show($userId)

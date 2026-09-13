@@ -2,6 +2,9 @@
 @section('title', 'Staff Management')
 @section('header', 'Staff Management')
 @section('header-actions')
+    <a href="{{ route('super-admin.staff.create') }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+        <i class="fas fa-user-plus"></i> Add Staff
+    </a>
     <span class="text-sm text-gray-500">{{ $users->count() }} staff members</span>
 @endsection
 

@@ -1,6 +1,11 @@
 @extends('layouts.app')
 @section('title', 'Staffs')
 @section('header', 'Staffs')
+@section('header-actions')
+    <a href="{{ route('branch-admin.staffs.create') }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+        <i class="fas fa-user-plus"></i> Add Staff
+    </a>
+@endsection
 
 @section('content')
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

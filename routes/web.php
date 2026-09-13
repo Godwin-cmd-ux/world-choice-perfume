@@ -189,6 +189,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/notifications/report', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'generateReport'])->name('notifications.generate-report');
 
         // Staff Management
+        Route::get('/staff/create', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'create'])->name('staff.create');
+        Route::post('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'store'])->name('staff.store');
         Route::get('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
         Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
         Route::post('/staff/{user}/toggle-status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
@@ -222,6 +224,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         // Staff Management (stock managers, sellers, customer care, cashiers)
         $baStaff = \App\Http\Controllers\BranchAdmin\StaffController::class;
+        Route::get('/staffs/create', [$baStaff, 'create'])->name('staffs.create');
+        Route::post('/staffs', [$baStaff, 'store'])->name('staffs.store');
         Route::get('/staffs', [$baStaff, 'index'])->name('staffs.index');
         Route::post('/staffs/{user}/approve', [$baStaff, 'approve'])->name('staffs.approve');
         Route::post('/staffs/{user}/reject', [$baStaff, 'reject'])->name('staffs.reject');

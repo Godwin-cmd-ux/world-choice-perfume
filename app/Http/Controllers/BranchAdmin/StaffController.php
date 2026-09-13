@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\User;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
@@ -47,6 +50,107 @@ class StaffController extends Controller
             'staff' => collect($staff),
             'roles' => self::STAFF_ROLES,
         ]);
+    }
+
+    public function create()
+    {
+        $branchId = (int) auth()->user()->branch_id;
+
+        $branchName = null;
+        $branch = $this->supabase->find('branches', $branchId, 'id,name');
+        if ($branch) {
+            $branchName = $branch['name'];
+        }
+
+        return view('branch-admin.staffs.create', [
+            'roles' => self::STAFF_ROLES,
+            'branchName' => $branchName,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $branchId = (int) auth()->user()->branch_id;
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'nullable|string|max:20',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|in:' . implode(',', self::STAFF_ROLES),
+        ]);
+
+        $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
+        if ($existing) {
+            return back()->withErrors(['email' => 'This email is already registered.']);
+        }
+
+        $branch = $this->supabase->find('branches', $branchId);
+        if (!$branch) {
+            return back()->withErrors(['email' => 'Your branch is missing from the records. Please contact support.']);
+        }
+
+        // Sync the branch to SQLite
+        if (!Branch::find($branchId)) {
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
+            );
+        }
+
+        $hashedPassword = Hash::make($validated['password']);
+
+        // Create in Supabase (primary)
+        $sbUser = $this->supabase->insert('users', [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'password' => $hashedPassword,
+            'role' => $validated['role'],
+            'status' => 'active',
+            'branch_id' => $branchId,
+            'otp_verified' => false,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        if (!$sbUser || !isset($sbUser['id'])) {
+            return back()->withErrors(['email' => 'Failed to create the staff account. Please contact support.']);
+        }
+
+        // Also create/update in SQLite so Auth::login() works
+        User::updateOrCreate(
+            ['email' => $validated['email']],
+            [
+                'name' => $validated['name'],
+                'phone' => $validated['phone'],
+                'password' => $hashedPassword,
+                'role' => $validated['role'],
+                'status' => 'active',
+                'branch_id' => $branchId,
+                'otp_verified' => false,
+                'supabase_id' => $sbUser['id'],
+            ]
+        );
+
+        try {
+            (new \App\Services\AuditService())->recordCriticalAction(
+                'staff_created',
+                'created_user',
+                'Staff Created',
+                "Staff {$validated['name']} ({$validated['role']}) registered into branch #{$branchId} by branch admin.",
+                ['user_name' => $validated['name'], 'role' => $validated['role'], 'branch_id' => $branchId],
+                'users',
+                (string) $sbUser['id'],
+                [],
+                ['status' => 'active']
+            );
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
+
+        return redirect()->route('branch-admin.staffs.index')
+            ->with('success', "Staff account for {$validated['name']} created successfully. They can now log in with the password you provided.");
     }
 
     public function approve($userId)
