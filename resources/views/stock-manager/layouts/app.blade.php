@@ -24,9 +24,10 @@
         $smScope = new \App\Services\StockManagerScope();
         $crossMode = $smScope->inCrossBranchMode();
         $crossSelectionPage = request()->routeIs('stock-manager.cross-branch');
+        $isSuperAdmin = $smScope->isSuperAdmin();
     @endphp
     <div class="flex min-h-screen">
-        @include('stock-manager.partials.sidebar')
+        @include($isSuperAdmin ? 'super-admin.partials.sidebar' : 'stock-manager.partials.sidebar')
 
         <div class="main-content flex-1 flex flex-col min-w-0">
             {{-- Top Bar --}}
