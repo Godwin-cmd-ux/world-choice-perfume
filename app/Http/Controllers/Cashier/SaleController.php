@@ -106,6 +106,12 @@ class SaleController extends Controller
             'sale_type' => 'required|in:retail,wholesale',
         ]);
 
+        // Normalize product rows and never sell empty bottles on retail sales
+        $validated['items'] = array_values(array_filter($validated['items'] ?? [], fn ($i) => !empty($i['product_id'] ?? null)));
+        if (($validated['sale_type'] ?? 'retail') === 'retail') {
+            $validated['empty_bottles'] = [];
+        }
+
         $branchId = auth()->user()->branch_id;
 
         try {
