@@ -385,14 +385,14 @@ class SupabaseService
                 'reference_type','reference_id','performed_by','notes','created_at','updated_at',
             ],
             'bottle_stock' => [
-                'branch_id','volume','quantity','has_logo','logo_color','has_box','box_color',
+                'branch_id','volume','variant','quantity','has_logo','logo_color','has_box','box_color',
                 'created_at','updated_at',
             ],
             'oil_fragrance_stock' => [
                 'branch_id','name','volume','quantity','created_at','updated_at',
             ],
             'bottle_stock_movements' => [
-                'branch_id','volume','type','quantity','reason','performed_by',
+                'branch_id','volume','variant','type','quantity','reason','performed_by',
                 'created_at','updated_at','has_logo','logo_color','has_box','box_color',
             ],
             'oil_fragrance_movements' => [

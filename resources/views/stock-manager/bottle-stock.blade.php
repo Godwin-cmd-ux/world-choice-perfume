@@ -60,6 +60,7 @@
             <thead>
                 <tr class="bg-gray-50 text-left">
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Volume</th>
+                    <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Variant</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Logo</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Box</th>
                     <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</th>
@@ -73,6 +74,11 @@
                             <span class="inline-flex items-center gap-2">
                                 <span class="w-3 h-3 rounded-full bg-amber-400 border border-amber-500"></span>
                                 <span class="font-medium text-gray-800">{{ $record->volume }}</span>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium">
+                                {{ $variantLabelMap[$record->id] ?? \App\Services\BottleStockService::VARIANT_PLAIN }}
                             </span>
                         </td>
                         <td class="px-6 py-4">
@@ -138,7 +144,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-10 text-center text-gray-400">
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-400">
                             <i class="fas fa-inbox text-2xl mb-2 block"></i>
                             No bottle stock records found.
                         </td>

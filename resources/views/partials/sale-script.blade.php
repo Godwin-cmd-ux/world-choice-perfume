@@ -310,6 +310,42 @@
     }
 
     // ===================== EMPTY BOTTLES =====================
+    const BOTTLE_VARIANTS = @json($bottleVariants ?? []);
+    const BOTTLE_DETAIL_VOLUMES = ['30', '50', '100'];
+    const BOTTLE_VARIANT_LABELS = {
+        'box_logo_yellow': 'With Box · With Logo · Yellow',
+        'box_logo_black': 'With Box · With Logo · Black',
+        'box_nologo_black': 'With Box · No Logo · Black',
+        'box_nologo_white': 'With Box · No Logo · White',
+        'no_box': 'Without Box',
+        'plain': 'Unclassified',
+    };
+
+    function refreshBottleVariant(row) {
+        const volSelect = row.querySelector('.bottle-volume-select');
+        const vSelect = row.querySelector('.bottle-variant-select');
+        if (!vSelect) return;
+        const vol = volSelect.value;
+
+        if (!BOTTLE_DETAIL_VOLUMES.includes(String(vol))) {
+            vSelect.classList.add('hidden');
+            vSelect.value = '';
+            return;
+        }
+
+        const buckets = BOTTLE_VARIANTS[vol] || {};
+        let html = '<option value="">Select box / logo / color</option>';
+        const keys = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+        keys.forEach(k => {
+            const q = buckets[k] || 0;
+            if (q > 0) {
+                html += `<option value="${k}">${BOTTLE_VARIANT_LABELS[k] || k} (${q} in stock)</option>`;
+            }
+        });
+        vSelect.innerHTML = html;
+        vSelect.classList.remove('hidden');
+    }
+
     function addBottleRow() {
         const container = document.getElementById('bottle-items-container');
         const firstRow = container.querySelector('.bottle-item-row');
@@ -319,9 +355,11 @@
         newRow.querySelector('.bottle-price-input').value = '';
         newRow.querySelector('.bottle-line-total').textContent = formatMoney(0);
         newRow.querySelector('.bottle-volume-select').value = '';
+        newRow.querySelector('.bottle-variant-select').value = '';
         container.appendChild(newRow);
         bottleRowIndex++;
         bindBottleEvents();
+        refreshBottleVariant(newRow);
     }
 
     function removeBottleRow(btn) {
@@ -334,6 +372,9 @@
     function bindBottleEvents() {
         document.querySelectorAll('.bottle-qty-input').forEach(input => { input.addEventListener('input', calculateTotal); });
         document.querySelectorAll('.bottle-price-input').forEach(input => { input.addEventListener('input', calculateTotal); });
+        document.querySelectorAll('.bottle-volume-select').forEach(select => {
+            select.addEventListener('change', () => refreshBottleVariant(select.closest('.bottle-item-row')));
+        });
     }
 
     function calculateBottleTotal() {
@@ -350,6 +391,7 @@
 
     // ===================== INIT =====================
     bindBottleEvents();
+    document.querySelectorAll('.bottle-item-row').forEach(row => refreshBottleVariant(row));
     togglePaymentMode('single');
     setSaleType(document.getElementById('sale_type').value);
 </script>

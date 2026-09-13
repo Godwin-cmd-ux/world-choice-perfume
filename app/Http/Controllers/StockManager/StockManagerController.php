@@ -513,13 +513,17 @@ class StockManagerController extends Controller
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
         $bottleMap = [];
+        $variantLabelMap = [];
         foreach ($bottles as $b) {
             $bottleMap[$b['volume']] = ($bottleMap[$b['volume']] ?? 0) + ($b['quantity'] ?? 0);
+            $labelVol = $this->bottles->parseVolume((string) ($b['volume'] ?? ''));
+            $variantLabelMap[$b['id']] = $this->bottles->variantLabel((string) ($b['variant'] ?? 'plain'), $labelVol ?? 0);
         }
 
         return view('stock-manager.bottle-stock', [
             'volumes' => $volumes,
             'bottleMap' => $bottleMap,
+            'variantLabelMap' => $variantLabelMap,
             'bottleRecords' => collect($bottles)->map(fn($b) => (object) $b),
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
@@ -552,7 +556,7 @@ class StockManagerController extends Controller
         $validated = $request->validate([
             'quantity' => 'required|integer|min:0',
             'has_logo' => 'nullable|in:yes,no',
-            'logo_color' => 'nullable|in:yellow,black',
+            'logo_color' => 'nullable|in:yellow,black,white',
             'has_box' => 'nullable|in:yes,no',
             'box_color' => 'nullable|in:black,white',
         ]);
@@ -566,8 +570,15 @@ class StockManagerController extends Controller
             return back()->withErrors(['error' => 'Bottle stock record not found.'])->withInput();
         }
 
+        $volume = $this->bottles->parseVolume((string) ($stock['volume'] ?? ''));
+        $variant = (string) ($stock['variant'] ?? 'plain');
+        if (($validated['has_box'] ?? null) !== null) {
+            $variant = $this->bottles->variantKey($volume ?? 0, $validated['has_box'], $validated['has_logo'], $validated['logo_color']);
+        }
+
         $this->supabase->update('bottle_stock', [
             'quantity' => $validated['quantity'],
+            'variant' => $variant,
             'has_logo' => $validated['has_logo'] ?? null,
             'logo_color' => $validated['logo_color'] ?? null,
             'has_box' => $validated['has_box'] ?? null,
@@ -617,73 +628,91 @@ class StockManagerController extends Controller
                 'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
                 'quantity' => 'required|integer|min:1',
                 'reason' => 'nullable|string|max:255',
-                'has_logo' => 'required|in:yes,no',
-                'logo_color' => 'required_if:has_logo,yes|nullable|in:yellow,black',
-                'has_box' => 'required_if:has_logo,no|nullable|in:yes,no',
-                'box_color' => 'required_if:has_box,yes|nullable|in:black,white',
+                'has_box' => 'nullable|in:yes,no',
+                'has_logo' => 'nullable|in:yes,no',
+                'logo_color' => 'nullable|in:yellow,black,white',
             ]);
 
-            // Build category info
-            $categoryInfo = null;
-            if ($validated['has_logo'] === 'yes' && !empty($validated['logo_color'])) {
-                $categoryInfo = 'Logo: ' . ucfirst($validated['logo_color']);
-            } elseif ($validated['has_logo'] === 'no') {
-                if (($validated['has_box'] ?? '') === 'yes' && !empty($validated['box_color'])) {
-                    $categoryInfo = 'No Logo, Box: ' . ucfirst($validated['box_color']);
-                } else {
-                    $categoryInfo = 'No Logo, No Box';
+            $volume = $this->bottles->parseVolume((string) $validated['volume']);
+            $hasBox = $hasLogo = $logoColor = null;
+
+            // 30/50/100ml: With Box -> (With Logo -> Yellow/Black | No Logo -> Black/White),
+            // otherwise Without Box. 6ml and 12ml neglect the details flow.
+            if ($this->bottles->volumeHasDetails($volume)) {
+                $hasBox = $validated['has_box'] ?? null;
+
+                if ($hasBox === 'yes') {
+                    $hasLogo = $validated['has_logo'] ?? null;
+                    if ($hasLogo !== 'yes' && $hasLogo !== 'no') {
+                        return back()->withErrors(['has_logo' => 'Select whether the bottles have a logo.'])->withInput();
+                    }
+
+                    $logoColor = $validated['logo_color'] ?? null;
+                    $allowedColors = $hasLogo === 'yes' ? ['yellow', 'black'] : ['black', 'white'];
+                    if ($logoColor === null || !in_array($logoColor, $allowedColors, true)) {
+                        return back()->withErrors([
+                            'logo_color' => $hasLogo === 'yes'
+                                ? 'Select a logo color (Yellow or Black).'
+                                : 'Select a color (Black or White).',
+                        ])->withInput();
+                    }
+                } elseif ($hasBox !== 'no') {
+                    return back()->withErrors(['has_box' => 'Select whether the bottles have a box.'])->withInput();
                 }
             }
 
-            // Upsert bottle stock
+            $variant = $this->bottles->variantKey($volume, $hasBox, $hasLogo, $logoColor);
+            $label = $this->bottles->volumeLabel($volume);
+            $now = now()->toIso8601String();
+
+            // Upsert the per-variant bucket.
             $existing = $this->supabase->findOne('bottle_stock', [
                 'branch_id' => $branchId,
-                'volume' => $validated['volume'],
+                'volume' => $label,
+                'variant' => $variant,
             ]);
 
             if ($existing) {
-                $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
                 $this->supabase->update('bottle_stock', [
-                    'quantity' => $newQty,
-                    'has_logo' => $validated['has_logo'],
-                    'logo_color' => $validated['logo_color'] ?? null,
-                    'has_box' => $validated['has_box'] ?? null,
-                    'box_color' => $validated['box_color'] ?? null,
-                    'updated_at' => now()->toIso8601String(),
+                    'quantity' => ($existing['quantity'] ?? 0) + $validated['quantity'],
+                    'has_logo' => $hasLogo,
+                    'logo_color' => $logoColor,
+                    'has_box' => $hasBox,
+                    'updated_at' => $now,
                 ], ['id' => $existing['id']]);
             } else {
                 $this->supabase->insert('bottle_stock', [
                     'branch_id' => $branchId,
-                    'volume' => $validated['volume'],
+                    'volume' => $label,
+                    'variant' => $variant,
                     'quantity' => $validated['quantity'],
-                    'has_logo' => $validated['has_logo'],
-                    'logo_color' => $validated['logo_color'] ?? null,
-                    'has_box' => $validated['has_box'] ?? null,
-                    'box_color' => $validated['box_color'] ?? null,
-                    'created_at' => now()->toIso8601String(),
-                    'updated_at' => now()->toIso8601String(),
+                    'has_logo' => $hasLogo,
+                    'logo_color' => $logoColor,
+                    'has_box' => $hasBox,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]);
             }
 
-            // Record movement with category info
-            $movementReason = ($validated['reason'] ?? 'Stock in');
-            if ($categoryInfo) {
-                $movementReason .= ' [' . $categoryInfo . ']';
+            // Record movement with variant info.
+            $movementReason = $validated['reason'] ?? 'Stock in';
+            if ($this->bottles->volumeHasDetails($volume)) {
+                $movementReason .= ' [' . $this->bottles->variantLabel($variant, $volume) . ']';
             }
 
             $this->supabase->insert('bottle_stock_movements', [
                 'branch_id' => $branchId,
-                'volume' => $validated['volume'],
+                'volume' => $label,
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
                 'reason' => $movementReason,
-                'has_logo' => $validated['has_logo'],
-                'logo_color' => $validated['logo_color'] ?? null,
-                'has_box' => $validated['has_box'] ?? null,
-                'box_color' => $validated['box_color'] ?? null,
+                'variant' => $variant,
+                'has_logo' => $hasLogo,
+                'logo_color' => $logoColor,
+                'has_box' => $hasBox,
                 'performed_by' => auth()->id(),
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
+                'created_at' => $now,
+                'updated_at' => $now,
             ]);
 
             return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock added successfully.');
@@ -702,29 +731,47 @@ class StockManagerController extends Controller
                 'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
                 'quantity' => 'required|integer|min:1',
                 'reason' => 'nullable|string|max:255',
+                'variant' => 'nullable|string|max:32',
             ]);
 
-            $existing = $this->supabase->findOne('bottle_stock', [
-                'branch_id' => $branchId,
-                'volume' => $validated['volume'],
+            $volume = $this->bottles->parseVolume((string) $validated['volume']);
+            $label = $this->bottles->volumeLabel($volume);
+            $variant = (string) ($validated['variant'] ?? '');
+
+            $rows = $this->supabase->queryFresh('bottle_stock', [
+                'branch_id' => "eq.{$branchId}",
+                'volume' => "eq.{$label}",
             ]);
 
-            if (!$existing || ($existing['quantity'] ?? 0) < $validated['quantity']) {
+            $target = null;
+            foreach ($rows as $row) {
+                $rowVariant = (string) ($row['variant'] ?? 'plain');
+                if ($variant !== '' && $rowVariant !== $variant) {
+                    continue;
+                }
+                if ((int) ($row['quantity'] ?? 0) >= $validated['quantity']) {
+                    $target = $row;
+                    break;
+                }
+            }
+
+            if (!$target) {
                 return back()->withErrors(['quantity' => 'Insufficient bottle stock.']);
             }
 
-            $newQty = ($existing['quantity'] ?? 0) - $validated['quantity'];
+            $newQty = (int) ($target['quantity'] ?? 0) - $validated['quantity'];
             $this->supabase->update('bottle_stock', [
                 'quantity' => $newQty,
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
+            ], ['id' => $target['id']]);
 
             $this->supabase->insert('bottle_stock_movements', [
                 'branch_id' => $branchId,
-                'volume' => $validated['volume'],
+                'volume' => $label,
                 'type' => 'broken',
                 'quantity' => $validated['quantity'],
                 'reason' => $validated['reason'] ?? 'Broken bottles',
+                'variant' => (string) ($target['variant'] ?? 'plain'),
                 'performed_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
@@ -734,7 +781,10 @@ class StockManagerController extends Controller
         }
 
         $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
-        return view('stock-manager.bottle-broken', ['volumes' => $volumes]);
+        return view('stock-manager.bottle-broken', [
+            'volumes' => $volumes,
+            'bottleVariants' => $this->bottles->variantStock($branchId),
+        ]);
     }
 
     public function bottleMovements(Request $request)

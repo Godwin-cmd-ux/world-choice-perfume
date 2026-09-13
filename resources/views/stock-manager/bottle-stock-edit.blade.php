@@ -53,6 +53,7 @@
                         <option value="">Select</option>
                         <option value="yellow" {{ old('logo_color', $record->logo_color) === 'yellow' ? 'selected' : '' }}>Yellow</option>
                         <option value="black" {{ old('logo_color', $record->logo_color) === 'black' ? 'selected' : '' }}>Black</option>
+                        <option value="white" {{ old('logo_color', $record->logo_color) === 'white' ? 'selected' : '' }}>White</option>
                     </select>
                 </div>
             </div>

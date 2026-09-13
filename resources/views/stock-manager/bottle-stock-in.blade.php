@@ -20,93 +20,97 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Volume *</label>
-                <select name="volume" required
+                <select name="volume" id="volume" required
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                     <option value="">Select Volume</option>
                     @foreach($volumes as $volume)
-                        <option value="{{ $volume }}">{{ $volume }}</option>
+                        <option value="{{ $volume }}" {{ old('volume') === $volume ? 'selected' : '' }}>{{ $volume }}</option>
                     @endforeach
                 </select>
+                <p class="text-xs text-gray-400 mt-1">30ml, 50ml &amp; 100ml bottles are tracked by box, logo and color details. 6ml &amp; 12ml bottles are recorded without those details.</p>
+                @error('volume')
+                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
-                <input type="number" name="quantity" required min="1"
+                <input type="number" name="quantity" required min="1" value="{{ old('quantity') }}"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="Enter number of bottles">
+                @error('quantity')
+                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
-            <!-- Bottle Category Mapping -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Bottle State *</label>
-                <div class="flex gap-3">
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all bottle-state-option {{ old('has_logo') === 'yes' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yes" onclick="setBottleState('yes')">
-                        <input type="radio" name="has_logo" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'yes' ? 'checked' : '' }}>
-                        <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
-                        <span class="text-sm font-medium">Has Logo</span>
-                    </label>
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all bottle-state-option {{ old('has_logo') === 'no' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="no" onclick="setBottleState('no')">
-                        <input type="radio" name="has_logo" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'no' ? 'checked' : '' }}>
-                        <i class="fas fa-times-circle text-gray-400 text-lg"></i>
-                        <span class="text-sm font-medium">No Logo</span>
-                    </label>
+            {{-- Details cascade (30ml / 50ml / 100ml) --}}
+            <div id="details-section" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Bottle Box *</label>
+                    <div class="flex gap-3">
+                        <label class="radio-option box-option flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="has_box" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'yes' ? 'checked' : '' }}>
+                            <i class="fas fa-box text-gray-400 text-base"></i>
+                            <span class="text-sm font-medium">With Box</span>
+                        </label>
+                        <label class="radio-option box-option flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="has_box" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'no' ? 'checked' : '' }}>
+                            <i class="fas fa-box-open text-gray-400 text-base"></i>
+                            <span class="text-sm font-medium">Without Box</span>
+                        </label>
+                    </div>
+                    @error('has_box')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-            </div>
 
-            <!-- Logo Color (shown if has_logo = yes) -->
-            <div id="logo-color-field" class="mb-4 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Logo Color *</label>
-                <div class="flex gap-3">
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'yellow' ? 'border-yellow-400 bg-yellow-50 shadow-sm' : 'border-gray-200 hover:border-gray-300' }}" data-value="yellow" onclick="setLogoColor('yellow')">
-                        <input type="radio" name="logo_color" value="yellow" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'yellow' ? 'checked' : '' }}>
-                        <span class="w-5 h-5 rounded-full bg-yellow-400 border border-yellow-500"></span>
-                        <span class="text-sm font-medium">Yellow</span>
-                    </label>
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all logo-color-option {{ old('logo_color') === 'black' ? 'border-gray-800 bg-gray-900 text-white shadow-sm' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setLogoColor('black')">
-                        <input type="radio" name="logo_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'black' ? 'checked' : '' }}>
-                        <span class="w-5 h-5 rounded-full bg-gray-900 border border-gray-600"></span>
-                        <span class="text-sm font-medium text-gray-200">Black</span>
-                    </label>
+                <div id="logo-section" class="mb-4 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Logo *</label>
+                    <div class="flex gap-3">
+                        <label class="radio-option logo-option flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="has_logo" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'yes' ? 'checked' : '' }}>
+                            <i class="fas fa-tag text-gray-400 text-base"></i>
+                            <span class="text-sm font-medium">With Logo</span>
+                        </label>
+                        <label class="radio-option logo-option flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="has_logo" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_logo') === 'no' ? 'checked' : '' }}>
+                            <i class="fas fa-tag text-gray-300 text-base"></i>
+                            <span class="text-sm font-medium">No Logo</span>
+                        </label>
+                    </div>
+                    @error('has_logo')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-            </div>
 
-            <!-- Has Box (shown if has_logo = no) -->
-            <div id="has-box-field" class="mb-4 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Has Box? *</label>
-                <div class="flex gap-3">
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all has-box-option {{ old('has_box') === 'yes' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="yes" onclick="setHasBox('yes')">
-                        <input type="radio" name="has_box" value="yes" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'yes' ? 'checked' : '' }}>
-                        <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
-                        <span class="text-sm font-medium">Has Box</span>
-                    </label>
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all has-box-option {{ old('has_box') === 'no' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="no" onclick="setHasBox('no')">
-                        <input type="radio" name="has_box" value="no" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('has_box') === 'no' ? 'checked' : '' }}>
-                        <i class="fas fa-times-circle text-gray-400 text-lg"></i>
-                        <span class="text-sm font-medium">No Box</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Box Color (shown if has_box = yes) -->
-            <div id="box-color-field" class="mb-4 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Box Color *</label>
-                <div class="flex gap-3">
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all box-color-option {{ old('box_color') === 'black' ? 'border-gray-600 bg-gray-50' : 'border-gray-200 hover:border-gray-300' }}" data-value="black" onclick="setBoxColor('black')">
-                        <input type="radio" name="box_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('box_color') === 'black' ? 'checked' : '' }}>
-                        <span class="w-5 h-5 rounded-full bg-gray-800 border border-gray-900"></span>
-                        <span class="text-sm font-medium">Black</span>
-                    </label>
-                    <label class="flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all box-color-option {{ old('box_color') === 'white' ? 'border-gray-300 bg-white' : 'border-gray-200 hover:border-gray-300' }}" data-value="white" onclick="setBoxColor('white')">
-                        <input type="radio" name="box_color" value="white" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('box_color') === 'white' ? 'checked' : '' }}>
-                        <span class="w-5 h-5 rounded-full bg-white border-2 border-gray-300"></span>
-                        <span class="text-sm font-medium">White</span>
-                    </label>
+                <div id="color-section" class="mb-4 hidden">
+                    <label id="color-label" class="block text-sm font-medium text-gray-700 mb-2">Logo Color *</label>
+                    <div class="flex gap-3">
+                        <label class="radio-option color-option color-yellow flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="logo_color" value="yellow" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'yellow' ? 'checked' : '' }}>
+                            <span class="w-5 h-5 rounded-full bg-yellow-400 border border-yellow-500"></span>
+                            <span class="text-sm font-medium">Yellow</span>
+                        </label>
+                        <label class="radio-option color-option color-black flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="logo_color" value="black" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'black' ? 'checked' : '' }}>
+                            <span class="w-5 h-5 rounded-full bg-gray-900 border border-gray-600"></span>
+                            <span class="text-sm font-medium">Black</span>
+                        </label>
+                        <label class="radio-option color-option color-white flex-1 flex items-center gap-2 px-4 py-3 border-2 rounded-lg cursor-pointer transition-all border-gray-200 hover:border-gray-300">
+                            <input type="radio" name="logo_color" value="white" class="absolute opacity-0 w-0 h-0 p-0 m-0 border-0 overflow-hidden clip-rect" {{ old('logo_color') === 'white' ? 'checked' : '' }}>
+                            <span class="w-5 h-5 rounded-full bg-white border-2 border-gray-300"></span>
+                            <span class="text-sm font-medium">White</span>
+                        </label>
+                    </div>
+                    @error('logo_color')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Notes</label>
-                <input type="text" name="reason"
+                <input type="text" name="reason" value="{{ old('reason') }}"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="e.g. New shipment received">
             </div>
@@ -125,101 +129,95 @@
 
 @push('scripts')
 <script>
-let currentState = '{{ old("has_logo") }}';
-let currentLogoColor = '{{ old("logo_color") }}';
-let currentHasBox = '{{ old("has_box") }}';
+const DETAIL_VOLUMES = ['30ml', '50ml', '100ml'];
+const volumeSelect = document.getElementById('volume');
+const detailsSection = document.getElementById('details-section');
+const logoSection = document.getElementById('logo-section');
+const colorSection = document.getElementById('color-section');
 
-function setBottleState(state) {
-    currentState = state;    document.querySelectorAll('.bottle-state-option').forEach(el => {
-        const isSelected = el.dataset.value === state;
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        if (isSelected) {
+function syncOption(input) {
+    const group = input.closest('.radio-option').dataset ? null : null;
+    input.closest('.flex').querySelectorAll('.radio-option').forEach(el => {
+        const radio = el.querySelector('input[type="radio"]');
+        const selected = radio === input;
+        el.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-yellow-400', 'bg-yellow-50', 'border-gray-500');
+        if (selected) {
             el.classList.add('border-emerald-500', 'bg-emerald-50');
         } else {
             el.classList.add('border-gray-200');
         }
-        el.querySelector('input[type="radio"]').checked = isSelected;
-        el.querySelector('i').className = isSelected
-            ? 'fas fa-check-circle text-emerald-500 text-lg'
-            : (state === 'yes' ? 'fas fa-check-circle text-gray-300 text-lg' : 'fas fa-times-circle text-gray-300 text-lg');
     });
-            const logoColorField = document.getElementById('logo-color-field');
-    const hasBoxField = document.getElementById('has-box-field');
-    const boxColorField = document.getElementById('box-color-field');
+}
 
-    if (state === 'yes') {
-        logoColorField.classList.remove('hidden');
-        hasBoxField.classList.add('hidden');
-        boxColorField.classList.add('hidden');
-        console.log('bottle: has_logo = yes → showing logo color field');
-    } else if (state === 'no') {
-        logoColorField.classList.add('hidden');
-        hasBoxField.classList.remove('hidden');
-        boxColorField.classList.add('hidden');
-        console.log('bottle: has_logo = no → showing has-box field');
-    } else {
-        logoColorField.classList.add('hidden');
-        hasBoxField.classList.add('hidden');
-        boxColorField.classList.add('hidden');
+function selectedValue(name) {
+    const checked = document.querySelector(`input[name="${name}"]:checked`);
+    return checked ? checked.value : null;
+}
+
+function clearGroup(name) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+        r.checked = false;
+        syncOption(r);
+    });
+}
+
+function updateCascade() {
+    const showDetails = DETAIL_VOLUMES.includes(volumeSelect.value);
+    detailsSection.classList.toggle('hidden', !showDetails);
+    if (!showDetails) {
+        clearGroup('has_box');
+        clearGroup('has_logo');
+        clearGroup('logo_color');
+        logoSection.classList.add('hidden');
+        colorSection.classList.add('hidden');
+        return;
+    }
+
+    const hasBox = selectedValue('has_box');
+    if (hasBox !== 'yes') {
+        clearGroup('has_logo');
+        clearGroup('logo_color');
+        logoSection.classList.add('hidden');
+        colorSection.classList.add('hidden');
+        return;
+    }
+
+    logoSection.classList.remove('hidden');
+
+    const hasLogo = selectedValue('has_logo');
+    if (hasLogo !== 'yes' && hasLogo !== 'no') {
+        clearGroup('logo_color');
+        colorSection.classList.add('hidden');
+        return;
+    }
+
+    colorSection.classList.remove('hidden');
+    document.getElementById('color-label').textContent = hasLogo === 'yes' ? 'Logo Color *' : 'Marking Color *';
+
+    // With logo -> Yellow / Black; No logo -> Black / White.
+    document.querySelector('.color-option.color-yellow').classList.toggle('hidden', hasLogo !== 'yes');
+    document.querySelector('.color-black').classList.toggle('hidden', false);
+    document.querySelector('.color-white').classList.toggle('hidden', hasLogo !== 'no');
+
+    if (hasLogo === 'yes' && selectedValue('logo_color') === 'white') {
+        clearGroup('logo_color');
+    }
+    if (hasLogo === 'no' && selectedValue('logo_color') === 'yellow') {
+        clearGroup('logo_color');
     }
 }
 
-function setLogoColor(color) {
-    currentLogoColor = color;
-    document.querySelectorAll('.logo-color-option').forEach(el => {
-        const isSelected = el.dataset.value === color;
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        if (isSelected) {
-            el.classList.add('border-yellow-400', 'bg-yellow-50');
-        } else {
-            el.classList.add('border-gray-200');
-        }
-        el.querySelector('input[type="radio"]').checked = isSelected;
+document.querySelectorAll('.radio-option input[type="radio"]').forEach(input => {
+    input.addEventListener('change', () => {
+        syncOption(input);
+        updateCascade();
     });
-}
+});
 
-function setHasBox(val) {
-    currentHasBox = val;
-    document.querySelectorAll('.has-box-option').forEach(el => {
-        const isSelected = el.dataset.value === val;
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        if (isSelected) {
-            el.classList.add('border-emerald-500', 'bg-emerald-50');
-        } else {
-            el.classList.add('border-gray-200');
-        }
-        el.querySelector('input[type="radio"]').checked = isSelected;
-        el.querySelector('i').className = isSelected
-            ? 'fas fa-check-circle text-emerald-500 text-lg'
-            : (val === 'yes' ? 'fas fa-check-circle text-gray-300 text-lg' : 'fas fa-times-circle text-gray-300 text-lg');
-    });
+volumeSelect.addEventListener('change', updateCascade);
 
-    const boxColorField = document.getElementById('box-color-field');
-    if (val === 'yes') {
-        boxColorField.classList.remove('hidden');
-    } else {
-        boxColorField.classList.add('hidden');
-    }
-}
-
-function setBoxColor(color) {
-    document.querySelectorAll('.box-color-option').forEach(el => {
-        const isSelected = el.dataset.value === color;
-        el.className = el.className.replace(/border-\w+-\d+|bg-\w+-\d+/, '');
-        if (isSelected) {
-            el.classList.add(color === 'black' ? 'border-gray-600' : 'border-gray-300', color === 'white' ? 'bg-white' : 'bg-gray-50');
-        } else {
-            el.classList.add('border-gray-200');
-        }
-        el.querySelector('input[type="radio"]').checked = isSelected;
-    });
-}
-
-// Restore state on page load (also run when currentState is empty —
-// ensure both hidden fields stay hidden on a fresh page).
-setBottleState(currentState || '');
-if (currentLogoColor) setLogoColor(currentLogoColor);
-if (currentHasBox) setHasBox(currentHasBox);
+// Restore server-side validation state on load.
+updateCascade();
 </script>
 @endpush
 @endsection

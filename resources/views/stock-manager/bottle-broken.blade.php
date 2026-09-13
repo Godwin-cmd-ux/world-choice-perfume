@@ -36,6 +36,14 @@
                     placeholder="Enter number of broken bottles">
             </div>
 
+            <div id="variant-field" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Variant Details</label>
+                <select name="variant" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                    <option value="">Any available variant</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">Choose the box/logo/color bucket these bottles belonged to.</p>
+            </div>
+
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Notes</label>
                 <input type="text" name="reason"
@@ -54,4 +62,46 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+const DETAIL_VOLUMES = ['30ml', '50ml', '100ml'];
+const BROKEN_VARIANTS = @json($bottleVariants ?? []);
+const BROKEN_LABELS = {
+    'box_logo_yellow': 'With Box · With Logo · Yellow',
+    'box_logo_black': 'With Box · With Logo · Black',
+    'box_nologo_black': 'With Box · No Logo · Black',
+    'box_nologo_white': 'With Box · No Logo · White',
+    'no_box': 'Without Box',
+    'plain': 'No details',
+};
+let brokenVolume = document.querySelector('select[name="volume"]');
+let brokenVariantField = document.getElementById('variant-field');
+let brokenVariantSelect = brokenVariantField.querySelector('select[name="variant"]');
+
+function refreshBrokenVariants() {
+    const vol = brokenVolume.value;
+    const isDetails = DETAIL_VOLUMES.includes(vol);
+    brokenVariantField.classList.toggle('hidden', !isDetails);
+    if (!isDetails) {
+        brokenVariantSelect.value = '';
+        brokenVariantSelect.innerHTML = '<option value="">Any available variant</option>';
+        return;
+    }
+    const buckets = BROKEN_VARIANTS[vol.replace('ml', '')] || {};
+    let html = '<option value="">Any available variant</option>';
+    const keys = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+    keys.forEach(k => {
+        const q = buckets[k] || 0;
+        if (q > 0) {
+            html += `<option value="${k}">${BROKEN_LABELS[k] || k} (${q} in stock)</option>`;
+        }
+    });
+    brokenVariantSelect.innerHTML = html;
+}
+
+brokenVolume.addEventListener('change', refreshBrokenVariants);
+refreshBrokenVariants();
+</script>
+@endpush
 @endsection

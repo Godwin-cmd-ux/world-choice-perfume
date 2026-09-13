@@ -1,4 +1,4 @@
-{{-- Sale: searchable product checkbox picker + empty bottles card (wholesale only). Params: $products, $bottleStock, $accent --}}
+{{-- Sale: searchable product checkbox picker + empty bottles card (wholesale only). Params: $products, $bottleStock, $bottleVariants, $accent --}}
 <div class="bg-white rounded-xl shadow p-6" id="products-card">
     <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold"><i class="fas fa-box mr-1"></i> Products</h3>
@@ -57,12 +57,13 @@
 
     <div id="bottle-items-container" class="space-y-3">
         <div class="bottle-item-row flex gap-2 items-start">
-            <select name="empty_bottles[0][volume]" class="w-40 px-3 py-2 border rounded-lg text-sm bottle-volume-select">
+            <select name="empty_bottles[0][volume]" class="w-32 px-3 py-2 border rounded-lg text-sm bottle-volume-select">
                 <option value="">-- Volume --</option>
                 @foreach(\App\Services\BottleStockService::VOLUMES as $v)
                     <option value="{{ $v }}" data-stock="{{ $bottleStock[$v] ?? 0 }}">{{ $v }}ml ({{ $bottleStock[$v] ?? 0 }} in stock)</option>
                 @endforeach
             </select>
+            <select name="empty_bottles[0][variant]" class="w-52 px-3 py-2 border rounded-lg text-sm bottle-variant-select hidden"></select>
             <input type="number" name="empty_bottles[0][quantity]" value="1" min="1" class="w-20 px-3 py-2 border rounded-lg text-sm text-center bottle-qty-input">
             <input type="number" name="empty_bottles[0][price]" step="0.01" min="0" placeholder="Price (TZS)" class="flex-1 px-3 py-2 border rounded-lg text-sm bottle-price-input">
             <span class="bottle-line-total font-medium text-sm w-28 text-right pt-2">TZS 0</span>

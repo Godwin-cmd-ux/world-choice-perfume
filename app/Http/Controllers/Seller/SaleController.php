@@ -81,8 +81,9 @@ class SaleController extends Controller
         });
 
         $bottleStock = $this->bottles->stockMap($branchId);
+        $bottleVariants = $this->bottles->variantStock($branchId);
 
-        return view('seller.sales.create', compact('products', 'bottleStock'));
+        return view('seller.sales.create', compact('products', 'bottleStock', 'bottleVariants'));
     }
 
     public function store(Request $request)
@@ -103,6 +104,7 @@ class SaleController extends Controller
             'empty_bottles.*.volume' => 'nullable|integer|in:6,12,30,50,100',
             'empty_bottles.*.quantity' => 'nullable|integer|min:1',
             'empty_bottles.*.price' => 'nullable|numeric|min:0',
+            'empty_bottles.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
         ]);
 
@@ -234,7 +236,8 @@ class SaleController extends Controller
                 foreach ($bottleStockRows as $bs) {
                     $bv = $this->bottles->parseVolume((string) ($bs['volume'] ?? ''));
                     if ($bv !== null) {
-                        $bottleAvailable[$bv] = (int) ($bs['quantity'] ?? 0);
+                        $vk = (string) ($bs['variant'] ?? \App\Services\BottleStockService::VARIANT_PLAIN);
+                        $bottleAvailable[$bv][$vk] = (int) ($bs['quantity'] ?? 0);
                     }
                 }
 
@@ -242,11 +245,25 @@ class SaleController extends Controller
                     $volume = (int) $btl['volume'];
                     $bQty = (int) $btl['quantity'];
                     $bPrice = (float) $btl['price'];
-                    $available = $bottleAvailable[$volume] ?? 0;
+
+                    $variant = \App\Services\BottleStockService::VARIANT_PLAIN;
+                    if ($this->bottles->volumeHasDetails($volume)) {
+                        $variant = trim((string) ($btl['variant'] ?? ''));
+                        if (!in_array($variant, $this->bottles->variantBuckets($volume), true)) {
+                            return back()->withErrors([
+                                'empty_bottles' => "Select the box/logo/color details (variant) for {$volume}ml empty bottles.",
+                            ])->withInput();
+                        }
+                    }
+
+                    $available = (int) ($bottleAvailable[$volume][$variant] ?? 0);
 
                     if ($available < $bQty) {
+                        $variantText = $this->bottles->volumeHasDetails($volume)
+                            ? ' (' . $this->bottles->variantLabel($variant, $volume) . ')'
+                            : '';
                         return back()->withErrors([
-                            'empty_bottles' => "Insufficient bottle stock for {$volume}ml. Available: {$available}.",
+                            'empty_bottles' => "Insufficient bottle stock for {$volume}ml{$variantText}. Available: {$available}.",
                         ])->withInput();
                     }
 
@@ -274,9 +291,10 @@ class SaleController extends Controller
                         'volume' => $volume,
                         'quantity' => $bQty,
                         'reason' => "Sold as empty bottle - Sale {$saleNumber}",
+                        'variant' => $variant,
                     ];
 
-                    $bottleAvailable[$volume] -= $bQty;
+                    $bottleAvailable[$volume][$variant] -= $bQty;
                 }
 
                 $subtotal += $bottleTotal;
@@ -360,7 +378,7 @@ class SaleController extends Controller
 
             // 10. Auto-outstock empty bottles
             foreach ($bottleDeductions as $bd) {
-                $this->bottles->deduct($branchId, $bd['volume'], $bd['quantity'], $bd['reason'], $supabaseUserId);
+                $this->bottles->deduct($branchId, $bd['volume'], $bd['quantity'], $bd['reason'], $supabaseUserId, $bd['variant'] ?? '');
             }
 
             // 11. Audit log
