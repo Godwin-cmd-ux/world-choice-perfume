@@ -209,17 +209,22 @@ class BottleStockService
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $target['id']]);
 
-        $this->supabase->insert('bottle_stock_movements', [
+        $movement = [
             'branch_id' => $branchId,
             'volume' => $label,
             'type' => 'stock_out',
             'quantity' => $quantity,
             'reason' => $reason,
             'performed_by' => $performedBy,
-            'variant' => (string) ($target['variant'] ?? self::VARIANT_PLAIN),
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
-        ]);
+        ];
+
+        if ($this->supabase->tableHasColumn('bottle_stock_movements', 'variant')) {
+            $movement['variant'] = (string) ($target['variant'] ?? self::VARIANT_PLAIN);
+        }
+
+        $this->supabase->insert('bottle_stock_movements', $movement);
 
         return $newQty;
     }

@@ -576,15 +576,21 @@ class StockManagerController extends Controller
             $variant = $this->bottles->variantKey($volume ?? 0, $validated['has_box'], $validated['has_logo'], $validated['logo_color']);
         }
 
-        $this->supabase->update('bottle_stock', [
+        $data = [
             'quantity' => $validated['quantity'],
-            'variant' => $variant,
             'has_logo' => $validated['has_logo'] ?? null,
             'logo_color' => $validated['logo_color'] ?? null,
             'has_box' => $validated['has_box'] ?? null,
             'box_color' => $validated['box_color'] ?? null,
             'updated_at' => now()->toIso8601String(),
-        ], ['id' => $id]);
+        ];
+        if ($this->supabase->tableHasColumn('bottle_stock', 'variant')) {
+            $data['variant'] = $variant;
+        }
+
+        if (empty($this->supabase->update('bottle_stock', $data, ['id' => $id]))) {
+            return back()->withErrors(['error' => 'Could not update the bottle stock record. Please try again.'])->withInput();
+        }
 
         return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock updated.');
     }
@@ -665,55 +671,103 @@ class StockManagerController extends Controller
             $label = $this->bottles->volumeLabel($volume);
             $now = now()->toIso8601String();
 
-            // Upsert the per-variant bucket.
-            $existing = $this->supabase->findOne('bottle_stock', [
-                'branch_id' => $branchId,
-                'volume' => $label,
-                'variant' => $variant,
-            ]);
+            // When the variant column is not yet available, fall back to a
+            // single-row-per-volume upsert so stock-in still works while the
+            // migration hasn't been run yet.
+            $useVariants = $this->supabase->tableHasColumn('bottle_stock', 'variant');
 
-            if ($existing) {
-                $this->supabase->update('bottle_stock', [
-                    'quantity' => ($existing['quantity'] ?? 0) + $validated['quantity'],
-                    'has_logo' => $hasLogo,
-                    'logo_color' => $logoColor,
-                    'has_box' => $hasBox,
-                    'updated_at' => $now,
-                ], ['id' => $existing['id']]);
-            } else {
-                $this->supabase->insert('bottle_stock', [
+            $stored = false;
+
+            if ($useVariants) {
+                $existing = $this->supabase->findOne('bottle_stock', [
                     'branch_id' => $branchId,
                     'volume' => $label,
                     'variant' => $variant,
-                    'quantity' => $validated['quantity'],
-                    'has_logo' => $hasLogo,
-                    'logo_color' => $logoColor,
-                    'has_box' => $hasBox,
-                    'created_at' => $now,
-                    'updated_at' => $now,
                 ]);
+
+                if ($existing) {
+                    $stored = !empty($this->supabase->update('bottle_stock', [
+                        'quantity' => ($existing['quantity'] ?? 0) + $validated['quantity'],
+                        'has_logo' => $hasLogo,
+                        'logo_color' => $logoColor,
+                        'has_box' => $hasBox,
+                        'updated_at' => $now,
+                    ], ['id' => $existing['id']]));
+                } else {
+                    $stored = $this->supabase->insert('bottle_stock', [
+                        'branch_id' => $branchId,
+                        'volume' => $label,
+                        'variant' => $variant,
+                        'quantity' => $validated['quantity'],
+                        'has_logo' => $hasLogo,
+                        'logo_color' => $logoColor,
+                        'has_box' => $hasBox,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]) !== null;
+                }
+            } else {
+                // Fallback: variant column not yet released — single row per volume.
+                $existing = $this->supabase->findOne('bottle_stock', [
+                    'branch_id' => $branchId,
+                    'volume' => $label,
+                ]);
+
+                if ($existing) {
+                    $stored = !empty($this->supabase->update('bottle_stock', [
+                        'quantity' => ($existing['quantity'] ?? 0) + $validated['quantity'],
+                        'has_logo' => $hasLogo,
+                        'logo_color' => $logoColor,
+                        'has_box' => $hasBox,
+                        'updated_at' => $now,
+                    ], ['id' => $existing['id']]));
+                } else {
+                    $stored = $this->supabase->insert('bottle_stock', [
+                        'branch_id' => $branchId,
+                        'volume' => $label,
+                        'quantity' => $validated['quantity'],
+                        'has_logo' => $hasLogo,
+                        'logo_color' => $logoColor,
+                        'has_box' => $hasBox,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]) !== null;
+                }
             }
 
-            // Record movement with variant info.
+            if (!$stored) {
+                return back()->withErrors([
+                    'error' => 'Could not save bottle stock to the database. Please try again.',
+                ])->withInput();
+            }
+
+            // Record the movement (variant column may or may not exist yet).
             $movementReason = $validated['reason'] ?? 'Stock in';
             if ($this->bottles->volumeHasDetails($volume)) {
                 $movementReason .= ' [' . $this->bottles->variantLabel($variant, $volume) . ']';
             }
 
-            $this->supabase->insert('bottle_stock_movements', [
+            $movement = [
                 'branch_id' => $branchId,
                 'volume' => $label,
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
                 'reason' => $movementReason,
-                'variant' => $variant,
                 'has_logo' => $hasLogo,
                 'logo_color' => $logoColor,
                 'has_box' => $hasBox,
                 'performed_by' => auth()->id(),
                 'created_at' => $now,
                 'updated_at' => $now,
-            ]);
+            ];
+            if ($useVariants) {
+                $movement['variant'] = $variant;
+            }
+            $this->supabase->insert('bottle_stock_movements', $movement);
+
+            if (!$useVariants) {
+                session()->flash('warning', 'Variant details recorded in the movement notes but the variant tracking columns are not available yet. Run database/SUPABASE_BOTTLE_VARIANTS.sql in Supabase to activate full variant tracking.');
+            }
 
             return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock added successfully.');
         }
@@ -760,22 +814,27 @@ class StockManagerController extends Controller
             }
 
             $newQty = (int) ($target['quantity'] ?? 0) - $validated['quantity'];
-            $this->supabase->update('bottle_stock', [
+            if (empty($this->supabase->update('bottle_stock', [
                 'quantity' => $newQty,
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $target['id']]);
+            ], ['id' => $target['id']]))) {
+                return back()->withErrors(['error' => 'Could not update bottle stock. Please try again.'])->withInput();
+            }
 
-            $this->supabase->insert('bottle_stock_movements', [
+            $movement = [
                 'branch_id' => $branchId,
                 'volume' => $label,
                 'type' => 'broken',
                 'quantity' => $validated['quantity'],
                 'reason' => $validated['reason'] ?? 'Broken bottles',
-                'variant' => (string) ($target['variant'] ?? 'plain'),
                 'performed_by' => auth()->id(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($this->supabase->tableHasColumn('bottle_stock_movements', 'variant')) {
+                $movement['variant'] = (string) ($target['variant'] ?? 'plain');
+            }
+            $this->supabase->insert('bottle_stock_movements', $movement);
 
             return redirect()->route('stock-manager.bottle-stock')->with('success', 'Broken bottles recorded.');
         }

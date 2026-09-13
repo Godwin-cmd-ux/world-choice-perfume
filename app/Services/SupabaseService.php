@@ -105,8 +105,30 @@ class SupabaseService
     }
 
     /**
-     * Query with count - returns both data and total count
+     * Probe whether a column currently exists on a table via a cheap SELECT.
+     * Results are cached for the request lifetime.
      */
+    public function tableHasColumn(string $table, string $column): bool
+    {
+        $key = '__col__' . $table . '.' . $column;
+        if (isset(self::$queryCache[$key])) {
+            return (bool) self::$queryCache[$key];
+        }
+
+        $result = false;
+        try {
+            $response = $this->request()->get("{$this->url}/rest/v1/{$table}", [
+                'select' => $column,
+                'limit' => '1',
+            ]);
+            $result = $response->successful();
+        } catch (\Exception $e) {
+            Log::warning("tableHasColumn probe failed for {$table}.{$column}: " . $e->getMessage());
+        }
+
+        self::$queryCache[$key] = $result;
+        return $result;
+    }
     public function queryWithCount(string $table, array $params = []): array
     {
         $url = "{$this->url}/rest/v1/{$table}";
