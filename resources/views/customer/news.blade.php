@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'News — World Choice Perfumes')
+@section('title', 'News — World Choice Perfume')
 
 @section('content')
 <section class="py-20 bg-dark-950 min-h-screen">

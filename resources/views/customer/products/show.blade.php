@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', $product->name . ' — World Choice Perfumes')
+@section('title', $product->name . ' — World Choice Perfume')
 
 @section('content')
 <section class="pt-28 pb-16 bg-dark-950 min-h-screen">

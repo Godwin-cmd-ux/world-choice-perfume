@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    <title>Your Orders - World Choice Perfumes</title>
+    <title>Your Orders - World Choice Perfume</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <nav class="bg-amber-900 text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
             <img src="{{ asset('our_logo.jpeg') }}" class="w-10 h-10 rounded-full object-cover">
-            <span class="font-bold text-lg">World Choice Perfumes</span>
+            <span class="font-bold text-lg">World Choice Perfume</span>
         </div>
     </nav>
 

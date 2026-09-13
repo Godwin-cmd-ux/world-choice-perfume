@@ -21,7 +21,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "World Choice Perfumes - Your {$this->purpose} Code",
+            subject: "World Choice Perfume - Your {$this->purpose} Code",
         );
     }
 
@@ -74,7 +74,7 @@ class OtpMail extends Mailable
                     <!-- Footer -->
                     <tr>
                         <td style="background-color:#1a1a1a;padding:20px 30px;text-align:center;border-top:1px solid #333;">
-                            <p style="color:#666;font-size:11px;margin:0;">&copy; 2026 World Choice Perfumes. All rights reserved.</p>
+                            <p style="color:#666;font-size:11px;margin:0;">&copy; 2026 World Choice Perfume. All rights reserved.</p>
                         </td>
                     </tr>
                 </table>

@@ -7,7 +7,7 @@
     <div class="bg-white rounded-xl shadow p-6">
         <div class="text-center mb-4">
             <img src="{{ asset('our_logo.jpeg') }}" class="w-16 h-16 rounded-full mx-auto mb-2 object-cover">
-            <h2 class="text-xl font-bold">World Choice Perfumes</h2>
+            <h2 class="text-xl font-bold">World Choice Perfume</h2>
             <p class="text-sm text-gray-500">{{ $sale->branch->name }}</p>
         </div>
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">

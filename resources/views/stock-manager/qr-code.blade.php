@@ -9,7 +9,7 @@
             <i class="fas fa-qrcode text-emerald-500 text-2xl"></i>
         </div>
         <h3 class="font-semibold text-gray-800 text-lg mb-2">Website QR Code</h3>
-        <p class="text-sm text-gray-500 mb-6">Scan this QR code to visit the World Choice Perfumes website</p>
+        <p class="text-sm text-gray-500 mb-6">Scan this QR code to visit the World Choice Perfume website</p>
 
         <div class="bg-gray-50 rounded-xl p-6 inline-block mb-6">
             <canvas id="qrCanvas"></canvas>
@@ -61,9 +61,9 @@
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <html>
-            <head><title>QR Code - World Choice Perfumes</title></head>
+            <head><title>QR Code - World Choice Perfume</title></head>
             <body style="text-align:center; padding:40px;">
-                <h2>World Choice Perfumes</h2>
+                <h2>World Choice Perfume</h2>
                 <p>Scan to visit our website</p>
                 <img src="${src}" width="256" height="256">
                 <p style="margin-top:20px; font-size:12px; color:#666;">{{ $url }}</p>

@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Graphic Designer Registration — World Choice Perfumes')
+@section('title', 'Graphic Designer Registration — World Choice Perfume')
 
 @section('content')
 <section class="min-h-screen flex items-center justify-center pt-20 pb-12 px-4">
@@ -11,7 +11,7 @@
                 <img src="{{ asset('our_logo.jpeg') }}" alt="Logo" class="w-16 h-16 rounded-full object-cover border-2 border-gold-500/30">
             </a>
             <h1 class="font-display text-3xl font-bold text-white">Join Our Team</h1>
-            <p class="text-gray-400 mt-2">Register as a Graphic Designer at World Choice Perfumes</p>
+            <p class="text-gray-400 mt-2">Register as a Graphic Designer at World Choice Perfume</p>
         </div>
 
         <!-- Registration Form -->

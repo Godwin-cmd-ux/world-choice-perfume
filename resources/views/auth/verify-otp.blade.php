@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Verify Email — World Choice Perfumes')
+@section('title', 'Verify Email — World Choice Perfume')
 
 @section('content')
 <section class="min-h-screen flex items-center justify-center px-4 py-20">

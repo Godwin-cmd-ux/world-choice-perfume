@@ -11,7 +11,7 @@ Route::get('/', function() {
     try {
         $supabase = new \App\Services\SupabaseService();
         $branches = collect($supabase->query('branches', [
-            'select' => 'id,name,address,latitude,longitude,is_active',
+            'select' => 'id,name,address,latitude,longitude,is_active,profile_picture',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
         ]))->map(fn($b) => (object) $b);

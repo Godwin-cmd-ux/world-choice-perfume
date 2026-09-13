@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'World Choice Perfumes — Authentic & Premium Fragrances')
+@section('title', 'World Choice Perfume — Authentic & Premium Fragrances')
 
 @section('content')
 <!-- Hero Section -->
@@ -32,7 +32,7 @@
                 </div>
 
                 <p class="text-lg text-gray-400 mb-8 max-w-lg leading-relaxed">
-                    From the world's most iconic perfume houses to niche artisanal scents — find your signature fragrance at World Choice Perfumes. Be smart, choose the best.
+                    From the world's most iconic perfume houses to niche artisanal scents — find your signature fragrance at World Choice Perfume. Be smart, choose the best.
                 </p>
 
                 <div class="flex flex-wrap gap-4 mb-12">
@@ -80,7 +80,7 @@
             <div class="hidden lg:flex justify-center items-center relative">
                 <div class="relative">
                     <div class="w-80 h-80 rounded-full bg-gradient-to-br from-gold-500/20 to-gold-700/10 flex items-center justify-center border border-gold-500/20">
-                        <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfumes" class="w-48 h-48 rounded-full object-cover shadow-2xl shadow-gold-500/20">
+                        <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-48 h-48 rounded-full object-cover shadow-2xl shadow-gold-500/20">
                     </div>
                     <!-- Floating Cards -->
                     <div class="absolute -top-4 -right-4 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
@@ -236,7 +236,7 @@
                 </h2>
                 <div class="space-y-4 text-gray-400 leading-relaxed">
                     <p>
-                        <strong class="gold-text">"Be Smart, Nukia Kijanja"</strong> — World Choice Perfumes was founded with a singular vision: to bring the world's finest fragrances to Tanzania. What started as a passion for scent has grown into Tanzania's most trusted destination for authentic, premium perfumes.
+                        <strong class="gold-text">"Be Smart, Nukia Kijanja"</strong> — World Choice Perfume was founded with a singular vision: to bring the world's finest fragrances to Tanzania. What started as a passion for scent has grown into Tanzania's most trusted destination for authentic, premium perfumes.
                     </p>
                     <p>
                         Every bottle we carry is sourced directly from authorized distributors, ensuring you receive only genuine products. From the iconic Chanel No. 5 to the exclusive Creed Aventus, our collection spans over 200 fragrances from the world's most prestigious perfume houses.
@@ -264,7 +264,7 @@
 
             <div class="relative">
                 <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl border border-dark-600 p-8">
-                    <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfumes" class="w-full h-80 object-cover rounded-xl mb-6">
+                    <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-80 object-cover rounded-xl mb-6">
                     <div class="flex items-center gap-4">
                         <div class="flex -space-x-2">
                             @for($i = 0; $i < 3; $i++)

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    <title>@yield('title', 'World Choice Perfumes — Be Smart, Nukia Kijanja')</title>
+    <title>@yield('title', 'World Choice Perfume — Be Smart, Nukia Kijanja')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,9 +53,9 @@
             <div class="flex items-center justify-between h-20">
                 <!-- Logo -->
                 <a href="{{ route('home') }}" class="flex items-center gap-3">
-                    <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfumes" class="w-12 h-12 rounded-full object-cover border-2 border-gold-500/30">
+                    <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-12 h-12 rounded-full object-cover border-2 border-gold-500/30">
                     <div>
-                        <span class="font-display text-xl font-bold gold-text">World Choice Perfumes</span>
+                        <span class="font-display text-xl font-bold gold-text">World Choice Perfume</span>
                         <span class="block text-[10px] tracking-[0.3em] uppercase text-gold-400/60">Be Smart, Nukia Kijanja</span>
                     </div>
                 </a>
@@ -153,7 +153,7 @@
                     <div class="flex items-center gap-3 mb-6">
                         <img src="{{ asset('our_logo.jpeg') }}" alt="Logo" class="w-12 h-12 rounded-full object-cover border-2 border-gold-500/30">
                         <div>
-                            <span class="font-display text-lg font-bold gold-text">World Choice Perfumes</span>
+                            <span class="font-display text-lg font-bold gold-text">World Choice Perfume</span>
                             <span class="block text-[10px] tracking-[0.3em] uppercase text-gold-400/60">Be Smart, Nukia Kijanja</span>
                         </div>
                     </div>
@@ -190,7 +190,7 @@
             </div>
 
             <div class="border-t border-dark-700 mt-12 pt-8 text-center">
-                <p class="text-sm text-gray-500">&copy; {{ date('Y') }} World Choice Perfumes. All rights reserved.</p>
+                <p class="text-sm text-gray-500">&copy; {{ date('Y') }} World Choice Perfume. All rights reserved.</p>
                 <p class="text-xs text-gray-600 mt-1">"Be Smart, Nukia Kijanja"</p>
             </div>
         </div>

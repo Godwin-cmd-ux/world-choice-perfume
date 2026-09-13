@@ -118,6 +118,37 @@ class PesapalService
     }
 
     /**
+     * Map a PesaPal order-request failure body to a customer-friendly message.
+     */
+    private function friendlyOrderError(string $body): string
+    {
+        $decoded = json_decode($body, true);
+
+        $code = $decoded['error']['code'] ?? $decoded['code'] ?? null;
+
+        $messages = [
+            'amount_exceeds_default_limit' => 'The order amount exceeds the limit allowed per transaction. Please contact us for assistance or try a smaller amount.',
+            'amount_is_less_than_allowed_limit' => 'The order amount is below the minimum allowed by the payment provider.',
+            'duplicate_order_id' => 'This order has already been submitted for payment. Please check your order status.',
+            'invalid_currency' => 'The payment currency is not supported.',
+        ];
+
+        $code = is_string($code) ? strtolower($code) : null;
+
+        if ($code && isset($messages[$code])) {
+            return $messages[$code];
+        }
+
+        Log::warning('PesaPal order request returned an unmapped failure', [
+            'status' => $decoded['status'] ?? null,
+            'code' => $code,
+            'body' => $body,
+        ]);
+
+        return 'PesaPal could not process the payment. Please try again later.';
+    }
+
+    /**
      * Submit an order request to PesaPal and get the redirect URL.
      *
      * @param array $params id, amount, currency, description, email, phone,
@@ -182,7 +213,7 @@ class PesapalService
                 'response' => $response->body(),
             ]);
 
-            return ['success' => false, 'message' => 'PesaPal order request failed: ' . substr($response->body(), 0, 300)];
+            return ['success' => false, 'message' => $this->friendlyOrderError((string) $response->body())];
         } catch (\Exception $e) {
             Log::error('PesaPal order request error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'PesaPal error: ' . $e->getMessage()];

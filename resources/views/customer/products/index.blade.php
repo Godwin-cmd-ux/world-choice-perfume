@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Shop — World Choice Perfumes')
+@section('title', 'Shop — World Choice Perfume')
 
 @section('content')
 <!-- Page Header -->

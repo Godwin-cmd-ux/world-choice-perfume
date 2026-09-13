@@ -12,7 +12,7 @@
     <nav class="bg-amber-900 text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
             <img src="{{ asset('our_logo.jpeg') }}" alt="Logo" class="w-10 h-10 rounded-full object-cover">
-            <span class="font-bold text-lg">World Choice Perfumes</span>
+            <span class="font-bold text-lg">World Choice Perfume</span>
         </div>
     </nav>
 

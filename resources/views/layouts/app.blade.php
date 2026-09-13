@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    <title>@yield('title', 'World Choice Perfumes') — Admin</title>
+    <title>@yield('title', 'World Choice Perfume') — Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     @include('partials.theme')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -117,9 +117,9 @@
 
     <div class="print-only" id="printHeader">
         <div class="print-header">
-            <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfumes">
+            <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume">
             <div>
-                <h1>World Choice Perfumes</h1>
+                <h1>World Choice Perfume</h1>
                 <p>Be Smart, Nukia Kijanja</p>
                 <p style="font-size:11px; margin-top:2px;">@yield('header', 'Report')</p>
                 <p style="font-size:11px;">Generated: {{ now()->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') }} | Branch: {{ auth()->user()->branch_id ? 'Branch #' . auth()->user()->branch_id : 'All' }}</p>
@@ -127,7 +127,7 @@
         </div>
     </div>
     <div class="print-footer">
-        <p>&copy; {{ date('Y') }} World Choice Perfumes — Be Smart, Nukia Kijanja</p>
+        <p>&copy; {{ date('Y') }} World Choice Perfume — Be Smart, Nukia Kijanja</p>
         <p>This report was generated automatically. For inquiries, call +255 710 603 637</p>
     </div>
     @include('partials.toast')

@@ -23,6 +23,6 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'worldchoiceperfumes@gmail.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'World Choice Perfumes')),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'World Choice Perfume')),
     ],
 ];

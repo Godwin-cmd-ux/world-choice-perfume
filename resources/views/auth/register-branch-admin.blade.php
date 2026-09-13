@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Branch Admin Registration — World Choice Perfumes')
+@section('title', 'Branch Admin Registration — World Choice Perfume')
 
 @section('content')
 <section class="min-h-screen flex items-center justify-center pt-20 pb-12 px-4">
