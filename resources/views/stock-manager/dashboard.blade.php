@@ -3,15 +3,6 @@
 @section('header', 'Stock Manager Dashboard')
 
 @section('content')
-@if($inCrossBranch ?? false)
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-6 flex flex-wrap items-center justify-between gap-2">
-        <span><i class="fas fa-globe-africa mr-2"></i> Monitoring <strong>{{ $activeBranchName ?? 'this branch' }}</strong> — read only.</span>
-        <a href="{{ route('stock-manager.cross-branch.exit') }}" class="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline">
-            <i class="fas fa-arrow-left mr-1"></i> Exit branch
-        </a>
-    </div>
-@endif
-
 {{-- Stats Cards --}}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     {{-- Product Stock --}}

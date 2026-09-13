@@ -20,6 +20,11 @@
     @stack('styles')
 </head>
 <body class="bg-gray-100 font-sans">
+    @php
+        $smScope = new \App\Services\StockManagerScope();
+        $crossMode = $smScope->inCrossBranchMode();
+        $crossSelectionPage = request()->routeIs('stock-manager.cross-branch');
+    @endphp
     <div class="flex min-h-screen">
         @include('stock-manager.partials.sidebar')
 
@@ -32,7 +37,9 @@
                     </button>
                     <div>
                         <h1 class="text-lg font-semibold text-gray-800">@yield('header', 'Dashboard')</h1>
-                        @hasSection('header-subtitle')
+                        @if($crossMode && !$crossSelectionPage)
+                            <p class="text-sm text-gray-500">Monitoring <strong>{{ $smScope->activeBranchName() }}</strong> — read-only, sales &amp; orders hidden</p>
+                        @elseif(hasSection('header-subtitle'))
                             <p class="text-sm text-gray-500">@yield('header-subtitle')</p>
                         @endif
                     </div>
@@ -72,7 +79,38 @@
 
             {{-- Page Content --}}
             <main class="flex-1 p-6">
-                @yield('content')
+                @if($crossMode && !$crossSelectionPage)
+                    {{-- Shared branch screen: the monitored branch's stock manager UI, embedded --}}
+                    <div class="rounded-xl border border-gray-200 overflow-hidden shadow-md bg-white">
+                        <div class="px-4 py-3 border-b bg-gradient-to-r from-gray-50 to-white flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                    <i class="fas fa-code-branch text-emerald-600 text-sm"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800">{{ $smScope->activeBranchName() }}</p>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Shared branch view • read-only</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('stock-manager.cross-branch') }}" class="text-xs font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
+                                    <i class="fas fa-university mr-1"></i> All branches
+                                </a>
+                                <a href="{{ route('stock-manager.cross-branch.exit') }}" class="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg">
+                                    <i class="fas fa-arrow-left mr-1"></i> Exit branch
+                                </a>
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row">
+                            @include('stock-manager.partials.cross-branch-sidebar')
+                            <div class="flex-1 min-w-0 p-5 bg-gray-50">
+                                @yield('content')
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    @yield('content')
+                @endif
             </main>
         </div>
     </div>
