@@ -39,8 +39,10 @@
                         <h1 class="text-lg font-semibold text-gray-800">@yield('header', 'Dashboard')</h1>
                         @if($crossMode && !$crossSelectionPage)
                             <p class="text-sm text-gray-500">Monitoring <strong>{{ $smScope->activeBranchName() }}</strong> — read-only, sales &amp; orders hidden</p>
-                        @elseif(hasSection('header-subtitle'))
-                            <p class="text-sm text-gray-500">@yield('header-subtitle')</p>
+                        @else
+                            @hasSection('header-subtitle')
+                                <p class="text-sm text-gray-500">@yield('header-subtitle')</p>
+                            @endif
                         @endif
                     </div>
                 </div>
