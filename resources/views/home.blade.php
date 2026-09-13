@@ -103,6 +103,9 @@
         </div>
     </div>
 
+    <!-- Bottom fade into next section -->
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-dark-950"></div>
+
     <!-- Scroll Indicator -->
     <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
         <a href="#categories" class="text-gold-400/60 hover:text-gold-400 transition">
