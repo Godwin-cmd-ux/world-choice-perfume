@@ -106,7 +106,7 @@ class BottleAccessoriesController extends Controller
             'movement_type' => 'stock_in',
             'quantity' => $validated['quantity'],
             'reason' => $validated['reason'] ?? 'Stock in',
-            'performed_by' => auth()->id(),
+            'performed_by' => $this->performingUserId(),
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ]);
@@ -223,7 +223,7 @@ class BottleAccessoriesController extends Controller
                 'movement_type' => 'stock_out',
                 'quantity' => $validated['quantity'],
                 'reason' => $validated['reason'] ?? 'Stock out',
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
@@ -246,6 +246,52 @@ class BottleAccessoriesController extends Controller
         }
 
         return view('stock-manager.bottle-accessories.stock-out', ['accessories' => collect($accessories)]);
+    }
+
+    private function performingUserId(): int
+    {
+        return (int) (auth()->user()->supabase_id ?? auth()->id());
+    }
+
+    /**
+     * Same performed_by resolution as StockManagerController: prefer Supabase
+     * users, then map local ids through supabase_id, then local names.
+     */
+    private function resolvePerformedByNames(array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $ids = array_filter($ids, fn($id) => $id > 0);
+        $map = [];
+        if (empty($ids)) {
+            return $map;
+        }
+
+        $supById = [];
+        $supRows = $this->supabase->query('users', [
+            'select' => 'id,name',
+            'id' => 'in.(' . implode(',', $ids) . ')',
+            'limit' => 200,
+        ]);
+        foreach ($supRows as $u) {
+            $supById[(int) $u['id']] = $u['name'];
+        }
+
+        $localUsers = \App\Models\User::whereIn('id', $ids)
+            ->get(['id', 'name', 'supabase_id'])
+            ->keyBy('id');
+
+        foreach ($ids as $id) {
+            $local = $localUsers->get($id);
+            if ($local && !empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
+                $map[$id] = $supById[(int) $local->supabase_id];
+            } elseif (isset($supById[$id])) {
+                $map[$id] = $supById[$id];
+            } elseif ($local && $local->name) {
+                $map[$id] = $local->name;
+            }
+        }
+
+        return $map;
     }
 
     public function movements(Request $request)
@@ -271,21 +317,11 @@ class BottleAccessoriesController extends Controller
                 $userIds[$m['performed_by']] = true;
             }
         }
-        $users = [];
-        if (!empty($userIds)) {
-            $userRows = $this->supabase->query('users', [
-                'select' => 'id,name',
-                'id' => 'in.' . implode(',', array_keys($userIds)),
-                'limit' => 100,
-            ]);
-            foreach ($userRows as $u) {
-                $users[$u['id']] = $u;
-            }
-        }
+        $names = $this->resolvePerformedByNames(array_keys($userIds));
 
-        $movements = collect($movements)->map(function ($m) use ($users) {
-            $m['performedBy'] = isset($m['performed_by']) && isset($users[$m['performed_by']])
-                ? (object) ['id' => $users[$m['performed_by']]['id'], 'name' => $users[$m['performed_by']]['name']]
+        $movements = collect($movements)->map(function ($m) use ($names) {
+            $m['performedBy'] = isset($m['performed_by']) && isset($names[$m['performed_by']])
+                ? (object) ['id' => (int) $m['performed_by'], 'name' => $names[$m['performed_by']]]
                 : null;
             return (object) $m;
         })->all();

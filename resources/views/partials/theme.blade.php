@@ -1,4 +1,6 @@
-{{-- Shared monochrome theme (deep shiny black + white) — MGFlow-inspired, overrides all chromatic Tailwind palettes --}}
+{{-- Shared black & white dominant theme (deep shiny black + white) — MGFlow-inspired.
+     Decorative palettes stay monochrome; status palettes keep real colors so alerts,
+     statuses and highlights stay instantly readable. --}}
 <script>
     (function () {
         var mono = {
@@ -14,9 +16,9 @@
             '900': '#000000',
             '950': '#000000'
         };
-        var palettes = ['green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose', 'red', 'orange', 'amber', 'yellow', 'lime'];
+        var neutralPalettes = ['indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose', 'lime', 'teal'];
         var colors = {};
-        palettes.forEach(function (p) { colors[p] = Object.assign({ DEFAULT: '#111111' }, mono); });
+        neutralPalettes.forEach(function (p) { colors[p] = Object.assign({ DEFAULT: '#111111' }, mono); });
 
         tailwind.config = {
             theme: {
@@ -138,8 +140,8 @@
     }
     .hover\:shadow-md { transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
 
-    /* ---- Icon tiles (KPI chips) ---- */
-    [class*="w-12"][class*="h-12"][class*="rounded-xl"] {
+    /* ---- Icon tiles (KPI chips) : only neutralize untinted tiles so colored status/highlight tiles show through ---- */
+    [class*="w-12"][class*="h-12"][class*="rounded-xl"]:not([class*="bg-"]) {
         background: linear-gradient(145deg, #FFFFFF 0%, #F0F1F3 100%);
         box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(16, 24, 40, 0.10);
         border: 1px solid #EBECEE;

@@ -87,6 +87,55 @@
     </div>
 </div>
 
+{{-- Sales & Orders Summary --}}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                <i class="fas fa-chart-line text-emerald-500 mr-2"></i> Sales Summary
+            </h3>
+            <a href="{{ route('stock-manager.sales.index') }}" class="text-xs font-medium text-emerald-600 hover:text-emerald-800">
+                View all sales <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 bg-emerald-50 rounded-lg">
+                <p class="text-lg font-bold text-emerald-700">TZS {{ number_format($salesToday) }}</p>
+                <p class="text-xs text-emerald-600 mt-0.5">Today's sales</p>
+            </div>
+            <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-lg font-bold text-blue-700">{{ number_format($salesTodayCount) }}</p>
+                <p class="text-xs text-blue-600 mt-0.5">Transactions today</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                <i class="fas fa-shopping-bag text-amber-500 mr-2"></i> Orders Summary
+            </h3>
+            <a href="{{ route('stock-manager.orders.index') }}" class="text-xs font-medium text-amber-600 hover:text-amber-800">
+                View orders <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="p-4 bg-amber-50 rounded-lg">
+                <p class="text-lg font-bold text-amber-700">{{ number_format($pendingOrders) }}</p>
+                <p class="text-xs text-amber-600 mt-0.5">Pending</p>
+            </div>
+            <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-lg font-bold text-blue-700">{{ number_format($openOrders) }}</p>
+                <p class="text-xs text-blue-600 mt-0.5">In progress</p>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-lg font-bold text-gray-800">{{ number_format($ordersToday) }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">Orders today</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Bottle Stock Breakdown --}}
 @unless($isHQ ?? false)
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

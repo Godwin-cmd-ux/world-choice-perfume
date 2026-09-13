@@ -126,7 +126,7 @@ class BottleStockService
         foreach ($rows as $row) {
             $volume = $this->parseVolume((string) ($row['volume'] ?? ''));
             if ($volume !== null) {
-                $map[$volume] = (int) ($row['quantity'] ?? 0);
+                $map[$volume] += (int) ($row['quantity'] ?? 0);
             }
         }
 

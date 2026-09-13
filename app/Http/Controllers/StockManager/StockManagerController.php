@@ -52,6 +52,31 @@ class StockManagerController extends Controller
         ]));
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
+        // Sales summary (today, paid only)
+        $todayStart = now()->startOfDay()->toIso8601String();
+        $todaySalesRows = $this->supabase->query('sales', [
+            'branch_id' => "eq.{$branchId}",
+            'payment_status' => 'eq.paid',
+            'created_at' => "gte.{$todayStart}",
+            'select' => 'id,total',
+        ]);
+        $salesToday = (float) array_sum(array_map(fn($s) => (float) ($s['total'] ?? 0), $todaySalesRows));
+        $salesTodayCount = count($todaySalesRows);
+
+        // Orders summary
+        $pendingOrders = $this->supabase->count('orders', [
+            'branch_id' => "eq.{$branchId}",
+            'status' => 'eq.pending',
+        ]);
+        $openOrders = $this->supabase->count('orders', [
+            'branch_id' => "eq.{$branchId}",
+            'status' => 'in.(pending,assigned,ready)',
+        ]);
+        $ordersToday = $this->supabase->count('orders', [
+            'branch_id' => "eq.{$branchId}",
+            'created_at' => "gte.{$todayStart}",
+        ]);
+
         // Recent movements
         $recentBottleMovements = $isHQ ? [] : $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 5);
         $recentOilMovements = $isHQ ? [] : $this->loadMovementsWithUser('oil_fragrance_movements', $branchId, 5);
@@ -60,7 +85,8 @@ class StockManagerController extends Controller
             'totalProductItems', 'lowStockProducts',
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements',
-            'isHQ', 'inCrossBranch', 'activeBranchName'
+            'isHQ', 'inCrossBranch', 'activeBranchName',
+            'salesToday', 'salesTodayCount', 'pendingOrders', 'openOrders', 'ordersToday'
         ));
     }
 
@@ -127,6 +153,59 @@ class StockManagerController extends Controller
     }
 
     /**
+     * Supabase FKs (performed_by / entered_by) reference Supabase users.id,
+     * so movements must store the user's supabase_id, not the local users.id.
+     */
+    private function performingUserId(): int
+    {
+        return (int) (auth()->user()->supabase_id ?? auth()->id());
+    }
+
+    /**
+     * Resolve performed_by ids to display names.
+     * Prefers the Supabase user; falls back through the local user's
+     * supabase_id mapping, then the local user name, so rows written with
+     * local ids before the fix still resolve to the right person
+     * (e.g. not "Super Admin" when local id 1 collided with Supabase id 1).
+     */
+    private function resolvePerformedByNames(array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $ids = array_filter($ids, fn($id) => $id > 0);
+        $map = [];
+        if (empty($ids)) {
+            return $map;
+        }
+
+        $supById = [];
+        $supRows = $this->supabase->query('users', [
+            'select' => 'id,name',
+            'id' => 'in.(' . implode(',', $ids) . ')',
+            'limit' => 200,
+        ]);
+        foreach ($supRows as $u) {
+            $supById[(int) $u['id']] = $u['name'];
+        }
+
+        $localUsers = \App\Models\User::whereIn('id', $ids)
+            ->get(['id', 'name', 'supabase_id'])
+            ->keyBy('id');
+
+        foreach ($ids as $id) {
+            $local = $localUsers->get($id);
+            if ($local && !empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
+                $map[$id] = $supById[(int) $local->supabase_id];
+            } elseif (isset($supById[$id])) {
+                $map[$id] = $supById[$id];
+            } elseif ($local && $local->name) {
+                $map[$id] = $local->name;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * Load movements with a PHP-side join for performedBy.
      * PostgREST expansions like performedBy:users(id,name) silently return 0 rows,
      * so we fetch the user data separately and join in PHP.
@@ -150,21 +229,11 @@ class StockManagerController extends Controller
             }
         }
 
-        $users = [];
-        if (!empty($userIds)) {
-            $userRows = $this->supabase->query('users', [
-                'select' => 'id,name',
-                'id' => 'in.' . implode(',', array_keys($userIds)),
-                'limit' => 100,
-            ]);
-            foreach ($userRows as $u) {
-                $users[$u['id']] = $u;
-            }
-        }
+        $names = $this->resolvePerformedByNames(array_keys($userIds));
 
-        return collect($rows)->map(function ($r) use ($users) {
-            $r['performedBy'] = !empty($r['performed_by']) && isset($users[$r['performed_by']])
-                ? (object) ['id' => $users[$r['performed_by']]['id'], 'name' => $users[$r['performed_by']]['name']]
+        return collect($rows)->map(function ($r) use ($names) {
+            $r['performedBy'] = !empty($r['performed_by']) && isset($names[$r['performed_by']])
+                ? (object) ['id' => (int) $r['performed_by'], 'name' => $names[$r['performed_by']]]
                 : null;
             return (object) $r;
         })->all();
@@ -277,7 +346,7 @@ class StockManagerController extends Controller
                 'quantity' => $newQty,
                 'selling_price' => $validated['selling_price'],                    'category' => $category,
                     'date_received' => $validated['date_received'],
-                    'entered_by' => auth()->id(),
+                    'entered_by' => $this->performingUserId(),
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $existing['id']]);
 
@@ -302,7 +371,7 @@ class StockManagerController extends Controller
                     'selling_price' => $validated['selling_price'],
                     'category' => $category,
                 'date_received' => $validated['date_received'],
-                'entered_by' => auth()->id(),
+                'entered_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
@@ -314,7 +383,7 @@ class StockManagerController extends Controller
             'type' => 'entry',
             'quantity' => $validated['quantity'],
             'unit_price' => $validated['selling_price'],
-            'performed_by' => auth()->id(),
+            'performed_by' => $this->performingUserId(),
             'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
@@ -327,7 +396,7 @@ class StockManagerController extends Controller
                 $bottleVolume,
                 (int) $validated['quantity'],
                 'Auto outstock for oil fragrance stock entry',
-                (string) auth()->id()
+                (string) $this->performingUserId()
             );
         }
 
@@ -401,7 +470,7 @@ class StockManagerController extends Controller
                 'type' => $newQty > $oldQty ? 'entry' : 'sale',
                 'quantity' => $newQty - $oldQty,
                 'unit_price' => $oldPrice,
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'notes' => 'Manual stock adjustment',
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
@@ -446,7 +515,7 @@ class StockManagerController extends Controller
         $branchId = $this->scope->activeBranchId();
 
         $params = $this->scope->branchParams([
-            'select' => '*, product:products(id,name,brand), performedBy:users(id,name)',
+            'select' => '*, product:products(id,name,brand)',
             'order' => 'created_at.desc',
             'limit' => 50,
         ]);
@@ -461,9 +530,19 @@ class StockManagerController extends Controller
 
         $movements = $this->supabase->query('stock_movements', $params);
 
-        $movements = collect($movements)->map(function ($m) {
+        $userIds = [];
+        foreach ($movements as $m) {
+            if (!empty($m['performed_by'])) {
+                $userIds[$m['performed_by']] = true;
+            }
+        }
+        $names = $this->resolvePerformedByNames(array_keys($userIds));
+
+        $movements = collect($movements)->map(function ($m) use ($names) {
             if (isset($m['product']) && is_array($m['product'])) $m['product'] = (object) $m['product'];
-            if (isset($m['performedBy']) && is_array($m['performedBy'])) $m['performedBy'] = (object) $m['performedBy'];
+            $m['performedBy'] = !empty($m['performed_by']) && isset($names[$m['performed_by']])
+                ? (object) ['id' => (int) $m['performed_by'], 'name' => $names[$m['performed_by']]]
+                : null;
             return (object) $m;
         });
 
@@ -756,7 +835,7 @@ class StockManagerController extends Controller
                 'has_logo' => $hasLogo,
                 'logo_color' => $logoColor,
                 'has_box' => $hasBox,
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -827,7 +906,7 @@ class StockManagerController extends Controller
                 'type' => 'broken',
                 'quantity' => $validated['quantity'],
                 'reason' => $validated['reason'] ?? 'Broken bottles',
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ];
@@ -960,7 +1039,7 @@ class StockManagerController extends Controller
                 'type' => $type,
                 'quantity' => abs($newQty - $oldQty),
                 'reason' => 'Manual adjustment',
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
@@ -1068,7 +1147,7 @@ class StockManagerController extends Controller
                 'type' => 'stock_in',
                 'quantity' => $validated['quantity'],
                 'reason' => ($validated['reason'] ?? 'Stock in') . " [{$volumeLabel}]",
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
@@ -1172,7 +1251,7 @@ class StockManagerController extends Controller
                 'type' => 'stock_out',
                 'quantity' => $validated['quantity'],
                 'reason' => ($validated['reason'] ?? 'Used for production') . " [{$volumeLabel}]",
-                'performed_by' => auth()->id(),
+                'performed_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
