@@ -118,7 +118,6 @@ class BottleStockService
         return $this->supabase->insert('products', [
             'name' => $name,
             'brand' => 'Empty Bottles',
-            'category' => 'Empty Bottle',
             'is_active' => false,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
