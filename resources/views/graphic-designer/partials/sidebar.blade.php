@@ -1,6 +1,6 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
     <div class="p-5 border-b border-gray-700">
-        <a href="{{ route('graphic-designer.news.index') }}" class="flex items-center gap-3">
+        <a href="{{ route('graphic-designer.dashboard') }}" class="flex items-center gap-3">
             <img src="{{ asset('our_logo.jpeg') }}" alt="Logo" class="w-10 h-10 rounded-lg object-cover border-2 border-purple-500">
             <div>
                 <h1 class="font-bold text-sm tracking-wide">WORLD CHOICE PERFUMES</h1>
@@ -10,6 +10,11 @@
     </div>
 
     <nav class="flex-1 p-4 space-y-1">
+        <a href="{{ route('graphic-designer.dashboard') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('graphic-designer.dashboard') ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-tachometer-alt w-5 text-center"></i>
+            <span>Dashboard</span>
+        </a>
         <a href="{{ route('graphic-designer.news.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('graphic-designer.news.*') ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-newspaper w-5 text-center"></i>

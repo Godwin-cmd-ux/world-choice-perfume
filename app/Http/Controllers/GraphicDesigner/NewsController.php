@@ -15,17 +15,33 @@ class NewsController extends Controller
         $this->supabase = new SupabaseService();
     }
 
+    private function hasStatusColumn(): bool
+    {
+        return $this->supabase->tableHasColumn('news_posts', 'status');
+    }
+
+    private function normaliseStatus(array $p): string
+    {
+        $raw = $p['status'] ?? null;
+        if (in_array($raw, ['approved', 'rejected', 'pending'], true)) {
+            return $raw;
+        }
+        return ($p['is_published'] ?? false) ? 'approved' : 'pending';
+    }
+
     public function index()
     {
+        $userId = auth()->user()->supabase_id ?? auth()->id();
+
         $posts = collect($this->supabase->query('news_posts', [
             'select' => '*',
+            'author_id' => "eq.{$userId}",
             'order' => 'created_at.desc',
-            'limit' => 50,
+            'limit' => 100,
         ]));
 
         // PHP-side joins (PostgREST expansions return 0 rows due to RLS/FK issues)
         $branchIds = $posts->pluck('branch_id')->filter()->unique()->values()->toArray();
-        $authorIds = $posts->pluck('author_id')->filter()->unique()->values()->toArray();
 
         $branches = [];
         if (!empty($branchIds)) {
@@ -36,24 +52,26 @@ class NewsController extends Controller
             foreach ($branchesList as $b) $branches[$b['id']] = $b['name'];
         }
 
-        $authors = [];
-        if (!empty($authorIds)) {
-            $authorsList = $this->supabase->query('users', [
-                'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $authorIds) . ')',
-            ]);
-            foreach ($authorsList as $u) $authors[$u['id']] = $u['name'];
-        }
-
-        $posts = $posts->map(function ($p) use ($branches, $authors) {
+        $posts = $posts->map(function ($p) use ($branches) {
             $p['branch'] = isset($p['branch_id']) && isset($branches[$p['branch_id']])
                 ? (object) ['id' => $p['branch_id'], 'name' => $branches[$p['branch_id']]] : null;
-            $p['author'] = isset($p['author_id']) && isset($authors[$p['author_id']])
-                ? (object) ['id' => $p['author_id'], 'name' => $authors[$p['author_id']]] : null;
+            $p['status'] = $this->normaliseStatus($p);
+            $p['rejection_reason'] = $p['rejection_reason'] ?? null;
             return (object) $p;
         });
 
-        return view('graphic-designer.news.index', ['posts' => $posts]);
+        $counts = [
+            'total' => $posts->count(),
+            'approved' => $posts->filter(fn($p) => $p->status === 'approved')->count(),
+            'pending' => $posts->filter(fn($p) => $p->status === 'pending')->count(),
+            'rejected' => $posts->filter(fn($p) => $p->status === 'rejected')->count(),
+            'today' => $posts->filter(function ($p) {
+                if (!$p->created_at) return false;
+                return \Carbon\Carbon::parse($p->created_at)->setTimezone('Africa/Dar_es_Salaam')->isToday();
+            })->count(),
+        ];
+
+        return view('graphic-designer.news.index', ['posts' => $posts, 'counts' => $counts]);
     }
 
     public function create()
@@ -84,18 +102,25 @@ class NewsController extends Controller
 
         $userId = auth()->user()->supabase_id ?? auth()->id();
 
-        $this->supabase->insert('news_posts', [
+        $data = [
             'title' => $validated['title'],
             'content' => $validated['content'],
             'branch_id' => (int) $validated['branch_id'],
             'author_id' => $userId,
             'image_url' => $imageUrl,
-            'is_published' => true,
+            'is_published' => false,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
-        ]);
+        ];
 
-        return redirect()->route('graphic-designer.news.index')->with('success', 'News post published successfully!');
+        if ($this->hasStatusColumn()) {
+            $data['status'] = 'pending';
+        }
+
+        $this->supabase->insert('news_posts', $data);
+
+        return redirect()->route('graphic-designer.news.index')
+            ->with('success', 'Post submitted for approval. It will appear on the site once approved by customer care.');
     }
 
     public function edit($postId)
@@ -120,14 +145,23 @@ class NewsController extends Controller
             'branch_id' => 'required',
         ]);
 
-        $this->supabase->update('news_posts', [
+        $data = [
             'title' => $validated['title'],
             'content' => $validated['content'],
             'branch_id' => (int) $validated['branch_id'],
+            'is_published' => false,
             'updated_at' => now()->toIso8601String(),
-        ], ['id' => $postId]);
+        ];
 
-        return redirect()->route('graphic-designer.news.index')->with('success', 'Post updated successfully!');
+        if ($this->hasStatusColumn()) {
+            $data['status'] = 'pending';
+            $data['rejection_reason'] = null;
+        }
+
+        $this->supabase->update('news_posts', $data, ['id' => $postId]);
+
+        return redirect()->route('graphic-designer.news.index')
+            ->with('success', 'Post updated and re-submitted for approval.');
     }
 
     public function destroy($postId)

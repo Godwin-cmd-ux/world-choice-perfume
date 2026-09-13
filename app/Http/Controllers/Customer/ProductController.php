@@ -193,6 +193,14 @@ class ProductController extends Controller
             });
         }
 
+        // Hide out-of-stock products — unless the customer is using the search
+        // box (search results may include out-of-stock items).
+        if (!$request->search) {
+            $stockCollection = $stockCollection->filter(function ($item) {
+                return ($item['quantity'] ?? 0) > 0;
+            });
+        }
+
         return $stockCollection->values()->map(fn($item) => (object) [
             'id' => $item['id'] ?? null,
             'branch_id' => $item['branch_id'] ?? null,

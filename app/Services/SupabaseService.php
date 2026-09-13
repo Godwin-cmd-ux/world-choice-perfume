@@ -436,6 +436,16 @@ class SupabaseService
                 'branch_id','type','color','movement_type','quantity','reason',
                 'performed_by','created_at','updated_at',
             ],
+            'news_posts' => [
+                'title','content','branch_id','author_id','image_url','is_published',
+                'status','rejection_reason','reviewed_by','reviewed_at',
+                'created_at','updated_at',
+            ],
+            'inquiries' => [
+                'branch_id','user_id','email','phone','subject','message','attachments',
+                'is_read','status','is_featured','reply_message','replied_by','replied_at',
+                'created_at','updated_at',
+            ],
             'audit_logs' => [
                 'user_id','action','created_at','updated_at','auditable_type',
                 'auditable_id','old_values','new_values','ip_address',

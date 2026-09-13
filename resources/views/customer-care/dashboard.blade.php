@@ -2,6 +2,7 @@
 @section('title', 'Customer Care Dashboard')
 @section('header', 'Customer Care Dashboard')
 @section('content')
+@if($isHq)
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center gap-4">
@@ -54,4 +55,5 @@
         </table>
     </div>
 </div>
+@endif
 @endsection

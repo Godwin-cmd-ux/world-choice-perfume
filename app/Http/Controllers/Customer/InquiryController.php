@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 
 class InquiryController extends Controller
 {
+    private const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
+
     private SupabaseService $supabase;
 
     public function __construct()
@@ -16,27 +18,25 @@ class InquiryController extends Controller
     }
 
     /**
-     * Public contact form submission — routes to the branch's customer care inquiries.
-     * Fields: email, phone, heading (subject), message.
+     * Public contact form submission — routed straight to Head Quarters-Mikocheni
+     * customer care. Fields: email, phone, heading (subject), message.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'branch_id' => 'required',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
         ]);
 
-        // Verify the branch exists
-        $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.'])->withInput();
+        $hqId = $this->hqBranchId();
+        if (!$hqId) {
+            return back()->withErrors(['email' => 'Our Head Quarters branch is not configured yet. Please try again later.'])->withInput();
         }
 
         $this->supabase->insert('inquiries', [
-            'branch_id' => (int) $validated['branch_id'],
+            'branch_id' => $hqId,
             'user_id' => auth()->check() ? (auth()->user()->supabase_id ?? auth()->id()) : null,
             'email' => $validated['email'],
             'phone' => $validated['phone'],
@@ -48,6 +48,23 @@ class InquiryController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        return back()->with('success', 'Thank you! Your message has been sent to our customer care team. We will get back to you soon.');
+        return back()->with('success', 'Thank you! Your message has been sent to our Head Quarters customer care team. We will get back to you soon.');
+    }
+
+    private function hqBranchId(): ?int
+    {
+        $rows = $this->supabase->query('branches', [
+            'select' => 'id,name',
+            'is_active' => 'eq.true',
+            'order' => 'id.asc',
+        ]);
+
+        foreach ($rows as $branch) {
+            if (mb_strtolower(trim($branch['name'] ?? '')) === mb_strtolower(trim(self::HQ_BRANCH_NAME))) {
+                return (int) $branch['id'];
+            }
+        }
+
+        return null;
     }
 }

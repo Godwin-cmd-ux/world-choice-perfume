@@ -298,12 +298,24 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/orders/{order}', [\App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [\App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
 
-        // Inquiries
-        Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
-        Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
-        Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
-        Route::post('/inquiries/{inquiry}/read', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
-        Route::post('/inquiries/{inquiry}/comment', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
+        // Inquiries — Head Quarters-Mikocheni customer care only
+        Route::middleware('customer-care.hq')->group(function () {
+            Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
+            Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
+            Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
+            Route::post('/inquiries/{inquiry}/read', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
+            Route::post('/inquiries/{inquiry}/comment', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
+
+            // News moderation — Head Quarters-Mikocheni customer care only
+            $ccon = \App\Http\Controllers\CustomerCare\NewsController::class;
+            Route::get('/news', [$ccon, 'index'])->name('news.index');
+            Route::post('/news', [$ccon, 'store'])->name('news.store');
+            Route::get('/news/{post}/edit', [$ccon, 'edit'])->name('news.edit');
+            Route::put('/news/{post}', [$ccon, 'update'])->name('news.update');
+            Route::post('/news/{post}/approve', [$ccon, 'approve'])->name('news.approve');
+            Route::post('/news/{post}/reject', [$ccon, 'reject'])->name('news.reject');
+            Route::delete('/news/{post}', [$ccon, 'destroy'])->name('news.destroy');
+        });
     });
 
     // ========================
@@ -311,6 +323,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     Route::prefix('graphic-designer')->name('graphic-designer.')->middleware('role:graphic_designer')->group(function () {
         $gdn = \App\Http\Controllers\GraphicDesigner\NewsController::class;
+
+        // News dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\GraphicDesigner\DashboardController::class, 'dashboard'])->name('dashboard');
 
         // News
         Route::get('/news', [$gdn, 'index'])->name('news.index');

@@ -458,15 +458,8 @@
                     <form method="POST" action="{{ route('customer.contact.store') }}" class="space-y-4">
                         @csrf
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Branch</label>
-                            <select name="branch_id" required
-                                class="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-xl text-white focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
-                                <option value="">Select a branch</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="bg-gold-500/10 border border-gold-500/30 rounded-xl px-4 py-3 text-xs text-gold-300 flex items-center gap-2">
+                            <i class="fas fa-building"></i> Your message goes straight to our Head Quarters – Mikocheni customer care team.
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

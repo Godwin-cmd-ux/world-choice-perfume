@@ -260,4 +260,23 @@
         </div>
     </div>
 </section>
+
+{{-- Clear a stale search token when the page is genuinely refreshed, so the
+     search bar (and results) don't keep the old keyword after a reload. --}}
+<script>
+    (function () {
+        var entries = window.performance && performance.getEntriesByType
+            ? performance.getEntriesByType('navigation')
+            : [];
+        var isReload = entries.length > 0 && entries[0].type === 'reload';
+        if (!isReload) { return; }
+
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has('search')) { return; }
+
+        params.delete('search');
+        var query = params.toString();
+        window.location.replace(window.location.pathname + (query ? '?' + query : ''));
+    })();
+</script>
 @endsection
