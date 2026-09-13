@@ -395,7 +395,7 @@ class SupabaseService
         $allowlists = [
             'sales' => [
                 'sale_number','branch_id','cashier_id','customer_id','subtotal',
-                'discount','total','payment_status','notes','created_at','updated_at',
+                'discount','total','payment_status','sale_type','notes','created_at','updated_at',
                 'supplier','payment_method','payment_summary',
             ],
             'sale_items' => [

@@ -136,12 +136,11 @@ const logoSection = document.getElementById('logo-section');
 const colorSection = document.getElementById('color-section');
 
 function syncOption(input) {
-    const group = input.closest('.radio-option').dataset ? null : null;
-    input.closest('.flex').querySelectorAll('.radio-option').forEach(el => {
-        const radio = el.querySelector('input[type="radio"]');
-        const selected = radio === input;
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(radio => {
+        const el = radio.closest('.radio-option');
+        if (!el) return;
         el.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-yellow-400', 'bg-yellow-50', 'border-gray-500');
-        if (selected) {
+        if (radio.checked) {
             el.classList.add('border-emerald-500', 'bg-emerald-50');
         } else {
             el.classList.add('border-gray-200');
@@ -218,6 +217,9 @@ volumeSelect.addEventListener('change', updateCascade);
 
 // Restore server-side validation state on load.
 updateCascade();
+document.querySelectorAll('.radio-option input[type="radio"]:checked').forEach(input => {
+    syncOption(input);
+});
 </script>
 @endpush
 @endsection

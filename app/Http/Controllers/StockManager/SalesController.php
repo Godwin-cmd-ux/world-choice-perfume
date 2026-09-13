@@ -355,7 +355,7 @@ class SalesController extends Controller
             $primaryMethod = $payments[0]['method'] ?? 'cash';
 
             // 6. Create sale
-            $sale = $this->supabase->insert('sales', [
+            $saleData = [
                 'sale_number' => $saleNumber,
                 'branch_id' => $branchId,
                 'cashier_id' => $supabaseUserId,
@@ -364,11 +364,14 @@ class SalesController extends Controller
                 'total' => $subtotal,
                 'payment_method' => $primaryMethod,
                 'payment_summary' => $paymentSummary,
-                'sale_type' => $validated['sale_type'] ?? 'retail',
                 'payment_status' => 'paid',
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($this->supabase->tableHasColumn('sales', 'sale_type')) {
+                $saleData['sale_type'] = $validated['sale_type'] ?? 'retail';
+            }
+            $sale = $this->supabase->insert('sales', $saleData);
 
             if (!$sale) {
                 return back()->withErrors(['error' => 'Failed to create sale.'])->withInput();

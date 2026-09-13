@@ -172,7 +172,7 @@
             '<td class="px-3 py-2">' +
                 '<span class="cart-unit-price text-sm block"></span>' +
                 @if (!empty($hasDiscount))
-                '<input type="number" step="0.01" min="0" class="cart-discount-price hidden mt-1 w-28 px-2 py-1 border border-dashed rounded text-xs" placeholder="Discount price">' +
+                '<input type="number" step="0.01" min="0" class="cart-discount-price hidden mt-1 w-28 px-2 py-1 border border-dashed rounded text-xs" placeholder="Custom price">' +
                 @endif
                 '<input type="number" step="0.01" min="0" class="cart-custom-price hidden mt-1 w-28 px-2 py-1 border rounded text-xs" placeholder="Custom price">' +
             '</td>' +
