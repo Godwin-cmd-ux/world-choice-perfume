@@ -20,6 +20,23 @@ class NewsController extends Controller
         return $this->supabase->tableHasColumn('news_posts', 'status');
     }
 
+    private const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
+
+    private function hqBranchId(): ?int
+    {
+        $rows = $this->supabase->query('branches', [
+            'select' => 'id,name',
+        ]);
+
+        foreach ($rows as $branch) {
+            if (mb_strtolower(trim($branch['name'] ?? '')) === mb_strtolower(trim(self::HQ_BRANCH_NAME))) {
+                return (int) $branch['id'];
+            }
+        }
+
+        return null;
+    }
+
     private function normaliseStatus(array $p): string
     {
         $raw = $p['status'] ?? null;
@@ -76,13 +93,7 @@ class NewsController extends Controller
 
     public function create()
     {
-        $branches = collect($this->supabase->query('branches', [
-            'select' => 'id,name',
-            'is_active' => 'eq.true',
-            'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
-
-        return view('graphic-designer.news.create', ['branches' => $branches]);
+        return view('graphic-designer.news.create');
     }
 
     public function store(Request $request)
@@ -90,7 +101,6 @@ class NewsController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'branch_id' => 'required',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -102,10 +112,12 @@ class NewsController extends Controller
 
         $userId = auth()->user()->supabase_id ?? auth()->id();
 
+        $hqId = $this->hqBranchId();
+
         $data = [
             'title' => $validated['title'],
             'content' => $validated['content'],
-            'branch_id' => (int) $validated['branch_id'],
+            'branch_id' => $hqId,
             'author_id' => $userId,
             'image_url' => $imageUrl,
             'is_published' => false,
@@ -128,13 +140,7 @@ class NewsController extends Controller
         $post = $this->supabase->find('news_posts', $postId);
         if (!$post) abort(404);
 
-        $branches = collect($this->supabase->query('branches', [
-            'select' => 'id,name',
-            'is_active' => 'eq.true',
-            'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
-
-        return view('graphic-designer.news.edit', ['post' => (object) $post, 'branches' => $branches]);
+        return view('graphic-designer.news.edit', ['post' => (object) $post]);
     }
 
     public function update(Request $request, $postId)
@@ -142,13 +148,11 @@ class NewsController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'branch_id' => 'required',
         ]);
 
         $data = [
             'title' => $validated['title'],
             'content' => $validated['content'],
-            'branch_id' => (int) $validated['branch_id'],
             'is_published' => false,
             'updated_at' => now()->toIso8601String(),
         ];
