@@ -155,7 +155,7 @@
                                 </span>
                             </td>
                             <td class="px-4 text-gray-500">{{ $sale->branch?->name ?? '—' }}</td>
-                            <td class="px-4 text-gray-500">{{ Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
+                            <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="8" class="py-8 text-center text-gray-400">No sales yet</td></tr>
@@ -205,7 +205,7 @@
                                 @endphp
                                 {{ $itemCount }} item{{ $itemCount === 1 ? '' : 's' }}
                             </td>
-                            <td class="px-4 text-gray-500">{{ Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
+                            <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="py-8 text-center text-gray-400">No orders yet</td></tr>
@@ -249,7 +249,7 @@
                             <td class="px-4 text-gray-500">{{ $client->whatsapp ?? '—' }}</td>
                             <td class="px-4 text-gray-500">{{ $client->email ?? '—' }}</td>
                             <td class="px-4 text-gray-700">{{ $purchases }}</td>
-                            <td class="px-4 text-gray-500">{{ $client->created_at ? Carbon::parse($client->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</td>
+                            <td class="px-4 text-gray-500">{{ $client->created_at ? \Carbon\Carbon::parse($client->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}</td>
                             <td class="px-4 text-center">
                                 <a href="{{ route('customer-care.customers.show', $client->id) }}"
                                    class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium">
@@ -296,7 +296,7 @@
                                     <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-600">Unread</span>
                                 @endif
                             </td>
-                            <td class="px-4 text-xs text-gray-500">{{ $i->created_at ? Carbon::parse($i->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
+                            <td class="px-4 text-xs text-gray-500">{{ $i->created_at ? \Carbon\Carbon::parse($i->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="py-8 text-center text-gray-400">No inquiries yet</td></tr>
