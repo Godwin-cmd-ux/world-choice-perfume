@@ -3,24 +3,28 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
+use App\Services\CashierScope;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
     private SupabaseService $supabase;
+    private CashierScope $scope;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->scope = new CashierScope($this->supabase);
     }
 
     /**
-     * Cashier sees all expenses for their own branch.
+     * Cashier sees all expenses for their own branch (or monitored branch in cross-branch mode).
      */
     public function index(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = $this->scope->activeBranchId();
+        $inCrossBranch = $this->scope->inCrossBranchMode();
 
         $params = [
             'select' => '*, user:users(id,name)',
@@ -52,7 +56,10 @@ class ExpenseController extends Controller
             return (object) $e;
         });
 
-        return view('cashier.expenses.index', compact('expenses', 'totalExpenses'));
+        return view('cashier.expenses.index', compact('expenses', 'totalExpenses') + [
+            'inCrossBranch' => $inCrossBranch,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
     }
 
     /**

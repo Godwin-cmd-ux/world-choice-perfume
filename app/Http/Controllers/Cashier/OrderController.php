@@ -3,22 +3,26 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
+use App\Services\CashierScope;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
     private SupabaseService $supabase;
+    private CashierScope $scope;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->scope = new CashierScope($this->supabase);
     }
 
     public function index(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = $this->scope->activeBranchId();
         $userId = auth()->user()->supabase_id ?? auth()->id();
+        $inCrossBranch = $this->scope->inCrossBranchMode();
 
         $params = [
             'select' => '*, customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
@@ -52,7 +56,10 @@ class OrderController extends Controller
             return (object) $o;
         });
 
-        return view('cashier.orders.index', compact('orders'));
+        return view('cashier.orders.index', compact('orders') + [
+            'inCrossBranch' => $inCrossBranch,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
     }
 
     public function show($orderId)

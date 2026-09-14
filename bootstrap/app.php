@@ -21,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'stock-manager.bottle-access' => \App\Http\Middleware\EnsureStockManagerBottleAccess::class,
             'cross-branch.access' => \App\Http\Middleware\EnsureCrossBranchAccess::class,
             'cross-branch.readonly' => \App\Http\Middleware\EnsureCrossBranchReadOnly::class,
+            'cashier-cross-branch.access' => \App\Http\Middleware\EnsureCashierCrossBranchAccess::class,
+            'cashier-cross-branch.readonly' => \App\Http\Middleware\EnsureCashierCrossBranchReadOnly::class,
             'customer-care.hq' => \App\Http\Middleware\EnsureHeadQuarterCustomerCare::class,
         ]);
     })

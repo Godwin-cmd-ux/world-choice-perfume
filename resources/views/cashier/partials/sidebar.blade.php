@@ -1,4 +1,11 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
+    @php
+        $ccScope = new \App\Services\CashierScope();
+        $cashierIsCrossBranchMonitor = $ccScope->isCrossBranchMonitor();
+        $cashierInCrossBranch = $ccScope->inCrossBranchMode();
+        $cashierActiveBranch = $ccScope->activeBranchName();
+    @endphp
+
     {{-- Logo --}}
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('cashier.dashboard') }}" class="flex items-center gap-3">
@@ -8,6 +15,16 @@
                 <p class="text-[10px] text-amber-400 tracking-widest uppercase">Cashier</p>
             </div>
         </a>
+
+        @if($cashierInCrossBranch)
+            <div class="mt-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <p class="text-[10px] text-amber-300 uppercase tracking-widest">Monitoring</p>
+                <p class="text-sm font-semibold text-white truncate">{{ $cashierActiveBranch }}</p>
+                <a href="{{ route('cashier.cross-branch.exit') }}" class="inline-flex items-center gap-1 mt-1.5 text-[11px] text-amber-300 hover:text-white">
+                    <i class="fas fa-arrow-left text-[10px]"></i> Exit branch
+                </a>
+            </div>
+        @endif
     </div>
 
     {{-- Navigation --}}
@@ -32,6 +49,13 @@
             <i class="fas fa-money-bill-wave w-5 text-center"></i>
             <span>Expenses</span>
         </a>
+
+        @if($cashierIsCrossBranchMonitor)
+            <a href="{{ route('cashier.cross-branch') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.cross-branch*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-code-branch w-5 text-center"></i>                <span>Cross-Branch Monitoring</span>
+            </a>
+        @endif
 
         <div class="pt-4 mt-4 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Account</p>

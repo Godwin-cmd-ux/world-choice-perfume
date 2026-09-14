@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
+use App\Services\CashierScope;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -11,24 +12,38 @@ class SaleController extends Controller
 {
     private SupabaseService $supabase;
     private BottleStockService $bottles;
+    private CashierScope $scope;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
         $this->bottles = new BottleStockService($this->supabase);
+        $this->scope = new CashierScope($this->supabase);
     }
 
     public function index(Request $request)
     {
         $user = auth()->user();
         $supabaseUserId = $user->supabase_id ?? $user->id;
+        $inCrossBranch = $this->scope->inCrossBranchMode();
+        $activeBranchId = $this->scope->activeBranchId();
 
-        $params = [
-            'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
-            'cashier_id' => "eq.{$supabaseUserId}",
-            'order' => 'created_at.desc',
-            'limit' => 50,
-        ];
+        if ($inCrossBranch) {
+            // Cross-branch: show all sales for the monitored branch
+            $params = [
+                'select' => '*, cashier:users(id,name), items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
+                'branch_id' => "eq.{$activeBranchId}",
+                'order' => 'created_at.desc',
+                'limit' => 100,
+            ];
+        } else {
+            $params = [
+                'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
+                'cashier_id' => "eq.{$supabaseUserId}",
+                'order' => 'created_at.desc',
+                'limit' => 50,
+            ];
+        }
 
         $sales = $this->supabase->query('sales', $params);
 
@@ -53,7 +68,10 @@ class SaleController extends Controller
             return (object) $s;
         });
 
-        return view('cashier.sales.index', compact('sales'));
+        return view('cashier.sales.index', compact('sales') + [
+            'inCrossBranch' => $inCrossBranch,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
     }
 
     public function create()

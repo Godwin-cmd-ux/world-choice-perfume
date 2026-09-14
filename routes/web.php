@@ -238,6 +238,15 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // CASHIER ROUTES
     // ========================
     Route::prefix('cashier')->name('cashier.')->middleware('role:cashier')->group(function () {
+        $cc = \App\Http\Controllers\Cashier\CashierController::class;
+
+        // Cross-Branch Monitoring (HQ cashier only)
+        Route::middleware('cashier-cross-branch.access', 'cashier-cross-branch.readonly')->group(function () use ($cc) {
+            Route::get('/cross-branch', [$cc, 'crossBranchDashboard'])->name('cross-branch');
+            Route::get('/cross-branch/exit', [$cc, 'exitCrossBranch'])->name('cross-branch.exit');
+            Route::get('/cross-branch/{branch}', [$cc, 'enterCrossBranch'])->name('cross-branch.enter');
+        });
+
         Route::get('/dashboard', [\App\Http\Controllers\Cashier\DashboardController::class, 'index'])->name('dashboard');
 
         // Sales

@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
+use App\Services\CashierScope;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     private SupabaseService $supabase;
+    private CashierScope $scope;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->scope = new CashierScope($this->supabase);
     }
 
     public function index()
@@ -20,38 +23,59 @@ class DashboardController extends Controller
         $user = auth()->user();
         $branchId = $user->branch_id;
         $supabaseUserId = $user->supabase_id ?? $user->id;
+        $inCrossBranch = $this->scope->inCrossBranchMode();
+        $activeBranchId = $this->scope->activeBranchId();
+        $activeBranchName = $this->scope->activeBranchName();
 
         $today = Carbon::today()->toDateString();
 
-        // Batch 1: Today's sales — filter by date in query
-        $todaySalesData = $this->supabase->query('sales', [
-            'cashier_id' => "eq.{$supabaseUserId}",
-            'created_at' => "gte.{$today}T00:00:00",
-            'select' => 'id,total',
-        ]);
+        if ($inCrossBranch) {
+            // Cross-branch: show all sales for the monitored branch today
+            $todaySalesData = $this->supabase->query('sales', [
+                'branch_id' => "eq.{$activeBranchId}",
+                'created_at' => "gte.{$today}T00:00:00",
+                'select' => 'id,total',
+            ]);
+            $pendingOrders = $this->supabase->count('orders', [
+                'branch_id' => "eq.{$activeBranchId}",
+                'status' => 'eq.pending',
+            ]);
+            $activeOrders = $this->supabase->query('orders', [
+                'branch_id' => "eq.{$activeBranchId}",
+                'select' => 'id,status',
+            ]);
+            $recentSales = $this->supabase->query('sales', [
+                'branch_id' => "eq.{$activeBranchId}",
+                'select' => '*, cashier:users(id,name), items:sale_items(*, product:products(id,name,brand))',
+                'order' => 'created_at.desc',
+                'limit' => 10,
+            ]);
+        } else {
+            // Normal mode: show only this cashier's data
+            $todaySalesData = $this->supabase->query('sales', [
+                'cashier_id' => "eq.{$supabaseUserId}",
+                'created_at' => "gte.{$today}T00:00:00",
+                'select' => 'id,total',
+            ]);
+            $pendingOrders = $this->supabase->count('orders', [
+                'branch_id' => "eq.{$branchId}",
+                'status' => 'eq.pending',
+            ]);
+            $activeOrders = $this->supabase->query('orders', [
+                'cashier_id' => "eq.{$supabaseUserId}",
+                'select' => 'id,status',
+            ]);
+            $recentSales = $this->supabase->query('sales', [
+                'cashier_id' => "eq.{$supabaseUserId}",
+                'select' => '*, items:sale_items(*, product:products(id,name,brand))',
+                'order' => 'created_at.desc',
+                'limit' => 5,
+            ]);
+        }
+
         $todaySales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySalesData));
         $todayTransactions = count($todaySalesData);
-
-        // Batch 2: Pending orders count
-        $pendingOrders = $this->supabase->count('orders', [
-            'branch_id' => "eq.{$branchId}",
-            'status' => 'eq.pending',
-        ]);
-
-        // Batch 3: My active orders (assigned + ready) — filter in query
-        $activeOrders = $this->supabase->query('orders', [
-            'cashier_id' => "eq.{$supabaseUserId}",
-            'select' => 'id,status',
-        ]);
         $myAssignedCount = count(array_filter($activeOrders, fn($o) => in_array($o['status'] ?? '', ['assigned', 'ready'])));
-
-        // Batch 4: Recent sales with items
-        $recentSales = $this->supabase->query('sales', [
-            'cashier_id' => "eq.{$supabaseUserId}",
-            'select' => '*, items:sale_items(*, product:products(id,name,brand))',
-            'order' => 'created_at.desc',
-            'limit' => 5,
-        ]);
 
         // Cast for views
         $recentSales = collect($recentSales)->map(function ($s) {
@@ -69,6 +93,8 @@ class DashboardController extends Controller
             'recentSales'
         ) + [
             'myAssignedOrders' => $myAssignedCount,
+            'inCrossBranch' => $inCrossBranch,
+            'activeBranchName' => $activeBranchName,
         ]);
     }
 }
