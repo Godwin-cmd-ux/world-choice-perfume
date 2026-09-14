@@ -76,7 +76,7 @@
                                 <td>{{ $sale->cashier?->name ?? '—' }}</td>
                                 <td class="text-center">{{ $sale->items_count ?? 0 }}</td>
                                 <td class="text-right">TZS {{ number_format($sale->total ?? 0) }}</td>
-                                <td>{{ $sale->created_at ? \\Carbon\\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('H:i') : '—' }}</td>
+                                <td>{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('H:i') : '—' }}</td>
                             </tr>
                         @endforeach
                     </tbody>

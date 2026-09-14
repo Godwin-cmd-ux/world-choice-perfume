@@ -94,7 +94,7 @@
                                 <td class="px-4 text-gray-500">{{ $sale->cashier?->name ?? '—' }}</td>
                                 <td class="px-4 text-right text-gray-500">{{ $sale->items_count ?? 0 }}</td>
                                 <td class="px-4 text-right font-medium text-green-700">TZS {{ number_format($sale->total ?? 0) }}</td>
-                                <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \\Carbon\\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('H:i') : '—' }}</td>
+                                <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('H:i') : '—' }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="5" class="py-6 text-center text-gray-400">No sales for this branch on this day</td></tr>
