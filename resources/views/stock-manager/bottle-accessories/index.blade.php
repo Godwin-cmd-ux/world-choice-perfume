@@ -56,7 +56,7 @@
                             <td class="px-6 text-right">
                                 @if($item && !($inCrossBranch ?? false))
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('stock-manager.bottle-accessories.edit', $item->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                        <a href="{{ route('stock-manager.bottle-accessories.edit', $item->id) }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                             <i class="fas fa-pen mr-0.5"></i> Edit
                                         </a>
                                         <form method="POST" action="{{ route('stock-manager.bottle-accessories.destroy', $item->id) }}" class="inline">
