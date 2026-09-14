@@ -78,7 +78,7 @@
                                         <i class="fas fa-plus mr-0.5"></i> Add
                                     </a>
                                     {{-- Edit --}}
-                                    <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                    <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                         <i class="fas fa-pen mr-0.5"></i> Edit
                                     </a>
                                     {{-- Delete --}}

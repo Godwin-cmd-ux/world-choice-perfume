@@ -245,7 +245,7 @@ class BottleAccessoriesController extends Controller
             ]);
         }
 
-        return view('stock-manager.bottle-accessories.stock-out', ['accessories' => collect($accessories)]);
+        return view('stock-manager.bottle-accessories.stock-out', ['accessories' => collect($accessories)->map(fn($a) => (object) $a)]);
     }
 
     private function performingUserId(): int

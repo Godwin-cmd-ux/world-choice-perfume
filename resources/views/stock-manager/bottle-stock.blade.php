@@ -124,7 +124,7 @@
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center gap-2">
                                     {{-- Edit --}}
-                                    <a href="{{ route('stock-manager.bottle-stock.edit', $record->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                    <a href="{{ route('stock-manager.bottle-stock.edit', $record->id) }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                         <i class="fas fa-pen mr-0.5"></i> Edit
                                     </a>
                                     {{-- Delete --}}

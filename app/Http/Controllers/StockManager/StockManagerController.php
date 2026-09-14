@@ -610,8 +610,9 @@ class StockManagerController extends Controller
         $bottleMap = [];
         $variantLabelMap = [];
         foreach ($bottles as $b) {
-            $bottleMap[$b['volume']] = ($bottleMap[$b['volume']] ?? 0) + ($b['quantity'] ?? 0);
             $labelVol = $this->bottles->parseVolume((string) ($b['volume'] ?? ''));
+            $volumeKey = $labelVol !== null ? "{$labelVol}ml" : (string) ($b['volume'] ?? '');
+            $bottleMap[$volumeKey] = ($bottleMap[$volumeKey] ?? 0) + (int) ($b['quantity'] ?? 0);
             $variantLabelMap[$b['id']] = $this->bottles->variantLabel((string) ($b['variant'] ?? 'plain'), $labelVol ?? 0);
         }
 
