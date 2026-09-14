@@ -3,9 +3,9 @@
 @section('header', 'Daily Sales Report')
 
 @section('header-actions')
-    <button onclick="window.print()" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800 transition"><i class="fas fa-print mr-1"></i> Print</button>
+    <button onclick="window.print()" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition"><i class="fas fa-print mr-1"></i> Print</button>
     <a href="{{ route('super-admin.reports.generate-sales-report', ['date' => $date->toDateString()] + request()->only('branch_id')) }}"
-       class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-800 transition">
+       style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition">
         <i class="fas fa-file-pdf mr-1"></i> Generate Report
     </a>
 @endsection
@@ -27,7 +27,7 @@
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition"><i class="fas fa-filter mr-1"></i> Filter</button>
         <a href="{{ route('super-admin.reports.sales') }}" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-2">Reset</a>
     </form>
 </div>
