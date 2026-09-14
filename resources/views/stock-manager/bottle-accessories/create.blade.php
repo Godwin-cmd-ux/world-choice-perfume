@@ -59,7 +59,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+                <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Save Stock In
                 </button>
                 <a href="{{ route('stock-manager.bottle-accessories.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium">

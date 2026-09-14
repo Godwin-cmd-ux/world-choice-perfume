@@ -9,7 +9,7 @@
             <option value="unread" {{ request('status') === 'unread' ? 'selected' : '' }}>Unread</option>
             <option value="read" {{ request('status') === 'read' ? 'selected' : '' }}>Read</option>
         </select>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
 <div class="bg-white rounded-xl shadow overflow-hidden">

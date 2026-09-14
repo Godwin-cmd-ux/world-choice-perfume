@@ -33,7 +33,7 @@
         @if(!in_array($order->status, ['completed', 'served', 'cancelled']))
             <div class="mt-4 flex gap-3">
                 <form action="{{ route('branch-admin.orders.cancel', $order->id) }}" method="POST" data-confirm="Cancel this order?">@csrf
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">Cancel Order</button>
+                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm">Cancel Order</button>
                 </form>
             </div>
         @endif

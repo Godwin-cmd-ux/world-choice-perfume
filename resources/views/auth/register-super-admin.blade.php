@@ -46,7 +46,7 @@
                     <input type="password" name="password_confirmation" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
                 </div>
             </div>
-            <button type="submit" class="w-full mt-6 bg-amber-700 hover:bg-amber-800 text-white font-semibold py-2 px-4 rounded-lg transition">Register</button>
+            <button type="submit" style="background-color: #F89A1E;" class="w-full mt-6  hover:opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition">Register</button>
         </form>
         <p class="mt-4 text-center text-sm text-gray-500">Already have an account? <a href="{{ route('login') }}" class="text-amber-700 hover:underline">Sign In</a></p>
     </div>

@@ -3,12 +3,12 @@
 @section('header', 'Notifications')
 
 @section('header-actions')
-    <a href="{{ route('super-admin.notifications.generate-report') }}" class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+    <a href="{{ route('super-admin.notifications.generate-report') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
         <i class="fas fa-file-alt mr-1"></i> Generate Report
     </a>
     <form method="POST" action="{{ route('super-admin.notifications.mark-all-read') }}" class="inline">
         @csrf
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
             <i class="fas fa-check-double mr-1"></i> Mark All Read
         </button>
     </form>
@@ -36,7 +36,7 @@
         </select>
         <input type="date" name="date_from" value="{{ request('date_from') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="From">
         <input type="date" name="date_to" value="{{ request('date_to') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="To">
-        <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
 

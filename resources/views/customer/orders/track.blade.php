@@ -22,7 +22,7 @@
             @csrf
             <input type="text" name="phone" placeholder="Enter your phone number" required
                    class="w-full px-4 py-3 border rounded-lg text-center text-lg mb-4 focus:ring-2 focus:ring-amber-500">
-            <button type="submit" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3 rounded-lg">
+            <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white font-semibold py-3 rounded-lg">
                 <i class="fas fa-search mr-1"></i> Track Order
             </button>
         </form>

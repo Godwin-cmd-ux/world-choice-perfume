@@ -35,7 +35,7 @@
                 @if($user->branch) <p>Branch: <strong>{{ $user->branch->name }}</strong></p> @endif
             </div>
         </div>
-        <button type="submit" class="mt-4 bg-amber-700 hover:bg-amber-800 text-white px-6 py-2 rounded-lg font-medium">Update Profile</button>
+        <button type="submit" style="background-color: #F89A1E;" class="mt-4  hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium">Update Profile</button>
     </form>
 
     <!-- Change Password -->
@@ -47,7 +47,7 @@
             <input type="password" name="password" placeholder="New Password" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
             <input type="password" name="password_confirmation" placeholder="Confirm New Password" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500">
         </div>
-        <button type="submit" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">Change Password</button>
+        <button type="submit" style="background-color: #F89A1E;" class="mt-4  hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium">Change Password</button>
     </form>
 
     @if($user->isBranchAdmin() && $user->branch)
@@ -70,7 +70,7 @@
                 class="px-4 py-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition">
                 <i class="fas fa-crosshairs mr-1"></i> Spot Branch Location
             </button>
-            <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium text-sm">Save Location</button>
+            <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium text-sm">Save Location</button>
         </div>
     </form>
 

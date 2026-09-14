@@ -78,7 +78,7 @@
                                 <img src="{{ $img->image_url }}" class="w-20 h-20 rounded object-cover border border-gray-200">
                                 <form action="{{ route('stock-manager.products.remove-image', $img) }}" method="POST" class="absolute -top-1 -right-1">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="w-5 h-5 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"><i class="fas fa-times"></i></button>
+                                    <button type="submit" style="background-color: #F89A1E;" class="w-5 h-5  text-white rounded-full text-xs hover:opacity-90"><i class="fas fa-times"></i></button>
                                 </form>
                             </div>
                         @endforeach

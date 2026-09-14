@@ -15,11 +15,11 @@
         @endif
     </form>
     @if(!($inCrossBranch ?? false))
-        <a href="{{ route('stock-manager.product-stock.entry') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.product-stock.entry') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-plus mr-1"></i> Add Stock
         </a>
     @endif
-    <a href="{{ route('stock-manager.product-stock-movements') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+    <a href="{{ route('stock-manager.product-stock-movements') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-exchange-alt mr-1"></i> Movements
     </a>
 @endsection
@@ -67,7 +67,7 @@
                                         @method('PATCH')
                                         <input type="number" name="quantity" value="{{ $stock->quantity }}" class="w-14 px-1 py-1 border border-gray-300 rounded text-right text-xs text-center focus:ring-2 focus:ring-emerald-500" min="0">
                                         <input type="number" name="selling_price" value="{{ $stock->selling_price }}" step="0.01" class="w-16 px-1 py-1 border border-gray-300 rounded text-right text-xs text-right focus:ring-2 focus:ring-emerald-500" min="0">
-                                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs font-medium">
+                                        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-2 py-1 rounded text-xs font-medium">
                                             <i class="fas fa-pen mr-0.5"></i> Edit
                                         </button>
                                     </form>

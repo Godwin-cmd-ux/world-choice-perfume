@@ -18,7 +18,7 @@
 
     <div class="max-w-4xl mx-auto px-4 py-8">
         <h1 class="text-2xl font-bold text-amber-900 mb-2">Place Order</h1>
-        <p class="text-gray-500 mb-6">Branch: <strong>{{ $branch->name }}</strong> {{ $branch->address ? "- {$branch->address}" : '' }}</p>
+        <p class="text-gray-500 mb-6">Branch: <strong>{{ $branch->name }}</strong> {{ $branch->address ?"- {$branch->address}" : '' }}</p>
 
         @if($errors->any())
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -67,7 +67,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-semibold py-3 rounded-lg text-lg transition">
+            <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white font-semibold py-3 rounded-lg text-lg transition">
                 <i class="fas fa-paper-plane mr-1"></i> Place Order
             </button>
         </form>

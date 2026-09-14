@@ -17,7 +17,7 @@
             <input type="text" name="q" value="{{ old('q', $q) }}" placeholder="Search by name, phone or whatsapp..."
                 class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
         </div>
-        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+        <button type="submit" style="background-color: #F89A1E;" class="px-4 py-2  hover:opacity-90 text-white rounded-lg text-sm font-medium">
             <i class="fas fa-search mr-1"></i> Search
         </button>
         @if($q)

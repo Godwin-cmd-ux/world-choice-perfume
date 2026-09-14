@@ -9,7 +9,7 @@
             ['label' => 'Approved',       'count' => $counts['approved'], 'icon' => 'fa-check-circle', 'bg' => 'bg-green-50', 'iconBg' => 'bg-green-100 text-green-600'],
             ['label' => 'Pending',        'count' => $counts['pending'],  'icon' => 'fa-clock', 'bg' => 'bg-amber-50', 'iconBg' => 'bg-amber-100 text-amber-600'],
             ['label' => 'Rejected',       'count' => $counts['rejected'], 'icon' => 'fa-times-circle', 'bg' => 'bg-red-50', 'iconBg' => 'bg-red-100 text-red-600'],
-            ['label' => "Today's Posts",  'count' => $counts['today'],    'icon' => 'fa-calendar-day', 'bg' => 'bg-blue-50', 'iconBg' => 'bg-blue-100 text-blue-600'],
+            ['label' =>"Today's Posts",  'count' => $counts['today'],    'icon' => 'fa-calendar-day', 'bg' => 'bg-blue-50', 'iconBg' => 'bg-blue-100 text-blue-600'],
         ];
     @endphp
     @foreach($cards as $card)

@@ -2,7 +2,7 @@
 @section('title', 'Products')
 @section('header', 'Products')
 @section('header-actions')
-    <a href="{{ route('stock-manager.products.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+    <a href="{{ route('stock-manager.products.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-plus mr-1"></i> Add Product
     </a>
 @endsection
@@ -13,7 +13,7 @@
         <form method="GET" class="flex gap-2">
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search products..."
                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-            <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">
+            <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90">
                 <i class="fas fa-search"></i>
             </button>
         </form>

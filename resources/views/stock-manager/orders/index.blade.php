@@ -13,7 +13,7 @@
                 <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
             @endforeach
         </select>
-        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i>Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i>Filter</button>
         @if(request('status'))
             <a href="{{ route('stock-manager.orders.index') }}" class="text-sm text-gray-500 hover:text-gray-700"><i class="fas fa-times mr-1"></i>Clear</a>
         @endif

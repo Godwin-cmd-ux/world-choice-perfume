@@ -5,9 +5,9 @@
 @section('content')
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <form method="GET" class="flex gap-2 flex-wrap">
-        <a href="{{ route('branch-admin.orders.index') }}" class="px-3 py-1 rounded-full text-sm {{ !request('status') ? 'bg-amber-700 text-white' : 'bg-gray-200 text-gray-600' }}">All</a>
+        <a href="{{ route('branch-admin.orders.index') }}" style="background-color: #F89A1E;" class="px-3 py-1 rounded-full text-sm {{ !request('status') ? ' text-white' : 'bg-gray-200 text-gray-600' }}">All</a>
         @foreach(['pending','assigned','ready','completed','served','cancelled'] as $s)
-            <a href="{{ route('branch-admin.orders.index', ['status' => $s]) }}" class="px-3 py-1 rounded-full text-sm {{ request('status') === $s ? 'bg-amber-700 text-white' : 'bg-gray-200 text-gray-600' }}">{{ ucfirst($s) }}</a>
+            <a href="{{ route('branch-admin.orders.index', ['status' => $s]) }}" class="px-3 py-1 rounded-full text-sm {{ request('status') === $s ? ' text-white' : 'bg-gray-200 text-gray-600' }}">{{ ucfirst($s) }}</a>
         @endforeach
     </form>
 </div>

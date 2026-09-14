@@ -7,7 +7,7 @@
         <span class="flex items-center gap-1"><i class="fas fa-clock text-amber-500"></i> {{ $counts['pending'] }}</span>
         <span class="flex items-center gap-1"><i class="fas fa-times-circle text-red-500"></i> {{ $counts['rejected'] }}</span>
     </div>
-    <a href="{{ route('graphic-designer.news.create') }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+    <a href="{{ route('graphic-designer.news.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-plus mr-1"></i> New Post
     </a>
 @endsection

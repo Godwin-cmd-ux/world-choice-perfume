@@ -23,7 +23,7 @@
         </div>
     </div>
     <div class="bg-white rounded-xl shadow p-6">
-        <a href="{{ route('cashier.sales.create') }}" class="block w-full h-full bg-amber-600 hover:bg-amber-700 text-white rounded-xl flex items-center justify-center gap-2 font-semibold transition">
+        <a href="{{ route('cashier.sales.create') }}" style="background-color: #F89A1E;" class="block w-full h-full  hover:opacity-90 text-white rounded-xl flex items-center justify-center gap-2 font-semibold transition">
             <i class="fas fa-plus"></i> New Sale
         </a>
     </div>

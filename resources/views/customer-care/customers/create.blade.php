@@ -29,7 +29,7 @@
                 class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
         </div>
         <div class="flex items-center gap-3 pt-2">
-            <button type="submit" class="px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-semibold">
+            <button type="submit" style="background-color: #F89A1E;" class="px-5 py-2.5  hover:opacity-90 text-white rounded-lg text-sm font-semibold">
                 <i class="fas fa-save mr-1"></i> Save Customer
             </button>
             <a href="{{ route('customer-care.customers.index') }}" class="text-sm text-gray-500 hover:text-gray-700">

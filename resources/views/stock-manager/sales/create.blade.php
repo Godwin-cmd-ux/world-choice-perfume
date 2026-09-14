@@ -14,7 +14,7 @@
             <div class="bg-white rounded-xl shadow p-4">
                 <h3 class="font-semibold mb-3 text-sm"><i class="fas fa-tags mr-1"></i> Sale Type</h3>
                 <div class="flex gap-2">
-                    <button type="button" onclick="setSaleType('retail')" id="tab-retail" class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-emerald-600 text-white shadow">
+                    <button type="button" onclick="setSaleType('retail')" id="tab-retail" style="background-color: #F89A1E;" class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all  text-white shadow">
                         <i class="fas fa-store mr-1"></i> Retail
                     </button>
                     <button type="button" onclick="setSaleType('wholesale')" id="tab-wholesale" class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200">
@@ -87,7 +87,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition" id="submitBtn">
+            <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white font-semibold py-3 rounded-lg transition" id="submitBtn">
                 <i class="fas fa-check-circle mr-1"></i> Complete Sale
             </button>
         </div>

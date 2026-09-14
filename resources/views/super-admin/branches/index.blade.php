@@ -5,7 +5,7 @@
 @section('subtitle', 'Manage all store locations')
 
 @section('header-actions')
-    <a href="{{ route('super-admin.branches.create') }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+    <a href="{{ route('super-admin.branches.create') }}" style="background-color: #F89A1E;" class="inline-flex items-center gap-2  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
         <i class="fas fa-plus text-xs"></i> New Branch
     </a>
 @endsection

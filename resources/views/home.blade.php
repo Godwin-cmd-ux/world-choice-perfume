@@ -371,7 +371,7 @@
                         @endfor
                     </div>
                     <p class="text-gray-300 mb-4 leading-relaxed">
-                        "{{ $remark->message ?? $remark->subject ?? '' }}"
+"{{ $remark->message ?? $remark->subject ?? '' }}"
                     </p>
                     <p class="text-sm font-semibold text-gold-400">{{ $remark->email ?? 'A happy customer' }}</p>
                 </div>

@@ -4,10 +4,10 @@
 
 @section('header-actions')
     @if(!($inCrossBranch ?? false))
-        <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.oil-fragrance-stock-in') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-plus mr-1"></i> Stock In
         </a>
-        <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-arrow-right mr-1"></i> Stock Out
         </a>
     @endif
@@ -34,7 +34,7 @@
                 placeholder="Search fragrance name..."
                 class="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm">
         </div>
-        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
+        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
             Search
         </button>
         @if(request('search'))
@@ -78,7 +78,7 @@
                                         <i class="fas fa-plus mr-0.5"></i> Add
                                     </a>
                                     {{-- Edit --}}
-                                    <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                    <a href="{{ route('stock-manager.oil-fragrance.edit', $oil->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                         <i class="fas fa-pen mr-0.5"></i> Edit
                                     </a>
                                     {{-- Delete --}}

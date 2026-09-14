@@ -18,7 +18,7 @@
         <p class="text-xs text-gray-400 mb-6 break-all">{{ $url }}</p>
 
         <div class="flex justify-center gap-3">
-            <button onclick="downloadQR()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+            <button onclick="downloadQR()" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fas fa-download mr-1"></i> Download QR Code
             </button>
             <button onclick="printQR()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium">
@@ -32,11 +32,11 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
     new QRCode(document.getElementById("qrCanvas"), {
-        text: "{{ $url }}",
+        text:"{{ $url }}",
         width: 256,
         height: 256,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
+        colorDark:"#000000",
+        colorLight:"#ffffff",
         correctLevel: QRCode.CorrectLevel.H
     });
 

@@ -39,7 +39,7 @@
                         <img src="{{ $post->image_url }}" alt="" class="h-16 mt-2 rounded object-cover">
                     @endif
                 </div>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
+                <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Save Changes
                 </button>
             </form>
@@ -78,7 +78,7 @@
             <h4 class="text-sm font-semibold text-gray-700">Moderation</h4>
             <form method="POST" action="{{ route('customer-care.news.approve', $post->id) }}">
                 @csrf
-                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
                     <i class="fas fa-check mr-1"></i> Approve &amp; Publish
                 </button>
             </form>
@@ -87,7 +87,7 @@
                 <textarea name="rejection_reason" rows="3" maxlength="500" required
                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
                           placeholder="Rejection reason (required)"></textarea>
-                <button type="submit" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                <button type="submit" style="background-color: #F89A1E;" class="w-full mt-2  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
                     <i class="fas fa-times mr-1"></i> Reject
                 </button>
             </form>

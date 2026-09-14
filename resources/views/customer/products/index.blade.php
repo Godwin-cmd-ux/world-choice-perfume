@@ -191,7 +191,7 @@
                         <h3 class="font-display text-2xl font-bold text-white mb-3">No Products Found</h3>
                         <p class="text-gray-400 max-w-md mx-auto">
                             @if(request('search'))
-                                No products match "{{ request('search') }}" at {{ $selectedBranch->name }}. Try a different search.
+                                No products match"{{ request('search') }}" at {{ $selectedBranch->name }}. Try a different search.
                             @else
                                 No products are currently available at {{ $selectedBranch->name }}.
                             @endif

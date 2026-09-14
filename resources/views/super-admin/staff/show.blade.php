@@ -55,7 +55,7 @@
                                 <option value="blocked" {{ ($user->status ?? '') === 'blocked' ? 'selected' : '' }}>Blocked</option>
                                 <option value="rejected" {{ ($user->status ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                             </select>
-                            <button type="submit" class="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-medium">
+                            <button type="submit" style="background-color: #F89A1E;" class="px-4 py-2  hover:opacity-90 text-white rounded-lg text-sm font-medium">
                                 <i class="fas fa-check mr-1"></i> Apply
                             </button>
                         </div>

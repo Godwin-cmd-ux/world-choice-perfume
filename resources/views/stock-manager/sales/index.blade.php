@@ -4,7 +4,7 @@
 
 @section('header-actions')
     @if(!($inCrossBranch ?? false))
-        <a href="{{ route('stock-manager.sales.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="{{ route('stock-manager.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
             <i class="fas fa-plus mr-1"></i> New Sale
         </a>
     @endif
@@ -15,7 +15,7 @@
     <form method="GET" class="flex gap-3 items-end flex-wrap">
         <input type="date" name="date_from" value="{{ request('date_from') }}" class="px-3 py-2 border rounded-lg text-sm">
         <input type="date" name="date_to" value="{{ request('date_to') }}" class="px-3 py-2 border rounded-lg text-sm">
-        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
 

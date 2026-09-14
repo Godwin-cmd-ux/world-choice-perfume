@@ -32,22 +32,22 @@
         <div class="mt-4 flex gap-3 flex-wrap">
             @if($order->status === 'pending')
                 <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST">@csrf
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"><i class="fas fa-hand-pointer mr-1"></i> Pick Order</button>
+                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-hand-pointer mr-1"></i> Pick Order</button>
                 </form>
             @endif
             @if($order->status === 'assigned' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
                 <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST">@csrf
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg"><i class="fas fa-check mr-1"></i> Mark Ready</button>
+                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check mr-1"></i> Mark Ready</button>
                 </form>
             @endif
             @if($order->status === 'ready' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
                 <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST">@csrf
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg"><i class="fas fa-check-double mr-1"></i> Complete Order</button>
+                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check-double mr-1"></i> Complete Order</button>
                 </form>
             @endif
             @if($order->status === 'completed' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
                 <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST">@csrf
-                    <button type="submit" class="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-hand-holding mr-1"></i> Mark as Served</button>
+                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-hand-holding mr-1"></i> Mark as Served</button>
                 </form>
             @endif
         </div>

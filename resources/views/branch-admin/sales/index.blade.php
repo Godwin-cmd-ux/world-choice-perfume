@@ -2,7 +2,7 @@
 @section('title', 'Sales History')
 @section('header', 'Sales History')
 @section('header-actions')
-    <a href="{{ route('branch-admin.sales.create') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
+    <a href="{{ route('branch-admin.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
 @endsection
 
 @section('content')
@@ -16,7 +16,7 @@
                 <option value="{{ $c->id }}" {{ request('cashier_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
             @endforeach
         </select>
-        <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
 

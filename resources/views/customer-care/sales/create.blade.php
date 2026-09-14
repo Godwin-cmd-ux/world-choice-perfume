@@ -116,7 +116,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition" id="submitBtn">
+            <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white font-semibold py-3 rounded-lg transition" id="submitBtn">
                 <i class="fas fa-check-circle mr-1"></i> Complete Sale
             </button>
         </div>

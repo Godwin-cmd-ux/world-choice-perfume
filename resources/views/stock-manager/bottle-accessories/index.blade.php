@@ -4,14 +4,14 @@
 
 @section('header-actions')
     @if(!($inCrossBranch ?? false))
-        <a href="{{ route('stock-manager.bottle-accessories.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.bottle-accessories.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-plus mr-1"></i> Stock In
         </a>
-        <a href="{{ route('stock-manager.bottle-accessories.stock-out') }}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.bottle-accessories.stock-out') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-minus mr-1"></i> Stock Out
         </a>
     @endif
-    <a href="{{ route('stock-manager.bottle-accessories.movements') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+    <a href="{{ route('stock-manager.bottle-accessories.movements') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-exchange-alt mr-1"></i> Movements
     </a>
 @endsection
@@ -56,7 +56,7 @@
                             <td class="px-6 text-right">
                                 @if($item && !($inCrossBranch ?? false))
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('stock-manager.bottle-accessories.edit', $item->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                        <a href="{{ route('stock-manager.bottle-accessories.edit', $item->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                             <i class="fas fa-pen mr-0.5"></i> Edit
                                         </a>
                                         <form method="POST" action="{{ route('stock-manager.bottle-accessories.destroy', $item->id) }}" class="inline">

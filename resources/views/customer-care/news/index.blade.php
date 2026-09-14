@@ -69,7 +69,7 @@
                                         </a>
                                         <form method="POST" action="{{ route('customer-care.news.approve', $post->id) }}" class="inline">
                                             @csrf
-                                            <button type="submit" class="px-2.5 py-1 rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700">
+                                            <button type="submit" style="background-color: #F89A1E;" class="px-2.5 py-1 rounded-md text-xs font-medium  text-white hover:opacity-90">
                                                 <i class="fas fa-check mr-1"></i>Approve
                                             </button>
                                         </form>
@@ -128,7 +128,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Image (optional)</label>
                         <input type="file" name="image" accept="image/*" class="w-full text-sm">
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
+                    <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
                         <i class="fas fa-paper-plane mr-1"></i> Publish Now
                     </button>
                 </form>
@@ -201,7 +201,7 @@
                       placeholder="Required — the designer will see this reason."></textarea>
             <div class="flex items-center justify-end gap-2 mt-4">
                 <button type="button" id="reject-cancel" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">Cancel</button>
-                <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                <button type="submit" style="background-color: #F89A1E;" class="px-4 py-2 rounded-lg text-sm font-medium text-white  hover:opacity-90">
                     <i class="fas fa-times mr-1"></i> Confirm Reject
                 </button>
             </div>
@@ -218,7 +218,7 @@
             document.getElementById('reject-title').textContent = title ? '"' + title + '"' : '';
             document.getElementById('reject-id').value = id;
             var form = document.getElementById('reject-form');
-            form.action = "{{ url('customer-care/news') }}" + '/' + id + '/reject';
+            form.action ="{{ url('customer-care/news') }}" + '/' + id + '/reject';
             var modal = document.getElementById('reject-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');

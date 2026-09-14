@@ -58,7 +58,7 @@
 
         <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
             <a href="{{ route('super-admin.branches.index') }}" class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</a>
-            <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+            <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2.5  hover:opacity-90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
                 <i class="fas fa-plus mr-1.5 text-xs"></i> Create Branch
             </button>
         </div>

@@ -75,13 +75,13 @@
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
                 <form action="{{ route('super-admin.cashiers.approve', $cashier->id) }}" method="POST">
                     @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <button type="submit" style="background-color: #F89A1E;" class="inline-flex items-center gap-2  hover:opacity-90 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">
                         <i class="fas fa-check text-xs"></i> Approve
                     </button>
                 </form>
                 <form action="{{ route('super-admin.cashiers.reject', $cashier->id) }}" method="POST">
                     @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    <button type="submit" style="background-color: #F89A1E;" class="inline-flex items-center gap-2  hover:opacity-90 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">
                         <i class="fas fa-times text-xs"></i> Reject
                     </button>
                 </form>

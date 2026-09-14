@@ -18,7 +18,7 @@
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-save mr-1"></i> Update</button>
+                <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-save mr-1"></i> Update</button>
                 <a href="{{ route('graphic-designer.news.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium">Cancel</a>
             </div>
         </form>

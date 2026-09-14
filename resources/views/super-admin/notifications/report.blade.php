@@ -3,7 +3,7 @@
 @section('header', 'Notifications Report')
 
 @section('header-actions')
-    <button onclick="window.print()" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-800 transition">
+    <button onclick="window.print()" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition">
         <i class="fas fa-print mr-1"></i> Print Report
     </button>
 @endsection
@@ -19,7 +19,7 @@
         </select>
         <input type="date" name="date_from" value="{{ $date_from ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">
         <input type="date" name="date_to" value="{{ $date_to ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">
-        <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
         <a href="{{ route('super-admin.notifications.generate-report') }}" class="text-gray-500 hover:text-gray-700 text-sm">Reset</a>
     </form>
 </div>

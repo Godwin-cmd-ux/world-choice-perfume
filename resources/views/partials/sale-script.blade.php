@@ -59,7 +59,7 @@
                         customerResults.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No customers found. <button type="button" onclick="createCustomerFromSearch()" class="text-' + ACCENT + '-700 hover:underline">Create new</button></div>';
                     } else {
                         customerResults.innerHTML = data.map(c =>
-                            `<div class="px-3 py-2 text-sm hover:bg-${ACCENT}-50 cursor-pointer border-b last:border-0" onclick="selectCustomer(${c.id}, '${(c.name || '').replace(/'/g, "\\'")}', '${(c.phone || '').replace(/'/g, "\\'")}')">
+                            `<div class="px-3 py-2 text-sm hover:bg-${ACCENT}-50 cursor-pointer border-b last:border-0" onclick="selectCustomer(${c.id}, '${(c.name || '').replace(/'/g,"\\'")}', '${(c.phone || '').replace(/'/g,"\\'")}')">
                                 <span class="font-medium">${c.name || 'Unnamed'}</span>
                                 ${c.phone ? `<span class="text-gray-500 ml-2">${c.phone}</span>` : ''}
                             </div>`
@@ -150,7 +150,7 @@
     function formatMoney(n) { return 'TZS ' + Number(n).toLocaleString(); }
 
     function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',"'": '&#39;' }[c]));
     }
 
     function cartCount() { return document.querySelectorAll('.cart-row').length; }

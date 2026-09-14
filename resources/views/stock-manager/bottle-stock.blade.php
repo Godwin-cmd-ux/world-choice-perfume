@@ -4,10 +4,10 @@
 
 @section('header-actions')
     @if(!($inCrossBranch ?? false))
-        <a href="{{ route('stock-manager.bottle-stock-in') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.bottle-stock-in') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-plus mr-1"></i> Stock In
         </a>
-        <a href="{{ route('stock-manager.bottle-broken') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+        <a href="{{ route('stock-manager.bottle-broken') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-broken-image mr-1"></i> Broken
         </a>
     @endif
@@ -39,7 +39,7 @@
                 placeholder="Search by volume (e.g. 50ml)"
                 class="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
         </div>
-        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
+        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
             Search
         </button>
         @if(request('search'))
@@ -124,7 +124,7 @@
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center gap-2">
                                     {{-- Edit --}}
-                                    <a href="{{ route('stock-manager.bottle-stock.edit', $record->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                    <a href="{{ route('stock-manager.bottle-stock.edit', $record->id) }}" class="hover:opacity-90 text-white px-3 py-1.5 rounded text-xs font-medium inline-flex items-center gap-1">
                                         <i class="fas fa-pen mr-0.5"></i> Edit
                                     </a>
                                     {{-- Delete --}}

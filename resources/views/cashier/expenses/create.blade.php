@@ -36,7 +36,7 @@
         </div>
         <div class="flex gap-3 mt-6">
             <a href="{{ route('cashier.expenses.index') }}" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Cancel</a>
-            <button type="submit" class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">Record Expense</button>
+            <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2  hover:opacity-90 text-white rounded-lg font-medium">Record Expense</button>
         </div>
     </form>
 </div>

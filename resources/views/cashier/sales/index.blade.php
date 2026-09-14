@@ -2,7 +2,7 @@
 @section('title', 'My Sales')
 @section('header', 'My Sales')
 @section('header-actions')
-    <a href="{{ route('cashier.sales.create') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
+    <a href="{{ route('cashier.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
 @endsection
 
 @section('content')

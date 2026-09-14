@@ -28,7 +28,7 @@
                     <form method="POST" action="{{ route('customer-care.inquiries.reply', $inquiry->id) }}">
                         @csrf
                         <textarea name="reply_message" rows="4" required placeholder="Type your reply..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"></textarea>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-paper-plane mr-1"></i> Send Reply</button>
+                        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-paper-plane mr-1"></i> Send Reply</button>
                     </form>
                 </div>
             @endif
@@ -42,7 +42,7 @@
                 @if(!($inquiry->is_read ?? false))
                     <form action="{{ route('customer-care.inquiries.mark-read', $inquiry->id) }}" method="POST">
                         @csrf
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-check mr-1"></i> Mark as Read</button>
+                        <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-check mr-1"></i> Mark as Read</button>
                     </form>
                 @else
                     <span class="text-sm text-gray-400"><i class="fas fa-check mr-1"></i> Already read</span>
@@ -50,7 +50,7 @@
                 @if(!($inquiry->is_featured ?? false))
                     <form action="{{ route('customer-care.inquiries.comment', $inquiry->id) }}" method="POST">
                         @csrf
-                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-star mr-1"></i> Mark as Comment</button>
+                        <button type="submit" style="background-color: #F89A1E;" class="w-full  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-star mr-1"></i> Mark as Comment</button>
                     </form>
                     <p class="text-xs text-gray-400">Featured comments appear on the public homepage as customer reviews.</p>
                 @else

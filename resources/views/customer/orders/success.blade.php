@@ -30,7 +30,7 @@
         </div>
         <div class="flex flex-col gap-2">
             @if(($order->payment_status ?? '') === 'failed')
-                <a href="{{ route('customer.orders.pay', $order->id) }}" class="inline-block bg-amber-700 hover:bg-amber-800 text-white px-6 py-2 rounded-lg">
+                <a href="{{ route('customer.orders.pay', $order->id) }}" class="inline-block  hover:opacity-90 text-white px-6 py-2 rounded-lg">
                     Try Payment Again
                 </a>
             @endif

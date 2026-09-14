@@ -2,7 +2,7 @@
 @section('title', 'Staff Management')
 @section('header', 'Staff Management')
 @section('header-actions')
-    <a href="{{ route('super-admin.staff.create') }}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+    <a href="{{ route('super-admin.staff.create') }}" style="background-color: #F89A1E;" class="inline-flex items-center gap-2  hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
         <i class="fas fa-user-plus"></i> Add Staff
     </a>
     <span class="text-sm text-gray-500">{{ $users->count() }} staff members</span>
@@ -27,7 +27,7 @@
             <option value="blocked" {{ request('status') === 'blocked' ? 'selected' : '' }}>Blocked</option>
             <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
         </select>
-        <button type="submit" class="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
+        <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
 
