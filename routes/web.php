@@ -176,6 +176,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('/', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'index'])->name('index');
             Route::get('/sales', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'sales'])->name('sales');
+            Route::get('/sales/generate', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'generateSalesReport'])->name('generate-sales-report');
             Route::get('/expenses', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'expenses'])->name('expenses');
             Route::get('/stock', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'stock'])->name('stock');
             Route::get('/staff-performance', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'staffPerformance'])->name('staff-performance');

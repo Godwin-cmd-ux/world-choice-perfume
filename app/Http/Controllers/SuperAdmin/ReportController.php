@@ -28,10 +28,15 @@ class ReportController extends Controller
 
     public function sales(Request $request)
     {
+        $date = $request->date ? Carbon::parse($request->date) : Carbon::now()->setTimezone('Africa/Dar_es_Salaam');
+
+        $dayStart = $date->copy()->startOfDay();
+        $dayEnd = $date->copy()->endOfDay();
+
         $params = [
-            'select' => '*, cashier:users(id,name), items:sale_items(*, product:products(id,name))',
+            'select' => '*, cashier:users(id,name), branch:branches(id,name), items:sale_items(quantity,total)',
             'order' => 'created_at.desc',
-            'limit' => 200,
+            'limit' => 500,
         ];
 
         if ($request->branch_id) {
@@ -40,36 +45,134 @@ class ReportController extends Controller
 
         $allSales = $this->supabase->query('sales', $params);
 
-        $startDate = $request->date_from ? Carbon::parse($request->date_from) : Carbon::now()->startOfMonth();
-        $endDate = $request->date_to ? Carbon::parse($request->date_to) : Carbon::now();
-
-        $sales = array_filter($allSales, function ($s) use ($startDate, $endDate) {
+        // Filter to the selected day (timezone-aware)
+        $dayStartIso = $dayStart->toIso8601String();
+        $dayEndIso = $dayEnd->toIso8601String();
+        $filtered = array_filter($allSales, function ($s) use ($dayStartIso, $dayEndIso) {
             $created = $s['created_at'] ?? '';
-            return $created >= $startDate->toIso8601String() && $created <= $endDate->toIso8601String();
+            return $created >= $dayStartIso && $created <= $dayEndIso;
         });
 
-        $salesCollection = collect($sales)->map(function ($s) {
+        // Collect all branch IDs we need to look up names for
+        $allBranchIds = array_unique(array_filter(array_map(fn($s) => $s['branch_id'] ?? null, $filtered)));
+        $branchMap = [];
+        if (!empty($allBranchIds)) {
+            $branchRows = $this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $allBranchIds) . ')',
+            ]);
+            foreach ($branchRows as $b) $branchMap[$b['id']] = $b['name'];
+        }
+
+        // Normalise to objects
+        $salesCollection = collect($filtered)->map(function ($s) use ($branchMap) {
             if (isset($s['cashier']) && is_array($s['cashier'])) $s['cashier'] = (object) $s['cashier'];
-            if (isset($s['items'])) {
-                $s['items'] = collect($s['items'])->map(function ($item) {
-                    if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                    return (object) $item;
-                });
-            }
+            $s['branch_name'] = $branchMap[$s['branch_id'] ?? null] ?? ($s['branch']['name'] ?? 'Unknown');
+            $items = collect($s['items'] ?? []);
+            $s['items_count'] = $items->sum('quantity');
             return (object) $s;
         });
 
-        $report = [
-            'period' => ['start' => $startDate->toDateString(), 'end' => $endDate->toDateString()],
-            'total_sales' => $salesCollection->sum('total'),
-            'total_transactions' => $salesCollection->count(),
-            'total_items_sold' => $salesCollection->sum(fn($s) => isset($s->items) ? $s->items->sum('quantity') : 0),
-            'sales' => $salesCollection,
-        ];
+        // Group by branch
+        $branchGroups = $salesCollection->groupBy('branch_name')->map(function ($sales, $branchName) {
+            return [
+                'branch_name' => $branchName,
+                'total_sales' => $sales->sum('total'),
+                'transactions' => $sales->count(),
+                'items_sold' => $sales->sum('items_count'),
+                'sales' => $sales,
+            ];
+        })->sortBy('branch_name')->values();
 
         $branches = collect($this->supabase->query('branches', ['select' => 'id,name', 'order' => 'name.asc']))->map(fn($b) => (object) $b);
 
-        return view('super-admin.reports.sales', compact('report', 'startDate', 'endDate', 'branches'));
+        return view('super-admin.reports.sales', [
+            'date' => $date,
+            'branchGroups' => $branchGroups,
+            'totalSales' => $salesCollection->sum('total'),
+            'totalTransactions' => $salesCollection->count(),
+            'totalItems' => $salesCollection->sum('items_count'),
+            'branches' => $branches,
+        ]);
+    }
+
+    public function generateSalesReport(Request $request)
+    {
+        $date = $request->date ? Carbon::parse($request->date) : Carbon::now()->setTimezone('Africa/Dar_es_Salaam');
+
+        $dayStart = $date->copy()->startOfDay();
+        $dayEnd = $date->copy()->endOfDay();
+
+        $params = [
+            'select' => '*, cashier:users(id,name), items:sale_items(quantity,total)',
+            'order' => 'created_at.desc',
+            'limit' => 500,
+        ];
+
+        if ($request->branch_id) {
+            $params['branch_id'] = "eq.{$request->branch_id}";
+        }
+
+        $allSales = $this->supabase->query('sales', $params);
+
+        $dayStartIso = $dayStart->toIso8601String();
+        $dayEndIso = $dayEnd->toIso8601String();
+        $filtered = array_filter($allSales, function ($s) use ($dayStartIso, $dayEndIso) {
+            $created = $s['created_at'] ?? '';
+            return $created >= $dayStartIso && $created <= $dayEndIso;
+        });
+
+        // Branch names
+        $allBranchIds = array_unique(array_filter(array_map(fn($s) => $s['branch_id'] ?? null, $filtered)));
+        $branchMap = [];
+        if (!empty($allBranchIds)) {
+            $branchRows = $this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', $allBranchIds) . ')',
+            ]);
+            foreach ($branchRows as $b) $branchMap[$b['id']] = $b['name'];
+        }
+
+        $salesCollection = collect($filtered)->map(function ($s) use ($branchMap) {
+            if (isset($s['cashier']) && is_array($s['cashier'])) $s['cashier'] = (object) $s['cashier'];
+            $s['branch_name'] = $branchMap[$s['branch_id'] ?? null] ?? 'Unknown';
+            $items = collect($s['items'] ?? []);
+            $s['items_count'] = $items->sum('quantity');
+            return (object) $s;
+        });
+
+        $branchGroups = $salesCollection->groupBy('branch_name')->map(function ($sales, $branchName) {
+            return [
+                'branch_name' => $branchName,
+                'total_sales' => $sales->sum('total'),
+                'transactions' => $sales->count(),
+                'items_sold' => $sales->sum('items_count'),
+                'sales' => $sales,
+            ];
+        })->sortBy('branch_name')->values();
+
+        $totalSales = $salesCollection->sum('total');
+        $totalTransactions = $salesCollection->count();
+        $totalItems = $salesCollection->sum('items_count');
+
+        $html = view('super-admin.reports.sales-pdf', [
+            'date' => $date,
+            'branchGroups' => $branchGroups,
+            'totalSales' => $totalSales,
+            'totalTransactions' => $totalTransactions,
+            'totalItems' => $totalItems,
+        ])->render();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHtml($html)
+            ->setPaper('a4', 'landscape')
+            ->setOptions([
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+            ]);
+
+        $filename = 'sales-report-' . $date->timezone('Africa/Dar_es_Salaam')->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function expenses(Request $request)
