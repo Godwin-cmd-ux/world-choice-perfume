@@ -62,19 +62,10 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
-            // Unit cost: supplier cost per unit. For oil fragrance it is the cost
-            // of one costing-volume bottle (500ml/1000ml); brand perfume is per
-            // piece. Internal only — never shown to customers.
-            'unit_cost' => 'nullable|numeric|min:0',
-            'costing_volume' => 'nullable|integer|in:500,1000',
             'images.*' => 'nullable|image|max:4096',
         ]);
 
         $category = $validated['category'];
-        $costingVolume = $category === 'Oil Fragrance'
-            ? (int) ($validated['costing_volume'] ?? 500)
-            : null;
-        $unitCost = (float) ($validated['unit_cost'] ?? 0);
 
         // Create product in Supabase
         $product = $this->supabase->insert('products', [
@@ -83,8 +74,6 @@ class ProductController extends Controller
             'brand' => $validated['brand'] ?? null,
             'category' => $category,
             'sex_category' => $validated['sex_category'] ?? null,
-            'unit_cost' => $unitCost,
-            'costing_volume' => $costingVolume,
             'is_active' => true,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
@@ -97,8 +86,6 @@ class ProductController extends Controller
             'brand' => $validated['brand'] ?? null,
             'category' => $category,
             'sex_category' => $validated['sex_category'] ?? null,
-            'unit_cost' => $unitCost,
-            'costing_volume' => $costingVolume,
         ]);
 
         // Upload images to Cloudinary
@@ -149,17 +136,10 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
-            'unit_cost' => 'nullable|numeric|min:0',
-            'costing_volume' => 'nullable|integer|in:500,1000',
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:4096',
         ]);
 
-        $category = $validated['category'];
-        $validated['unit_cost'] = (float) ($validated['unit_cost'] ?? 0);
-        $validated['costing_volume'] = $category === 'Oil Fragrance'
-            ? (int) ($validated['costing_volume'] ?? 500)
-            : null;
         $validated['is_active'] = $request->boolean('is_active');
         $validated['updated_at'] = now()->toIso8601String();
 

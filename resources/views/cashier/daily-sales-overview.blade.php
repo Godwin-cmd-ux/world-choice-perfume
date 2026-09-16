@@ -123,25 +123,4 @@
 @empty
     <div class="bg-white rounded-xl shadow p-10 text-center text-gray-400">No branches found.</div>
 @endforelse
-@php
-    $companyCogs = $rows->sum(fn ($r) => $r->cogs);
-    $companyGross = $companySales - $companyCogs;
-    $companyNet = $companyGross - $companyExpenses;
-@endendphp
-
-{{-- Company profit summary --}}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white rounded-xl shadow p-6">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center"><i class="fas fa-chart-line text-indigo-700 text-xl"></i></div>
-            <div><p class="text-2xl font-bold {{ $companyGross >= 0 ? 'text-indigo-700' : 'text-red-600' }}">TZS {{ number_format($companyGross) }}</p><p class="text-sm text-gray-500">Gross Profit (Sales − COGS)</p></div>
-        </div>
-    </div>
-    <div class="bg-white rounded-xl shadow p-6">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 {{ $companyNet >= 0 ? 'bg-emerald-100' : 'bg-red-100' }} rounded-full flex items-center justify-center"><i class="fas fa-coins {{ $companyNet >= 0 ? 'text-emerald-700' : 'text-red-700' }} text-xl"></i></div>
-            <div><p class="text-2xl font-bold {{ $companyNet >= 0 ? 'text-emerald-700' : 'text-red-600' }}">TZS {{ number_format($companyNet) }}</p><p class="text-sm text-gray-500">Net Profit (Gross − Expenses)</p></div>
-        </div>
-    </div>
-</div>
 @endsection

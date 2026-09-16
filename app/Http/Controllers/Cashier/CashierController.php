@@ -52,9 +52,6 @@ class CashierController extends Controller
             'select' => 'branch_id,user_id,amount',
         ]);
 
-        // Cost of goods sold per branch (from per-sale unit costs).
-        $cogsByBranch = (new \App\Services\FinancialService())->getCompanyProfitSummary(Carbon::today(), Carbon::now())['by_branch'] ?? [];
-
         // Resolve staff names/roles for everyone who sold or recorded expenses today
         $staffIds = [];
         foreach ($sales as $s) {
@@ -78,7 +75,7 @@ class CashierController extends Controller
 
         $companySales = (float) array_sum(array_map(fn ($s) => (float) ($s['total'] ?? 0), $sales));
 
-        $rows = collect($branches)->map(function ($b) use ($sales, $expenses, $staffMap, $companySales, $cogsByBranch) {
+        $rows = collect($branches)->map(function ($b) use ($sales, $expenses, $staffMap, $companySales) {
             $id = (int) $b['id'];
 
             $branchSales = array_values(array_filter($sales, fn ($s) => (int) ($s['branch_id'] ?? 0) === $id));
@@ -86,7 +83,6 @@ class CashierController extends Controller
 
             $dailySales = (float) array_sum(array_map(fn ($s) => (float) ($s['total'] ?? 0), $branchSales));
             $dailyExpenses = (float) array_sum(array_map(fn ($e) => (float) ($e['amount'] ?? 0), $branchExpenses));
-            $cogs = (float) ($cogsByBranch[$id]['cogs'] ?? 0);
 
             // Staff contribution within the branch (sales by cashier_id,
             // expenses by user_id, actual = sales - expenses per staff).
@@ -124,7 +120,6 @@ class CashierController extends Controller
                 'dailySales' => $dailySales,
                 'dailyExpenses' => $dailyExpenses,
                 'actualSales' => $dailySales - $dailyExpenses,
-                'cogs' => $cogs,
                 'salesPercent' => $companySales > 0 ? round(($dailySales / $companySales) * 100, 1) : 0.0,
                 'transactions' => count($branchSales),
                 'staff' => $staff,

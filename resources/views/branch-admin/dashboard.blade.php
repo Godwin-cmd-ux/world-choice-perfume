@@ -55,14 +55,6 @@
             <p class="text-sm text-gray-500">Actual (Revenue − Expenses)</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <p class="text-xl font-bold {{ ($dailySummary['gross_profit'] ?? 0) >= 0 ? 'text-indigo-600' : 'text-red-600' }}">TZS {{ number_format($dailySummary['gross_profit'] ?? 0) }}</p>
-            <p class="text-sm text-gray-500">Today's Gross Profit (Sales − COGS)</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <p class="text-xl font-bold {{ ($dailySummary['net_profit'] ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-600' }}">TZS {{ number_format($dailySummary['net_profit'] ?? 0) }}</p>
-            <p class="text-sm text-gray-500">Today's Net Profit (Gross − Expenses)</p>
-        </div>
-        <div class="text-center p-4 bg-gray-50 rounded-lg">
             <p class="text-xl font-bold text-gray-700">{{ $financials['transaction_count'] }}</p>
             <p class="text-sm text-gray-500">Transactions</p>
         </div>

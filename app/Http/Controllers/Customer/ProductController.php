@@ -26,8 +26,6 @@ class ProductController extends Controller
 
         // Full active product catalogue (independent of stock) — so out-of-stock
         // products still appear on the shop.
-        // unit_cost/costing_volume deliberately excluded — internal pricing data
-        // must never reach the customer-facing shop.
         $allProducts = $this->supabase->query('products', [
             'select' => 'id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*)',
             'is_active' => 'eq.true',

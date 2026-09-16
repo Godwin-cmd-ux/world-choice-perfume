@@ -308,25 +308,19 @@ class StockManagerController extends Controller
     {
         $products = $this->supabase->query('products', [
             'is_active' => 'eq.true',
-            'select' => 'id,name,brand,category,unit_cost,costing_volume',
+            'select' => 'id,name,brand,category',
             'order' => 'name.asc',
         ]);
 
-        // Lookups by product id for JS auto-fill (category + unit cost preview).
+        // Build a lookup of category by product id for JS auto-fill.
         $categoryMap = [];
-        $unitCostMap = [];
-        $costingVolumeMap = [];
         foreach ($products as $p) {
             $categoryMap[$p['id']] = $p['category'] ?? null;
-            $unitCostMap[$p['id']] = (float) ($p['unit_cost'] ?? 0);
-            $costingVolumeMap[$p['id']] = $p['costing_volume'] ?? null;
         }
 
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
             'categoryMap' => $categoryMap,
-            'unitCostMap' => $unitCostMap,
-            'costingVolumeMap' => $costingVolumeMap,
         ]);
     }
 
@@ -366,36 +360,11 @@ class StockManagerController extends Controller
             'product_id' => $validated['product_id'],
         ]);
 
-        // ------------------------------------------------------------------
-        // Auto-calculated unit cost (internal — used for profit reporting).
-        //
-        // - Oil Fragrance: the product's unit_cost is the cost of ONE
-        //   costing-volume bottle (500ml or 1000ml). The stock-in bottle volume
-        //   (6/12/30/50/100ml) is scaled proportionally:
-        //       unit cost for the entry = (volume / costing_volume) × product unit_cost
-        //   e.g. 50ml from a 500ml bottle costing 25,000 → 2,500 per bottle.
-        // - Brand Perfume: unit cost is per piece — used as-is.
-        // ------------------------------------------------------------------
-        $productRow = $this->supabase->findOne('products', [
-            'id' => $validated['product_id'],
-        ], 'id,category,unit_cost,costing_volume');
-
-        $productUnitCost = (float) ($productRow['unit_cost'] ?? 0);
-        $unitCost = $productUnitCost;
-
-        if ($category === 'Oil Fragrance') {
-            $costingVolume = (int) ($productRow['costing_volume'] ?? 0);
-            if ($costingVolume > 0 && $bottleVolume > 0) {
-                $unitCost = round(($bottleVolume / $costingVolume) * $productUnitCost, 2);
-            }
-        }
-
         if ($existing) {
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
                 'selling_price' => $validated['selling_price'],                    'category' => $category,
-                    'buying_cost' => $unitCost,
                     'date_received' => $validated['date_received'],
                     'entered_by' => $this->performingUserId(),
                     'updated_at' => now()->toIso8601String(),
@@ -421,7 +390,6 @@ class StockManagerController extends Controller
                     'quantity' => $validated['quantity'],
                     'selling_price' => $validated['selling_price'],
                     'category' => $category,
-                    'buying_cost' => $unitCost,
                     'date_received' => $validated['date_received'],
                     'entered_by' => $this->performingUserId(),
                     'created_at' => now()->toIso8601String(),
@@ -435,7 +403,6 @@ class StockManagerController extends Controller
             'type' => 'entry',
             'quantity' => $validated['quantity'],
             'unit_price' => $validated['selling_price'],
-            'unit_cost' => $unitCost,
             'performed_by' => $this->performingUserId(),
             'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
