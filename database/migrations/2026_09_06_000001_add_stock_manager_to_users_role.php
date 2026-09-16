@@ -18,6 +18,12 @@ return new class extends Migration
 
         Schema::disableForeignKeyConstraints();
 
+        // SQLite rewrites every other table's foreign keys that reference
+        // "users" to point at "users_old" during this rename, leaving them
+        // dangling once users_old is dropped. legacy_alter_table keeps the
+        // references untouched so they keep pointing at "users".
+        DB::statement('PRAGMA legacy_alter_table = ON');
+
         // Rename existing table
         DB::statement('ALTER TABLE users RENAME TO users_old');
 
@@ -48,12 +54,16 @@ return new class extends Migration
 
         DB::statement('DROP TABLE users_old');
 
+        DB::statement('PRAGMA legacy_alter_table = OFF');
+
         Schema::enableForeignKeyConstraints();
     }
 
     public function down(): void
     {
         Schema::disableForeignKeyConstraints();
+
+        DB::statement('PRAGMA legacy_alter_table = ON');
 
         DB::statement('ALTER TABLE users RENAME TO users_new');
 
@@ -81,6 +91,8 @@ return new class extends Migration
         ");
 
         DB::statement('DROP TABLE users_new');
+
+        DB::statement('PRAGMA legacy_alter_table = OFF');
 
         Schema::enableForeignKeyConstraints();
     }

@@ -141,12 +141,16 @@ class ProductController extends Controller
         $validated['is_active'] = $request->boolean('is_active');
         $validated['updated_at'] = now()->toIso8601String();
 
-        $this->supabase->update('products', $validated, ['id' => $productId]);
+        // Only persist the product's data columns — file uploads and timestamps
+        // are not database columns ("images" is a multipart file array).
+        $productData = collect($validated)->except(['images', 'updated_at'])->all();
+
+        $this->supabase->update('products', $productData, ['id' => $productId]);
 
         // Also update in SQLite by matching name
         $product = $this->supabase->find('products', $productId);
         if ($product) {
-            \App\Models\Product::where('name', $product['name'])->update($validated);
+            \App\Models\Product::where('name', $product['name'])->update($productData);
         }
 
         if ($request->hasFile('images')) {
