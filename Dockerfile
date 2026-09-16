@@ -5,6 +5,15 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Raise PHP upload limits: the php:8.2-cli defaults (upload_max_filesize=2M,
+# post_max_size=8M) reject typical phone photos. When post_max_size overflows,
+# PHP drops the whole POST including the CSRF token, which surfaces as a
+# "419 Page Expired" error on profile/product picture updates.
+RUN echo "upload_max_filesize = 40M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size = 40M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "max_execution_time = 120" >> /usr/local/etc/php/conf.d/uploads.ini
+
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html

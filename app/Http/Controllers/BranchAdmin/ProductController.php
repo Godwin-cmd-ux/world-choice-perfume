@@ -62,7 +62,7 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
-            'images.*' => 'nullable|image|max:2048',
+            'images.*' => 'nullable|image|max:4096',
         ]);
 
         // Create product in Supabase
@@ -135,7 +135,7 @@ class ProductController extends Controller
             'category' => 'nullable|string|max:255',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
             'is_active' => 'boolean',
-            'images.*' => 'nullable|image|max:2048',
+            'images.*' => 'nullable|image|max:4096',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

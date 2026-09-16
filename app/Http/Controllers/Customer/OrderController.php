@@ -32,9 +32,9 @@ class OrderController extends Controller
 
         $branch = (object) $branch;
 
-        // Fetch products with stock at this branch
+        // Fetch products with stock at this branch (unit cost excluded — internal only)
         $rawStock = $this->supabase->query('branch_stock', [
-            'select' => '*, product:products(*, images:product_images(*))',
+            'select' => 'id,branch_id,product_id,quantity,selling_price,product:products(id,name,description,brand,category,sex_category,images:product_images(*))',
             'branch_id' => "eq.{$branchId}",
             'quantity' => 'gt.0',
         ]);

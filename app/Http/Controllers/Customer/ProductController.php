@@ -26,8 +26,10 @@ class ProductController extends Controller
 
         // Full active product catalogue (independent of stock) — so out-of-stock
         // products still appear on the shop.
+        // unit_cost/costing_volume deliberately excluded — internal pricing data
+        // must never reach the customer-facing shop.
         $allProducts = $this->supabase->query('products', [
-            'select' => '*, images:product_images(*)',
+            'select' => 'id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*)',
             'is_active' => 'eq.true',
             'order' => 'created_at.desc',
         ]);
@@ -46,7 +48,7 @@ class ProductController extends Controller
             if ($selectedBranch) {
                 // All stock rows at this branch (including 0 quantity)
                 $rawStock = $this->supabase->query('branch_stock', [
-                    'select' => '*, product:products(*, images:product_images(*))',
+                    'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*))',
                     'branch_id' => "eq.{$selectedBranch->id}",
                     'order' => 'created_at.desc',
                 ]);
@@ -75,7 +77,7 @@ class ProductController extends Controller
             $showAllBranches = true;
 
             $rawStock = $this->supabase->query('branch_stock', [
-                'select' => '*, product:products(*, images:product_images(*))',
+                'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*))',
                 'order' => 'created_at.desc',
             ]);
 
@@ -105,8 +107,8 @@ class ProductController extends Controller
 
     public function show(string $productId, Request $request)
     {
-        // Fetch product from Supabase
-        $product = $this->supabase->find('products', $productId, '*, images:product_images(*)');
+        // Fetch product from Supabase (unit cost columns excluded — internal only)
+        $product = $this->supabase->find('products', $productId, 'id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*)');
 
         if (!$product) {
             abort(404);

@@ -38,6 +38,7 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Product</th>
                 <th class="text-right px-4">Quantity</th>
+                <th class="text-right px-4">Unit Cost</th>
                 <th class="text-right px-4">Selling Price</th>
                 <th class="text-right px-4">Stock Value</th>
                 <th class="text-left px-4">Category</th>
@@ -55,6 +56,7 @@
                         <td class="px-4 text-right">
                             <span class="{{ $lowQty ? 'text-red-600 font-bold' : '' }}">{{ $stock->quantity }}</span>
                         </td>
+                        <td class="px-4 text-right text-gray-500">TZS {{ number_format($stock->buying_cost ?? 0) }}</td>
                         <td class="px-4 text-right">TZS {{ number_format($stock->selling_price) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($stockValue) }}</td>
                         <td class="px-4">@if(!empty($stock->category))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $stock->category }}</span>@else <span class="text-gray-400">—</span> @endif</td>
@@ -85,7 +87,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
+                    <tr><td colspan="8" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
             </tbody>
         </table>

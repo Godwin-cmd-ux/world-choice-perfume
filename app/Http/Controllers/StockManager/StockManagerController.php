@@ -63,6 +63,9 @@ class StockManagerController extends Controller
         $salesToday = (float) array_sum(array_map(fn($s) => (float) ($s['total'] ?? 0), $todaySalesRows));
         $salesTodayCount = count($todaySalesRows);
 
+        // Daily financials for the active branch (sales, expenses, actual = sales - expenses)
+        $dailySummary = (new \App\Services\FinancialService())->getDailySummary((int) $branchId);
+
         // Orders summary
         $pendingOrders = $this->supabase->count('orders', [
             'branch_id' => "eq.{$branchId}",
@@ -86,7 +89,8 @@ class StockManagerController extends Controller
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements',
             'isHQ', 'inCrossBranch', 'activeBranchName',
-            'salesToday', 'salesTodayCount', 'pendingOrders', 'openOrders', 'ordersToday'
+            'salesToday', 'salesTodayCount', 'pendingOrders', 'openOrders', 'ordersToday',
+            'dailySummary'
         ));
     }
 
@@ -304,19 +308,25 @@ class StockManagerController extends Controller
     {
         $products = $this->supabase->query('products', [
             'is_active' => 'eq.true',
-            'select' => 'id,name,brand,category',
+            'select' => 'id,name,brand,category,unit_cost,costing_volume',
             'order' => 'name.asc',
         ]);
 
-        // Build a lookup of category by product id for JS auto-fill.
+        // Lookups by product id for JS auto-fill (category + unit cost preview).
         $categoryMap = [];
+        $unitCostMap = [];
+        $costingVolumeMap = [];
         foreach ($products as $p) {
             $categoryMap[$p['id']] = $p['category'] ?? null;
+            $unitCostMap[$p['id']] = (float) ($p['unit_cost'] ?? 0);
+            $costingVolumeMap[$p['id']] = $p['costing_volume'] ?? null;
         }
 
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
             'categoryMap' => $categoryMap,
+            'unitCostMap' => $unitCostMap,
+            'costingVolumeMap' => $costingVolumeMap,
         ]);
     }
 
@@ -356,11 +366,36 @@ class StockManagerController extends Controller
             'product_id' => $validated['product_id'],
         ]);
 
+        // ------------------------------------------------------------------
+        // Auto-calculated unit cost (internal — used for profit reporting).
+        //
+        // - Oil Fragrance: the product's unit_cost is the cost of ONE
+        //   costing-volume bottle (500ml or 1000ml). The stock-in bottle volume
+        //   (6/12/30/50/100ml) is scaled proportionally:
+        //       unit cost for the entry = (volume / costing_volume) × product unit_cost
+        //   e.g. 50ml from a 500ml bottle costing 25,000 → 2,500 per bottle.
+        // - Brand Perfume: unit cost is per piece — used as-is.
+        // ------------------------------------------------------------------
+        $productRow = $this->supabase->findOne('products', [
+            'id' => $validated['product_id'],
+        ], 'id,category,unit_cost,costing_volume');
+
+        $productUnitCost = (float) ($productRow['unit_cost'] ?? 0);
+        $unitCost = $productUnitCost;
+
+        if ($category === 'Oil Fragrance') {
+            $costingVolume = (int) ($productRow['costing_volume'] ?? 0);
+            if ($costingVolume > 0 && $bottleVolume > 0) {
+                $unitCost = round(($bottleVolume / $costingVolume) * $productUnitCost, 2);
+            }
+        }
+
         if ($existing) {
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
                 'selling_price' => $validated['selling_price'],                    'category' => $category,
+                    'buying_cost' => $unitCost,
                     'date_received' => $validated['date_received'],
                     'entered_by' => $this->performingUserId(),
                     'updated_at' => now()->toIso8601String(),
@@ -386,12 +421,13 @@ class StockManagerController extends Controller
                     'quantity' => $validated['quantity'],
                     'selling_price' => $validated['selling_price'],
                     'category' => $category,
-                'date_received' => $validated['date_received'],
-                'entered_by' => $this->performingUserId(),
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
-            ]);
-        }
+                    'buying_cost' => $unitCost,
+                    'date_received' => $validated['date_received'],
+                    'entered_by' => $this->performingUserId(),
+                    'created_at' => now()->toIso8601String(),
+                    'updated_at' => now()->toIso8601String(),
+                ]);
+            }
 
         $this->supabase->insert('stock_movements', [
             'branch_id' => $branchId,
@@ -399,6 +435,7 @@ class StockManagerController extends Controller
             'type' => 'entry',
             'quantity' => $validated['quantity'],
             'unit_price' => $validated['selling_price'],
+            'unit_cost' => $unitCost,
             'performed_by' => $this->performingUserId(),
             'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
@@ -996,6 +1033,8 @@ class StockManagerController extends Controller
         $totalQuantity = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oils));
 
         return view('stock-manager.oil-fragrance-stock', [
+            // Each row is a name+volume pair (e.g. Reef 33 500ml and Reef 33
+            // 1000ml are separate rows with independent quantities).
             'oils' => collect($oils)->map(fn($o) => (object) $o),
             'totalQuantity' => $totalQuantity,
             'activeBranchName' => $this->scope->activeBranchName(),
@@ -1134,9 +1173,12 @@ class StockManagerController extends Controller
             $bottleVolume = (int) $validated['bottle_volume'];
             $volumeLabel = $bottleVolume === 500 ? '500ml' : '1000ml';
 
+            // Stock is tracked PER VOLUME: "Reef 33" can hold independent counts
+            // for 500ml and 1000ml bottles. Find this name+volume row only.
             $existing = $this->supabase->findOne('oil_fragrance_stock', [
                 'branch_id' => $branchId,
                 'name' => $name,
+                'volume' => $bottleVolume,
             ]);
 
             if ($existing) {
@@ -1150,8 +1192,8 @@ class StockManagerController extends Controller
                 $this->supabase->insert('oil_fragrance_stock', [
                     'branch_id' => $branchId,
                     'name' => $name,
-                    'quantity' => $validated['quantity'],
                     'volume' => $bottleVolume,
+                    'quantity' => $validated['quantity'],
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ]);
@@ -1198,15 +1240,17 @@ class StockManagerController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
-        // Current oil stock quantities by product name.
+        // Current oil stock quantities per name+volume (tracked separately).
         $stockByProduct = [];
+        $stockByProductVolume = [];
         $stocks = $this->supabase->query('oil_fragrance_stock', [
             'branch_id' => "eq.{$branchId}",
-            'select' => 'name,quantity',
+            'select' => 'name,volume,quantity',
             'order' => 'name.asc',
         ]);
         foreach ($stocks as $s) {
-            $stockByProduct[$s['name']] = (int) ($s['quantity'] ?? 0);
+            $stockByProduct[$s['name']] = ($stockByProduct[$s['name']] ?? 0) + (int) ($s['quantity'] ?? 0);
+            $stockByProductVolume[$s['name'] . '_' . ($s['volume'] ?? 0)] = (int) ($s['quantity'] ?? 0);
         }
 
         // Load oil fragrance products for the dropdown (mirrors stock-in), but only
@@ -1244,18 +1288,22 @@ class StockManagerController extends Controller
             $bottleVolume = (int) $validated['bottle_volume'];
             $volumeLabel = $bottleVolume === 500 ? '500ml' : '1000ml';
 
+            // Deduct ONLY from this name+volume row — a 1000ml stock-out must
+            // never touch the 500ml count (and vice versa).
             $existing = $this->supabase->findOne('oil_fragrance_stock', [
                 'branch_id' => $branchId,
                 'name' => $name,
+                'volume' => $bottleVolume,
             ]);
 
-            if (!$existing || ($existing['quantity'] ?? 0) < $validated['quantity']) {
+            $availableForVolume = (int) ($existing['quantity'] ?? 0);
+            if (!$existing || $availableForVolume < $validated['quantity']) {
                 return back()->withErrors([
-                    'quantity' => 'Insufficient oil fragrance stock. Available: ' . ($existing['quantity'] ?? 0) . '.',
+                    'quantity' => "Insufficient {$volumeLabel} stock for {$name}. Available: {$availableForVolume} bottle(s).",
                 ])->withInput();
             }
 
-            $newQty = ($existing['quantity'] ?? 0) - $validated['quantity'];
+            $newQty = $availableForVolume - $validated['quantity'];
             $this->supabase->update('oil_fragrance_stock', [
                 'quantity' => $newQty,
                 'updated_at' => now()->toIso8601String(),
@@ -1279,6 +1327,7 @@ class StockManagerController extends Controller
         return view('stock-manager.oil-fragrance-stock-out', [
             'oilProducts' => $oilProducts,
             'stockByProduct' => $stockByProduct,
+            'stockByProductVolume' => $stockByProductVolume,
         ]);
     }
 

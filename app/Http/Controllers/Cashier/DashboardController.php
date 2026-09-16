@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Services\CashierScope;
+use App\Services\FinancialService;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 
@@ -11,11 +12,13 @@ class DashboardController extends Controller
 {
     private SupabaseService $supabase;
     private CashierScope $scope;
+    private FinancialService $financials;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
         $this->scope = new CashierScope($this->supabase);
+        $this->financials = new FinancialService();
     }
 
     public function index()
@@ -28,6 +31,8 @@ class DashboardController extends Controller
         $activeBranchName = $this->scope->activeBranchName();
 
         $today = Carbon::today()->toDateString();
+
+        $financialScopeBranchId = $inCrossBranch ? (int) $activeBranchId : (int) $branchId;
 
         if ($inCrossBranch) {
             // Cross-branch: show all sales for the monitored branch today
@@ -77,6 +82,10 @@ class DashboardController extends Controller
         $todayTransactions = count($todaySalesData);
         $myAssignedCount = count(array_filter($activeOrders, fn($o) => in_array($o['status'] ?? '', ['assigned', 'ready'])));
 
+        // Daily financials (sales, expenses, actual = sales - expenses) for the
+        // branch the dashboard is currently scoped to.
+        $dailySummary = $this->financials->getDailySummary($financialScopeBranchId);
+
         // Cast for views
         $recentSales = collect($recentSales)->map(function ($s) {
             if (isset($s['items'])) {
@@ -95,6 +104,7 @@ class DashboardController extends Controller
             'myAssignedOrders' => $myAssignedCount,
             'inCrossBranch' => $inCrossBranch,
             'activeBranchName' => $activeBranchName,
+            'dailySummary' => $dailySummary,
         ]);
     }
 }

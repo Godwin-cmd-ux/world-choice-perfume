@@ -44,16 +44,32 @@ class ProfileController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email',
-            'profile_picture' => 'nullable|image|max:2048',
+            'profile_picture' => 'nullable|image|max:4096',
         ]);
 
         if ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+
+            // Surface the most common production failure (PHP post_max_size
+            // exceeded — the file never reaches the validation step) clearly.
+            if (!$file->isValid()) {
+                $code = $file->getError();
+                $message = $code === UPLOAD_ERR_INI_SIZE
+                    ? 'The picture is too large. Please choose an image under 4MB.'
+                    : 'The picture could not be uploaded (error code ' . $code . '). Please try again.';
+                return back()->withErrors(['profile_picture' => $message])->withInput();
+            }
+
             $cloudinary = new CloudinaryService();
-            $uploadedUrl = $cloudinary->upload($request->file('profile_picture'), 'profiles');
+            $uploadedUrl = $cloudinary->upload($file, 'profiles');
             if ($uploadedUrl) {
                 $validated['profile_picture'] = $uploadedUrl;
             } else {
-                unset($validated['profile_picture']);
+                // Don't fail silently — tell the user the image service failed
+                // so they know their photo was not saved.
+                return back()->withErrors([
+                    'profile_picture' => 'Could not store the picture with the image service. Please try again in a moment.',
+                ])->withInput();
             }
         } else {
             unset($validated['profile_picture']);

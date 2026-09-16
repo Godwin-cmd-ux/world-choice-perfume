@@ -91,8 +91,16 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div class="p-4 bg-emerald-50 rounded-lg">
-                <p class="text-lg font-bold text-emerald-700">TZS {{ number_format($salesToday) }}</p>
-                <p class="text-xs text-emerald-600 mt-0.5">Today's sales</p>
+                <p class="text-lg font-bold text-emerald-700">TZS {{ number_format($dailySummary['daily_sales']) }}</p>
+                <p class="text-xs text-emerald-600 mt-0.5">Daily sales (paid)</p>
+            </div>
+            <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-lg font-bold text-red-700">TZS {{ number_format($dailySummary['daily_expenses']) }}</p>
+                <p class="text-xs text-red-600 mt-0.5">Daily expenses</p>
+            </div>
+            <div class="p-4 {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'bg-amber-50' : 'bg-red-50' }} rounded-lg">
+                <p class="text-lg font-bold {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'text-amber-700' : 'text-red-700' }}">TZS {{ number_format($dailySummary['actual_sales']) }}</p>
+                <p class="text-xs {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'text-amber-600' : 'text-red-600' }} mt-0.5">Actual sales (sales − expenses)</p>
             </div>
             <div class="p-4 bg-blue-50 rounded-lg">
                 <p class="text-lg font-bold text-blue-700">{{ number_format($salesTodayCount) }}</p>

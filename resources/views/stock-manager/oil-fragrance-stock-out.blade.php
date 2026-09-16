@@ -25,11 +25,23 @@
                     'placeholder' => 'Select Fragrance',
                     'selected' => old('product_id'),
                     'error' => $errors->first('product_id'),
-                    'options' => $oilProducts->map(fn($p) => [
-                        'value' => (string) $p->id,
-                        'label' => $p->name . ' (' . ($p->brand ?? 'No Brand') . ') - ' . ($stockByProduct[$p->name] ?? 0) . ' in stock',
-                    ])->all(),
+                    'options' => $oilProducts->map(function ($p) use ($stockByProductVolume) {
+                        // Show the per-volume breakdown, e.g. "Reef 33 — 500ml: 4 · 1000ml: 3"
+                        $parts = [];
+                        foreach ([500, 1000] as $vol) {
+                            $qty = $stockByProductVolume[$p->name . '_' . $vol] ?? null;
+                            if ($qty !== null) {
+                                $parts[] = ($vol / 1000 >= 1 ? ($vol / 1000) . 'L' : $vol . 'ml') . ': ' . $qty;
+                            }
+                        }
+                        $breakdown = $parts ? ' — ' . implode(' · ', $parts) : ' — 0 in stock';
+                        return [
+                            'value' => (string) $p->id,
+                            'label' => $p->name . ' (' . ($p->brand ?? 'No Brand') . ')' . $breakdown,
+                        ];
+                    })->all(),
                 ])
+                <p class="text-[11px] text-gray-400 mt-1">Each volume is tracked separately — stocking out 1000ml never reduces the 500ml count.</p>
             </div>
 
             <div class="mb-4">

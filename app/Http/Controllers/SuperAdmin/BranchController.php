@@ -61,7 +61,7 @@ class BranchController extends Controller
             'admin_id' => 'nullable|numeric',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
-            'profile_picture' => 'nullable|image|max:2048',
+            'profile_picture' => 'nullable|image|max:4096',
         ]);
 
         $profilePicture = null;
@@ -122,7 +122,7 @@ class BranchController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'is_active' => 'boolean',
-            'profile_picture' => 'nullable|image|max:2048',
+            'profile_picture' => 'nullable|image|max:4096',
         ]);
 
         if ($request->hasFile('profile_picture')) {

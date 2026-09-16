@@ -3,13 +3,28 @@
 
 @section('header', 'Cashier Dashboard')
 @section('content')
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-money-bill text-green-700 text-xl"></i></div>
-            <div><p class="text-2xl font-bold">TZS {{ number_format($todaySales) }}</p><p class="text-sm text-gray-500">Today's Sales</p></div>
+            <div><p class="text-2xl font-bold">TZS {{ number_format($dailySummary['daily_sales']) }}</p><p class="text-sm text-gray-500">Daily Sales (Paid)</p></div>
         </div>
     </div>
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center"><i class="fas fa-money-bill-wave text-red-700 text-xl"></i></div>
+            <div><p class="text-2xl font-bold">TZS {{ number_format($dailySummary['daily_expenses']) }}</p><p class="text-sm text-gray-500">Daily Expenses</p></div>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'bg-amber-100' : 'bg-red-100' }} rounded-full flex items-center justify-center"><i class="fas fa-balance-scale {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'text-amber-700' : 'text-red-700' }} text-xl"></i></div>
+            <div><p class="text-2xl font-bold {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? '' : 'text-red-600' }}">TZS {{ number_format($dailySummary['actual_sales']) }}</p><p class="text-sm text-gray-500">Actual Sales (Sales − Expenses)</p></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><i class="fas fa-receipt text-blue-700 text-xl"></i></div>

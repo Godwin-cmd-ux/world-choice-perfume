@@ -93,8 +93,22 @@
                 <p class="text-2xl font-bold text-gray-800">TZS {{ number_format($todayRevenue) }}</p>
             </div>
         </div>
-        <div class="text-sm text-gray-500">
-            {{ date('l, F d, Y') }} • {{ date('h:i A') }}
+        <div class="flex flex-wrap items-center gap-6">
+            <div class="text-center">
+                <p class="text-lg font-semibold text-emerald-700">TZS {{ number_format($dailySummary['daily_sales']) }}</p>
+                <p class="text-xs text-gray-500">Daily Sales (Paid)</p>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-red-600">TZS {{ number_format($dailySummary['daily_expenses']) }}</p>
+                <p class="text-xs text-gray-500">Daily Expenses</p>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold {{ ($dailySummary['actual_sales'] ?? 0) >= 0 ? 'text-amber-600' : 'text-red-600' }}">TZS {{ number_format($dailySummary['actual_sales']) }}</p>
+                <p class="text-xs text-gray-500">Actual Sales (Sales − Expenses)</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ date('l, F d, Y') }} • {{ date('h:i A') }}
+            </div>
         </div>
     </div>
 </div>

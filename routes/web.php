@@ -249,6 +249,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         Route::get('/dashboard', [\App\Http\Controllers\Cashier\DashboardController::class, 'index'])->name('dashboard');
 
+        // Daily sales overview across all branches (chief cashier / super admin)
+        Route::get('/daily-sales-overview', [\App\Http\Controllers\Cashier\CashierController::class, 'dailySalesOverview'])
+            ->middleware('cashier-cross-branch.access')
+            ->name('daily-sales-overview');
+
         // Sales
         Route::get('/sales', [\App\Http\Controllers\Cashier\SaleController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [\App\Http\Controllers\Cashier\SaleController::class, 'create'])->name('sales.create');

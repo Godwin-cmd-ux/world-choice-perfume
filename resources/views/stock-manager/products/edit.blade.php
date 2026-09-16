@@ -71,6 +71,28 @@
                 </label>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit Cost (TZS) <span class="text-gray-400 font-normal">(internal — hidden from customers)</span></label>
+                    <input type="number" name="unit_cost" value="{{ old('unit_cost', $product->unit_cost ?? 0) }}" min="0" step="0.01"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <p class="text-[11px] text-gray-400 mt-1">
+                        <i class="fas fa-lock mr-1"></i>Cost of <strong>one unit</strong> at stock-in. For Oil Fragrance this is the cost of a <strong>costing volume</strong> bottle (below); for Brand Perfume it is the cost per piece. Used to compute gross & net profit — never shown to customers.
+                    </p>
+                    @error('unit_cost') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div id="costing-volume-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Costing Volume (Oil Fragrance only)</label>
+                    <select name="costing_volume"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="">Not applicable (Brand Perfume — per piece)</option>
+                        <option value="500" {{ old('costing_volume', $product->costing_volume) == '500' ? 'selected' : '' }}>500ml bottle</option>
+                        <option value="1000" {{ old('costing_volume', $product->costing_volume) == '1000' ? 'selected' : '' }}>1000ml bottle</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">The unit cost above is the cost of ONE bottle of this volume. Stocking 50ml bottles will auto-calculate cost as 50/500 × unit cost.</p>
+                    @error('costing_volume') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Current Images</label>
                     <div class="flex gap-2 flex-wrap">
                         @foreach($product->images as $img)
@@ -92,7 +114,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Add More Images</label>
                     <input type="file" name="images[]" multiple accept="image/*"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    <p class="text-[11px] text-gray-400 mt-1">Max 2MB each.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">Max 4MB each.</p>
                 </div>
             </div>
 
@@ -107,4 +129,23 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleCostingVolume() {
+    const checked = document.querySelector('input[name="category"]:checked');
+    const field = document.getElementById('costing-volume-field');
+    if (!field) return;
+    if (checked && checked.value === 'Oil Fragrance') {
+        field.classList.remove('hidden');
+    } else {
+        field.classList.add('hidden');
+    }
+}
+document.querySelectorAll('input[name="category"]').forEach(function (el) {
+    el.addEventListener('change', toggleCostingVolume);
+});
+toggleCostingVolume();
+</script>
+@endpush
 @endsection

@@ -71,17 +71,21 @@
         <h3 class="text-base font-semibold text-gray-800">Today's Financial Summary</h3>
         <span class="text-xs text-gray-400">{{ now()->setTimezone('Africa/Dar_es_Salaam')->format('l, M d, Y') }}</span>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="text-center p-4 bg-gray-50 rounded-xl">
             <p class="text-2xl font-bold text-emerald-600">TZS {{ number_format($todayFinancials['revenue']) }}</p>
-            <p class="text-xs text-gray-500 mt-1 font-medium">Revenue</p>
+            <p class="text-xs text-gray-500 mt-1 font-medium">Daily Sales (Revenue)</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-xl">
             <p class="text-2xl font-bold text-red-500">TZS {{ number_format($todayFinancials['expenses']) }}</p>
-            <p class="text-xs text-gray-500 mt-1 font-medium">Expenses</p>
+            <p class="text-xs text-gray-500 mt-1 font-medium">Daily Expenses</p>
         </div>
         <div class="text-center p-4 bg-gray-50 rounded-xl">
-            <p class="text-2xl font-bold text-amber-600">{{ $todayFinancials['transaction_count'] }}</p>
+            <p class="text-2xl font-bold {{ ($todayFinancials['actual_sales'] ?? 0) >= 0 ? 'text-amber-600' : 'text-red-600' }}">TZS {{ number_format($todayFinancials['actual_sales'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500 mt-1 font-medium">Actual Sales (Sales − Expenses)</p>
+        </div>
+        <div class="text-center p-4 bg-gray-50 rounded-xl">
+            <p class="text-2xl font-bold text-gray-700">{{ $todayFinancials['transaction_count'] }}</p>
             <p class="text-xs text-gray-500 mt-1 font-medium">Transactions</p>
         </div>
     </div>

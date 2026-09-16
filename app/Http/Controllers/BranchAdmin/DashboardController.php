@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\FinancialService;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     private SupabaseService $supabase;
+    private FinancialService $financials;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->financials = new FinancialService();
     }
 
     public function index()
@@ -27,6 +30,7 @@ class DashboardController extends Controller
                 'pendingOrders' => 0,
                 'lowStock' => 0,
                 'totalStockValue' => 0,
+                'dailySummary' => ['daily_sales' => 0, 'daily_expenses' => 0, 'actual_sales' => 0, 'transaction_count' => 0],
                 'financials' => ['revenue' => 0, 'expenses' => 0, 'transaction_count' => 0, 'products_sold' => 0, 'stock_remaining' => 0],
             ]);
         }
@@ -44,6 +48,9 @@ class DashboardController extends Controller
         ]);
         $todaySales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySalesData));
         $todayTransactions = count($todaySalesData);
+
+        // Daily summary: sales, expenses and actual (sales - expenses) for today
+        $dailySummary = $this->financials->getDailySummary((int) $branchId);
 
         // Batch 2: Pending orders count
         $pendingOrders = $this->supabase->count('orders', [
@@ -87,6 +94,8 @@ class DashboardController extends Controller
         return view('branch-admin.dashboard', compact(
             'todaySales', 'todayTransactions', 'pendingOrders',
             'lowStock', 'totalStockValue', 'financials'
-        ));
+        ) + [
+            'dailySummary' => $dailySummary,
+        ]);
     }
 }

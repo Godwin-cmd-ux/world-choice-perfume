@@ -110,7 +110,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'branch_id' => 'required',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:4096',
         ]);
 
         $imageUrl = null;
@@ -165,7 +165,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'branch_id' => 'required',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:4096',
         ]);
 
         $data = [

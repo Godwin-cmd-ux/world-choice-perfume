@@ -13,6 +13,7 @@ class Product extends Model
 
     protected $fillable = [
         'name', 'description', 'brand', 'category', 'sex_category', 'is_active',
+        'unit_cost', 'costing_volume',
     ];
 
     protected function casts(): array

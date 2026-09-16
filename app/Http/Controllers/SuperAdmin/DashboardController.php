@@ -141,6 +141,7 @@ class DashboardController extends Controller
         $todayFinancials = $this->financialService->getCompanyFinancials(
             Carbon::today(), Carbon::now()
         );
+        $todayFinancials['actual_sales'] = (float) $todayFinancials['revenue'] - (float) $todayFinancials['expenses'];
 
         return view('super-admin.dashboard', [
             'branches' => $branches,

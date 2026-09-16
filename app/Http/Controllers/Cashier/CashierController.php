@@ -19,6 +19,127 @@ class CashierController extends Controller
     }
 
     // ========================
+    // DAILY SALES OVERVIEW (Chief cashier / Super Admin)
+    // ========================
+
+    /**
+     * Company-wide daily sales overview for the chief cashier (HQ cashier):
+     * daily sales, expenses and actual sales across all branches, each
+     * branch's percentage contribution to company sales, and every staff
+     * member's percentage contribution within their branch.
+     */
+    public function dailySalesOverview()
+    {
+        $todayStart = Carbon::today()->startOfDay()->toIso8601String();
+
+        // All active branches
+        $branches = $this->supabase->query('branches', [
+            'is_active' => 'eq.true',
+            'select' => 'id,name',
+            'order' => 'name.asc',
+        ]);
+
+        // One query for today's paid sales across all branches
+        $sales = $this->supabase->query('sales', [
+            'payment_status' => 'eq.paid',
+            'created_at' => "gte.{$todayStart}",
+            'select' => 'id,branch_id,cashier_id,total',
+        ]);
+
+        // One query for today's expenses across all branches
+        $expenses = $this->supabase->query('expenses', [
+            'created_at' => "gte.{$todayStart}",
+            'select' => 'branch_id,user_id,amount',
+        ]);
+
+        // Cost of goods sold per branch (from per-sale unit costs).
+        $cogsByBranch = (new \App\Services\FinancialService())->getCompanyProfitSummary(Carbon::today(), Carbon::now())['by_branch'] ?? [];
+
+        // Resolve staff names/roles for everyone who sold or recorded expenses today
+        $staffIds = [];
+        foreach ($sales as $s) {
+            if (!empty($s['cashier_id'])) $staffIds[(int) $s['cashier_id']] = true;
+        }
+        foreach ($expenses as $e) {
+            if (!empty($e['user_id'])) $staffIds[(int) $e['user_id']] = true;
+        }
+        $staffMap = [];
+        $staffIds = array_keys($staffIds);
+        if (!empty($staffIds)) {
+            $staffRows = $this->supabase->query('users', [
+                'select' => 'id,name,role,branch_id',
+                'id' => 'in.(' . implode(',', $staffIds) . ')',
+                'limit' => 500,
+            ]);
+            foreach ($staffRows as $u) {
+                $staffMap[(int) $u['id']] = $u;
+            }
+        }
+
+        $companySales = (float) array_sum(array_map(fn ($s) => (float) ($s['total'] ?? 0), $sales));
+
+        $rows = collect($branches)->map(function ($b) use ($sales, $expenses, $staffMap, $companySales, $cogsByBranch) {
+            $id = (int) $b['id'];
+
+            $branchSales = array_values(array_filter($sales, fn ($s) => (int) ($s['branch_id'] ?? 0) === $id));
+            $branchExpenses = array_values(array_filter($expenses, fn ($e) => (int) ($e['branch_id'] ?? 0) === $id));
+
+            $dailySales = (float) array_sum(array_map(fn ($s) => (float) ($s['total'] ?? 0), $branchSales));
+            $dailyExpenses = (float) array_sum(array_map(fn ($e) => (float) ($e['amount'] ?? 0), $branchExpenses));
+            $cogs = (float) ($cogsByBranch[$id]['cogs'] ?? 0);
+
+            // Staff contribution within the branch (sales by cashier_id,
+            // expenses by user_id, actual = sales - expenses per staff).
+            $salesByStaff = [];
+            foreach ($branchSales as $s) {
+                $sid = (int) ($s['cashier_id'] ?? 0);
+                $salesByStaff[$sid] = ($salesByStaff[$sid] ?? 0) + (float) ($s['total'] ?? 0);
+            }
+            $expensesByStaff = [];
+            foreach ($branchExpenses as $e) {
+                $sid = (int) ($e['user_id'] ?? 0);
+                $expensesByStaff[$sid] = ($expensesByStaff[$sid] ?? 0) + (float) ($e['amount'] ?? 0);
+            }
+
+            $staffIdsForBranch = array_unique(array_merge(array_keys($salesByStaff), array_keys($expensesByStaff)));
+            $staff = collect($staffIdsForBranch)->map(function ($sid) use ($salesByStaff, $expensesByStaff, $staffMap, $dailySales) {
+                $info = $staffMap[$sid] ?? null;
+                $sTotal = (float) ($salesByStaff[$sid] ?? 0);
+                $eTotal = (float) ($expensesByStaff[$sid] ?? 0);
+
+                return (object) [
+                    'id' => $sid,
+                    'name' => $info['name'] ?? ('User #' . $sid),
+                    'role' => $info['role'] ?? 'staff',
+                    'sales' => $sTotal,
+                    'expenses' => $eTotal,
+                    'actual' => $sTotal - $eTotal,
+                    'salesPercent' => $dailySales > 0 ? round(($sTotal / $dailySales) * 100, 1) : 0.0,
+                ];
+            })->sortByDesc('sales')->values();
+
+            return (object) [
+                'id' => $id,
+                'name' => $b['name'] ?? ('Branch #' . $id),
+                'dailySales' => $dailySales,
+                'dailyExpenses' => $dailyExpenses,
+                'actualSales' => $dailySales - $dailyExpenses,
+                'cogs' => $cogs,
+                'salesPercent' => $companySales > 0 ? round(($dailySales / $companySales) * 100, 1) : 0.0,
+                'transactions' => count($branchSales),
+                'staff' => $staff,
+            ];
+        })->sortByDesc('dailySales')->values();
+
+        return view('cashier.daily-sales-overview', [
+            'rows' => $rows,
+            'companySales' => $companySales,
+            'companyExpenses' => (float) array_sum(array_map(fn ($e) => (float) ($e['amount'] ?? 0), $expenses)),
+            'isSuperAdmin' => $this->scope->isSuperAdmin(),
+        ]);
+    }
+
+    // ========================
     // CROSS-BRANCH MONITORING
     // ========================
 

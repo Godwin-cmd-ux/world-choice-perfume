@@ -39,6 +39,16 @@
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             </div>
 
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unit Cost (TZS) <span class="text-gray-400 font-normal">(auto-calculated — internal only)</span></label>
+                <input type="number" id="unit_cost_display" disabled
+                    class="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
+                    placeholder="Select a product first">
+                <p class="text-[11px] text-gray-400 mt-1">
+                    <i class="fas fa-lock mr-1"></i>Auto-calculated from the product's unit cost: volume ÷ costing volume × unit cost for Oil Fragrance; per piece for Brand Perfume. Hidden from customers.
+                </p>
+            </div>
+
             <div class="mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -85,6 +95,36 @@
 @push('scripts')
 <script>
 const categoryMap = @json($categoryMap ?? []);
+const unitCostMap = @json($unitCostMap ?? []);
+const costingVolumeMap = @json($costingVolumeMap ?? []);
+
+function updateUnitCostPreview() {
+    const productId = document.getElementById('product_id').value;
+    const category = document.getElementById('category-select').value;
+    const display = document.getElementById('unit_cost_display');
+    const volumeField = document.getElementById('bottle_volume');
+n    if (!productId || !(productId in unitCostMap)) {
+        display.value = '';
+        display.placeholder = 'Select a product first';
+        return;
+    }
+n    const productUnitCost = parseFloat(unitCostMap[productId] || 0);
+n    if (category === 'Oil Fragrance') {
+        const costingVolume = parseInt(costingVolumeMap[productId] || 0, 10);
+        const bottleVolume = parseInt(volumeField.value || 0, 10);
+        if (costingVolume > 0 && bottleVolume > 0) {
+            const cost = Math.round((bottleVolume / costingVolume) * productUnitCost * 100) / 100;
+            display.value = cost;
+            display.placeholder = (bottleVolume + '/' + costingVolume) + ' \u00d7 ' + productUnitCost + ' = ' + cost;
+        } else {
+            display.value = '';
+            display.placeholder = productUnitCost + ' per ' + (costingVolume || '?') + 'ml bottle — select bottle volume';
+        }
+    } else {
+        display.value = productUnitCost;
+        display.placeholder = 'Per piece';
+    }
+}
 
 function autoFillCategory() {
     const productId = document.getElementById('product_id').value;
@@ -97,6 +137,7 @@ function autoFillCategory() {
     }
 
     toggleBottleVolume();
+    updateUnitCostPreview();
 }
 
 function toggleBottleVolume() {
@@ -112,7 +153,10 @@ function toggleBottleVolume() {
         volumeInput.removeAttribute('required');
         volumeInput.value = '';
     }
+    updateUnitCostPreview();
 }
+
+document.getElementById('bottle_volume').addEventListener('change', updateUnitCostPreview);
 
 // Run on load in case a value was repopulated after a validation error
 autoFillCategory();

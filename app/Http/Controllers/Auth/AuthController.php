@@ -663,7 +663,7 @@ class AuthController extends Controller
             'phone' => 'required|string|max:20',
             'password' => 'required|string|min:8|confirmed',
             'branch_id' => 'required',
-            'profile_picture' => 'nullable|image|max:2048',
+            'profile_picture' => 'nullable|image|max:4096',
         ]);
 
         // Check if email already exists in Supabase

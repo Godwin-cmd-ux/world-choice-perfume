@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Services\FinancialService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class SellerController extends Controller
 {
     private SupabaseService $supabase;
+    private FinancialService $financials;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->financials = new FinancialService();
     }
 
     public function dashboard()
@@ -36,6 +39,9 @@ class SellerController extends Controller
         $todaySales = array_filter($mySales, fn($s) => ($s['created_at'] ?? '') >= $todayStart);
         $todayTotal = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySales));
 
+        // Branch daily financials (sales, expenses, actual = sales - expenses)
+        $dailySummary = $this->financials->getDailySummary((int) $branchId);
+
         // Products available at this branch
         $products = $this->supabase->query('branch_stock', [
             'select' => '*, product:products(id,name,brand,category,images:product_images(image_url))',
@@ -44,6 +50,8 @@ class SellerController extends Controller
             'order' => 'created_at.desc',
         ]);
 
-        return view('seller.dashboard', compact('totalSales', 'totalTransactions', 'todayTotal', 'mySales', 'products'));
+        return view('seller.dashboard', compact('totalSales', 'totalTransactions', 'todayTotal', 'mySales', 'products') + [
+            'dailySummary' => $dailySummary,
+        ]);
     }
 }

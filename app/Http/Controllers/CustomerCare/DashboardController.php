@@ -4,16 +4,19 @@ namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
 use App\Services\CustomerCareScope;
+use App\Services\FinancialService;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     private SupabaseService $supabase;
+    private FinancialService $financials;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->financials = new FinancialService();
     }
 
     public function index()
@@ -132,6 +135,9 @@ class DashboardController extends Controller
         $todaySales = $sales->filter(fn($s) => ($s->created_at ?? '') >= $todayStart);
         $todayRevenue = $todaySales->sum('total');
 
+        // Branch daily financials (sales, expenses, actual = sales - expenses)
+        $dailySummary = $this->financials->getDailySummary((int) $branchId);
+
         // Orders — branch scoped
         $orders = collect($this->supabase->query('orders', [
             'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name))',
@@ -184,6 +190,7 @@ class DashboardController extends Controller
             'clients',
             'clientsTotal',
             'clientsWithPhone',
+            'dailySummary',
         ));
     }
 }
