@@ -212,10 +212,11 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                     ])->withInput();
                 }
 
-                $unitPrice = ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price']))
+                // Price customization: honor custom price on both retail and wholesale
+                $unitPrice = !empty($item['custom_price'])
                     ? $item['custom_price']
                     : ($stock['selling_price'] ?? 0);
-                if ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price'])) {
+                if (!empty($item['custom_price'])) {
                     $priceOverridden = true;
                 }
                 $lineTotal = $unitPrice * $item['quantity'];

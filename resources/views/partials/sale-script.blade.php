@@ -12,9 +12,8 @@
         document.getElementById('sale_type').value = type;
         document.getElementById('tab-retail').className = type === 'retail' ? accentActive() : accentIdle();
         document.getElementById('tab-wholesale').className = type === 'wholesale' ? accentActive() : accentIdle();
-        document.getElementById('sale-type-hint').innerHTML = type === 'wholesale'
-            ? '<i class="fas fa-info-circle mr-1"></i> Custom prices allowed'
-            : '<i class="fas fa-info-circle mr-1"></i> Fixed selling prices';
+        document.getElementById('sale-type-hint').innerHTML =
+            '<i class="fas fa-info-circle mr-1"></i> Custom prices allowed';
 
         // Empty bottles are never sold in retail mode
         const bottleCard = document.getElementById('empty-bottles-card');
@@ -23,9 +22,12 @@
             if (type !== 'wholesale') resetBottles();
         }
 
-        document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.toggle('hidden', type !== 'wholesale'));
         @if (!empty($hasDiscount))
+        document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.toggle('hidden', type !== 'wholesale'));
         document.querySelectorAll('.cart-discount-price').forEach(el => el.classList.toggle('hidden', type !== 'retail'));
+        @else
+        // Price customization is available on retail AND wholesale
+        document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.remove('hidden'));
         @endif
         calculateTotal();
     }
@@ -174,7 +176,11 @@
                 @if (!empty($hasDiscount))
                 '<input type="number" step="0.01" min="0" class="cart-discount-price hidden mt-1 w-28 px-2 py-1 border border-dashed rounded text-xs" placeholder="Custom price">' +
                 @endif
+                @if (empty($hasDiscount))
+                '<input type="number" step="0.01" min="0" class="cart-custom-price mt-1 w-28 px-2 py-1 border rounded text-xs" placeholder="Custom price">' +
+                @else
                 '<input type="number" step="0.01" min="0" class="cart-custom-price hidden mt-1 w-28 px-2 py-1 border rounded text-xs" placeholder="Custom price">' +
+                @endif
             '</td>' +
             '<td class="px-3 py-2 text-center whitespace-nowrap">' +
                 '<div class="inline-flex items-center border rounded-lg">' +
@@ -193,7 +199,9 @@
 
         const custom = tr.querySelector('.cart-custom-price');
         custom.addEventListener('input', calculateTotal);
+        @if (!empty($hasDiscount))
         custom.classList.toggle('hidden', document.getElementById('sale_type').value !== 'wholesale');
+        @endif
         @if (!empty($hasDiscount))
         const discount = tr.querySelector('.cart-discount-price');
         discount.addEventListener('input', calculateTotal);
@@ -250,7 +258,12 @@
             const qty = parseInt(row.querySelector('.cart-qty-hidden').value || 0);
             const custom = row.querySelector('.cart-custom-price');
             let unit = price;
+            @if (!empty($hasDiscount))
             if (isWholesale && custom && !custom.classList.contains('hidden') && custom.value) unit = parseFloat(custom.value) || price;
+            @else
+            // Custom price applies on both retail and wholesale
+            if (custom && custom.value) unit = parseFloat(custom.value) || price;
+            @endif
             @if (!empty($hasDiscount))
             const discount = row.querySelector('.cart-discount-price');
             if (isRetail && discount && !discount.classList.contains('hidden') && discount.value) unit = parseFloat(discount.value) || price;
