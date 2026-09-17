@@ -157,7 +157,9 @@ class ProductController extends Controller
         // Cast product to object for the view
         $product = (object) $product;
         if (isset($product->images) && is_array($product->images)) {
-            $product->images = collect($product->images);
+            // Supabase embeds return arrays of arrays — cast each image to an
+            // object so views can use ->image_url safely.
+            $product->images = collect($product->images)->map(fn ($img) => (object) $img);
         }
 
         return view('customer.products.show', compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'));
@@ -208,7 +210,8 @@ class ProductController extends Controller
             'quantity' => $item['quantity'] ?? 0,
             'selling_price' => $item['selling_price'] ?? null,
             'product' => (object) array_merge($item['product'] ?? [], [
-                'images' => collect($item['product']['images'] ?? []),
+                // Cast each image to an object so views can use ->image_url.
+                'images' => collect($item['product']['images'] ?? [])->map(fn ($img) => (object) $img),
             ]),
         ]);
     }

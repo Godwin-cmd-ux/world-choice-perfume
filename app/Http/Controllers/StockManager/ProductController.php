@@ -41,7 +41,9 @@ class ProductController extends Controller
 
         $products = collect(array_values($products))->map(function ($p) {
             if (isset($p['images'])) {
-                $p['images'] = collect($p['images']);
+                // Supabase embeds return arrays of arrays — cast each image to
+                // an object so views can use ->image_url safely.
+                $p['images'] = collect($p['images'])->map(fn ($img) => (object) $img);
             }
             return (object) $p;
         });
@@ -122,7 +124,7 @@ class ProductController extends Controller
         if (!$product) abort(404);
 
         if (isset($product['images'])) {
-            $product['images'] = collect($product['images']);
+            $product['images'] = collect($product['images'])->map(fn ($img) => (object) $img);
         }
 
         return view('stock-manager.products.edit', ['product' => (object) $product]);

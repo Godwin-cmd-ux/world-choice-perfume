@@ -46,7 +46,8 @@ class OrderController extends Controller
                 'quantity' => $item['quantity'],
                 'selling_price' => $item['selling_price'],
                 'product' => (object) array_merge($item['product'] ?? [], [
-                    'images' => collect($item['product']['images'] ?? []),
+                    // Cast each image to an object so views can use ->image_url.
+                    'images' => collect($item['product']['images'] ?? [])->map(fn ($img) => (object) $img),
                 ]),
             ];
         });
