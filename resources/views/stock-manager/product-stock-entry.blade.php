@@ -71,6 +71,20 @@
                 </p>
             </div>
 
+            <div id="bottle-variant-field" class="mb-6 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Variety *</label>
+                <select name="bottle_variant" id="bottle_variant" data-preselect="{{ old('bottle_variant') }}"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Select Variety</option>
+                </select>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>The quantity is deducted from the exact variety you pick (box / logo / color).
+                </p>
+                @error('bottle_variant')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div class="flex gap-3">
                 <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Save Entry
@@ -86,6 +100,16 @@
 @push('scripts')
 <script>
 const categoryMap = @json($categoryMap ?? []);
+const bottleVariants = @json($bottleVariants ?? []);
+const VARIANT_LABELS = {
+    box_logo_yellow: 'With Box · With Logo · Yellow',
+    box_logo_black: 'With Box · With Logo · Black',
+    box_nologo_black: 'With Box · No Logo · Black',
+    box_nologo_white: 'With Box · No Logo · White',
+    no_box: 'Without Box',
+    plain: 'Plain (no details)'
+};
+const DETAIL_VOLUMES = ['30', '50', '100'];
 
 function autoFillCategory() {
     const productId = document.getElementById('product_id').value;
@@ -112,8 +136,58 @@ function toggleBottleVolume() {
         field.classList.add('hidden');
         volumeInput.removeAttribute('required');
         volumeInput.value = '';
+        hideVariantField();
     }
+    refreshVariantOptions();
 }
+
+function refreshVariantOptions() {
+    const category = document.getElementById('category-select').value;
+    const volume = document.getElementById('bottle_volume').value;
+    const variantField = document.getElementById('bottle-variant-field');
+    const variantSelect = document.getElementById('bottle_variant');
+
+    if (category !== 'Oil Fragrance' || !volume) {
+        hideVariantField();
+        return;
+    }
+
+    variantSelect.innerHTML = '<option value="">Select Variety</option>';
+
+    if (!DETAIL_VOLUMES.includes(volume)) {
+        // 6ml / 12ml bottles have no box/logo details — recorded as plain.
+        const opt = document.createElement('option');
+        opt.value = 'plain';
+        opt.textContent = 'Plain (no details)';
+        opt.selected = true;
+        variantSelect.appendChild(opt);
+        hideVariantField();
+        return;
+    }
+
+    const buckets = (bottleVariants[volume]) || {};
+    const keys = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+    keys.forEach(k => {
+        const q = buckets[k] || 0;
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = (VARIANT_LABELS[k] || k) + ' — ' + q + ' in stock';
+        if (k === variantSelect.dataset.preselect) opt.selected = true;
+        variantSelect.appendChild(opt);
+    });
+
+    variantField.classList.remove('hidden');
+    variantSelect.setAttribute('required', 'required');
+}
+
+function hideVariantField() {
+    const variantField = document.getElementById('bottle-variant-field');
+    const variantSelect = document.getElementById('bottle_variant');
+    variantField.classList.add('hidden');
+    variantSelect.removeAttribute('required');
+}
+
+document.getElementById('bottle_volume').addEventListener('change', refreshVariantOptions);
 
 // Run on load in case a value was repopulated after a validation error
 autoFillCategory();

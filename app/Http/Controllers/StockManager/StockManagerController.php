@@ -321,6 +321,7 @@ class StockManagerController extends Controller
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
             'categoryMap' => $categoryMap,
+            'bottleVariants' => $this->bottles->variantStock(auth()->user()->branch_id),
         ]);
     }
 
@@ -331,6 +332,7 @@ class StockManagerController extends Controller
                 'selling_price' => 'required|numeric|min:0',
                 'category' => 'required|in:Oil Fragrance,Brand Perfume',
                 'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
+                'bottle_variant' => 'nullable|string|max:32',
                 'date_received' => 'required|date',
             ]);
 
@@ -345,12 +347,26 @@ class StockManagerController extends Controller
                 return back()->withErrors(['bottle_volume' => 'Bottle volume is required for Oil Fragrance entries.'])->withInput();
             }
 
-            $available = $this->bottles->stockMap($branchId);
             $bottleVolume = (int) $bottleVolume;
 
-            if (($available[$bottleVolume] ?? 0) < $validated['quantity']) {
+            // 30/50/100ml bottles carry box/logo/color details — the specific
+            // variety must be chosen so the exact bucket is deducted.
+            $variant = null;
+            if ($this->bottles->volumeHasDetails($bottleVolume)) {
+                $variant = $validated['bottle_variant'] ?? '';
+                if ($variant === '') {
+                    return back()->withErrors(['bottle_variant' => 'Please choose the bottle variety (box / logo / color) for this volume.'])->withInput();
+                }
+            } else {
+                $variant = 'plain';
+            }
+
+            $variantStock = $this->bottles->variantStock($branchId);
+            $available = $variantStock[$bottleVolume][$variant] ?? 0;
+
+            if ($available < $validated['quantity']) {
                 return back()->withErrors([
-                    'bottle_volume' => "Insufficient bottle stock for {$bottleVolume}ml. Available: " . ($available[$bottleVolume] ?? 0) . '.',
+                    'bottle_variant' => "Insufficient bottle stock for {$bottleVolume}ml ({$this->bottles->variantLabel($variant, $bottleVolume)}). Available: {$available}.",
                 ])->withInput();
             }
         }
@@ -409,14 +425,16 @@ class StockManagerController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        // Auto-outstock empty bottles used to bottle the oil fragrance entry.
+        // Auto-outstock empty bottles used to bottle the oil fragrance entry,
+        // from the exact variety bucket chosen on the form.
         if ($category === 'Oil Fragrance' && $bottleVolume) {
             $this->bottles->deduct(
                 $branchId,
                 $bottleVolume,
                 (int) $validated['quantity'],
                 'Auto outstock for oil fragrance stock entry',
-                (string) $this->performingUserId()
+                (string) $this->performingUserId(),
+                $variant
             );
         }
 

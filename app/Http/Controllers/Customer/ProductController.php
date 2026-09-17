@@ -195,9 +195,13 @@ class ProductController extends Controller
             });
         }
 
-        // Out-of-stock products stay visible (with an "Out of Stock" badge and
-        // "Check availability" instead of a price) — the full catalogue renders
-        // with its uploaded product images. Search results behave the same.
+        // Hide out-of-stock products — unless the customer is using the search
+        // box (search results may include out-of-stock items).
+        if (!$request->search) {
+            $stockCollection = $stockCollection->filter(function ($item) {
+                return ($item['quantity'] ?? 0) > 0;
+            });
+        }
 
         return $stockCollection->values()->map(fn($item) => (object) [
             'id' => $item['id'] ?? null,
