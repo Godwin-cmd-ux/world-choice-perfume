@@ -102,26 +102,83 @@
 
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="p-4 border-b">
-                <h3 class="font-semibold text-sm"><i class="fas fa-receipt mr-1 text-amber-600"></i> Recent Purchases</h3>
+                <h3 class="font-semibold text-sm"><i class="fas fa-box-open mr-1 text-amber-600"></i> Items Purchased</h3>
+                <p class="text-[10px] text-gray-400">Every product this client has bought across all branches.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50"><tr>
+                        <th class="text-left py-3 px-4">Item</th>
+                        <th class="text-left px-4">Brand</th>
+                        <th class="text-center px-4">Times Bought</th>
+                        <th class="text-right px-4">Qty</th>
+                        <th class="text-right px-4">Total Spent</th>
+                        <th class="text-left px-4">Last Bought</th>
+                    </tr></thead>
+                    <tbody>
+                        @forelse($itemSummary as $item)
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="py-3 px-4 font-medium text-gray-700">{{ $item->name }}</td>
+                                <td class="px-4 text-gray-500">{{ $item->brand ?? '—' }}</td>
+                                <td class="px-4 text-center text-gray-600">{{ $item->times }}</td>
+                                <td class="px-4 text-right text-gray-600">{{ $item->quantity }}</td>
+                                <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($item->spent) }}</td>
+                                <td class="px-4 text-gray-500">
+                                    {{ $item->last_bought ? \Carbon\Carbon::parse($item->last_bought)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="py-8 text-center text-gray-400">No items purchased yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-semibold text-sm"><i class="fas fa-receipt mr-1 text-amber-600"></i> Purchase History</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50"><tr>
                         <th class="text-left py-3 px-4">Sale #</th>
+                        <th class="text-left px-4">Items</th>
                         <th class="text-left px-4">Branch</th>
+                        <th class="text-center px-4">Type</th>
                         <th class="text-right px-4">Total</th>
                         <th class="text-left px-4">Date</th>
                     </tr></thead>
                     <tbody>
                         @forelse($recentSales as $sale)
+                            @php
+                                $itemLine = collect($sale->items)->map(fn ($i) => $i->name . ' ×' . $i->quantity);
+                                $extraItems = max(collect($sale->items)->count() - 3, 0);
+                            @endphp
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="py-3 px-4 font-medium text-gray-700">{{ $sale->sale_number }}</td>
+                                <td class="py-3 px-4 font-medium">
+                                    @if(($sale->branch_id ?? 0) === (int) (auth()->user()->branch_id ?? 0))
+                                        <a href="{{ route('customer-care.sales.show', $sale->id) }}"
+                                           class="text-blue-600 hover:text-blue-800 underline">{{ $sale->sale_number }}</a>
+                                    @else
+                                        <span class="text-gray-700">{{ $sale->sale_number }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 text-gray-600">
+                                    {{ $itemLine->take(3)->implode(', ') ?: '—' }}
+                                    @if($extraItems > 0)<span class="text-xs text-gray-400"> +{{ $extraItems }} more</span>@endif
+                                </td>
                                 <td class="px-4 text-gray-500">{{ $sale->branch_name ?? '—' }}</td>
+                                <td class="px-4 text-center">
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ $sale->sale_type === 'online' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                                        {{ ucfirst($sale->sale_type ?? 'walk-in') }}
+                                    </span>
+                                </td>
                                 <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($sale->total) }}</td>
                                 <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="py-8 text-center text-gray-400">No purchases recorded yet.</td></tr>
+                            <tr><td colspan="6" class="py-8 text-center text-gray-400">No purchases recorded yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
