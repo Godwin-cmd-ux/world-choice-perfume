@@ -152,10 +152,17 @@
                                                 Out of Stock
                                             </span>
                                         @endif
-                                        <!-- Category Badge -->
-                                        <span class="absolute top-3 left-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gold-400 text-[10px] font-semibold rounded-full border border-dark-600">
-                                            {{ $stock->product->sex_category ? ucwords($stock->product->sex_category) : ($stock->product->category ?? '') }}
-                                        </span>
+                                        <!-- Category Badges: product type + sex category -->
+                                        <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+                                            <span class="px-2.5 py-1 backdrop-blur-sm text-[10px] font-bold rounded-full border {{ $stock->product->category === 'Oil Fragrance' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-gold-500/15 text-gold-400 border-gold-500/40' }}">
+                                                {{ $stock->product->category }}
+                                            </span>
+                                            @if($stock->product->sex_category)
+                                                <span class="px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                                    {{ ucwords($stock->product->sex_category) }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     <!-- Product Info -->
