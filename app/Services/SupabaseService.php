@@ -307,6 +307,10 @@ class SupabaseService
      */
     public function update(string $table, array|object $data, array $conditions): array
     {
+        // Drop keys that aren't real columns so a missing column (e.g. served_at
+        // before its migration is run) never makes the PATCH fail with PGRST204.
+        $data = $this->stripUnknownColumns($table, $data);
+
         $queryParams = $this->buildFilterParams($conditions);
 
         try {
@@ -423,7 +427,8 @@ class SupabaseService
             ],
             'orders' => [
                 'order_number','branch_id','cashier_id','customer_id','status','total',
-                'delivery_notes','assigned_at','completed_at','cancelled_at','paid_at',
+                'delivery_notes','assigned_to','assigned_at','completed_at','served_at',
+                'cancelled_at','paid_at',
                 'payment_status','payment_method','payment_confirmation_code',
                 'created_at','updated_at',
             ],

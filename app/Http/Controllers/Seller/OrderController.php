@@ -123,7 +123,15 @@ class OrderController extends Controller
         $updated = $this->supabase->update('orders', $updateData, ['id' => $orderId, 'status' => $current]);
 
         if (empty($updated)) {
-            return back()->with('error', 'This order was just updated by another staff member. Please refresh and try again.');
+            // Optimistic-lock missed the row: another staff member changed it.
+            // Re-read and reflect the real status instead of guessing.
+            $liveStatus = $this->supabase->find('orders', $orderId)['status'] ?? null;
+
+            if ($liveStatus === $next) {
+                return back()->with('success', 'Order status is already ' . $next . '.');
+            }
+
+            return back()->with('error', 'The order is now "' . ($liveStatus ?: 'unknown') . '". Please refresh and try again.');
         }
 
         $this->supabase->insert('order_notes', [
