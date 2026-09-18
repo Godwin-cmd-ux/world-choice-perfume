@@ -14,6 +14,14 @@
                 'status' => 'eq.pending',
             ]);
         } catch (\Throwable $e) {}
+
+        $sbPendingIncoming = 0;
+        try {
+            $sbPendingIncoming = (new \App\Services\SupabaseService())->count('stock_transfers', [
+                'to_branch_id' => 'eq.' . $smScope->activeBranchId(),
+                'status' => 'eq.in_transit',
+            ]);
+        } catch (\Throwable $e) {}
     @endphp
 
     {{-- Logo --}}
@@ -103,6 +111,25 @@
             <span>Bottle Accessories</span>
         </a>
         @endunless
+
+        <div class="pt-3 mt-3 border-t border-gray-700">
+            <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Transfers</p>
+        </div>
+
+        <a href="{{ route('stock-manager.stock-transfers.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.stock-transfers.index', 'stock-manager.stock-transfers.show', 'stock-manager.stock-transfers.create') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-arrow-right-arrow-left w-5 text-center"></i>
+            <span>Stock Transfers</span>
+        </a>
+
+        <a href="{{ route('stock-manager.stock-transfers.incoming') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.stock-transfers.incoming') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-inbox w-5 text-center"></i>
+            <span>Incoming Stock</span>
+            @if($sbPendingIncoming > 0)
+                <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingIncoming }}</span>
+            @endif
+        </a>
 
         <div class="pt-3 mt-3 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Tools</p>

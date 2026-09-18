@@ -110,6 +110,22 @@ class BottleStockService
     }
 
     /**
+     * Expand a variant bucket back into the box/logo/color attributes that
+     * bottle_stock stores, so a received transfer can rebuild the details.
+     */
+    public function variantDetails(string $variant): array
+    {
+        return match ($variant) {
+            self::VARIANT_BOX_LOGO_YELLOW => ['has_box' => 'yes', 'has_logo' => 'yes', 'logo_color' => 'yellow', 'box_color' => null],
+            self::VARIANT_BOX_LOGO_BLACK  => ['has_box' => 'yes', 'has_logo' => 'yes', 'logo_color' => 'black', 'box_color' => null],
+            self::VARIANT_BOX_NOLOGO_BLACK => ['has_box' => 'yes', 'has_logo' => 'no', 'logo_color' => null, 'box_color' => 'black'],
+            self::VARIANT_BOX_NOLOGO_WHITE => ['has_box' => 'yes', 'has_logo' => 'no', 'logo_color' => null, 'box_color' => 'white'],
+            self::VARIANT_NO_BOX => ['has_box' => 'no', 'has_logo' => null, 'logo_color' => null, 'box_color' => null],
+            default => ['has_box' => null, 'has_logo' => null, 'logo_color' => null, 'box_color' => null],
+        };
+    }
+
+    /**
      * Current bottle stock for every supported volume (volume in ml => quantity).
      */
     public function stockMap(int $branchId): array

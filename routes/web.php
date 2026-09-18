@@ -460,6 +460,15 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/bottle-accessories/movements', [$bac, 'movements'])->name('bottle-accessories.movements');
         });
 
+        // Stock Transfers (multi-branch; Head Quarters only handles Product Stock)
+        $stc = \App\Http\Controllers\StockManager\StockTransferController::class;
+        Route::get('/stock-transfers', [$stc, 'index'])->name('stock-transfers.index');
+        Route::get('/stock-transfers/create', [$stc, 'create'])->name('stock-transfers.create');
+        Route::post('/stock-transfers', [$stc, 'store'])->name('stock-transfers.store');
+        Route::get('/stock-transfers/incoming', [$stc, 'incoming'])->name('stock-transfers.incoming');
+        Route::post('/stock-transfers/items/{item}/receive', [$stc, 'receiveItem'])->name('stock-transfers.receive-item');
+        Route::get('/stock-transfers/{transfer}', [$stc, 'show'])->name('stock-transfers.show');
+
         // QR Code
         Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');
 

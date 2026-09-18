@@ -90,7 +90,7 @@
                 </p>
                 @if(isset($bottleVariantsBranchName))
                     <p class="mt-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
-                        <i class="fas fa-truck mr-1"></i>Bottle stock shown here belongs to the <strong>{{ $bottleVariantsBranchName }}</strong> — your entry will be out-stocked from that branch.
+                        <i class="fas fa-truck mr-1"></i>Bottle availability shown here is from the <strong>{{ $bottleVariantsBranchName }}</strong> bottle stock — this entry will be out-stocked from that stock.
                     </p>
                 @endif
                 @error('bottle_variant')

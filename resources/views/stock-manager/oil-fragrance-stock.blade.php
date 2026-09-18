@@ -10,6 +10,9 @@
         <a href="{{ route('stock-manager.oil-fragrance-stock-out') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-arrow-right mr-1"></i> Stock Out
         </a>
+        <a href="{{ route('stock-manager.stock-transfers.create', ['type' => 'oil_fragrance']) }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-arrow-right-arrow-left mr-1"></i> Transfer Stock
+        </a>
     @endif
     <a href="{{ route('stock-manager.oil-fragrance-movements') }}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-history mr-1"></i> History

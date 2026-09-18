@@ -18,6 +18,9 @@
         <a href="{{ route('stock-manager.product-stock.entry') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
             <i class="fas fa-plus mr-1"></i> Add Stock
         </a>
+        <a href="{{ route('stock-manager.stock-transfers.create', ['type' => 'product']) }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium mr-2">
+            <i class="fas fa-arrow-right-arrow-left mr-1"></i> Transfer Stock
+        </a>
     @endif
     <a href="{{ route('stock-manager.product-stock-movements') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-exchange-alt mr-1"></i> Movements
