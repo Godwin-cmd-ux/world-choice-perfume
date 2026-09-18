@@ -65,7 +65,7 @@ class OrderController extends Controller
     public function show($orderId)
     {
         $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address), notes:order_notes(*)');
-        if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
+        if (!$order || (int) ($order['branch_id'] ?? 0) !== $this->scope->activeBranchId()) {
             abort(404);
         }
 

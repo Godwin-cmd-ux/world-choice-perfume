@@ -3,6 +3,7 @@
 @section('header', 'Sale Receipt')
 
 @section('content')
+@include('cashier.partials.cross-branch-banner')
 <div class="max-w-lg mx-auto">
     <div class="bg-white rounded-xl shadow p-6" id="receipt">
         <div class="text-center mb-6">

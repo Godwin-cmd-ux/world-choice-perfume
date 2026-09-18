@@ -4,6 +4,7 @@
 
 
 @section('content')
+@include('cashier.partials.cross-branch-banner')
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <p class="text-sm text-gray-500">Total Expenses: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
 </div>
@@ -23,9 +24,11 @@
             <a href="{{ route('cashier.expenses.index') }}" class="text-gray-500 text-sm px-3 py-2">Clear</a>
         @endif
     </form>
-    <a href="{{ route('cashier.expenses.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
-        <i class="fas fa-plus mr-1"></i> Record Expense
-    </a>
+    @unless($inCrossBranch)
+        <a href="{{ route('cashier.expenses.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i> Record Expense
+        </a>
+    @endunless
 </div>
 
 <div class="bg-white rounded-xl shadow overflow-hidden">

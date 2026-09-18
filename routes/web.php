@@ -278,11 +278,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     // CASHIER ROUTES
     // ========================
-    Route::prefix('cashier')->name('cashier.')->middleware('role:cashier')->group(function () {
+    Route::prefix('cashier')->name('cashier.')->middleware('role:cashier,super_admin', 'cashier-cross-branch.readonly')->group(function () {
         $cc = \App\Http\Controllers\Cashier\CashierController::class;
 
-        // Cross-Branch Monitoring (HQ cashier only)
-        Route::middleware('cashier-cross-branch.access', 'cashier-cross-branch.readonly')->group(function () use ($cc) {
+        // Cross-Branch Monitoring (HQ cashier / Super Admin only)
+        Route::middleware('cashier-cross-branch.access')->group(function () use ($cc) {
             Route::get('/cross-branch', [$cc, 'crossBranchDashboard'])->name('cross-branch');
             Route::get('/cross-branch/exit', [$cc, 'exitCrossBranch'])->name('cross-branch.exit');
             Route::get('/cross-branch/{branch}', [$cc, 'enterCrossBranch'])->name('cross-branch.enter');

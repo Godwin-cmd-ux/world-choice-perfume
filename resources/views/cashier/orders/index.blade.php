@@ -3,6 +3,7 @@
 @section('header', 'Orders')
 
 @section('content')
+@include('cashier.partials.cross-branch-banner')
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -27,6 +28,7 @@
                         </td>
                         <td class="px-4 text-center">
                             <a href="{{ route('cashier.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
+                            @unless($inCrossBranch)
                             @if($order->status === 'pending')
                                 <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-600 hover:underline font-medium"><i class="fas fa-hand-pointer mr-1"></i>Pick</button>
@@ -47,6 +49,7 @@
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-700 hover:underline font-bold"><i class="fas fa-hand-holding mr-1"></i>Served</button>
                                 </form>
                             @endif
+                            @endunless
                         </td>
                     </tr>
                 @empty

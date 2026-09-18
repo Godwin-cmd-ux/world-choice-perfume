@@ -76,6 +76,11 @@ class SaleController extends Controller
 
     public function create()
     {
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('cashier.sales.index')
+                ->with('error', 'Sales cannot be made while monitoring another branch. Exit the branch to record a sale.');
+        }
+
         $branchId = auth()->user()->branch_id;
 
         $rawStock = $this->supabase->query('branch_stock', [
@@ -439,9 +444,18 @@ class SaleController extends Controller
     {
         $user = auth()->user();
         $supabaseUserId = $user->supabase_id ?? $user->id;
+        $inCrossBranch = $this->scope->inCrossBranchMode();
 
         $sale = $this->supabase->find('sales', $saleId, '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(*), cashier:users(id,name), branch:branches(id,name,address)');
-        if (!$sale || $sale['cashier_id'] != $supabaseUserId) {
+        if (!$sale) {
+            abort(404);
+        }
+
+        if ($inCrossBranch) {
+            if ((int) ($sale['branch_id'] ?? 0) !== $this->scope->activeBranchId()) {
+                abort(403);
+            }
+        } elseif ($sale['cashier_id'] != $supabaseUserId) {
             abort(403);
         }
 
@@ -455,6 +469,9 @@ class SaleController extends Controller
             });
         }
 
-        return view('cashier.sales.show', ['sale' => (object) $sale]);
+        return view('cashier.sales.show', ['sale' => (object) $sale] + [
+            'inCrossBranch' => $inCrossBranch,
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
     }
 }

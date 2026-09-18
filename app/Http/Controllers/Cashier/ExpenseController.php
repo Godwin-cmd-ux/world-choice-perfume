@@ -67,6 +67,11 @@ class ExpenseController extends Controller
      */
     public function create()
     {
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('cashier.expenses.index')
+                ->with('error', 'Expenses cannot be recorded while monitoring another branch. Exit the branch to make changes.');
+        }
+
         return view('cashier.expenses.create');
     }
 

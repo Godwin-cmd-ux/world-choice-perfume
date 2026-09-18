@@ -40,6 +40,11 @@
             <i class="fas fa-warehouse w-5 text-center"></i>
             <span>Cross-Branch Stock</span>
         </a>
+        <a href="{{ route('cashier.cross-branch') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.cross-branch*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-cash-register w-5 text-center"></i>
+            <span>Cross-Branch Sales</span>
+        </a>
         <a href="{{ route('super-admin.cashiers.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.cashiers.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-user-check w-5 text-center"></i>

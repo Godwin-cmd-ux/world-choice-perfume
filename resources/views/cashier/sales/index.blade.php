@@ -2,10 +2,13 @@
 @section('title', 'My Sales')
 @section('header', 'My Sales')
 @section('header-actions')
-    <a href="{{ route('cashier.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
+    @unless($inCrossBranch)
+        <a href="{{ route('cashier.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
+    @endunless
 @endsection
 
 @section('content')
+@include('cashier.partials.cross-branch-banner')
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
