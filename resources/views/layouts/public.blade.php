@@ -342,12 +342,7 @@
                 </form>
 
                 <div class="mt-4 space-y-2">
-                    <p class="text-xs text-gray-500">Don't have an account?</p>
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <a href="{{ route('register.stock-manager') }}" class="text-xs text-emerald-400 hover:text-emerald-300 transition">
-                            <i class="fas fa-user-plus mr-1"></i> Register as Stock Manager
-                        </a>
-                    </div>
+                    <p class="text-xs text-gray-500">After verification you can register staff accounts from the login page.</p>
                 </div>
                 <button onclick="document.getElementById('staffLoginModal').classList.add('hidden')" class="mt-4 text-sm text-gray-500 hover:text-gray-300 transition">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Home
