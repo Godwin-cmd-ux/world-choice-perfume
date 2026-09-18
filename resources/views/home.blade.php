@@ -2,6 +2,28 @@
 
 @section('title', 'World Choice Perfume — Authentic & Premium Fragrances')
 
+@push('styles')
+<style>
+    .cat-slideshow img.cat-slide {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        transform: scale(1.05);
+        transition: opacity 0.9s ease, transform 2.5s linear;
+        will-change: opacity;
+    }
+    .cat-slideshow img.cat-slide.cat-active {
+        opacity: 1;
+    }
+    .group:hover .cat-slideshow img.cat-slide.cat-active {
+        transform: scale(1.12);
+    }
+</style>
+@endpush
+
 @section('content')
 <!-- Hero Section -->
 <section class="hero-gradient relative min-h-screen flex items-center overflow-hidden">
@@ -127,6 +149,13 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 scroll-hidden">
             <a href="{{ route('customer.products.index', ['sex_category' => 'male']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                @if($categoryImages['male']->count())
+                    <div class="cat-slideshow absolute inset-0">
+                        @foreach($categoryImages['male'] as $imgUrl)
+                            <img src="{{ $imgUrl }}" alt="Men's fragrance" loading="lazy" decoding="async" class="cat-slide">
+                        @endforeach
+                    </div>
+                @endif
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -142,6 +171,13 @@
             </a>
 
             <a href="{{ route('customer.products.index', ['sex_category' => 'female']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                @if($categoryImages['female']->count())
+                    <div class="cat-slideshow absolute inset-0">
+                        @foreach($categoryImages['female'] as $imgUrl)
+                            <img src="{{ $imgUrl }}" alt="Women's fragrance" loading="lazy" decoding="async" class="cat-slide">
+                        @endforeach
+                    </div>
+                @endif
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-pink-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -157,6 +193,13 @@
             </a>
 
             <a href="{{ route('customer.products.index', ['sex_category' => 'unisex']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                @if($categoryImages['unisex']->count())
+                    <div class="cat-slideshow absolute inset-0">
+                        @foreach($categoryImages['unisex'] as $imgUrl)
+                            <img src="{{ $imgUrl }}" alt="Unisex fragrance" loading="lazy" decoding="async" class="cat-slide">
+                        @endforeach
+                    </div>
+                @endif
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -172,6 +215,13 @@
             </a>
 
             <a href="{{ route('customer.products.index', ['sex_category' => 'gift sets']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                @if($categoryImages['gift sets']->count())
+                    <div class="cat-slideshow absolute inset-0">
+                        @foreach($categoryImages['gift sets'] as $imgUrl)
+                            <img src="{{ $imgUrl }}" alt="Gift sets" loading="lazy" decoding="async" class="cat-slide">
+                        @endforeach
+                    </div>
+                @endif
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-gold-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -187,6 +237,13 @@
             </a>
 
             <a href="{{ route('customer.products.index', ['sex_category' => 'accessories']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
+                @if($categoryImages['accessories']->count())
+                    <div class="cat-slideshow absolute inset-0">
+                        @foreach($categoryImages['accessories'] as $imgUrl)
+                            <img src="{{ $imgUrl }}" alt="Accessories" loading="lazy" decoding="async" class="cat-slide">
+                        @endforeach
+                    </div>
+                @endif
                 <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
                 <div class="absolute inset-0 bg-gradient-to-br from-teal-900/20 to-dark-800"></div>
                 <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -524,5 +581,24 @@
     }, { threshold: 0.1 });
 
     document.querySelectorAll('.scroll-hidden').forEach(el => observer.observe(el));
+</script>
+
+<script>
+    // Category card background slideshows — crossfade every product image,
+    // one at a time, cycling forever.
+    document.querySelectorAll('.cat-slideshow').forEach(function (box) {
+        var imgs = Array.prototype.slice.call(box.querySelectorAll('img'));
+        if (imgs.length < 2) {
+            imgs[0] && imgs[0].classList.add('cat-active');
+            return;
+        }
+        var idx = 0;
+        imgs[idx].classList.add('cat-active');
+        setInterval(function () {
+            imgs[idx].classList.remove('cat-active');
+            idx = (idx + 1) % imgs.length;
+            imgs[idx].classList.add('cat-active');
+        }, 4000);
+    });
 </script>
 @endpush

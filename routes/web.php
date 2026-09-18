@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Route;
 // PUBLIC / CUSTOMER ROUTES
 // ========================
 Route::get('/', function() {
+    $categoryImages = [];
+    foreach (['male', 'female', 'unisex', 'gift sets', 'accessories'] as $cat) {
+        $categoryImages[$cat] = collect();
+    }
     try {
         $supabase = new \App\Services\SupabaseService();
         $branches = collect($supabase->query('branches', [
@@ -22,11 +26,27 @@ Route::get('/', function() {
             'order' => 'created_at.desc',
             'limit' => 6,
         ]))->map(fn($r) => (object) $r);
+
+        // Product images per sex category, for the category-card slideshows
+        $categoryProducts = collect($supabase->query('products', [
+            'select' => 'sex_category,images:product_images(*)',
+            'is_active' => 'eq.true',
+            'order' => 'created_at.desc',
+        ]));
+        foreach ($categoryProducts as $p) {
+            $cat = strtolower(trim($p['sex_category'] ?? ''));
+            if (!isset($categoryImages[$cat])) continue;
+            foreach ($p['images'] ?? [] as $img) {
+                if (!empty($img['image_url'])) {
+                    $categoryImages[$cat]->push($img['image_url']);
+                }
+            }
+        }
     } catch (\Exception $e) {
         $branches = collect();
         $remarks = collect();
     }
-    return view('home', compact('branches', 'remarks'));
+    return view('home', compact('branches', 'remarks', 'categoryImages'));
 })->name('home');
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
