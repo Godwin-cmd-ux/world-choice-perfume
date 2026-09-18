@@ -31,6 +31,15 @@
                 @if(request('sex_category'))
                     <input type="hidden" name="sex_category" value="{{ request('sex_category') }}">
                 @endif
+                @if(request('category'))
+                    <input type="hidden" name="category" value="{{ request('category') }}">
+                @endif
+                @if(request('fundamental_ingredient'))
+                    <input type="hidden" name="fundamental_ingredient" value="{{ request('fundamental_ingredient') }}">
+                @endif
+                @if(request('brand'))
+                    <input type="hidden" name="brand" value="{{ request('brand') }}">
+                @endif
                 <div class="relative">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name, brand, or category..."
                         class="w-full pl-12 pr-4 py-3 bg-dark-800 border border-dark-600 rounded-xl text-white placeholder-gray-500 focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30 transition outline-none">
@@ -98,8 +107,65 @@
                         </div>
                     </div>
 
+                    <!-- Product Type Filter -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
+                            <i class="fas fa-tag mr-2"></i> Product Type
+                        </h3>
+                        <div class="space-y-1">
+                            <a href="{{ route('customer.products.index', request()->except('category')) }}"
+                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('category') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                All Types
+                            </a>
+                            @foreach(['Oil Fragrance' => 'Oil Fragrance', 'Brand Perfume' => 'Brand Perfume'] as $value => $label)
+                                <a href="{{ route('customer.products.index', array_merge(request()->except('category'), ['category' => $value])) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    {{ $label }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Fundamental Ingredient Filter -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
+                            <i class="fas fa-flask mr-2"></i> Scent Family
+                        </h3>
+                        <div class="space-y-1">
+                            <a href="{{ route('customer.products.index', request()->except('fundamental_ingredient')) }}"
+                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('fundamental_ingredient') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                All Scent Families
+                            </a>
+                            @foreach(['Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic'] as $ingredient)
+                                <a href="{{ route('customer.products.index', array_merge(request()->except('fundamental_ingredient'), ['fundamental_ingredient' => $ingredient])) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('fundamental_ingredient') === $ingredient ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    {{ $ingredient }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Brand Filter -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
+                            <i class="fas fa-crown mr-2"></i> Brand
+                        </h3>
+                        <div class="space-y-1">
+                            <a href="{{ route('customer.products.index', request()->except('brand')) }}"
+                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('brand') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                All Brands
+                            </a>
+                            @foreach($availableBrands as $brandName)
+                                <a href="{{ route('customer.products.index', array_merge(request()->except('brand'), ['brand' => $brandName])) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('brand') === $brandName ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    {{ $brandName }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <!-- Clear Filters -->
-                    @if(request()->hasAny(['branch_id', 'sex_category', 'search']))
+                    @if(request()->hasAny(['branch_id', 'sex_category', 'search', 'category', 'fundamental_ingredient', 'brand']))
                         <a href="{{ route('customer.products.index') }}" class="block w-full text-center px-4 py-3 rounded-xl border border-dark-600 text-gray-400 hover:text-white hover:border-gray-500 transition text-sm">
                             <i class="fas fa-times mr-1"></i> Clear All Filters
                         </a>

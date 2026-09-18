@@ -27,10 +27,19 @@ class ProductController extends Controller
         // Full active product catalogue (independent of stock) — so out-of-stock
         // products still appear on the shop.
         $allProducts = $this->supabase->query('products', [
-            'select' => 'id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*)',
+            'select' => 'id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*)',
             'is_active' => 'eq.true',
             'order' => 'created_at.desc',
         ]);
+
+        // Distinct brands across the catalogue for the "Brand" shop filter.
+        $availableBrands = collect($allProducts)
+            ->pluck('brand')
+            ->filter(fn($b) => !empty($b))
+            ->unique()
+            ->sortBy(fn($b) => strtolower($b))
+            ->values()
+            ->all();
 
         $products = collect();
         $selectedBranch = null;
@@ -46,7 +55,7 @@ class ProductController extends Controller
             if ($selectedBranch) {
                 // All stock rows at this branch (including 0 quantity)
                 $rawStock = $this->supabase->query('branch_stock', [
-                    'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*))',
+                    'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*))',
                     'branch_id' => "eq.{$selectedBranch->id}",
                     'order' => 'created_at.desc',
                 ]);
@@ -75,7 +84,7 @@ class ProductController extends Controller
             $showAllBranches = true;
 
             $rawStock = $this->supabase->query('branch_stock', [
-                'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*))',
+                'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*))',
                 'order' => 'created_at.desc',
             ]);
 
@@ -105,13 +114,13 @@ class ProductController extends Controller
             $products = $this->applyFilters($stockCollection, $request);
         }
 
-        return view('customer.products.index', compact('branches', 'products', 'selectedBranch'));
+        return view('customer.products.index', compact('branches', 'products', 'selectedBranch', 'availableBrands'));
     }
 
     public function show(string $productId, Request $request)
     {
         // Fetch product from Supabase (unit cost columns excluded — internal only)
-        $product = $this->supabase->find('products', $productId, 'id,name,description,brand,category,sex_category,is_active,created_at,updated_at,images:product_images(*)');
+        $product = $this->supabase->find('products', $productId, 'id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*)');
 
         if (!$product) {
             abort(404);
@@ -197,6 +206,23 @@ class ProductController extends Controller
             $category = $request->category;
             $stockCollection = $stockCollection->filter(function ($item) use ($category) {
                 return ($item['product']['category'] ?? '') === $category;
+            });
+        }
+
+        // Fundamental ingredient filter (Floral, Fresh/Citrus, Wood, Amber/Spicy,
+        // Fruity, Oud, Gourmand, Aromatic)
+        if ($request->fundamental_ingredient) {
+            $ingredient = $request->fundamental_ingredient;
+            $stockCollection = $stockCollection->filter(function ($item) use ($ingredient) {
+                return ($item['product']['fundamental_ingredient'] ?? null) === $ingredient;
+            });
+        }
+
+        // Brand filter (e.g. Gucci, Dior, Lattafa)
+        if ($request->brand) {
+            $brand = strtolower($request->brand);
+            $stockCollection = $stockCollection->filter(function ($item) use ($brand) {
+                return strtolower((string) ($item['product']['brand'] ?? '')) === $brand;
             });
         }
 
