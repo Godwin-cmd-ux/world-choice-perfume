@@ -20,6 +20,18 @@ class ProductController extends Controller
         $this->supabase = new SupabaseService();
     }
 
+    /**
+     * All brand names registered in the brands table (managed by the graphic
+     * designer). Product entry/edit is limited to these brands.
+     */
+    private function registeredBrandNames(): array
+    {
+        return collect($this->supabase->query('brands', [
+            'select' => 'name',
+            'order' => 'name.asc',
+        ]))->pluck('name')->all();
+    }
+
     public function index(Request $request)
     {
         $params = [
@@ -58,19 +70,23 @@ class ProductController extends Controller
 
     public function create()
     {
-        return view('stock-manager.products.create');
+        return view('stock-manager.products.create', ['brands' => $this->registeredBrandNames()]);
     }
 
     public function store(Request $request)
     {
+        $brands = $this->registeredBrandNames();
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'brand' => 'nullable|string|max:255',
+            'brand' => ['nullable', \Illuminate\Validation\Rule::in($brands)],
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
             'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'images.*' => 'nullable|image|max:4096',
+        ], [
+            'brand.in' => 'The selected brand is not registered. Brands are added by the graphic designer.',
         ]);
 
         $category = $validated['category'];
@@ -135,20 +151,40 @@ class ProductController extends Controller
             $product['images'] = collect($product['images'])->map(fn ($img) => (object) $img);
         }
 
-        return view('stock-manager.products.edit', ['product' => (object) $product]);
+        // Always include the product's current brand even if it isn't in the
+        // registered list (e.g. a brand removed by the graphic designer), so
+        // the dropdown never loses the existing value.
+        $brands = $this->registeredBrandNames();
+        $currentBrand = trim((string) ($product['brand'] ?? ''));
+        if ($currentBrand !== '' && !in_array($currentBrand, $brands, true)) {
+            $brands[] = $currentBrand;
+        }
+
+        return view('stock-manager.products.edit', ['product' => (object) $product, 'brands' => $brands]);
     }
 
     public function update(Request $request, $productId)
     {
+        $currentProduct = $this->supabase->find('products', $productId);
+        if (!$currentProduct) abort(404);
+
+        $brands = $this->registeredBrandNames();
+        $currentBrand = trim((string) ($currentProduct['brand'] ?? ''));
+        if ($currentBrand !== '' && !in_array($currentBrand, $brands, true)) {
+            $brands[] = $currentBrand;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'brand' => 'nullable|string|max:255',
+            'brand' => ['nullable', \Illuminate\Validation\Rule::in($brands)],
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
             'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:4096',
+        ], [
+            'brand.in' => 'The selected brand is not registered. Brands are added by the graphic designer.',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

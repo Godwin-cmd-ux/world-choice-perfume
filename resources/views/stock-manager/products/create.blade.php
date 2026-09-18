@@ -24,10 +24,15 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Brand <span class="text-gray-400 font-normal">(optional)</span></label>
-                    <input type="text" name="brand" value="{{ old('brand') }}"
-                        placeholder="Leave blank if not applicable"
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    <p class="text-[11px] text-gray-400 mt-1">You can add or update the brand later when editing the product.</p>
+                    <select name="brand"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 @error('brand') border-red-500 @enderror">
+                        <option value="">No brand</option>
+                        @foreach($brands as $brandName)
+                            <option value="{{ $brandName }}" {{ old('brand') === $brandName ? 'selected' : '' }}>{{ $brandName }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">Limited to brands registered by the graphic designer. If your brand is missing, ask the graphic designer to add it.</p>
+                    @error('brand') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>

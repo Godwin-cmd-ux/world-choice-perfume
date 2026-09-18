@@ -262,7 +262,7 @@
 </section>
 
 <!-- Featured Brands -->
-<section class="py-20 bg-dark-900/50">
+<section id="brands-home" class="py-20 bg-dark-900/50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16 scroll-hidden">
             <span class="text-xs font-semibold tracking-[0.3em] uppercase text-gold-400/60">World-Class Houses</span>
@@ -271,16 +271,37 @@
             </h2>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 scroll-hidden">
-            @foreach(['Chanel', 'Dior', 'Versace', 'YSL', 'Tom Ford', 'Creed', 'Gucci', 'Lancôme', 'Paco Rabanne', 'Byredo', 'Le Labo', 'Armani'] as $brand)
-                <a href="{{ route('customer.products.index', ['search' => $brand]) }}" class="group bg-dark-800/50 border border-dark-600 rounded-xl p-6 text-center hover:border-gold-500/30 hover:bg-dark-800 transition-all duration-300">
-                    <div class="w-14 h-14 mx-auto rounded-full bg-dark-700 group-hover:bg-gold-500/10 flex items-center justify-center mb-3 transition-all">
-                        <span class="font-display text-lg font-bold text-gray-400 group-hover:text-gold-400 transition">{{ strtoupper(substr($brand, 0, 2)) }}</span>
-                    </div>
-                    <p class="text-sm font-medium text-gray-300 group-hover:text-gold-400 transition">{{ $brand }}</p>
+        @if($featuredBrands->count() > 0)
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 scroll-hidden">
+                @foreach($featuredBrands->take(12) as $brand)
+                    <a href="{{ route('customer.products.index', ['brand' => $brand->name]) }}" class="group bg-dark-800/50 border border-dark-600 rounded-xl overflow-hidden hover:border-gold-500/30 hover:bg-dark-800 transition-all duration-300 text-center">
+                        @if($brand->logo_url)
+                            <div class="h-24 flex items-center justify-center px-4 pt-6">
+                                <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" loading="lazy" class="max-h-18 max-w-full object-contain" style="max-height: 4.5rem;">
+                            </div>
+                        @else
+                            <div class="w-14 h-14 mx-auto rounded-full bg-dark-700 group-hover:bg-gold-500/10 flex items-center justify-center mt-6 transition-all">
+                                <span class="font-display text-lg font-bold text-gray-400 group-hover:text-gold-400 transition">{{ strtoupper(substr($brand->name, 0, 2)) }}</span>
+                            </div>
+                        @endif
+                        <p class="text-sm font-medium text-gray-300 group-hover:text-gold-400 transition py-5">{{ $brand->name }}</p>
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="text-center mt-12 scroll-hidden">
+                <a href="{{ route('customer.brands') }}" class="inline-flex items-center gap-2 px-8 py-3.5 border border-gold-500/30 text-gold-400 font-semibold rounded-xl hover:bg-gold-500/10 transition-all duration-300">
+                    View All Brands <i class="fas fa-arrow-right text-sm"></i>
                 </a>
-            @endforeach
-        </div>
+            </div>
+        @else
+            <div class="text-center py-12 scroll-hidden">
+                <div class="w-16 h-16 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-crown text-gray-500 text-xl"></i>
+                </div>
+                <p class="text-gray-500">Brands are being added. Check back soon!</p>
+            </div>
+        @endif
     </div>
 </section>
 

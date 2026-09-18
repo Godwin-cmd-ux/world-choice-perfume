@@ -27,6 +27,14 @@ Route::get('/', function() {
             'limit' => 6,
         ]))->map(fn($r) => (object) $r);
 
+        // Featured brands — the first 12 active brands (2 rows of 6)
+        $featuredBrands = collect($supabase->query('brands', [
+            'select' => 'id,name,logo_url',
+            'is_active' => 'eq.true',
+            'order' => 'name.asc',
+            'limit' => 12,
+        ]))->map(fn($b) => (object) $b);
+
         // Product images per sex category, for the category-card slideshows
         $categoryProducts = collect($supabase->query('products', [
             'select' => 'sex_category,images:product_images(*)',
@@ -45,9 +53,24 @@ Route::get('/', function() {
     } catch (\Exception $e) {
         $branches = collect();
         $remarks = collect();
+        $featuredBrands = collect();
     }
-    return view('home', compact('branches', 'remarks', 'categoryImages'));
+    return view('home', compact('branches', 'remarks', 'categoryImages', 'featuredBrands'));
 })->name('home');
+Route::get('/brands', function() {
+    $brands = [];
+    try {
+        $supabase = new \App\Services\SupabaseService();
+        $brands = collect($supabase->query('brands', [
+            'select' => 'id,name,logo_url',
+            'is_active' => 'eq.true',
+            'order' => 'name.asc',
+        ]))->map(fn($b) => (object) $b);
+    } catch (\Exception $e) {
+        $brands = collect();
+    }
+    return view('customer.brands', compact('brands'));
+})->name('customer.brands');
 Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
 Route::get('/news', [\App\Http\Controllers\Customer\NewsController::class, 'index'])->name('customer.news');
@@ -360,6 +383,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // ========================
     Route::prefix('graphic-designer')->name('graphic-designer.')->middleware('role:graphic_designer')->group(function () {
         $gdn = \App\Http\Controllers\GraphicDesigner\NewsController::class;
+        $gbc = \App\Http\Controllers\GraphicDesigner\BrandsController::class;
 
         // News dashboard
         Route::get('/dashboard', [\App\Http\Controllers\GraphicDesigner\DashboardController::class, 'dashboard'])->name('dashboard');
@@ -371,6 +395,14 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/news/{post}/edit', [$gdn, 'edit'])->name('news.edit');
         Route::put('/news/{post}', [$gdn, 'update'])->name('news.update');
         Route::delete('/news/{post}', [$gdn, 'destroy'])->name('news.destroy');
+
+        // Brands
+        Route::get('/brands', [$gbc, 'index'])->name('brands.index');
+        Route::get('/brands/create', [$gbc, 'create'])->name('brands.create');
+        Route::post('/brands', [$gbc, 'store'])->name('brands.store');
+        Route::get('/brands/{brand}/edit', [$gbc, 'edit'])->name('brands.edit');
+        Route::put('/brands/{brand}', [$gbc, 'update'])->name('brands.update');
+        Route::delete('/brands/{brand}', [$gbc, 'destroy'])->name('brands.destroy');
     });
 
     // ========================

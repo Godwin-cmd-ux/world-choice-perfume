@@ -477,6 +477,9 @@ class SupabaseService
             'company_settings' => [
                 'key','value','updated_at',
             ],
+            'brands' => [
+                'name','logo_url','is_active','created_by','created_at','updated_at',
+            ],
         ];
 
         $cols = $allowlists[$table] ?? [];
