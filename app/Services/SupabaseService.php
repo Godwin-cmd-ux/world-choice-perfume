@@ -16,6 +16,9 @@ class SupabaseService
     /** @var array Request-level cache to avoid duplicate queries within one request */
     private static array $queryCache = [];
 
+    /** @var string|null Last failed update/insert error body, for surfacing to the UI */
+    private ?string $lastErrorMessage = null;
+
     /** @var array Pending concurrent requests for batch execution */
     private array $pendingRequests = [];
 
@@ -316,6 +319,7 @@ class SupabaseService
         try {
             $response = $this->request()->patch("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams), $data);
         } catch (\Exception $e) {
+            $this->lastErrorMessage = $e->getMessage();
             Log::error("Supabase update failed for table {$table}: " . $e->getMessage());
             return [];
         }
@@ -323,11 +327,20 @@ class SupabaseService
         $this->invalidateCache($table);
 
         if ($response->failed()) {
+            $this->lastErrorMessage = $response->body();
             Log::warning("Supabase update error for table {$table}: " . $response->body());
             return [];
         }
 
         return $response->json() ?? [];
+    }
+
+    /**
+     * The reason the most recent update/insert/query failed, if any.
+     */
+    public function lastErrorMessage(): ?string
+    {
+        return $this->lastErrorMessage;
     }
 
     public function updateOrFail(string $table, array|object $data, array $conditions): array

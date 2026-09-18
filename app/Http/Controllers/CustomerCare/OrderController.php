@@ -131,7 +131,9 @@ class OrderController extends Controller
                 return back()->with('success', 'Order status is already ' . $next . '.');
             }
 
-            return back()->with('error', 'The order is now "' . ($liveStatus ?: 'unknown') . '". Please refresh and try again.');
+            $reason = $this->supabase->lastErrorMessage();
+            $detail = $reason ? ' (' . $reason . ')' : '';
+            return back()->with('error', 'The order is now "' . ($liveStatus ?: 'unknown') . '". Please refresh and try again.' . $detail);
         }
 
         $this->supabase->insert('order_notes', [
