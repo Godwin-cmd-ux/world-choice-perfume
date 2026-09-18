@@ -115,6 +115,23 @@ class StockManagerScope
         return $name !== null && $this->matches($name, self::HQ_BRANCH_NAME);
     }
 
+    /**
+     * Branch id of the Kinondoni branch — the depot whose empty bottles the
+     * Head Quarters stock manager uses to bottle oil fragrances.
+     */
+    public function kinondoniBranchId(): ?int
+    {
+        $rows = $this->supabase->query('branches', [
+            'select' => 'id,name',
+            'name' => 'eq.' . self::KINONDONI_BRANCH_NAME,
+            'limit' => 1,
+        ]);
+
+        $id = (int) ($rows[0]['id'] ?? 0);
+
+        return $id > 0 ? $id : null;
+    }
+
     // ========================
     // Cross-branch context
     // ========================

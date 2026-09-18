@@ -22,6 +22,21 @@ class StockManagerController extends Controller
         $this->scope = new StockManagerScope($this->supabase);
     }
 
+    /**
+     * Branch whose empty bottles are consumed when bottling oil fragrance
+     * entries. Head Quarters formats oil fragrances with the Kinondoni
+     * branch's bottles, so the availability check, the on-screen quantities
+     * and the stock-out all happen against Kinondoni for HQ managers.
+     */
+    private function bottleSourceBranchId(int $ownBranchId): int
+    {
+        if ($this->scope->isHQStockManager()) {
+            return (int) ($this->scope->kinondoniBranchId() ?? $ownBranchId);
+        }
+
+        return $ownBranchId;
+    }
+
     // ========================
     // DASHBOARD
     // ========================
@@ -312,9 +327,15 @@ class StockManagerController extends Controller
             'order' => 'name.asc',
         ]);
 
+        // Head Quarters stock manager bottles oil fragrances using the
+        // Kinondoni branch's bottle stock, so the variety dropdown must reflect
+        // Kinondoni's availability — not HQ's (HQ holds no bottles anymore).
+        $bottleBranchId = $this->bottleSourceBranchId(auth()->user()->branch_id);
+
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
-            'bottleVariants' => $this->bottles->variantStock(auth()->user()->branch_id),
+            'bottleVariants' => $this->bottles->variantStock($bottleBranchId),
+            'bottleVariantsBranchName' => $this->scope->branchName($bottleBranchId),
         ]);
     }
 
@@ -332,6 +353,10 @@ class StockManagerController extends Controller
             $branchId = auth()->user()->branch_id;
             $category = $validated['category'];
             $bottleVolume = $validated['bottle_volume'] ?? null;
+
+            // Empty bottles are sourced from the Kinondoni branch for HQ, so
+            // availability + stock-out follow that branch.
+            $bottleSourceBranchId = $this->bottleSourceBranchId($branchId);
 
         // Oil fragrance entries consume empty bottles: require the volume and
         // make sure enough of that volume is in stock before recording the entry.
@@ -354,7 +379,7 @@ class StockManagerController extends Controller
                 $variant = 'plain';
             }
 
-            $variantStock = $this->bottles->variantStock($branchId);
+            $variantStock = $this->bottles->variantStock($bottleSourceBranchId);
             $available = $variantStock[$bottleVolume][$variant] ?? 0;
 
             if ($available < $validated['quantity']) {
@@ -419,13 +444,19 @@ class StockManagerController extends Controller
         ]);
 
         // Auto-outstock empty bottles used to bottle the oil fragrance entry,
-        // from the exact variety bucket chosen on the form.
+        // from the exact variety bucket chosen on the form. HQ deductions are
+        // taken from the Kinondoni branch stock they were drawn from.
         if ($category === 'Oil Fragrance' && $bottleVolume) {
+            $bottleReason = 'Auto outstock for oil fragrance stock entry';
+            if ($bottleSourceBranchId !== $branchId) {
+                $bottleSourceName = $this->scope->branchName($bottleSourceBranchId);
+                $bottleReason .= " (from {$bottleSourceName} branch)";
+            }
             $this->bottles->deduct(
-                $branchId,
+                $bottleSourceBranchId,
                 $bottleVolume,
                 (int) $validated['quantity'],
-                'Auto outstock for oil fragrance stock entry',
+                $bottleReason,
                 (string) $this->performingUserId(),
                 $variant
             );

@@ -88,6 +88,11 @@
                 <p class="text-[11px] text-gray-400 mt-1">
                     <i class="fas fa-info-circle mr-1"></i>The quantity is deducted from the exact variety you pick (box / logo / color).
                 </p>
+                @if(isset($bottleVariantsBranchName))
+                    <p class="mt-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
+                        <i class="fas fa-truck mr-1"></i>Bottle stock shown here belongs to the <strong>{{ $bottleVariantsBranchName }}</strong> — your entry will be out-stocked from that branch.
+                    </p>
+                @endif
                 @error('bottle_variant')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                 @enderror
