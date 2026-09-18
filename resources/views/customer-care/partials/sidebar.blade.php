@@ -1,4 +1,13 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
+    @php
+        $sbPendingOrders = 0;
+        try {
+            $sbPendingOrders = (new \App\Services\SupabaseService())->count('orders', [
+                'branch_id' => 'eq.' . (auth()->user()->branch_id ?? 0),
+                'status' => 'eq.pending',
+            ]);
+        } catch (\Throwable $e) {}
+    @endphp
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('customer-care.dashboard') }}" class="flex items-center gap-3">
             <img src="{{ asset('our_logo.jpeg') }}" alt="Logo" class="w-10 h-10 rounded-lg object-cover border-2 border-blue-500">
@@ -29,6 +38,9 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.orders.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-clipboard-list w-5 text-center"></i>
             <span>Orders</span>
+            @if($sbPendingOrders > 0)
+                <span class="ml-auto bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingOrders }}</span>
+            @endif
         </a>
         @if((new \App\Services\CustomerCareScope())->isHqCustomerCare())
         <a href="{{ route('customer-care.news.index') }}"
