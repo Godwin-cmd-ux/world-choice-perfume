@@ -12,7 +12,7 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'description', 'brand', 'category', 'sex_category', 'is_active',
+        'name', 'description', 'brand', 'category', 'sex_category', 'fundamental_ingredient', 'is_active',
     ];
 
     protected function casts(): array

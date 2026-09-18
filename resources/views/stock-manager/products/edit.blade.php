@@ -65,6 +65,19 @@
                     @error('sex_category') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fundamental Ingredient</label>
+                    <select name="fundamental_ingredient"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 @error('fundamental_ingredient') border-red-500 @enderror">
+                        <option value="">Select an ingredient</option>
+                        @foreach(['Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic'] as $ingredient)
+                            <option value="{{ $ingredient }}" {{ old('fundamental_ingredient', $product->fundamental_ingredient ?? '') === $ingredient ? 'selected' : '' }}>{{ $ingredient }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">The dominant scent family — lets customers filter perfumes on the shop.</p>
+                    @error('fundamental_ingredient') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
                 <label class="flex items-center gap-2">
                     <input type="checkbox" name="is_active" value="1" {{ $product->is_active ? 'checked' : '' }} class="rounded text-emerald-600 focus:ring-emerald-500">
                     <span class="text-sm text-gray-700">Active</span>

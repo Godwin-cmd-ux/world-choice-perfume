@@ -9,6 +9,10 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    public const FUNDAMENTAL_INGREDIENTS = [
+        'Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic',
+    ];
+
     private SupabaseService $supabase;
 
     public function __construct()
@@ -35,7 +39,8 @@ class ProductController extends Controller
             $products = array_filter($products, function ($p) use ($search) {
                 return str_contains(strtolower($p['name'] ?? ''), $search)
                     || str_contains(strtolower($p['brand'] ?? ''), $search)
-                    || str_contains(strtolower($p['category'] ?? ''), $search);
+                    || str_contains(strtolower($p['category'] ?? ''), $search)
+                    || str_contains(strtolower($p['fundamental_ingredient'] ?? ''), $search);
             });
         }
 
@@ -64,6 +69,7 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
+            'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'images.*' => 'nullable|image|max:4096',
         ]);
 
@@ -76,6 +82,7 @@ class ProductController extends Controller
             'brand' => $validated['brand'] ?? null,
             'category' => $category,
             'sex_category' => $validated['sex_category'] ?? null,
+            'fundamental_ingredient' => $validated['fundamental_ingredient'] ?? null,
             'is_active' => true,
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
@@ -88,6 +95,7 @@ class ProductController extends Controller
             'brand' => $validated['brand'] ?? null,
             'category' => $category,
             'sex_category' => $validated['sex_category'] ?? null,
+            'fundamental_ingredient' => $validated['fundamental_ingredient'] ?? null,
         ]);
 
         // Upload images to Cloudinary
@@ -138,6 +146,7 @@ class ProductController extends Controller
             'brand' => 'nullable|string|max:255',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
+            'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:4096',
         ]);

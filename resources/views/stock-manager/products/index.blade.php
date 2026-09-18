@@ -26,6 +26,7 @@
                     <th class="text-left px-4">Name</th>
                     <th class="text-left px-4">Brand</th>
                     <th class="text-left px-4">Category</th>
+                    <th class="text-left px-4">Ingredient</th>
                     <th class="text-left px-4">Sex Category</th>
                     <th class="text-center px-4">Status</th>
                     <th class="text-center px-4">Actions</th>
@@ -48,6 +49,13 @@
                                 <span class="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700">Oil Fragrance</span>
                             @elseif($product->category === 'Brand Perfume')
                                 <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">Brand Perfume</span>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </td>
+                        <td class="px-4">
+                            @if($product->fundamental_ingredient)
+                                <span class="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">{{ $product->fundamental_ingredient }}</span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
