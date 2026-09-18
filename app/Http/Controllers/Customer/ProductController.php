@@ -94,8 +94,13 @@ class ProductController extends Controller
                         'product' => $p,
                     ]);
 
-            // Deduplicate by product_id — keep only one entry per product
-            $stockCollection = $stockCollection->concat($missing)->unique('product_id')->values();
+            // Deduplicate by product_id — keep only one entry per product,
+            // preferring an in-stock row so a product available at any branch
+            // is never shown as out of stock (or hidden) in the default view.
+            $stockCollection = $stockCollection->concat($missing)
+                ->sortByDesc('quantity')
+                ->unique('product_id')
+                ->values();
 
             $products = $this->applyFilters($stockCollection, $request);
         }
