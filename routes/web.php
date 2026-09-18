@@ -154,6 +154,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     Route::prefix('super-admin')->name('super-admin.')->middleware('role:super_admin')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\SuperAdmin\DashboardController::class, 'index'])->name('dashboard');
 
+        // Daily sales overview across all branches (same as the chief cashier)
+        Route::get('/daily-sales-overview', [\App\Http\Controllers\Cashier\CashierController::class, 'dailySalesOverview'])->name('daily-sales');
+
         // Branches (no model binding - we fetch from Supabase)
         Route::get('/branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'create'])->name('branches.create');
