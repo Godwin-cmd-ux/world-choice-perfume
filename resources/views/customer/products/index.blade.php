@@ -58,109 +58,163 @@
 
             <!-- Sidebar Filters -->
             <aside class="w-full lg:w-72 flex-shrink-0">
-                <div class="bg-dark-800/50 border border-dark-600 rounded-2xl p-6 sticky top-28">
+                @php
+                    $sexOptions = ['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'gift sets' => 'Gift Sets', 'accessories' => 'Accessories'];
+                    $typeOptions = ['Oil Fragrance' => 'Oil Fragrance', 'Brand Perfume' => 'Brand Perfume'];
+                    $scentOptions = ['Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic'];
+                @endphp
+                <div class="bg-dark-800/50 border border-dark-600 rounded-2xl p-4 sticky top-28 space-y-2.5">
+
                     <!-- Branch Selector -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-store mr-2"></i> Select Branch
-                        </h3>
-                        <div class="space-y-2">
-                            <a href="{{ route('customer.products.index', array_merge(request()->except('branch_id'), ['branch_id' => ''])) }}"
-                               class="block px-4 py-3 rounded-xl text-sm transition {{ !$selectedBranch ? 'bg-gold-500/10 border border-gold-500/30 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white border border-transparent' }}">
-                                <i class="fas fa-globe mr-2"></i> All Branches
-                            </a>
-                            @foreach($branches as $branch)
-                                <div class="relative">
-                                    <a href="{{ route('customer.products.index', array_merge(request()->except('branch_id'), ['branch_id' => $branch->id])) }}"
-                                       class="block px-4 py-3 rounded-xl text-sm transition {{ $selectedBranch && $selectedBranch->id === $branch->id ? 'bg-gold-500/10 border border-gold-500/30 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white border border-transparent' }}">
-                                        <i class="fas fa-map-marker-alt mr-2 text-xs"></i> {{ $branch->name }}
-                                    </a>
-                                    @if($branch->latitude && $branch->longitude)
-                                        <a href="{{ route('customer.twende-dukani', $branch->id) }}"
-                                           class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gold-500/10 border border-gold-500/20 text-gold-400 text-[10px] font-bold rounded-md hover:bg-gold-500/20 transition" title="Twende Dukani">
-                                            <i class="fas fa-walking"></i>
+                    <div class="filter-group" data-filter-group>
+                        <button type="button" data-filter-toggle
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition {{ $selectedBranch ? 'border-gold-500/30 bg-gold-500/5' : 'border-dark-600 hover:border-gray-500' }}">
+                            <span class="flex items-center gap-3 min-w-0">
+                                <i class="fas fa-store text-gold-400 text-sm w-4 text-center"></i>
+                                <span class="min-w-0">
+                                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Select Branch</span>
+                                    <span class="block truncate text-sm font-medium {{ $selectedBranch ? 'text-gold-400' : 'text-white' }}">{{ $selectedBranch?->name ?? 'All Branches' }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs chevron transition-transform duration-300"></i>
+                        </button>
+                        <div class="filter-panel">
+                            <div class="pt-2 space-y-1">
+                                <a href="{{ route('customer.products.index', request()->except('branch_id')) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ !$selectedBranch ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    <i class="fas fa-globe mr-2"></i> All Branches
+                                </a>
+                                @foreach($branches as $branch)
+                                    <div class="relative">
+                                        <a href="{{ route('customer.products.index', array_merge(request()->except('branch_id'), ['branch_id' => $branch->id])) }}"
+                                           class="block px-4 py-2.5 pr-12 rounded-lg text-sm transition {{ $selectedBranch && $selectedBranch->id === $branch->id ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                            <i class="fas fa-map-marker-alt mr-2 text-xs"></i> {{ $branch->name }}
                                         </a>
-                                    @endif
-                                </div>
-                            @endforeach
+                                        @if($branch->latitude && $branch->longitude)
+                                            <a href="{{ route('customer.twende-dukani', $branch->id) }}"
+                                               class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gold-500/10 border border-gold-500/20 text-gold-400 text-[10px] font-bold rounded-md hover:bg-gold-500/20 transition" title="Twende Dukani">
+                                                <i class="fas fa-walking"></i>
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
                     <!-- Sex Category Filter -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-filter mr-2"></i> Sex Category
-                        </h3>
-                        <div class="space-y-1">
-                            @foreach(['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'gift sets' => 'Gift Sets', 'accessories' => 'Accessories'] as $value => $label)
-                                @php
-                                    $catParams = request()->except('sex_category');
-                                    if (request('sex_category') !== $value) {
-                                        $catParams['sex_category'] = $value;
-                                    }
-                                @endphp
-                                <a href="{{ route('customer.products.index', $catParams) }}"
-                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('sex_category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                    {{ $label }}
+                    <div class="filter-group" data-filter-group>
+                        <button type="button" data-filter-toggle
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition {{ request('sex_category') ? 'border-gold-500/30 bg-gold-500/5' : 'border-dark-600 hover:border-gray-500' }}">
+                            <span class="flex items-center gap-3 min-w-0">
+                                <i class="fas fa-venus-mars text-gold-400 text-sm w-4 text-center"></i>
+                                <span class="min-w-0">
+                                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Sex Category</span>
+                                    <span class="block truncate text-sm font-medium {{ request('sex_category') ? 'text-gold-400' : 'text-white' }}">{{ $sexOptions[request('sex_category')] ?? 'All' }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs chevron transition-transform duration-300"></i>
+                        </button>
+                        <div class="filter-panel">
+                            <div class="pt-2 space-y-1">
+                                <a href="{{ route('customer.products.index', request()->except('sex_category')) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('sex_category') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    <i class="fas fa-globe mr-2"></i> All
                                 </a>
-                            @endforeach
+                                @foreach($sexOptions as $value => $label)
+                                    <a href="{{ route('customer.products.index', array_merge(request()->except('sex_category'), ['sex_category' => $value])) }}"
+                                       class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('sex_category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                        {{ $label }}
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
                     <!-- Product Type Filter -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-tag mr-2"></i> Product Type
-                        </h3>
-                        <div class="space-y-1">
-                            <a href="{{ route('customer.products.index', request()->except('category')) }}"
-                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('category') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                All Types
-                            </a>
-                            @foreach(['Oil Fragrance' => 'Oil Fragrance', 'Brand Perfume' => 'Brand Perfume'] as $value => $label)
-                                <a href="{{ route('customer.products.index', array_merge(request()->except('category'), ['category' => $value])) }}"
-                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                    {{ $label }}
+                    <div class="filter-group" data-filter-group>
+                        <button type="button" data-filter-toggle
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition {{ request('category') ? 'border-gold-500/30 bg-gold-500/5' : 'border-dark-600 hover:border-gray-500' }}">
+                            <span class="flex items-center gap-3 min-w-0">
+                                <i class="fas fa-tag text-gold-400 text-sm w-4 text-center"></i>
+                                <span class="min-w-0">
+                                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Product Type</span>
+                                    <span class="block truncate text-sm font-medium {{ request('category') ? 'text-gold-400' : 'text-white' }}">{{ request('category') ?: 'All Types' }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs chevron transition-transform duration-300"></i>
+                        </button>
+                        <div class="filter-panel">
+                            <div class="pt-2 space-y-1">
+                                <a href="{{ route('customer.products.index', request()->except('category')) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('category') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    All Types
                                 </a>
-                            @endforeach
+                                @foreach($typeOptions as $value => $label)
+                                    <a href="{{ route('customer.products.index', array_merge(request()->except('category'), ['category' => $value])) }}"
+                                       class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('category') === $value ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                        {{ $label }}
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
                     <!-- Fundamental Ingredient Filter -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-flask mr-2"></i> Scent Family
-                        </h3>
-                        <div class="space-y-1">
-                            <a href="{{ route('customer.products.index', request()->except('fundamental_ingredient')) }}"
-                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('fundamental_ingredient') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                All Scent Families
-                            </a>
-                            @foreach(['Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic'] as $ingredient)
-                                <a href="{{ route('customer.products.index', array_merge(request()->except('fundamental_ingredient'), ['fundamental_ingredient' => $ingredient])) }}"
-                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('fundamental_ingredient') === $ingredient ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                    {{ $ingredient }}
+                    <div class="filter-group" data-filter-group>
+                        <button type="button" data-filter-toggle
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition {{ request('fundamental_ingredient') ? 'border-gold-500/30 bg-gold-500/5' : 'border-dark-600 hover:border-gray-500' }}">
+                            <span class="flex items-center gap-3 min-w-0">
+                                <i class="fas fa-flask text-gold-400 text-sm w-4 text-center"></i>
+                                <span class="min-w-0">
+                                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Scent Family</span>
+                                    <span class="block truncate text-sm font-medium {{ request('fundamental_ingredient') ? 'text-gold-400' : 'text-white' }}">{{ request('fundamental_ingredient') ?: 'All Scent Families' }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs chevron transition-transform duration-300"></i>
+                        </button>
+                        <div class="filter-panel">
+                            <div class="pt-2 space-y-1">
+                                <a href="{{ route('customer.products.index', request()->except('fundamental_ingredient')) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('fundamental_ingredient') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    All Scent Families
                                 </a>
-                            @endforeach
+                                @foreach($scentOptions as $ingredient)
+                                    <a href="{{ route('customer.products.index', array_merge(request()->except('fundamental_ingredient'), ['fundamental_ingredient' => $ingredient])) }}"
+                                       class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('fundamental_ingredient') === $ingredient ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                        {{ $ingredient }}
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
                     <!-- Brand Filter -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-4">
-                            <i class="fas fa-crown mr-2"></i> Brand
-                        </h3>
-                        <div class="space-y-1">
-                            <a href="{{ route('customer.products.index', request()->except('brand')) }}"
-                               class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('brand') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                All Brands
-                            </a>
-                            @foreach($availableBrands as $brandName)
-                                <a href="{{ route('customer.products.index', array_merge(request()->except('brand'), ['brand' => $brandName])) }}"
-                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('brand') === $brandName ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                    {{ $brandName }}
+                    <div class="filter-group" data-filter-group>
+                        <button type="button" data-filter-toggle
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition {{ request('brand') ? 'border-gold-500/30 bg-gold-500/5' : 'border-dark-600 hover:border-gray-500' }}">
+                            <span class="flex items-center gap-3 min-w-0">
+                                <i class="fas fa-crown text-gold-400 text-sm w-4 text-center"></i>
+                                <span class="min-w-0">
+                                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Brand</span>
+                                    <span class="block truncate text-sm font-medium {{ request('brand') ? 'text-gold-400' : 'text-white' }}">{{ request('brand') ?: 'All Brands' }}</span>
+                                </span>
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs chevron transition-transform duration-300"></i>
+                        </button>
+                        <div class="filter-panel">
+                            <div class="pt-2 space-y-1">
+                                <a href="{{ route('customer.products.index', request()->except('brand')) }}"
+                                   class="block px-4 py-2.5 rounded-lg text-sm transition {{ !request('brand') ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                    All Brands
                                 </a>
-                            @endforeach
+                                @foreach($availableBrands as $brandName)
+                                    <a href="{{ route('customer.products.index', array_merge(request()->except('brand'), ['brand' => $brandName])) }}"
+                                       class="block px-4 py-2.5 rounded-lg text-sm transition {{ request('brand') === $brandName ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                        {{ $brandName }}
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
@@ -348,3 +402,56 @@
     })();
 </script>
 @endsection
+
+@push('styles')
+<style>
+    .filter-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease;
+    }
+    .filter-group.open .filter-panel {
+        max-height: 22rem;
+        overflow-y: auto;
+    }
+    .filter-group.open .chevron {
+        transform: rotate(180deg);
+    }
+    .filter-panel::-webkit-scrollbar { width: 4px; }
+    .filter-panel::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    (function () {
+        var groups = Array.prototype.slice.call(document.querySelectorAll('[data-filter-group]'));
+
+        function closeAll(except) {
+            groups.forEach(function (group) {
+                if (group !== except) group.classList.remove('open');
+            });
+        }
+
+        groups.forEach(function (group) {
+            var toggle = group.querySelector('[data-filter-toggle]');
+            if (!toggle) return;
+
+            toggle.addEventListener('click', function (event) {
+                event.preventDefault();
+                var isOpen = group.classList.contains('open');
+                closeAll(group);
+                group.classList.toggle('open', !isOpen);
+            });
+
+            // Collapse immediately when an option is chosen (the link then reloads
+            // the filtered page, which keeps every group collapsed by default).
+            group.querySelectorAll('.filter-panel a').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    group.classList.remove('open');
+                });
+            });
+        });
+    })();
+</script>
+@endpush
