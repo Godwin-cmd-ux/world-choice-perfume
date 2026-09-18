@@ -9,14 +9,37 @@
             @csrf
 
             <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <select name="category" id="category-select" onchange="onCategoryChange()"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Select Category First</option>
+                    <option value="Oil Fragrance" {{ old('category') == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
+                    <option value="Brand Perfume" {{ old('category') == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
+                </select>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products will be listed below.
+                </p>
+                @error('category')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
-                <select name="product_id" id="product_id" required
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    onchange="autoFillCategory()">
-                    <option value="">Select Product</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" data-category="{{ $product->category ?? '' }}">{{ $product->name }} — {{ $product->brand }}</option>
-                    @endforeach
+                <select name="product_id" id="product_id" required onchange="onProductChange()"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    @if(old('category'))
+                        <option value="">Select Product</option>
+                        @foreach($products as $product)
+                            @if($product->category === old('category'))
+                                <option value="{{ $product->id }}" data-category="{{ $product->category }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
+                                    {{ $product->name }} — {{ $product->brand }}
+                                </option>
+                            @endif
+                        @endforeach
+                    @else
+                        <option value="">Select a Category First</option>
+                    @endif
                 </select>
             </div>
 
@@ -39,21 +62,6 @@
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             </div>
 
-
-            <div class="mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select name="category" id="category-select" onchange="toggleBottleVolume()"
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="">Select Category</option>
-                        <option value="Oil Fragrance" {{ old('category') == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
-                        <option value="Brand Perfume" {{ old('category') == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
-                    </select>
-                    @error('category')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
 
             <div id="bottle-volume-field" class="mb-6 hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Volume (ml) *</label>
@@ -99,7 +107,7 @@
 
 @push('scripts')
 <script>
-const categoryMap = @json($categoryMap ?? []);
+const allProducts = @json($products ?? []);
 const bottleVariants = @json($bottleVariants ?? []);
 const VARIANT_LABELS = {
     box_logo_yellow: 'With Box · With Logo · Yellow',
@@ -111,16 +119,40 @@ const VARIANT_LABELS = {
 };
 const DETAIL_VOLUMES = ['30', '50', '100'];
 
-function autoFillCategory() {
-    const productId = document.getElementById('product_id').value;
-    const categorySelect = document.getElementById('category-select');
+function onCategoryChange() {
+    const productSelect = document.getElementById('product_id');
+    productSelect.value = '';
+    filterProducts();
+    toggleBottleVolume();
+}
 
-    if (productId && categoryMap[productId]) {
-        categorySelect.value = categoryMap[productId];
-    } else {
-        categorySelect.value = '';
+function filterProducts() {
+    const category = document.getElementById('category-select').value;
+    const productSelect = document.getElementById('product_id');
+    productSelect.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = category ? 'Select Product' : 'Select a Category First';
+    productSelect.appendChild(placeholder);
+
+    if (!category) {
+        return;
     }
 
+    (allProducts || []).forEach(p => {
+        if ((p.category || '') !== category) {
+            return;
+        }
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.dataset.category = p.category;
+        opt.textContent = p.name + ' — ' + p.brand;
+        productSelect.appendChild(opt);
+    });
+}
+
+function onProductChange() {
     toggleBottleVolume();
 }
 
@@ -189,8 +221,18 @@ function hideVariantField() {
 
 document.getElementById('bottle_volume').addEventListener('change', refreshVariantOptions);
 
-// Run on load in case a value was repopulated after a validation error
-autoFillCategory();
+// Rebuild the product list from the chosen category, then restore the
+// previously submitted product after a validation error.
+(function init () {
+    filterProducts();
+
+    const productId = @json(old('product_id')) || '';
+    if (productId) {
+        document.getElementById('product_id').value = productId;
+    }
+
+    toggleBottleVolume();
+})();
 </script>
 @endpush
 @endsection

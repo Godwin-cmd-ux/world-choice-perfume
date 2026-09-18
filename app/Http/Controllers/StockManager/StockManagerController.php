@@ -312,15 +312,8 @@ class StockManagerController extends Controller
             'order' => 'name.asc',
         ]);
 
-        // Build a lookup of category by product id for JS auto-fill.
-        $categoryMap = [];
-        foreach ($products as $p) {
-            $categoryMap[$p['id']] = $p['category'] ?? null;
-        }
-
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
-            'categoryMap' => $categoryMap,
             'bottleVariants' => $this->bottles->variantStock(auth()->user()->branch_id),
         ]);
     }
