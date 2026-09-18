@@ -59,7 +59,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address), notes:order_notes(*)');
         if (!$order) abort(404);
 
         if (isset($order['customer']) && is_array($order['customer'])) $order['customer'] = (object) $order['customer'];
@@ -70,6 +70,9 @@ class OrderController extends Controller
                 if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
                 return (object) $item;
             });
+        }
+        if (isset($order['notes'])) {
+            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
         }
 
         return view('super-admin.orders.show', ['order' => (object) $order]);

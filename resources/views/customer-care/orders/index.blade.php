@@ -53,16 +53,18 @@
                             @else
                                 @php $next = collect($allowed)->first(fn($s) => $s !== 'cancelled'); @endphp
                                 @if($next)
-                                    <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                    <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                         @csrf
                                         <input type="hidden" name="status" value="{{ $next }}">
+                                        <input type="hidden" name="note">
                                         <button type="submit" class="text-amber-600 hover:underline mr-2 font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
                                     </form>
                                 @endif
                                 @if(in_array('cancelled', $allowed))
-                                    <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
+                                    <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                         @csrf
                                         <input type="hidden" name="status" value="cancelled">
+                                        <input type="hidden" name="note">
                                         <button type="submit" class="text-red-600 hover:underline font-medium" onclick="return confirm('Cancel order {{ $order->order_number }}?')"><i class="fas fa-times mr-1"></i>Cancel</button>
                                     </form>
                                 @endif
@@ -76,4 +78,15 @@
         </table>
     </div>
 </div>
+<script>
+function requireNote(form) {
+    var note = form.querySelector('input[name="note"]');
+    if (!note || !note.value.trim()) {
+        var val = prompt('Enter a note about this order update (what point you have reached):');
+        if (val === null) return false;
+        note.value = val;
+    }
+    return note.value.trim() !== '';
+}
+</script>
 @endsection

@@ -4,6 +4,19 @@
 @section('subtitle', 'Sales • Orders • Clients')
 @section('content')
 
+@if(($pendingOrders ?? 0) > 0)
+    <a href="{{ route('customer-care.orders.index', ['status' => 'pending']) }}" class="block mb-8 bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 hover:bg-amber-100 transition flex items-center justify-between gap-3">
+        <span class="flex items-center gap-3">
+            <span class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center"><i class="fas fa-clock"></i></span>
+            <span>
+                <span class="block font-semibold text-gray-800">Pending Orders</span>
+                <span class="block text-sm text-gray-500">{{ $pendingOrders }} order(s) waiting — go to orders to process them</span>
+            </span>
+        </span>
+        <span class="flex items-center gap-2 text-amber-700 font-bold">{{ $pendingOrders }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+@endif
+
 {{-- Summary cards --}}
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow p-6">

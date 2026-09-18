@@ -28,23 +28,23 @@
                         <td class="px-4 text-center">
                             <a href="{{ route('cashier.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
                             @if($order->status === 'pending')
-                                <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST" class="inline">
-                                    @csrf <button type="submit" class="text-green-600 hover:underline font-medium"><i class="fas fa-hand-pointer mr-1"></i>Pick</button>
+                                <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-green-600 hover:underline font-medium"><i class="fas fa-hand-pointer mr-1"></i>Pick</button>
                                 </form>
                             @endif
                             @if($order->status === 'assigned' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST" class="inline">
-                                    @csrf <button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check mr-1"></i>Ready</button>
+                                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check mr-1"></i>Ready</button>
                                 </form>
                             @endif
                             @if($order->status === 'ready' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST" class="inline">
-                                    @csrf <button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check-double mr-1"></i>Complete</button>
+                                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check-double mr-1"></i>Complete</button>
                                 </form>
                             @endif
                             @if($order->status === 'completed' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                                <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" class="inline">
-                                    @csrf <button type="submit" class="text-green-700 hover:underline font-bold"><i class="fas fa-hand-holding mr-1"></i>Served</button>
+                                <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-green-700 hover:underline font-bold"><i class="fas fa-hand-holding mr-1"></i>Served</button>
                                 </form>
                             @endif
                         </td>
@@ -56,4 +56,15 @@
         </table>
     </div>
 </div>
+<script>
+function requireNote(form) {
+    var note = form.querySelector('input[name="note"]');
+    if (!note || !note.value.trim()) {
+        var val = prompt('Enter a note about this order update (what point you have reached):');
+        if (val === null) return false;
+        note.value = val;
+    }
+    return note.value.trim() !== '';
+}
+</script>
 @endsection

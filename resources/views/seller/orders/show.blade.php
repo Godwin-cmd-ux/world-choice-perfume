@@ -30,6 +30,20 @@
         </table>
         <div class="text-right text-lg font-bold text-cyan-700">Total: TZS {{ number_format($order->total) }}</div>
 
+        @if(!empty($order->notes))
+            <div class="mt-4 border-t pt-3">
+                <h3 class="text-sm font-semibold mb-2"><i class="fas fa-sticky-note mr-1 text-cyan-600"></i>Order Updates</h3>
+                <div class="space-y-2">
+                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                        <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p>{{ $note->note }}</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         @php
             $allowed = $transitions[$order->status] ?? [];
             $lockOwner = $order->assigned_to ?? $order->cashier_id ?? null;
@@ -40,21 +54,39 @@
                 <i class="fas fa-lock mr-1"></i> This order is assigned to another staff member. Only they can update it.
             </div>
         @elseif($allowed)
-            <div class="mt-4 flex gap-3 flex-wrap">
-                @foreach($allowed as $s)
-                    <form action="{{ route('seller.orders.update-status', $order->id) }}" method="POST">@csrf
-                        <input type="hidden" name="status" value="{{ $s }}">
-                        <button type="submit"
-                            class="{{ $s === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-cyan-600 hover:bg-cyan-700' }} text-white px-4 py-2 rounded-lg"
-                            {{ $s === 'cancelled' ? 'onclick="return confirm(\'Cancel order?\')"' : '' }}>
-                            <i class="fas {{ $s === 'cancelled' ? 'fa-times' : 'fa-arrow-right' }} mr-1"></i>
-                            {{ $s === 'cancelled' ? 'Cancel Order' : 'Mark ' . ucfirst($s) }}
-                        </button>
-                    </form>
-                @endforeach
+            <div class="mt-4 border-t pt-3">
+                <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
+                <p class="text-xs text-gray-400 mb-2">Enter what point you have reached for this order before changing the status.</p>
+                <textarea id="order-note-input" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3"
+                    placeholder="e.g. Order received and being packed..."></textarea>
+                <div class="flex gap-3 flex-wrap">
+                    @foreach($allowed as $s)
+                        <form action="{{ route('seller.orders.update-status', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                            <input type="hidden" name="status" value="{{ $s }}">
+                            <input type="hidden" name="note">
+                            <button type="submit"
+                                class="{{ $s === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-cyan-600 hover:bg-cyan-700' }} text-white px-4 py-2 rounded-lg"
+                                {{ $s === 'cancelled' ? 'onclick="return confirm(\'Cancel order?\')"' : '' }}>
+                                <i class="fas {{ $s === 'cancelled' ? 'fa-times' : 'fa-arrow-right' }} mr-1"></i>
+                                {{ $s === 'cancelled' ? 'Cancel Order' : 'Mark ' . ucfirst($s) }}
+                            </button>
+                        </form>
+                    @endforeach
+                </div>
             </div>
         @endif
     </div>
     <a href="{{ route('seller.orders.index') }}" class="mt-4 inline-block text-cyan-700 hover:underline">&larr; Back to Orders</a>
 </div>
+<script>
+function attachOrderNote(form) {
+    var ta = document.getElementById('order-note-input');
+    if (!ta || !ta.value.trim()) {
+        alert('Please enter a note about this order update before changing the status.');
+        return false;
+    }
+    form.querySelector('input[name="note"]').value = ta.value.trim();
+    return true;
+}
+</script>
 @endsection

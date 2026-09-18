@@ -56,7 +56,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address), notes:order_notes(*)');
         if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
             abort(404);
         }
@@ -70,13 +70,19 @@ class OrderController extends Controller
                 return (object) $item;
             });
         }
+        if (isset($order['notes'])) {
+            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
+        }
 
         return view('seller.orders.show', ['order' => (object) $order, 'transitions' => self::TRANSITIONS, 'userId' => auth()->user()->supabase_id ?? auth()->id()]);
     }
 
     public function updateStatus(Request $request, $orderId)
     {
-        $request->validate(['status' => 'required|in:pending,assigned,ready,completed,served,cancelled']);
+        $request->validate([
+            'status' => 'required|in:pending,assigned,ready,completed,served,cancelled',
+            'note' => 'required|string|max:2000',
+        ]);
 
         $order = $this->supabase->find('orders', $orderId);
         if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
@@ -119,6 +125,14 @@ class OrderController extends Controller
         if (empty($updated)) {
             return back()->with('error', 'This order was just updated by another staff member. Please refresh and try again.');
         }
+
+        $this->supabase->insert('order_notes', [
+            'order_id' => $orderId,
+            'note' => $request->note,
+            'created_by' => $userId,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
 
         (new \App\Services\AuditService())->recordCriticalAction(
             'order_status_changed',

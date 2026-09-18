@@ -80,6 +80,20 @@
                 </div>
             </div>
         @endif
+
+        @if(!empty($order->notes))
+            <div class="bg-white rounded-xl shadow p-6">
+                <h3 class="font-semibold mb-3"><i class="fas fa-sticky-note mr-1 text-amber-600"></i>Order Updates</h3>
+                <div class="space-y-2">
+                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                        <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p>{{ $note->note }}</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 

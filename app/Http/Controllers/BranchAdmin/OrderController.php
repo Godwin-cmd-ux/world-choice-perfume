@@ -50,7 +50,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address), notes:order_notes(*)');
         if (!$order) abort(404);
 
         if (isset($order['cashier']) && is_array($order['cashier'])) $order['cashier'] = (object) $order['cashier'];
@@ -62,12 +62,17 @@ class OrderController extends Controller
                 return (object) $item;
             });
         }
+        if (isset($order['notes'])) {
+            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
+        }
 
         return view('branch-admin.orders.show', ['order' => (object) $order]);
     }
 
-    public function cancel($orderId)
+    public function cancel(Request $request, $orderId)
     {
+        $request->validate(['note' => 'required|string|max:2000']);
+
         $order = $this->supabase->find('orders', $orderId);
         if (!$order) abort(404);
 
@@ -80,6 +85,14 @@ class OrderController extends Controller
             'cancelled_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId]);
+
+        $this->supabase->insert('order_notes', [
+            'order_id' => $orderId,
+            'note' => 'Order cancelled: ' . $request->note,
+            'created_by' => auth()->user()->supabase_id ?? auth()->id(),
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
 
         (new \App\Services\AuditService())->recordCriticalAction(
             'order_cancelled',

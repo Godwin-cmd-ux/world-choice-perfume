@@ -424,13 +424,15 @@ class SupabaseService
             'orders' => [
                 'order_number','branch_id','cashier_id','customer_id','status','total',
                 'delivery_notes','assigned_at','completed_at','cancelled_at','paid_at',
-                'payment_status','payment_method','pesapal_tracking_id',
-                'pesapal_merchant_reference','payment_confirmation_code',
+                'payment_status','payment_method','payment_confirmation_code',
                 'created_at','updated_at',
             ],
             'order_items' => [
                 'order_id','product_id','quantity','unit_price','total',
                 'created_at','updated_at',
+            ],
+            'order_notes' => [
+                'order_id','note','created_by','created_at','updated_at',
             ],
             'bottle_accessories_movements' => [
                 'branch_id','type','color','movement_type','quantity','reason',

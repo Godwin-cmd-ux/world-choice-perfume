@@ -165,6 +165,12 @@ class DashboardController extends Controller
         $ordersTotal = $orders->sum('total');
         $orderStatusCounts = $orders->groupBy('status')->map->count();
 
+        // Pending orders for this branch (quick access to order processing)
+        $pendingOrders = $this->supabase->count('orders', [
+            'branch_id' => "eq.{$branchId}",
+            'status' => 'eq.pending',
+        ]);
+
         // Clients — branch scoped where possible, otherwise all (customer records are not always branch-scoped)
         $clients = collect($this->supabase->query('customers', [
             'select' => '*',
@@ -187,6 +193,7 @@ class DashboardController extends Controller
             'orders',
             'ordersTotal',
             'orderStatusCounts',
+            'pendingOrders',
             'clients',
             'clientsTotal',
             'clientsWithPhone',

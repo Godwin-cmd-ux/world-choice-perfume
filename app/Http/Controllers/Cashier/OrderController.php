@@ -64,7 +64,7 @@ class OrderController extends Controller
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address)');
+        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address), notes:order_notes(*)');
         if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
             abort(404);
         }
@@ -78,12 +78,27 @@ class OrderController extends Controller
                 return (object) $item;
             });
         }
+        if (isset($order['notes'])) {
+            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
+        }
 
         return view('cashier.orders.show', ['order' => (object) $order]);
     }
 
-    public function pick($orderId)
+    private function noteFromRequest(Request $request): array
     {
+        return [
+            'note' => $request->note,
+            'created_by' => auth()->user()->supabase_id ?? auth()->id(),
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ];
+    }
+
+    public function pick(Request $request, $orderId)
+    {
+        $request->validate(['note' => 'required|string|max:2000']);
+
         $order = $this->supabase->find('orders', $orderId);
         if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
             abort(404);
@@ -102,6 +117,11 @@ class OrderController extends Controller
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId, 'status' => 'pending']);
 
+        // Record the progress note
+        $note = $this->noteFromRequest($request);
+        $note['order_id'] = $orderId;
+        $this->supabase->insert('order_notes', $note);
+
         // Audit
         $this->supabase->insert('audit_logs', [
             'user_id' => auth()->user()->supabase_id ?? auth()->id(),
@@ -114,8 +134,10 @@ class OrderController extends Controller
             ->with('success', 'Order picked successfully. Prepare the order.');
     }
 
-    public function markReady($orderId)
+    public function markReady(Request $request, $orderId)
     {
+        $request->validate(['note' => 'required|string|max:2000']);
+
         $order = $this->supabase->find('orders', $orderId);
         $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
         if (!$order || $order['cashier_id'] != $supabaseUserId || ($order['status'] ?? '') !== 'assigned') {
@@ -127,6 +149,10 @@ class OrderController extends Controller
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId]);
 
+        $note = $this->noteFromRequest($request);
+        $note['order_id'] = $orderId;
+        $this->supabase->insert('order_notes', $note);
+
         $this->supabase->insert('audit_logs', [
             'user_id' => auth()->user()->supabase_id ?? auth()->id(),
             'action' => 'order_ready',
@@ -137,8 +163,10 @@ class OrderController extends Controller
         return back()->with('success', 'Order marked as ready for pickup.');
     }
 
-    public function complete($orderId)
+    public function complete(Request $request, $orderId)
     {
+        $request->validate(['note' => 'required|string|max:2000']);
+
         $order = $this->supabase->find('orders', $orderId);
         $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
         if (!$order || $order['cashier_id'] != $supabaseUserId || ($order['status'] ?? '') !== 'ready') {
@@ -152,6 +180,11 @@ class OrderController extends Controller
                 'completed_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ], ['id' => $orderId]);
+
+            // Record the progress note
+            $note = $this->noteFromRequest($request);
+            $note['order_id'] = $orderId;
+            $this->supabase->insert('order_notes', $note);
 
             // 2. Generate sale number (timestamp-based, no query needed)
             $saleNumber = 'SALE-' . date('YmdHis') . '-' . strtoupper(substr(uniqid(), -4));
@@ -263,8 +296,10 @@ class OrderController extends Controller
      * Mark order as served — customer has received the order.
      * Prevents the customer from claiming the order again.
      */
-    public function serve($orderId)
+    public function serve(Request $request, $orderId)
     {
+        $request->validate(['note' => 'required|string|max:2000']);
+
         $order = $this->supabase->find('orders', $orderId);
         $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
 
@@ -277,6 +312,10 @@ class OrderController extends Controller
             'served_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId]);
+
+        $note = $this->noteFromRequest($request);
+        $note['order_id'] = $orderId;
+        $this->supabase->insert('order_notes', $note);
 
         $this->supabase->insert('audit_logs', [
             'user_id' => $supabaseUserId,

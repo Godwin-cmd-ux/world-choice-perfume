@@ -30,16 +30,6 @@
                             {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
                             {{ ucfirst($order->status) }}
                         </span>
-                        <span class="px-3 py-1 rounded-full text-xs font-medium
-                            {{ ($order->payment_status ?? '') === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
-                            {{ ($order->payment_status ?? 'unpaid') === 'paid' ? 'Paid' : ucfirst($order->payment_status ?? 'unpaid') }}
-                        </span>
-                        @if(($order->payment_status ?? '') !== 'paid' && ($order->status ?? '') !== 'cancelled')
-                            <a href="{{ route('customer.orders.pay', $order->id) }}"
-                               class="px-3 py-1 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold">
-                                Pay Now
-                            </a>
-                        @endif
                     </div>
                 </div>
                 <div class="mt-3 text-sm">
@@ -48,6 +38,17 @@
                     @endforeach
                     <p class="font-bold mt-2">Total: TZS {{ number_format($order->total) }}</p>
                 </div>
+                @if(collect($order->notes ?? [])->count() > 0)
+                    <div class="mt-3 border-t border-gray-100 pt-2">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Order Updates</p>
+                        @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                            <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-2">
+                                <p class="text-sm text-gray-700">{{ $note->note }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         @empty
             <div class="text-center py-12 text-gray-400">

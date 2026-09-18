@@ -42,6 +42,12 @@ class SellerController extends Controller
         // Branch daily financials (sales, expenses, actual = sales - expenses)
         $dailySummary = $this->financials->getDailySummary((int) $branchId);
 
+        // Pending orders for this branch (quick access to order processing)
+        $pendingOrders = $this->supabase->count('orders', [
+            'branch_id' => "eq.{$branchId}",
+            'status' => 'eq.pending',
+        ]);
+
         // Products available at this branch
         $products = $this->supabase->query('branch_stock', [
             'select' => '*, product:products(id,name,brand,category,images:product_images(image_url))',
@@ -50,7 +56,7 @@ class SellerController extends Controller
             'order' => 'created_at.desc',
         ]);
 
-        return view('seller.dashboard', compact('totalSales', 'totalTransactions', 'todayTotal', 'mySales', 'products') + [
+        return view('seller.dashboard', compact('totalSales', 'totalTransactions', 'todayTotal', 'mySales', 'products', 'pendingOrders') + [
             'dailySummary' => $dailySummary,
         ]);
     }

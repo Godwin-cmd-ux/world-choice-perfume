@@ -47,9 +47,4 @@ return [
         'api_secret' => env('CLOUDINARY_API_SECRET'),
     ],
 
-    'pesapal' => [
-        'consumer_key' => env('PESAPAL_CONSUMER_KEY'),
-        'consumer_secret' => env('PESAPAL_CONSUMER_SECRET'),
-    ],
-
 ];

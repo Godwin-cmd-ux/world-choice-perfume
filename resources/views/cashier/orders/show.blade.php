@@ -29,24 +29,51 @@
         </table>
         <div class="text-right text-lg font-bold text-amber-700">Total: TZS {{ number_format($order->total) }}</div>
 
+        @if(!empty($order->notes))
+            <div class="mt-4 border-t pt-3">
+                <h3 class="text-sm font-semibold mb-2"><i class="fas fa-sticky-note mr-1 text-amber-600"></i>Order Updates</h3>
+                <div class="space-y-2">
+                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                        <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p>{{ $note->note }}</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        @if(in_array($order->status, ['pending', 'assigned', 'ready', 'completed']))
+            <div class="mt-4 border-t pt-3">
+                <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
+                <p class="text-xs text-gray-400 mb-2">Enter what point you have reached for this order before changing the status.</p>
+                <textarea id="order-note-input" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3"
+                    placeholder="e.g. Order received and being prepared..."></textarea>
+            </div>
+        @endif
+
         <div class="mt-4 flex gap-3 flex-wrap">
             @if($order->status === 'pending')
-                <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST">@csrf
+                <form action="{{ route('cashier.orders.pick', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                    <input type="hidden" name="note">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-hand-pointer mr-1"></i> Pick Order</button>
                 </form>
             @endif
             @if($order->status === 'assigned' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST">@csrf
+                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                    <input type="hidden" name="note">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check mr-1"></i> Mark Ready</button>
                 </form>
             @endif
             @if($order->status === 'ready' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST">@csrf
+                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                    <input type="hidden" name="note">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check-double mr-1"></i> Complete Order</button>
                 </form>
             @endif
             @if($order->status === 'completed' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST">@csrf
+                <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                    <input type="hidden" name="note">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-hand-holding mr-1"></i> Mark as Served</button>
                 </form>
             @endif
@@ -54,4 +81,15 @@
     </div>
     <a href="{{ route('cashier.orders.index') }}" class="mt-4 inline-block text-amber-700 hover:underline">&larr; Back to Orders</a>
 </div>
+<script>
+function attachOrderNote(form) {
+    var ta = document.getElementById('order-note-input');
+    if (!ta || !ta.value.trim()) {
+        alert('Please enter a note about this order update before changing the status.');
+        return false;
+    }
+    form.querySelector('input[name="note"]').value = ta.value.trim();
+    return true;
+}
+</script>
 @endsection

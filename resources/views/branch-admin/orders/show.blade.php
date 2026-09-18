@@ -30,9 +30,27 @@
             </tbody>
         </table>
         <div class="text-right text-lg font-bold text-amber-700">Total: TZS {{ number_format($order->total) }}</div>
+
+        @if(!empty($order->notes))
+            <div class="mt-4 border-t pt-3">
+                <h3 class="text-sm font-semibold mb-2"><i class="fas fa-sticky-note mr-1 text-amber-600"></i>Order Updates</h3>
+                <div class="space-y-2">
+                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                        <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p>{{ $note->note }}</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         @if(!in_array($order->status, ['completed', 'served', 'cancelled']))
-            <div class="mt-4 flex gap-3">
+            <div class="mt-4 border-t pt-3">
                 <form action="{{ route('branch-admin.orders.cancel', $order->id) }}" method="POST" data-confirm="Cancel this order?">@csrf
+                    <label for="cancel-note" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
+                    <p class="text-xs text-gray-400 mb-2">Enter why you are cancelling this order.</p>
+                    <textarea name="note" id="cancel-note" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3" required placeholder="Reason for cancellation..."></textarea>
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm">Cancel Order</button>
                 </form>
             </div>

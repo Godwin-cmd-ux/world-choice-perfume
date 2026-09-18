@@ -37,7 +37,7 @@
     </div>
 
     {{-- Pending Orders --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+    <a href="{{ route('super-admin.orders.index', ['status' => 'pending']) }}" class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow hover:border-amber-300 block">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-500">Pending Orders</p>
@@ -48,7 +48,7 @@
                 <i class="fas fa-shopping-cart text-blue-600 text-xl"></i>
             </div>
         </div>
-    </div>
+    </a>
 
     {{-- Pending Approvals --}}
     <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
