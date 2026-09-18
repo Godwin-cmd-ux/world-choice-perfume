@@ -307,11 +307,15 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $this->supabase->update('orders', [
+        $serveData = [
             'status' => 'served',
-            'served_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
-        ], ['id' => $orderId]);
+        ];
+        if ($this->supabase->tableHasColumn('orders', 'served_at')) {
+            $serveData['served_at'] = now()->toIso8601String();
+        }
+
+        $this->supabase->update('orders', $serveData, ['id' => $orderId]);
 
         $note = $this->noteFromRequest($request);
         $note['order_id'] = $orderId;

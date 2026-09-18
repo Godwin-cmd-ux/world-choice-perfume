@@ -113,7 +113,7 @@ class OrderController extends Controller
         if ($next === 'completed') {
             $updateData['completed_at'] = now()->toIso8601String();
         }
-        if ($next === 'served') {
+        if ($next === 'served' && $this->supabase->tableHasColumn('orders', 'served_at')) {
             $updateData['served_at'] = now()->toIso8601String();
         }
         if ($next === 'cancelled') {
