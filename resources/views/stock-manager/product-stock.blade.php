@@ -64,15 +64,15 @@
                         <td class="px-4 text-right">
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center justify-end gap-2">
-                                    <form method="POST" action="{{ route('stock-manager.product-stock.update', $stock->id) }}" class="inline-flex items-center gap-1">
-                                        @csrf
-                                        @method('PATCH')
-                                        <input type="number" name="quantity" value="{{ $stock->quantity }}" class="w-14 px-1 py-1 border border-gray-300 rounded text-right text-xs text-center focus:ring-2 focus:ring-emerald-500" min="0">
-                                        <input type="number" name="selling_price" value="{{ $stock->selling_price }}" step="0.01" class="w-16 px-1 py-1 border border-gray-300 rounded text-right text-xs text-right focus:ring-2 focus:ring-emerald-500" min="0">
-                                        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-2 py-1 rounded text-xs font-medium">
-                                            <i class="fas fa-pen mr-0.5"></i> Edit
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                        class="edit-stock-btn inline-flex items-center gap-1 text-white px-2.5 py-1.5 rounded text-xs font-medium hover:opacity-90"
+                                        style="background-color: #F89A1E;"
+                                        data-stock-id="{{ $stock->id }}"
+                                        data-product="{{ $stock->product->name }}"
+                                        data-quantity="{{ $stock->quantity }}"
+                                        data-price="{{ $stock->selling_price ?? 0 }}">
+                                        <i class="fas fa-pen"></i> Edit
+                                    </button>
                                     <form method="POST" action="{{ route('stock-manager.product-stock.destroy', $stock->id) }}" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -93,4 +93,133 @@
         </table>
     </div>
 </div>
+
+<!-- Edit Stock Modal -->
+<div id="editStockModal" class="fixed inset-0 z-50 bg-black/50 hidden" data-update-url="{{ route('stock-manager.product-stock.update', ['stock' => '__STOCK__']) }}">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50">
+                <div class="flex items-center gap-3">
+                    <span class="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <i class="fas fa-boxes-stacked text-emerald-600"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-800">Edit Stock</h3>
+                        <p id="editStockProduct" class="text-xs text-gray-500 truncate max-w-[16rem]"></p>
+                    </div>
+                </div>
+                <button type="button" data-modal-close class="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-lg hover:bg-gray-100">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="editStockForm" method="POST" class="p-5 space-y-4">
+                @csrf
+                @method('PATCH')
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="quantity" id="editStockQuantity" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 no-spinner">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (TZS)</label>
+                    <input type="text" inputmode="decimal" name="selling_price" id="editStockPrice" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 no-spinner">
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                    <span class="text-sm text-gray-500">New stock value:</span>
+                    <span id="editStockPreview" class="text-sm font-bold text-emerald-700">TZS 0</span>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" data-modal-close class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700">
+                        Cancel
+                    </button>
+                    <button type="submit" style="background-color: #F89A1E;" class="px-5 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90">
+                        <i class="fas fa-save mr-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('styles')
+<style>
+    .no-spinner::-webkit-outer-spin-button,
+    .no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .no-spinner { -moz-appearance: textfield; appearance: textfield; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    (function () {
+        var modal = document.getElementById('editStockModal');
+        if (!modal) return;
+
+        var form = document.getElementById('editStockForm');
+        var productEl = document.getElementById('editStockProduct');
+        var qtyInput = document.getElementById('editStockQuantity');
+        var priceInput = document.getElementById('editStockPrice');
+        var preview = document.getElementById('editStockPreview');
+        var updateUrl = modal.getAttribute('data-update-url');
+
+        function formatTzs(value) {
+            var n = parseFloat(value) || 0;
+            return 'TZS ' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        }
+
+        function refreshPreview() {
+            preview.textContent = formatTzs((parseFloat(qtyInput.value) || 0) * (parseFloat(priceInput.value) || 0));
+        }
+
+        function openModal(btn) {
+            form.setAttribute('action', updateUrl.replace('__STOCK__', btn.getAttribute('data-stock-id')));
+            productEl.textContent = btn.getAttribute('data-product') || '';
+            qtyInput.value = btn.getAttribute('data-quantity') || '0';
+            priceInput.value = btn.getAttribute('data-price') || '0';
+            refreshPreview();
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            qtyInput.focus();
+            qtyInput.select();
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.edit-stock-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { openModal(btn); });
+        });
+
+        modal.querySelectorAll('[data-modal-close]').forEach(function (el) {
+            el.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+        });
+
+        // Strip anything that isn't a digit / decimal point as the user types.
+        qtyInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^\d]/g, '');
+            refreshPreview();
+        });
+        priceInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^\d.]/g, '');
+            refreshPreview();
+        });
+    })();
+</script>
+@endpush
