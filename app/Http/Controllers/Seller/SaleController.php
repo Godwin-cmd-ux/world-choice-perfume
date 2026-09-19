@@ -89,7 +89,7 @@ class SaleController extends Controller
 
         // Per-product bottling breakdown for oil fragrance products, so the
         // sale form can ask WHICH volume/variety is being sold.
-        $productVarieties = $this->varieties->stockForProducts(
+        $productVarieties = $this->varieties->bucketsForProducts(
             $branchId,
             $products->pluck('product_id')->all()
         );

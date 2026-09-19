@@ -46,6 +46,54 @@ class ProductVarietyStockService
     }
 
     /**
+     * Pre-formatted per-product variety picker data for sale/transfer
+     * forms: [product_id => [ ['volume' => 50, 'label' => '50ml',
+     * 'variants' => [['key' => ..., 'label' => ..., 'available' => N]], ...], ...]]
+     * Only volumes and varieties with stock > 0 are included.
+     */
+    public function bucketsForProducts(int $branchId, array $productIds): array
+    {
+        $stock = $this->stockForProducts($branchId, $productIds);
+        $bottles = new BottleStockService($this->supabase);
+
+        $result = [];
+        foreach ($stock as $pid => $pidVarieties) {
+            $volumes = [];
+            foreach ($pidVarieties as $v => $variantsInStock) {
+                if (array_sum($variantsInStock) <= 0) {
+                    continue; // This product has none of this volume.
+                }
+                $variants = [];
+                foreach ($bottles->variantBuckets((int) $v) as $key) {
+                    $qty = (int) ($variantsInStock[$key] ?? 0);
+                    if ($qty <= 0) {
+                        continue; // Variety has no stock.
+                    }
+                    $variants[] = [
+                        'key' => $key,
+                        'label' => $bottles->variantLabel($key, (int) $v),
+                        'available' => $qty,
+                    ];
+                }
+                if (empty($variants)) {
+                    continue;
+                }
+                $volumes[] = [
+                    'volume' => (int) $v,
+                    'label' => $bottles->volumeLabel((int) $v),
+                    'variants' => $variants,
+                ];
+            }
+            usort($volumes, fn ($a, $b) => $a['volume'] <=> $b['volume']);
+            if (empty($volumes)) {
+                continue;
+            }
+            $result[(string) $pid] = $volumes;
+        }
+        return $result;
+    }
+
+    /**
      * Whether the product has any variety records at the branch —
      * products stocked in before variety tracking have none and may
      * be sold/transferred without picking a variety.
