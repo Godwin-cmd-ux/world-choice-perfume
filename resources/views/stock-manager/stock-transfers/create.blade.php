@@ -175,7 +175,7 @@
     }
 
     function addRow() {
-        state.rows.push({ id: state.nextId++, key: '', volume: '', variant: '', qty: '' });
+        state.rows.push({ id: state.nextId++, key: '', volume: '', variant: '', price: '', qty: '' });
         render();
     }
 
@@ -201,6 +201,7 @@
         if (row) {
             row.volume = selectEl.value;
             row.variant = '';
+            row.price = '';
             render();
         }
     }
@@ -209,7 +210,15 @@
         const row = state.rows.find(r => r.id === id);
         if (row) {
             row.variant = selectEl.value;
+            row.price = '';
             render();
+        }
+    }
+
+    function onVarietyPrice(id, inputEl) {
+        const row = state.rows.find(r => r.id === id);
+        if (row) {
+            row.price = inputEl.value;
         }
     }
 
@@ -344,6 +353,22 @@
                             varSel.appendChild(op);
                         });
                         tdVariety.appendChild(varSel);
+
+                        // Per-variety selling price (50ml ≠ 30ml). Left empty,
+                        // the variety's recorded price travels with the item.
+                        const priceInput = document.createElement('input');
+                        priceInput.type = 'number';
+                        priceInput.name = `items[${index}][variety_price]`;
+                        priceInput.min = '0';
+                        priceInput.step = '0.01';
+                        priceInput.value = row.price;
+                        priceInput.placeholder = 'Price (TZS)';
+                        const defVariant = ((bucket && bucket.variants) || []).find(v => String(v.key) === String(row.variant));
+                        if (defVariant && (defVariant.price || 0) > 0) {
+                            priceInput.placeholder = 'Price (default ' + Number(defVariant.price).toLocaleString() + ')';
+                        }
+                        priceInput.addEventListener('input', () => onVarietyPrice(row.id, priceInput));
+                        tdVariety.appendChild(priceInput);
                     }
                 }
                 tr.appendChild(tdVariety);
@@ -408,6 +433,7 @@
                     // fragrance; other types submit their own volume field.
                     volume: TYPE === 'product' ? String(it.volume ?? '') : '',
                     variant: TYPE === 'product' ? String(it.variant ?? '') : '',
+                    price: TYPE === 'product' ? String(it.variety_price ?? '') : '',
                     qty: String(it.quantity ?? ''),
                 });
             });

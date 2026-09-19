@@ -238,12 +238,17 @@ class SalesController extends Controller
                 // Price logic:
                 // Wholesale: use custom_price if provided, else selling_price
                 // Retail: use discount_price if provided (manual discount), else selling_price
+                // A picked variety carries its own selling price (50ml ≠ 30ml);
+                // the product's branch price is only the fallback.
+                $varietyUnitPrice = $pickVolume > 0 && $pickVariant !== ''
+                    ? $this->varieties->priceFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
+                    : 0.0;
                 if ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price'])) {
                     $unitPrice = $item['custom_price'];
                 } elseif ($validated['sale_type'] === 'retail' && !empty($item['discount_price'])) {
                     $unitPrice = $item['discount_price'];
                 } else {
-                    $unitPrice = $stock['selling_price'] ?? 0;
+                    $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
                 }
 
                 $lineTotal = $unitPrice * $item['quantity'];

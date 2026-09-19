@@ -427,11 +427,15 @@ class SupabaseService
                 'branch_id','volume','variant','quantity','has_logo','logo_color','has_box','box_color',
                 'created_at','updated_at',
             ],
+            'stock_transfer_items' => [
+                'stock_transfer_id','product_id','name','quantity','unit_cost','unit_price','variety_unit_price',
+                'category','supplier','volume','variant','created_at','updated_at',
+            ],
             'oil_fragrance_stock' => [
                 'branch_id','name','volume','quantity','created_at','updated_at',
             ],
             'branch_stock_varieties' => [
-                'branch_id','product_id','volume','variant','quantity','created_at','updated_at',
+                'branch_id','product_id','volume','variant','quantity','selling_price','created_at','updated_at',
             ],
             'bottle_stock_movements' => [
                 'branch_id','volume','variant','type','quantity','reason','performed_by',

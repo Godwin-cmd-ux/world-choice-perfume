@@ -632,6 +632,22 @@ class StockTransferController extends Controller
                     }
                 }
 
+                // Per-variety pricing: the price travels with the exact
+                // bottling (50ml ≠ 30ml). The form may state it; otherwise
+                // the bucket's recorded price is used, falling back to the
+                // product's branch price.
+                $varietyPrice = null;
+                if ($isOil && $varietyVolume !== '' && $varietyVariant !== '') {
+                    $varietyPrice = (float) trim((string) ($ri['variety_price'] ?? ''));
+                    if ($varietyPrice <= 0) {
+                        $varietyPrice = (new \App\Services\ProductVarietyStockService($this->supabase))
+                            ->priceFor($fromBranchId, $pid, (int) $varietyVolume, $varietyVariant);
+                    }
+                    if ($varietyPrice <= 0) {
+                        $varietyPrice = (float) ($stock['selling_price'] ?? 0);
+                    }
+                }
+
                 $resolved[] = [
                     'quantity' => $qty,
                     'columns' => [
@@ -639,6 +655,7 @@ class StockTransferController extends Controller
                         'name' => $productMap[$pid]['name'] ?? null,
                         'unit_cost' => (float) ($stock['buying_cost'] ?? 0),
                         'unit_price' => (float) ($stock['selling_price'] ?? 0),
+                        'variety_unit_price' => $varietyPrice !== null ? round($varietyPrice, 2) : null,
                         'category' => $stock['category'] ?? null,
                         'supplier' => $stock['supplier'] ?? null,
                         'volume' => $isOil ? (string) (int) $varietyVolume : null,
@@ -1175,7 +1192,7 @@ class StockTransferController extends Controller
                     'product_id' => $productId,
                     'quantity' => $qty,
                     'buying_cost' => (float) ($item['unit_cost'] ?? 0),
-                    'selling_price' => (float) ($item['unit_price'] ?? 0),
+                    'selling_price' => (float) (($item['variety_unit_price'] ?? 0) > 0 ? $item['variety_unit_price'] : ($item['unit_price'] ?? 0)),
                     'category' => $item['category'] ?? null,
                     'supplier' => $item['supplier'] ?? null,
                     'date_received' => now()->format('Y-m-d'),
@@ -1196,6 +1213,25 @@ class StockTransferController extends Controller
             $inVariant = (string) ($item['variant'] ?? '');
             if ($inVolume > 0 && $inVariant !== '') {
                 $this->adjustProductVarietyStock($branchId, $productId, $inVolume, $inVariant, $qty);
+
+                // The receiving branch inherits the sending branch's
+                // per-variety selling price (50ml ≠ 30ml) until it sets
+                // its own price for that bottling.
+                $inPrice = (float) ($item['variety_unit_price'] ?? 0);
+                if ($inPrice > 0) {
+                    $bucket = $this->supabase->findOne('branch_stock_varieties', [
+                        'branch_id' => $branchId,
+                        'product_id' => $productId,
+                        'volume' => $inVolume,
+                        'variant' => $inVariant,
+                    ]);
+                    if ($bucket && (float) ($bucket['selling_price'] ?? 0) <= 0) {
+                        $this->supabase->update('branch_stock_varieties', [
+                            'selling_price' => round($inPrice, 2),
+                            'updated_at' => $now,
+                        ], ['id' => $bucket['id']]);
+                    }
+                }
             }
 
             $this->supabase->insert('stock_movements', [

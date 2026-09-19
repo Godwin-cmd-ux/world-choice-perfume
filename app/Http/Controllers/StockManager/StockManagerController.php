@@ -298,9 +298,11 @@ class StockManagerController extends Controller
         $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
 
         // Per-product bottling breakdown (volume/variety) for oil fragrance
-        // products — shown under each stock row.
-        $varietyMap = (new \App\Services\ProductVarietyStockService($this->supabase))
-            ->stockForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
+        // products — shown under each stock row, with each bucket's own
+        // selling price (50ml ≠ 30ml).
+        $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
+        $varietyMap = $varietyService->stockForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
+        $varietyPriceMap = $varietyService->pricesForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
 
         $stocks = collect($stocks)->map(function ($s) {
             if (isset($s['product']) && is_array($s['product'])) {
@@ -316,6 +318,7 @@ class StockManagerController extends Controller
             'stocks' => $stocks,
             'totalValue' => $totalValue,
             'varietyMap' => $varietyMap,
+            'varietyPriceMap' => $varietyPriceMap,
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
@@ -346,6 +349,7 @@ class StockManagerController extends Controller
                 'product_id' => 'required',
                 'quantity' => 'required|integer|min:1',
                 'selling_price' => 'required|numeric|min:0',
+                'variety_price' => 'nullable|numeric|min:0',
                 'category' => 'required|in:Oil Fragrance,Brand Perfume',
                 'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
                 'bottle_variant' => 'nullable|string|max:32',
@@ -390,6 +394,15 @@ class StockManagerController extends Controller
             }
         }
 
+        // Per-variety pricing: an oil fragrance bottling carries its own
+        // selling price (50ml ≠ 30ml). When variety_price is filled it wins;
+        // otherwise the variety inherits the product's selling price.
+        $varietyPrice = (float) ($validated['variety_price'] ?? 0);
+        $effectivePrice = (float) $validated['selling_price'];
+        if ($category === 'Oil Fragrance' && $bottleVolume && $varietyPrice > 0) {
+            $effectivePrice = $varietyPrice;
+        }
+
         $existing = $this->supabase->findOne('branch_stock', [
             'branch_id' => $branchId,
             'product_id' => $validated['product_id'],
@@ -399,23 +412,23 @@ class StockManagerController extends Controller
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
-                'selling_price' => $validated['selling_price'],                    'category' => $category,
+                'selling_price' => $effectivePrice,                    'category' => $category,
                     'date_received' => $validated['date_received'],
                     'entered_by' => $this->performingUserId(),
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $existing['id']]);
 
-            if ((float) ($existing['selling_price'] ?? 0) !== (float) $validated['selling_price']) {
+            if ((float) ($existing['selling_price'] ?? 0) !== (float) $effectivePrice) {
                 (new \App\Services\AuditService())->recordCriticalAction(
                     'price_customization',
                     'price_change_stock_in',
                     'Price Changed',
-                    "Selling price changed for product #{$validated['product_id']} during stock-in: " . number_format((float) ($existing['selling_price'] ?? 0)) . ' → ' . number_format((float) $validated['selling_price']) . ' TZS.',
-                    ['branch_stock_id' => $existing['id'], 'product_id' => $validated['product_id'], 'old_price' => $existing['selling_price'] ?? 0, 'new_price' => $validated['selling_price']],
+                    "Selling price changed for product #{$validated['product_id']} during stock-in: " . number_format((float) ($existing['selling_price'] ?? 0)) . ' → ' . number_format((float) $effectivePrice) . ' TZS.',
+                    ['branch_stock_id' => $existing['id'], 'product_id' => $validated['product_id'], 'old_price' => $existing['selling_price'] ?? 0, 'new_price' => $effectivePrice],
                     'branch_stock',
                     (string) $existing['id'],
                     ['selling_price' => $existing['selling_price'] ?? 0],
-                    ['selling_price' => $validated['selling_price']]
+                    ['selling_price' => $effectivePrice]
                 );
             }
             } else {
@@ -423,7 +436,7 @@ class StockManagerController extends Controller
                     'branch_id' => $branchId,
                     'product_id' => $validated['product_id'],
                     'quantity' => $validated['quantity'],
-                    'selling_price' => $validated['selling_price'],
+                    'selling_price' => $effectivePrice,
                     'category' => $category,
                     'date_received' => $validated['date_received'],
                     'entered_by' => $this->performingUserId(),
@@ -437,7 +450,7 @@ class StockManagerController extends Controller
             'product_id' => $validated['product_id'],
             'type' => 'entry',
             'quantity' => $validated['quantity'],
-            'unit_price' => $validated['selling_price'],
+            'unit_price' => $effectivePrice,
             'performed_by' => $this->performingUserId(),
             'notes' => 'Stock entry',
             'created_at' => now()->toIso8601String(),
@@ -466,7 +479,8 @@ class StockManagerController extends Controller
                 (int) $validated['product_id'],
                 (int) $bottleVolume,
                 (string) $variant,
-                (int) $validated['quantity']
+                (int) $validated['quantity'],
+                $effectivePrice
             );
         }
 
@@ -477,7 +491,7 @@ class StockManagerController extends Controller
      * Increment (or create) the per-product variety row in
      * branch_stock_varieties for the given branch.
      */
-    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity): void
+    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity, ?float $unitPrice = null): void
     {
         if ($quantity <= 0) {
             return;
@@ -490,13 +504,19 @@ class StockManagerController extends Controller
             'variant' => $variant,
         ]);
 
+        $price = ($unitPrice !== null && $unitPrice > 0) ? round($unitPrice, 2) : null;
+
         if ($existing) {
-            $this->supabase->update('branch_stock_varieties', [
+            $update = [
                 'quantity' => ((int) ($existing['quantity'] ?? 0)) + $quantity,
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
+            ];
+            if ($price !== null) {
+                $update['selling_price'] = $price;
+            }
+            $this->supabase->update('branch_stock_varieties', $update, ['id' => $existing['id']]);
         } else {
-            $this->supabase->insert('branch_stock_varieties', [
+            $row = [
                 'branch_id' => $branchId,
                 'product_id' => $productId,
                 'volume' => $volume,
@@ -504,7 +524,11 @@ class StockManagerController extends Controller
                 'quantity' => $quantity,
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($price !== null) {
+                $row['selling_price'] = $price;
+            }
+            $this->supabase->insert('branch_stock_varieties', $row);
         }
     }
 

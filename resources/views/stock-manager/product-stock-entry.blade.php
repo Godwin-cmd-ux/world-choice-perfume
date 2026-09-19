@@ -58,8 +58,11 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (TZS) *</label>
-                <input type="number" name="selling_price" required min="0" step="0.01"
+                <input type="number" name="selling_price" id="selling_price" required min="0" step="0.01"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <p id="variety-price-hint" class="hidden text-[11px] text-emerald-700 mt-1">
+                    <i class="fas fa-tag mr-1"></i>For oil fragrance, this is the selling price of the <strong>specific volume and variety</strong> picked below (e.g. 50ml sells differently from 30ml).
+                </p>
             </div>
 
 
@@ -165,11 +168,14 @@ function toggleBottleVolume() {
     const category = document.getElementById('category-select').value;
     const field = document.getElementById('bottle-volume-field');
     const volumeInput = document.getElementById('bottle_volume');
+    const priceHint = document.getElementById('variety-price-hint');
 
     if (category === 'Oil Fragrance') {
         field.classList.remove('hidden');
         volumeInput.setAttribute('required', 'required');
+        if (priceHint) priceHint.classList.remove('hidden');
     } else {
+        if (priceHint) priceHint.classList.add('hidden');
         field.classList.add('hidden');
         volumeInput.removeAttribute('required');
         volumeInput.value = '';
@@ -223,6 +229,14 @@ function hideVariantField() {
     variantField.classList.add('hidden');
     variantSelect.removeAttribute('required');
 }
+
+// Re-apply the price entered before a validation error.
+(function initPrice () {
+    const oldPrice = @json(old('selling_price'));
+    if (oldPrice !== null && oldPrice !== '') {
+        document.getElementById('selling_price').value = oldPrice;
+    }
+})();
 
 document.getElementById('bottle_volume').addEventListener('change', refreshVariantOptions);
 

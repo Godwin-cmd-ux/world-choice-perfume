@@ -91,6 +91,7 @@
                     </tr>
                     @php
                         $varieties = $varietyMap[$stock->product_id] ?? [];
+                        $varietyPrices = $varietyPriceMap[$stock->product_id] ?? [];
                     @endphp
                     @if(($stock->category ?? '') === 'Oil Fragrance' && count($varieties) > 0)
                         <tr class="border-t bg-gray-50/60">
@@ -105,6 +106,9 @@
                                                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-white border border-gray-200">
                                                     {{ $volume }}ml &middot; {{ str_replace('_', ' ', $variantKey) }}
                                                     <span class="font-semibold text-emerald-700">&times; {{ $qty }}</span>
+                                                    @if(($varietyPrices[$volume][$variantKey] ?? 0) > 0)
+                                                        <span class="text-gray-500">&middot; TZS {{ number_format((float) $varietyPrices[$volume][$variantKey]) }}</span>
+                                                    @endif
                                                 </span>
                                             @endif
                                         @endforeach

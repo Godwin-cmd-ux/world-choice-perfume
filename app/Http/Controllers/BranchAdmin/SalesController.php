@@ -265,10 +265,15 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                     }
                 }
 
-                // Price customization: honor custom price on both retail and wholesale
+                // Price customization: honor custom price on both retail and wholesale.
+                // A picked variety carries its own selling price (50ml != 30ml);
+                // the product's branch price is only the fallback.
+                $varietyUnitPrice = $pickVolume > 0 && $pickVariant !== ''
+                    ? $this->varieties->priceFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
+                    : 0.0;
                 $unitPrice = !empty($item['custom_price'])
                     ? $item['custom_price']
-                    : ($stock['selling_price'] ?? 0);
+                    : ($varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0));
                 if (!empty($item['custom_price'])) {
                     $priceOverridden = true;
                 }

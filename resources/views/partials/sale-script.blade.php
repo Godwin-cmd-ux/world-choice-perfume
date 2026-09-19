@@ -238,7 +238,24 @@
                 varSel.classList.toggle('hidden', !this.value);
                 calculateTotal();
             });
-            varSel.addEventListener('change', calculateTotal);
+            varSel.addEventListener('change', function () {
+                // Per-variety pricing: default the price to the picked
+                // bottling's recorded price (50ml ≠ 30ml). Custom/discount
+                // inputs still override.
+                const bucket = (PRODUCT_META[String(cb.value)].varieties || []).find(v => String(v.volume) === String(volSel.value));
+                const variant = ((bucket && bucket.variants) || []).find(x => String(x.key) === String(varSel.value));
+                const priceInput = tr.querySelector('.cart-custom-price');
+                // Show the variety's price as the input hint but leave the
+                // input itself empty — a typed value stays a manual override.
+                if (priceInput) {
+                    priceInput.value = '';
+                    priceInput.placeholder = variant && (variant.price || 0) > 0
+                        ? 'Default ' + Number(variant.price).toLocaleString()
+                        : 'Custom price';
+                }
+                tr.dataset.varietyPrice = variant && (variant.price || 0) > 0 ? variant.price : '';
+                calculateTotal();
+            });
         }
 
         const custom = tr.querySelector('.cart-custom-price');
@@ -302,7 +319,8 @@
         const isRetail = type === 'retail';
         document.querySelectorAll('.cart-row').forEach(row => {
             const cb = document.querySelector('.product-check[value="' + row.dataset.productId + '"]');
-            const price = parseFloat(cb ? cb.dataset.price : 0);
+            // A picked variety carries its own selling price.
+            const price = parseFloat((row.dataset.varietyPrice || '') !== '' ? row.dataset.varietyPrice : (cb ? cb.dataset.price : 0));
             const qty = parseInt(row.querySelector('.cart-qty-hidden').value || 0);
             const custom = row.querySelector('.cart-custom-price');
             let unit = price;
