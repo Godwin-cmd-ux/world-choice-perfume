@@ -14,6 +14,7 @@
                 'label' => ($o['name'] ?? 'Product') . ($o['brand'] ? " ({$o['brand']})" : ''),
                 'available' => (int) ($o['available'] ?? 0),
                 'product_id' => (int) ($o['product_id'] ?? 0),
+                'category' => $o['category'] ?? null,
             ];
         }
         if ($type === 'bottle') {
@@ -117,6 +118,9 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="text-left py-3 px-4">Item</th>
+                                @if($type === 'product')
+                                    <th class="text-left px-4">Bottle Variety</th>
+                                @endif
                                 <th class="text-left px-4">Available</th>
                                 <th class="text-right px-4 w-28">Quantity</th>
                                 <th class="w-10 px-2"></th>
@@ -154,6 +158,8 @@
 <script>
     const TYPE = @json($type);
     const OPTIONS = @json($viewOptions);
+    const BOTTLE_VARIETIES = @json($bottleVarieties ?? []);
+    const OLD_ITEMS = @json(old('items') ?? []);
 
     const FIELD_NAMES = {
         product: ['product_id'],
@@ -169,7 +175,7 @@
     }
 
     function addRow() {
-        state.rows.push({ id: state.nextId++, key: '', qty: '' });
+        state.rows.push({ id: state.nextId++, key: '', volume: '', variant: '', qty: '' });
         render();
     }
 
@@ -182,6 +188,27 @@
         const row = state.rows.find(r => r.id === id);
         if (row) {
             row.key = selectEl.value;
+            // Oil fragrance products are bottled in several volumes/varieties —
+            // reset the picked variety when the product changes.
+            row.volume = '';
+            row.variant = '';
+            render();
+        }
+    }
+
+    function onVarietyVolume(id, selectEl) {
+        const row = state.rows.find(r => r.id === id);
+        if (row) {
+            row.volume = selectEl.value;
+            row.variant = '';
+            render();
+        }
+    }
+
+    function onVarietyVariant(id, selectEl) {
+        const row = state.rows.find(r => r.id === id);
+        if (row) {
+            row.variant = selectEl.value;
             render();
         }
     }
@@ -208,12 +235,23 @@
             const qty = parseInt(row.qty || '0', 10);
             if (qty > 0) total += qty;
             if (qty < 1 || qty > available) qtyValid = false;
+
+            // Oil fragrance products must have a bottle volume + variety picked.
+            if (TYPE === 'product' && opt && opt.category === 'Oil Fragrance' && (!row.volume || !row.variant)) {
+                qtyValid = false;
+            }
         });
 
         totalQty.textContent = total.toLocaleString();
         submitBtn.disabled = state.rows.length === 0 || !qtyValid;
+        const missingVariety = TYPE === 'product' && state.rows.some(r => {
+            const o = optionBy(r.key);
+            return o && o.category === 'Oil Fragrance' && (!r.volume || !r.variant);
+        });
         qtyHint.textContent = state.rows.length > 0 && !qtyValid
-            ? 'Set a valid quantity for every row (at least 1 and no more than the available stock).'
+            ? (missingVariety
+                ? 'Pick the bottle volume and variety for every Oil Fragrance row, and set a valid quantity for every row.'
+                : 'Set a valid quantity for every row (at least 1 and no more than the available stock).')
             : '';
     }
 
@@ -260,6 +298,52 @@
             }
             tr.appendChild(tdSelect);
 
+            // Oil fragrance products are bottled in specific volumes/varieties —
+            // the exact variety must be picked so the transfer records it.
+            if (TYPE === 'product') {
+                const tdVariety = document.createElement('td');
+                tdVariety.className = 'py-3 px-4';
+                if (opt && opt.category === 'Oil Fragrance') {
+                    const volSel = document.createElement('select');
+                    volSel.name = `items[${index}][volume]`;
+                    volSel.className = 'w-full border border-gray-300 rounded-lg text-sm px-2 py-2 bg-white focus:ring-2 focus:ring-emerald-500 mb-2';
+                    volSel.addEventListener('change', () => onVarietyVolume(row.id, volSel));
+                    const volBlank = document.createElement('option');
+                    volBlank.value = '';
+                    volBlank.textContent = 'Select volume…';
+                    volSel.appendChild(volBlank);
+                    (BOTTLE_VARIETIES || []).forEach(bv => {
+                        const op = document.createElement('option');
+                        op.value = bv.volume;
+                        op.textContent = bv.label;
+                        if (String(bv.volume) === String(row.volume)) op.selected = true;
+                        volSel.appendChild(op);
+                    });
+                    tdVariety.appendChild(volSel);
+
+                    if (row.volume) {
+                        const varSel = document.createElement('select');
+                        varSel.name = `items[${index}][variant]`;
+                        varSel.className = 'w-full border border-gray-300 rounded-lg text-sm px-2 py-2 bg-white focus:ring-2 focus:ring-emerald-500';
+                        varSel.addEventListener('change', () => onVarietyVariant(row.id, varSel));
+                        const varBlank = document.createElement('option');
+                        varBlank.value = '';
+                        varBlank.textContent = 'Select variety…';
+                        varSel.appendChild(varBlank);
+                        const bucket = (BOTTLE_VARIETIES || []).find(bv => String(bv.volume) === String(row.volume));
+                        ((bucket && bucket.variants) || []).forEach(v => {
+                            const op = document.createElement('option');
+                            op.value = v.key;
+                            op.textContent = v.label;
+                            if (String(v.key) === String(row.variant)) op.selected = true;
+                            varSel.appendChild(op);
+                        });
+                        tdVariety.appendChild(varSel);
+                    }
+                }
+                tr.appendChild(tdVariety);
+            }
+
             const tdAvail = document.createElement('td');
             tdAvail.className = 'py-3 px-4 text-sm text-gray-500';
             tdAvail.textContent = opt ? (available + ' available') : '—';
@@ -270,6 +354,7 @@
             tdQty.className = 'py-3 px-4 text-right';
             const qtyInput = document.createElement('input');
             qtyInput.type = 'number';
+            qtyInput.name = `items[${index}][quantity]`;
             qtyInput.min = '1';
             qtyInput.max = opt ? available : 99999;
             qtyInput.value = row.qty;
@@ -295,7 +380,36 @@
         updateTotals();
     }
 
-    if (OPTIONS.length) addRow();
+    // Restore rows after a validation error so the user's entries survive.
+    (function initFromOld () {
+        const items = OLD_ITEMS || [];
+        if (Array.isArray(items) && items.length) {
+            items.forEach(it => {
+                // Each transfer type encodes its select key differently.
+                let key = '';
+                if (TYPE === 'product') {
+                    key = String(it.product_id ?? '');
+                } else if (TYPE === 'bottle') {
+                    key = (it.volume ?? '') + '|' + (it.variant ?? '');
+                } else if (TYPE === 'oil_fragrance') {
+                    key = (it.name ?? '') + '|' + (it.volume ?? '');
+                } else {
+                    key = (it.type ?? '') + '|' + (it.color ?? '');
+                }
+                state.rows.push({
+                    id: state.nextId++,
+                    key: key,
+                    // Bottle variety only applies to product rows for oil
+                    // fragrance; other types submit their own volume field.
+                    volume: TYPE === 'product' ? String(it.volume ?? '') : '',
+                    variant: TYPE === 'product' ? String(it.variant ?? '') : '',
+                    qty: String(it.quantity ?? ''),
+                });
+            });
+        } else if (OPTIONS.length) {
+            addRow();
+        }
+    })();
     document.addEventListener('DOMContentLoaded', render);
 </script>
 @endif

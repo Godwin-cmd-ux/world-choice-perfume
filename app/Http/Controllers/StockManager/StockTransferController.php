@@ -267,13 +267,30 @@ class StockTransferController extends Controller
             $products = [];
             if ($productIds) {
                 $list = $this->supabase->query('products', [
-                    'select' => 'id,name,brand',
+                    'select' => 'id,name,brand,category',
                     'id' => 'in.(' . implode(',', $productIds) . ')',
                 ]);
                 foreach ($list as $p) {
                     $products[(int) $p['id']] = $p;
                 }
             }
+
+            // Oil fragrance products are bottled into small bottles of specific
+            // volumes and varieties (box / logo / color), so the transfer form
+            // must let the manager pick the exact variety being shipped.
+            $bottleVarieties = [];
+            foreach (BottleStockService::VOLUMES as $v) {
+                $variants = [];
+                foreach ($this->bottles->variantBuckets($v) as $key) {
+                    $variants[] = ['key' => $key, 'label' => $this->bottles->variantLabel($key, $v)];
+                }
+                $bottleVarieties[] = [
+                    'volume' => $v,
+                    'label' => $this->bottles->volumeLabel($v),
+                    'variants' => $variants,
+                ];
+            }
+            $data['bottleVarieties'] = $bottleVarieties;
 
             $options = [];
             foreach ($rows as $r) {
@@ -287,7 +304,7 @@ class StockTransferController extends Controller
                     'unit_cost' => (float) ($r['buying_cost'] ?? 0),
                     'unit_price' => (float) ($r['selling_price'] ?? 0),
                     'supplier' => $r['supplier'] ?? null,
-                    'category' => $r['category'] ?? null,
+                    'category' => $p['category'] ?? ($r['category'] ?? null),
                 ];
             }
             // Only products the branch actually has stock of are transferable.
@@ -485,7 +502,7 @@ class StockTransferController extends Controller
             $productMap = [];
             if ($pidMap) {
                 $list = $this->supabase->query('products', [
-                    'select' => 'id,name,brand',
+                    'select' => 'id,name,brand,category',
                     'id' => 'in.(' . implode(',', array_keys($pidMap)) . ')',
                 ]);
                 foreach ($list as $p) {
@@ -514,6 +531,27 @@ class StockTransferController extends Controller
                     $errors[] = 'Insufficient stock for ' . ($productMap[$pid]['name'] ?? 'product') . '. Available: ' . ($stock['quantity'] ?? 0) . '.';
                     continue;
                 }
+
+                // Oil fragrance products are bottled into specific volumes and
+                // varieties (box / logo / color) — require the exact variety so
+                // the transfer records which bottling was shipped.
+                $isOil = ($productMap[$pid]['category'] ?? ($stock['category'] ?? '')) === 'Oil Fragrance';
+                $varietyVolume = '';
+                $varietyVariant = '';
+                if ($isOil) {
+                    $varietyVolume = trim((string) ($ri['volume'] ?? ''));
+                    $varietyVariant = trim((string) ($ri['variant'] ?? ''));
+                    $volumeInt = (int) $varietyVolume;
+                    if ($varietyVolume === '' || !in_array($volumeInt, BottleStockService::VOLUMES, true)) {
+                        $errors[] = 'Select the bottle volume for ' . ($productMap[$pid]['name'] ?? 'product') . '.';
+                        continue;
+                    }
+                    if (!in_array($varietyVariant, $this->bottles->variantBuckets($volumeInt), true)) {
+                        $errors[] = 'Select the bottle variety (box / logo / color) for ' . ($productMap[$pid]['name'] ?? 'product') . '.';
+                        continue;
+                    }
+                }
+
                 $resolved[] = [
                     'quantity' => $qty,
                     'columns' => [
@@ -523,6 +561,8 @@ class StockTransferController extends Controller
                         'unit_price' => (float) ($stock['selling_price'] ?? 0),
                         'category' => $stock['category'] ?? null,
                         'supplier' => $stock['supplier'] ?? null,
+                        'volume' => $isOil ? (string) (int) $varietyVolume : null,
+                        'variant' => $isOil ? $varietyVariant : null,
                     ],
                 ];
             }
@@ -668,6 +708,25 @@ class StockTransferController extends Controller
     }
 
     /**
+     * Human-readable variety suffix (e.g. " — 30ml With Box · With Logo · Yellow")
+     * for transfer items that carry a bottle volume/variety.
+     */
+    private function varietySuffix(array $columns): string
+    {
+        $volume = (string) ($columns['volume'] ?? '');
+        $variant = (string) ($columns['variant'] ?? '');
+        if ($volume === '' || (int) $volume <= 0) {
+            return '';
+        }
+        $volumeInt = (int) $volume;
+        $label = $this->bottles->volumeLabel($volumeInt);
+        if ($variant !== '') {
+            $label .= ' ' . $this->bottles->variantLabel($variant, $volumeInt);
+        }
+        return ' — ' . $label;
+    }
+
+    /**
      * Stock out a single resolved item from the source branch and record the
      * matching movement row.
      */
@@ -698,7 +757,7 @@ class StockTransferController extends Controller
                 'unit_cost' => $item['columns']['unit_cost'] ?? null,
                 'unit_price' => $item['columns']['unit_price'] ?? null,
                 'performed_by' => $performedBy,
-                'notes' => $reason,
+                'notes' => $reason . $this->varietySuffix($item['columns']),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -863,7 +922,7 @@ class StockTransferController extends Controller
         if ($type === 'product') {
             $id = (int) ($item['product_id'] ?? 0);
             $p = $productNames[$id] ?? null;
-            return $p['name'] ?? ('Product #' . $id);
+            return ($p['name'] ?? ('Product #' . $id)) . $this->varietySuffix($item);
         }
 
         if ($type === 'bottle') {
@@ -1009,7 +1068,7 @@ class StockTransferController extends Controller
                 'unit_cost' => $item['unit_cost'] ?? null,
                 'unit_price' => $item['unit_price'] ?? null,
                 'performed_by' => $performedBy,
-                'notes' => $reason,
+                'notes' => $reason . $this->varietySuffix($item),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
