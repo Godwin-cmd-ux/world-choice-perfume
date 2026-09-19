@@ -277,12 +277,41 @@ class StockTransferController extends Controller
 
             // Oil fragrance products are bottled into small bottles of specific
             // volumes and varieties (box / logo / color), so the transfer form
-            // must let the manager pick the exact variety being shipped.
+            // must let the manager pick the exact variety being shipped. Only
+            // volumes/varieties that currently have stock at this branch are
+            // selectable.
+            $varietyStock = [];
+            foreach ($this->supabase->query('bottle_stock', [
+                'select' => 'volume,variant,quantity',
+                'branch_id' => "eq.{$branchId}",
+            ]) as $b) {
+                $volume = $this->bottles->parseVolume((string) ($b['volume'] ?? ''));
+                if ($volume === null) {
+                    continue;
+                }
+                $variant = (string) ($b['variant'] ?? BottleStockService::VARIANT_PLAIN);
+                $varietyStock[$volume][$variant] = ($varietyStock[$volume][$variant] ?? 0) + (int) ($b['quantity'] ?? 0);
+            }
+
             $bottleVarieties = [];
             foreach (BottleStockService::VOLUMES as $v) {
+                if (array_sum($varietyStock[$v] ?? []) <= 0) {
+                    continue; // Volume has no stock at all.
+                }
                 $variants = [];
                 foreach ($this->bottles->variantBuckets($v) as $key) {
-                    $variants[] = ['key' => $key, 'label' => $this->bottles->variantLabel($key, $v)];
+                    $qty = (int) ($varietyStock[$v][$key] ?? 0);
+                    if ($qty <= 0) {
+                        continue; // Variety has no stock.
+                    }
+                    $variants[] = [
+                        'key' => $key,
+                        'label' => $this->bottles->variantLabel($key, $v),
+                        'available' => $qty,
+                    ];
+                }
+                if (empty($variants)) {
+                    continue;
                 }
                 $bottleVarieties[] = [
                     'volume' => $v,
@@ -492,6 +521,21 @@ class StockTransferController extends Controller
                 $stockMap[(int) $r['product_id']] = $r;
             }
 
+            // Bottle variety availability at the source branch, used to validate
+            // the volume/variety picked for oil fragrance product rows.
+            $varietyStock = [];
+            foreach ($this->supabase->queryFresh('bottle_stock', [
+                'select' => 'volume,variant,quantity',
+                'branch_id' => "eq.{$fromBranchId}",
+            ]) as $b) {
+                $volume = $this->bottles->parseVolume((string) ($b['volume'] ?? ''));
+                if ($volume === null) {
+                    continue;
+                }
+                $variant = (string) ($b['variant'] ?? BottleStockService::VARIANT_PLAIN);
+                $varietyStock[$volume][$variant] = ($varietyStock[$volume][$variant] ?? 0) + (int) ($b['quantity'] ?? 0);
+            }
+
             $pidMap = [];
             foreach ($rawItems as $ri) {
                 $pid = (int) ($ri['product_id'] ?? 0);
@@ -534,7 +578,8 @@ class StockTransferController extends Controller
 
                 // Oil fragrance products are bottled into specific volumes and
                 // varieties (box / logo / color) — require the exact variety so
-                // the transfer records which bottling was shipped.
+                // the transfer records which bottling was shipped. Only
+                // volumes/varieties stocked at this branch are accepted.
                 $isOil = ($productMap[$pid]['category'] ?? ($stock['category'] ?? '')) === 'Oil Fragrance';
                 $varietyVolume = '';
                 $varietyVariant = '';
@@ -548,6 +593,12 @@ class StockTransferController extends Controller
                     }
                     if (!in_array($varietyVariant, $this->bottles->variantBuckets($volumeInt), true)) {
                         $errors[] = 'Select the bottle variety (box / logo / color) for ' . ($productMap[$pid]['name'] ?? 'product') . '.';
+                        continue;
+                    }
+                    $varietyAvailable = (int) ($varietyStock[$volumeInt][$varietyVariant] ?? 0);
+                    if ($varietyAvailable <= 0) {
+                        $errors[] = ($productMap[$pid]['name'] ?? 'product') . ' — ' . $this->bottles->volumeLabel($volumeInt)
+                            . ' (' . $this->bottles->variantLabel($varietyVariant, $volumeInt) . ') has no bottle stock at your branch.';
                         continue;
                     }
                 }

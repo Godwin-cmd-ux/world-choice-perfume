@@ -312,10 +312,11 @@
                     volBlank.value = '';
                     volBlank.textContent = 'Select volume…';
                     volSel.appendChild(volBlank);
+                    // Only volumes with stock at this branch are offered.
                     (BOTTLE_VARIETIES || []).forEach(bv => {
                         const op = document.createElement('option');
                         op.value = bv.volume;
-                        op.textContent = bv.label;
+                        op.textContent = bv.label + ' — ' + bv.variants.reduce((s, v) => s + (v.available || 0), 0) + ' in stock';
                         if (String(bv.volume) === String(row.volume)) op.selected = true;
                         volSel.appendChild(op);
                     });
@@ -331,10 +332,11 @@
                         varBlank.textContent = 'Select variety…';
                         varSel.appendChild(varBlank);
                         const bucket = (BOTTLE_VARIETIES || []).find(bv => String(bv.volume) === String(row.volume));
+                        // Only varieties with stock are offered.
                         ((bucket && bucket.variants) || []).forEach(v => {
                             const op = document.createElement('option');
                             op.value = v.key;
-                            op.textContent = v.label;
+                            op.textContent = v.label + ' — ' + (v.available || 0) + ' in stock';
                             if (String(v.key) === String(row.variant)) op.selected = true;
                             varSel.appendChild(op);
                         });
