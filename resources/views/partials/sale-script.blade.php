@@ -190,9 +190,10 @@
                 (needsVariety ?
                     '<select class="cart-variety-volume mt-1 w-full border border-gray-300 rounded text-xs px-1 py-1">' +
                         '<option value="">Select volume…</option>' +
-                        (PRODUCT_META[String(cb.value)].varieties || []).map(v =>
-                            `<option value="${v.volume}">${escapeHtml(v.label)} — ${v.variants.reduce((s, x) => s + (x.available || 0), 0)} in stock</option>`
-                        ).join('') +
+                        (PRODUCT_META[String(cb.value)].varieties || []).map(v => {
+                            const from = v.variants.reduce((m, x) => (x.price || 0) > 0 && (m === 0 || x.price < m) ? x.price : m, 0);
+                            return `<option value="${v.volume}">${escapeHtml(v.label)} — ${v.variants.reduce((s, x) => s + (x.available || 0), 0)} in stock${from > 0 ? ' · from TZS ' + Number(from).toLocaleString() : ''}</option>`;
+                        }).join('') +
                     '</select>' +
                     '<select class="cart-variety-variant mt-1 w-full border border-gray-300 rounded text-xs px-1 py-1 hidden"></select>'
                     : '') +
@@ -233,7 +234,7 @@
                 const bucket = (PRODUCT_META[String(cb.value)].varieties || []).find(v => String(v.volume) === String(this.value));
                 varSel.innerHTML = '<option value="">Select variety…</option>' +
                     ((bucket && bucket.variants) || []).map(x =>
-                        `<option value="${x.key}">${PRODUCT_VARIANT_LABELS[x.key] || x.key} (${x.available || 0} in stock)</option>`
+                        `<option value="${x.key}">${PRODUCT_VARIANT_LABELS[x.key] || x.key} (${x.available || 0} in stock${(x.price || 0) > 0 ? ' · TZS ' + Number(x.price).toLocaleString() : ''})</option>`
                     ).join('');
                 varSel.classList.toggle('hidden', !this.value);
                 // New volume — the previously picked variety (and its price)

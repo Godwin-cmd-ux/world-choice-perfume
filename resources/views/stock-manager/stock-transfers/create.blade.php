@@ -328,7 +328,8 @@
                     (BOTTLE_VARIETIES[String(opt.product_id)] || []).forEach(bv => {
                         const op = document.createElement('option');
                         op.value = bv.volume;
-                        op.textContent = bv.label + ' — ' + bv.variants.reduce((s, v) => s + (v.available || 0), 0) + ' in stock';
+                        const from = bv.variants.reduce((m, v) => (v.price || 0) > 0 && (m === 0 || v.price < m) ? v.price : m, 0);
+                        op.textContent = bv.label + ' — ' + bv.variants.reduce((s, v) => s + (v.available || 0), 0) + ' in stock' + (from > 0 ? ' · from TZS ' + Number(from).toLocaleString() : '');
                         if (String(bv.volume) === String(row.volume)) op.selected = true;
                         volSel.appendChild(op);
                     });
@@ -348,7 +349,7 @@
                         ((bucket && bucket.variants) || []).forEach(v => {
                             const op = document.createElement('option');
                             op.value = v.key;
-                            op.textContent = v.label + ' — ' + (v.available || 0) + ' in stock';
+                            op.textContent = v.label + ' — ' + (v.available || 0) + ' in stock' + ((v.price || 0) > 0 ? ' · TZS ' + Number(v.price).toLocaleString() : '');
                             if (String(v.key) === String(row.variant)) op.selected = true;
                             varSel.appendChild(op);
                         });
