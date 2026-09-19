@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Services\CashierScope;
+use App\Services\BottleStockService;
+use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -12,9 +14,12 @@ class OrderController extends Controller
     private SupabaseService $supabase;
     private CashierScope $scope;
 
+    private ProductVarietyStockService $varieties;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->varieties = new ProductVarietyStockService($this->supabase);
         $this->scope = new CashierScope($this->supabase);
     }
 
@@ -223,10 +228,28 @@ class OrderController extends Controller
             $stockUpdates = [];
             $stockMovements = [];
 
+            // Product categories and per-product variety availability — order
+            // items may not state a bottling, so deduct from the largest
+            // buckets first (FIFO by quantity) to keep variety counts true.
+            $orderProductIds = array_values(array_unique(array_filter(array_map(fn ($oi) => (int) ($oi['product_id'] ?? 0), $orderItems))));
+            $categoryMap = [];
+            if ($orderProductIds) {
+                foreach ($this->supabase->query('products', [
+                    'select' => 'id,category',
+                    'id' => 'in.(' . implode(',', $orderProductIds) . ')',
+                ]) as $p) {
+                    $categoryMap[(int) $p['id']] = $p['category'] ?? '';
+                }
+            }
+            $varietyStock = $this->varieties->stockForProducts((int) $order['branch_id'], $orderProductIds, fresh: true);
+
             foreach ($orderItems as $orderItem) {
                 $stock = $stockMap[$orderItem['product_id']] ?? null;
 
                 if ($stock && ($stock['quantity'] ?? 0) >= ($orderItem['quantity'] ?? 0)) {
+                    $qty = (int) ($orderItem['quantity'] ?? 0);
+                    $isOil = ($categoryMap[(int) $orderItem['product_id']] ?? '') === 'Oil Fragrance';
+
                     $saleItems[] = [
                         'sale_id' => $sale['id'],
                         'product_id' => $orderItem['product_id'],
@@ -239,14 +262,14 @@ class OrderController extends Controller
 
                     $stockUpdates[] = [
                         'id' => $stock['id'],
-                        'newQty' => ($stock['quantity'] ?? 0) - ($orderItem['quantity'] ?? 0),
+                        'newQty' => ($stock['quantity'] ?? 0) - $qty,
                     ];
 
                     $stockMovements[] = [
                         'branch_id' => $order['branch_id'],
                         'product_id' => $orderItem['product_id'],
                         'type' => 'sale',
-                        'quantity' => -($orderItem['quantity'] ?? 0),
+                        'quantity' => -$qty,
                         'unit_price' => $orderItem['unit_price'],
                         'reference_type' => 'sale',
                         'reference_id' => $sale['id'],
@@ -255,6 +278,26 @@ class OrderController extends Controller
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
                     ];
+
+                    // Deduct the sold units from the product's variety buckets —
+                    // largest bucket first until the quantity is consumed.
+                    if ($isOil && !empty($varietyStock[(int) $orderItem['product_id']])) {
+                        $remaining = $qty;
+                        foreach ($varietyStock[(int) $orderItem['product_id']] as $volume => $variants) {
+                            foreach ($variants as $variant => $available) {
+                                if ($remaining <= 0) {
+                                    break 2;
+                                }
+                                if ($available <= 0) {
+                                    continue;
+                                }
+                                $take = min($available, $remaining);
+                                $this->varieties->adjust((int) $order['branch_id'], (int) $orderItem['product_id'], (int) $volume, (string) $variant, -$take);
+                                $varietyStock[(int) $orderItem['product_id']][$volume][$variant] -= $take;
+                                $remaining -= $take;
+                            }
+                        }
+                    }
                 }
             }
 

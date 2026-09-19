@@ -523,6 +523,13 @@ class StockManagerController extends Controller
 
         $this->supabase->delete('branch_stock', ['id' => $stockId]);
 
+        // Remove the product's variety breakdown at this branch too — no
+        // orphaned "30ml box-logo-yellow" counts for deleted stock.
+        $this->supabase->delete('branch_stock_varieties', [
+            'branch_id' => $branchId,
+            'product_id' => $stock['product_id'],
+        ]);
+
         (new \App\Services\AuditService())->recordCriticalAction(
             'stock_deleted',
             'stock_record_deleted',
@@ -566,6 +573,55 @@ class StockManagerController extends Controller
             'selling_price' => $newPrice,
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $stockId]);
+
+        // Keep the per-product variety breakdown in sync with the manual
+        // quantity change, so "Reef 33 — 30ml box-logo-yellow" counts stay
+        // consistent with the product's total. The difference is applied to
+        // the largest buckets (the manager did not state a variety here).
+        if ($newQty != $oldQty) {
+            $product = $this->supabase->findOne('products', ['id' => $stock['product_id']]);
+            if (($product['category'] ?? '') === 'Oil Fragrance') {
+                $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
+                $buckets = $varietyService->stockFor($branchId, (int) $stock['product_id']);
+                $hasRecords = false;
+                foreach ($buckets as $variants) {
+                    if (array_sum($variants) > 0) {
+                        $hasRecords = true;
+                        break;
+                    }
+                }
+                if ($hasRecords) {
+                    $delta = $newQty - $oldQty;
+                    // Flatten to [volume => variant => qty], largest first.
+                    $flat = [];
+                    foreach ($buckets as $volume => $variants) {
+                        foreach ($variants as $variant => $qty) {
+                            if ($qty > 0) {
+                                $flat[] = ['volume' => $volume, 'variant' => $variant, 'qty' => $qty];
+                            }
+                        }
+                    }
+                    usort($flat, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+                    if ($delta > 0) {
+                        // Increase: add the whole difference to the largest bucket.
+                        if (!empty($flat)) {
+                            $varietyService->adjust($branchId, (int) $stock['product_id'], (int) $flat[0]['volume'], (string) $flat[0]['variant'], $delta);
+                        }
+                    } else {
+                        // Decrease: reduce largest buckets first until consumed.
+                        $remaining = -$delta;
+                        foreach ($flat as $bucket) {
+                            if ($remaining <= 0) {
+                                break;
+                            }
+                            $take = min((int) $bucket['qty'], $remaining);
+                            $varietyService->adjust($branchId, (int) $stock['product_id'], (int) $bucket['volume'], (string) $bucket['variant'], -$take);
+                            $remaining -= $take;
+                        }
+                    }
+                }
+            }
+        }
 
         // Log movement if quantity changed
         if ($newQty != $oldQty) {
