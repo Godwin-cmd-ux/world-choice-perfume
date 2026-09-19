@@ -451,9 +451,55 @@ class StockManagerController extends Controller
                 (string) $this->performingUserId(),
                 $variant
             );
+
+            // Record the per-product variety breakdown so transfers and stock
+            // outs know how many units of THIS product exist in this exact
+            // bottling (e.g. "Test perfume 50ml With Box · With Logo · Yellow").
+            $this->addProductVarietyStock(
+                $branchId,
+                (int) $validated['product_id'],
+                (int) $bottleVolume,
+                (string) $variant,
+                (int) $validated['quantity']
+            );
         }
 
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock entry recorded successfully.');
+    }
+
+    /**
+     * Increment (or create) the per-product variety row in
+     * branch_stock_varieties for the given branch.
+     */
+    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity): void
+    {
+        if ($quantity <= 0) {
+            return;
+        }
+
+        $existing = $this->supabase->findOne('branch_stock_varieties', [
+            'branch_id' => $branchId,
+            'product_id' => $productId,
+            'volume' => $volume,
+            'variant' => $variant,
+        ]);
+
+        if ($existing) {
+            $this->supabase->update('branch_stock_varieties', [
+                'quantity' => ((int) ($existing['quantity'] ?? 0)) + $quantity,
+                'updated_at' => now()->toIso8601String(),
+            ], ['id' => $existing['id']]);
+        } else {
+            $this->supabase->insert('branch_stock_varieties', [
+                'branch_id' => $branchId,
+                'product_id' => $productId,
+                'volume' => $volume,
+                'variant' => $variant,
+                'quantity' => $quantity,
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+        }
     }
 
     public function destroyProductStock($stockId)

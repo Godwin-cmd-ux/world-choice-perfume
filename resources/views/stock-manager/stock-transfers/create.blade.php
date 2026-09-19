@@ -158,7 +158,7 @@
 <script>
     const TYPE = @json($type);
     const OPTIONS = @json($viewOptions);
-    const BOTTLE_VARIETIES = @json($bottleVarieties ?? []);
+    const BOTTLE_VARIETIES = @json($productVarieties ?? []);
     const OLD_ITEMS = @json(old('items') ?? []);
 
     const FIELD_NAMES = {
@@ -226,6 +226,16 @@
         const submitBtn = document.getElementById('submit-btn');
         const qtyHint = document.getElementById('quantity-hint');
 
+        // Oil fragrance products must have a bottle volume + variety picked
+        // — unless the product has no variety records (stocked in before
+        // variety tracking), in which case it transfers without one.
+        const needsVariety = (row) => {
+            const o = optionBy(row.key);
+            return TYPE === 'product' && o && o.category === 'Oil Fragrance'
+                && (BOTTLE_VARIETIES[String(o.product_id)] || []).length > 0
+                && (!row.volume || !row.variant);
+        };
+
         let total = 0;
         let qtyValid = true;
 
@@ -235,19 +245,12 @@
             const qty = parseInt(row.qty || '0', 10);
             if (qty > 0) total += qty;
             if (qty < 1 || qty > available) qtyValid = false;
-
-            // Oil fragrance products must have a bottle volume + variety picked.
-            if (TYPE === 'product' && opt && opt.category === 'Oil Fragrance' && (!row.volume || !row.variant)) {
-                qtyValid = false;
-            }
+            if (needsVariety(row)) qtyValid = false;
         });
 
         totalQty.textContent = total.toLocaleString();
         submitBtn.disabled = state.rows.length === 0 || !qtyValid;
-        const missingVariety = TYPE === 'product' && state.rows.some(r => {
-            const o = optionBy(r.key);
-            return o && o.category === 'Oil Fragrance' && (!r.volume || !r.variant);
-        });
+        const missingVariety = TYPE === 'product' && state.rows.some(needsVariety);
         qtyHint.textContent = state.rows.length > 0 && !qtyValid
             ? (missingVariety
                 ? 'Pick the bottle volume and variety for every Oil Fragrance row, and set a valid quantity for every row.'
@@ -313,7 +316,7 @@
                     volBlank.textContent = 'Select volume…';
                     volSel.appendChild(volBlank);
                     // Only volumes with stock at this branch are offered.
-                    (BOTTLE_VARIETIES || []).forEach(bv => {
+                    (BOTTLE_VARIETIES[String(opt.product_id)] || []).forEach(bv => {
                         const op = document.createElement('option');
                         op.value = bv.volume;
                         op.textContent = bv.label + ' — ' + bv.variants.reduce((s, v) => s + (v.available || 0), 0) + ' in stock';
@@ -331,7 +334,7 @@
                         varBlank.value = '';
                         varBlank.textContent = 'Select variety…';
                         varSel.appendChild(varBlank);
-                        const bucket = (BOTTLE_VARIETIES || []).find(bv => String(bv.volume) === String(row.volume));
+                        const bucket = (BOTTLE_VARIETIES[String(opt.product_id)] || []).find(bv => String(bv.volume) === String(row.volume));
                         // Only varieties with stock are offered.
                         ((bucket && bucket.variants) || []).forEach(v => {
                             const op = document.createElement('option');

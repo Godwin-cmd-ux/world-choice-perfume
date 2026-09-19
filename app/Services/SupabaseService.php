@@ -430,6 +430,9 @@ class SupabaseService
             'oil_fragrance_stock' => [
                 'branch_id','name','volume','quantity','created_at','updated_at',
             ],
+            'branch_stock_varieties' => [
+                'branch_id','product_id','volume','variant','quantity','created_at','updated_at',
+            ],
             'bottle_stock_movements' => [
                 'branch_id','volume','variant','type','quantity','reason','performed_by',
                 'created_at','updated_at','has_logo','logo_color','has_box','box_color',
