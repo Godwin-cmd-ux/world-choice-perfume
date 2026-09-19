@@ -36,6 +36,24 @@
                 <span class="flex-1 min-w-0">
                     <span class="block text-sm font-medium truncate">{{ $stock->product->name }}</span>
                     <span class="block text-xs text-gray-500">TZS {{ number_format($stock->selling_price) }} &middot; {{ $stock->quantity }} in stock</span>
+                    @php
+                        $meta = $productMeta[$stock->product_id] ?? null;
+                    @endphp
+                    @if(($meta['category'] ?? '') === 'Oil Fragrance' && count($meta['varieties'] ?? []) > 0)
+                        <span class="block mt-1 flex flex-wrap gap-1">
+                            @foreach($meta['varieties'] as $vol)
+                                @foreach($vol['variants'] as $v)
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-gray-50 border border-gray-200">
+                                        {{ $vol['label'] }} &middot; {{ $v['label'] }}
+                                        <span class="font-semibold text-emerald-700">&times; {{ $v['available'] }}</span>
+                                        @if(($v['price'] ?? 0) > 0)
+                                            <span class="text-gray-500">&middot; TZS {{ number_format($v['price']) }}</span>
+                                        @endif
+                                    </span>
+                                @endforeach
+                            @endforeach
+                        </span>
+                    @endif
                 </span>
             </label>
         @endforeach
