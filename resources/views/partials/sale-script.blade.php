@@ -168,13 +168,33 @@
 
     function formatMoney(n) { return 'TZS ' + Number(n).toLocaleString(); }
 
+    // Clicking a variety chip sells that exact bottling: it adds the product
+    // to the cart with volume/variety preselected (or switches the existing
+    // cart row to that variety). Bound on each chip and stopped there so the
+    // surrounding product label's checkbox toggle never interferes.
+    document.querySelectorAll('.variety-chip').forEach(chip => {
+        chip.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const productId = chip.dataset.productId;
+            const cb = document.querySelector('.product-check[value="' + productId + '"]');
+            if (!cb) return;
+            if (!cb.checked) {
+                cb.checked = true;
+                addToCart(cb, { volume: chip.dataset.volume, variant: chip.dataset.variant });
+            } else {
+                applyVarietyPick(productId, chip.dataset.volume, chip.dataset.variant);
+            }
+        });
+    });
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',"'": '&#39;' }[c]));
     }
 
     function cartCount() { return document.querySelectorAll('.cart-row').length; }
 
-    function addToCart(cb) {
+    function addToCart(cb, pick) {
         const cart = document.getElementById('cart-rows');
         if (cart.querySelector('.cart-row[data-product-id="' + cb.value + '"]')) return;
 
@@ -262,6 +282,15 @@
                 tr.dataset.varietyPrice = variant && (variant.price || 0) > 0 ? variant.price : '';
                 calculateTotal();
             });
+            // Chip click: preselect the picked volume + variety.
+            if (pick && pick.volume) {
+                volSel.value = pick.volume;
+                volSel.dispatchEvent(new Event('change'));
+                if (pick.variant) {
+                    varSel.value = pick.variant;
+                    varSel.dispatchEvent(new Event('change'));
+                }
+            }
         }
 
         const custom = tr.querySelector('.cart-custom-price');
@@ -287,6 +316,23 @@
         if (cartCount() === 0) document.getElementById('cart-empty').classList.remove('hidden');
         reindex();
         calculateTotal();
+    }
+
+    // Switch an existing cart row to a specific variety (from a chip click).
+    function applyVarietyPick(productId, volume, variant) {
+        const row = document.getElementById('cart-rows').querySelector('.cart-row[data-product-id="' + productId + '"]');
+        if (!row) return;
+        const volSel = row.querySelector('.cart-variety-volume');
+        if (!volSel) return;
+        volSel.value = String(volume);
+        volSel.dispatchEvent(new Event('change'));
+        if (variant) {
+            const varSel = row.querySelector('.cart-variety-variant');
+            if (varSel) {
+                varSel.value = String(variant);
+                varSel.dispatchEvent(new Event('change'));
+            }
+        }
     }
 
     function changeQty(btn, delta) {
