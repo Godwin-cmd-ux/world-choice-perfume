@@ -30,7 +30,7 @@
             <tbody>
                 @foreach($sale->items as $item)
                     <tr class="border-b">
-                        <td class="py-2">{{ $item->product->name }}</td>
+                        <td class="py-2">{{ $item->product->name }}@if(!empty($item->volume)) <span class="text-xs text-gray-500">({{ $item->volume }}ml · {{ str_replace('_', ' ', $item->variant ?? '') }})</span>@endif</td>
                         <td class="text-center">{{ $item->quantity }}</td>
                         <td class="text-right">TZS {{ number_format($item->unit_price) }}</td>
                         <td class="text-right font-medium">TZS {{ number_format($item->total) }}</td>

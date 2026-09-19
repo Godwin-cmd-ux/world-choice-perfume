@@ -1,4 +1,20 @@
-{{-- Sale: searchable product checkbox picker + empty bottles card (wholesale only). Params: $products, $bottleStock, $bottleVariants, $accent --}}
+{{-- Sale: searchable product checkbox picker + empty bottles card (wholesale only). Params: $products, $bottleStock, $bottleVariants, $productVarieties, $accent --}}
+@php
+    // [product_id => [category, ...varieties]] for the JS variety picker:
+    // oil fragrance products are sold per volume/variety bucket.
+    $productMeta = [];
+    foreach ($products as $stock) {
+        $meta = ['category' => $stock->product->category ?? '', 'varieties' => []];
+        foreach (($productVarieties[$stock->product_id] ?? []) as $vol) {
+            $meta['varieties'][] = [
+                'volume' => $vol['volume'],
+                'label' => $vol['label'],
+                'variants' => $vol['variants'],
+            ];
+        }
+        $productMeta[$stock->product_id] = $meta;
+    }
+@endphp
 <div class="bg-white rounded-xl shadow p-6" id="products-card">
     <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold"><i class="fas fa-box mr-1"></i> Products</h3>
@@ -15,7 +31,8 @@
                     value="{{ $stock->product_id }}"
                     data-price="{{ $stock->selling_price }}"
                     data-stock="{{ $stock->quantity }}"
-                    data-name="{{ $stock->product->name }}">
+                    data-name="{{ $stock->product->name }}"
+                    data-category="{{ $stock->product->category ?? '' }}">
                 <span class="flex-1 min-w-0">
                     <span class="block text-sm font-medium truncate">{{ $stock->product->name }}</span>
                     <span class="block text-xs text-gray-500">TZS {{ number_format($stock->selling_price) }} &middot; {{ $stock->quantity }} in stock</span>

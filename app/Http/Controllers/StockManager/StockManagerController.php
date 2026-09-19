@@ -297,6 +297,11 @@ class StockManagerController extends Controller
         $stocks = array_values($stocks);
         $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
 
+        // Per-product bottling breakdown (volume/variety) for oil fragrance
+        // products — shown under each stock row.
+        $varietyMap = (new \App\Services\ProductVarietyStockService($this->supabase))
+            ->stockForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
+
         $stocks = collect($stocks)->map(function ($s) {
             if (isset($s['product']) && is_array($s['product'])) {
                 if (isset($s['product']['images']) && is_array($s['product']['images'])) {
@@ -310,6 +315,7 @@ class StockManagerController extends Controller
         return view('stock-manager.product-stock', [
             'stocks' => $stocks,
             'totalValue' => $totalValue,
+            'varietyMap' => $varietyMap,
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);

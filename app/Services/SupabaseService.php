@@ -417,7 +417,7 @@ class SupabaseService
             ],
             'sale_items' => [
                 'sale_id','product_id','quantity','unit_price','unit_cost','total',
-                'created_at','updated_at',
+                'volume','variant','created_at','updated_at',
             ],
             'stock_movements' => [
                 'branch_id','product_id','type','quantity','unit_cost','unit_price',

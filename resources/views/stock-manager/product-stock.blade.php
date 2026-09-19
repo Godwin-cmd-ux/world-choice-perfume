@@ -89,6 +89,30 @@
                             @endif
                         </td>
                     </tr>
+                    @php
+                        $varieties = $varietyMap[$stock->product_id] ?? [];
+                    @endphp
+                    @if(($stock->category ?? '') === 'Oil Fragrance' && count($varieties) > 0)
+                        <tr class="border-t bg-gray-50/60">
+                            <td colspan="8" class="px-12 py-2">
+                                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                    <i class="fas fa-wine-bottle mr-1"></i>Bottled varieties — {{ $stock->product->name }}
+                                </p>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($varieties as $volume => $variants)
+                                        @foreach($variants as $variantKey => $qty)
+                                            @if($qty > 0)
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-white border border-gray-200">
+                                                    {{ $volume }}ml &middot; {{ str_replace('_', ' ', $variantKey) }}
+                                                    <span class="font-semibold text-emerald-700">&times; {{ $qty }}</span>
+                                                </span>
+                                            @endif
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
                 @empty
                     <tr><td colspan="8" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse

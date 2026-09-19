@@ -4,6 +4,23 @@
     let paymentRowIndex = 1;
     let bottleRowIndex = 1;
 
+    // Per-product bottling breakdown for oil fragrance products — the sale
+    // must record WHICH volume/variety was sold.
+    const PRODUCT_META = @json($productMeta ?? []);
+    const PRODUCT_VARIANT_LABELS = {
+        'box_logo_yellow': 'With Box · With Logo · Yellow',
+        'box_logo_black': 'With Box · With Logo · Black',
+        'box_nologo_black': 'With Box · No Logo · Black',
+        'box_nologo_white': 'With Box · No Logo · White',
+        'no_box': 'Without Box',
+        'plain': 'Plain (no details)',
+    };
+
+    function productNeedsVariety(productId) {
+        const meta = PRODUCT_META[String(productId)];
+        return !!(meta && meta.category === 'Oil Fragrance' && (meta.varieties || []).length > 0);
+    }
+
     // ===================== SALE TYPE =====================
     function accentActive() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-' + ACCENT + '-600 text-white shadow'; }
     function accentIdle() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200'; }
@@ -161,6 +178,8 @@
         const cart = document.getElementById('cart-rows');
         if (cart.querySelector('.cart-row[data-product-id="' + cb.value + '"]')) return;
 
+        const needsVariety = productNeedsVariety(cb.value);
+
         const tr = document.createElement('tr');
         tr.className = 'cart-row';
         tr.dataset.productId = cb.value;
@@ -168,6 +187,15 @@
             '<td class="px-3 py-2">' +
                 '<span class="font-medium text-sm block">' + escapeHtml(cb.dataset.name) + '</span>' +
                 '<span class="text-xs text-gray-500">' + Number(cb.dataset.stock) + ' in stock</span>' +
+                (needsVariety ?
+                    '<select class="cart-variety-volume mt-1 w-full border border-gray-300 rounded text-xs px-1 py-1">' +
+                        '<option value="">Select volume…</option>' +
+                        (PRODUCT_META[String(cb.value)].varieties || []).map(v =>
+                            `<option value="${v.volume}">${escapeHtml(v.label)} — ${v.variants.reduce((s, x) => s + (x.available || 0), 0)} in stock</option>`
+                        ).join('') +
+                    '</select>' +
+                    '<select class="cart-variety-variant mt-1 w-full border border-gray-300 rounded text-xs px-1 py-1 hidden"></select>'
+                    : '') +
                 '<input type="hidden" class="cart-product-hidden">' +
                 '<input type="hidden" class="cart-qty-hidden" value="1">' +
             '</td>' +
@@ -196,6 +224,22 @@
 
         cart.appendChild(tr);
         document.getElementById('cart-empty').classList.add('hidden');
+
+        // Oil fragrance: wire the volume → variety dropdowns on the cart row.
+        if (needsVariety) {
+            const volSel = tr.querySelector('.cart-variety-volume');
+            const varSel = tr.querySelector('.cart-variety-variant');
+            volSel.addEventListener('change', function () {
+                const bucket = (PRODUCT_META[String(cb.value)].varieties || []).find(v => String(v.volume) === String(this.value));
+                varSel.innerHTML = '<option value="">Select variety…</option>' +
+                    ((bucket && bucket.variants) || []).map(x =>
+                        `<option value="${x.key}">${PRODUCT_VARIANT_LABELS[x.key] || x.key} (${x.available || 0} in stock)</option>`
+                    ).join('');
+                varSel.classList.toggle('hidden', !this.value);
+                calculateTotal();
+            });
+            varSel.addEventListener('change', calculateTotal);
+        }
 
         const custom = tr.querySelector('.cart-custom-price');
         custom.addEventListener('input', calculateTotal);
@@ -237,6 +281,10 @@
             row.querySelector('.cart-product-hidden').value = row.dataset.productId;
             row.querySelector('.cart-product-hidden').name = 'items[' + i + '][product_id]';
             row.querySelector('.cart-qty-hidden').name = 'items[' + i + '][quantity]';
+            const vol = row.querySelector('.cart-variety-volume');
+            const varSel = row.querySelector('.cart-variety-variant');
+            if (vol) vol.name = 'items[' + i + '][volume]';
+            if (varSel) varSel.name = 'items[' + i + '][variant]';
             const cp = row.querySelector('.cart-custom-price');
             if (cp) cp.name = 'items[' + i + '][custom_price]';
             @if (!empty($hasDiscount))
@@ -401,6 +449,27 @@
         });
         return total;
     }
+
+    // ===================== VARIETY VALIDATION ON SUBMIT =====================
+    (function () {
+        const form = document.getElementById('saleForm');
+        if (!form) return;
+        form.addEventListener('submit', function (e) {
+            const missing = [];
+            document.querySelectorAll('.cart-row').forEach(row => {
+                if (!productNeedsVariety(row.dataset.productId)) return;
+                const vol = row.querySelector('.cart-variety-volume');
+                const varSel = row.querySelector('.cart-variety-variant');
+                if (!vol || !vol.value || !varSel || !varSel.value) {
+                    missing.push(row.querySelector('.font-medium') ? row.querySelector('.font-medium').textContent : 'a product');
+                }
+            });
+            if (missing.length) {
+                e.preventDefault();
+                alert('Select the bottle volume and variety for: ' + missing.join(', ') + '.');
+            }
+        });
+    })();
 
     // ===================== INIT =====================
     bindBottleEvents();

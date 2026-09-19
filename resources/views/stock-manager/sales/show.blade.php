@@ -33,6 +33,9 @@
                                 @if(!empty($item->product?->brand))
                                     <p class="text-xs text-gray-500">{{ $item->product->brand }}</p>
                                 @endif
+                                @if(!empty($item->volume))
+                                    <p class="text-xs text-emerald-600">{{ $item->volume }}ml &middot; {{ str_replace('_', ' ', $item->variant ?? '') }}</p>
+                                @endif
                             </td>
                             <td class="px-6 text-right">{{ $item->quantity }}</td>
                             <td class="px-6 text-right">TZS {{ number_format($item->unit_price) }}</td>

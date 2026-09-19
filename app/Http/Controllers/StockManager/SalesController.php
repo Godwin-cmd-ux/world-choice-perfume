@@ -4,6 +4,7 @@ namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
+use App\Services\ProductVarietyStockService;
 use App\Services\StockManagerScope;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -14,10 +15,13 @@ class SalesController extends Controller
     private BottleStockService $bottles;
     private StockManagerScope $scope;
 
+    private ProductVarietyStockService $varieties;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
         $this->bottles = new BottleStockService($this->supabase);
+        $this->varieties = new ProductVarietyStockService($this->supabase);
         $this->scope = new StockManagerScope($this->supabase);
     }
 
@@ -95,7 +99,19 @@ class SalesController extends Controller
         $bottleStock = $this->bottles->stockMap($branchId);
         $bottleVariants = $this->bottles->variantStock($branchId);
 
-        return view('stock-manager.sales.create', ['products' => $products, 'bottleStock' => $bottleStock, 'bottleVariants' => $bottleVariants]);
+        // Per-product bottling breakdown for oil fragrance products, so the
+        // sale form can ask WHICH volume/variety is being sold.
+        $productVarieties = $this->varieties->stockForProducts(
+            $branchId,
+            $products->pluck('product_id')->all()
+        );
+
+        return view('stock-manager.sales.create', [
+            'products' => $products,
+            'bottleStock' => $bottleStock,
+            'bottleVariants' => $bottleVariants,
+            'productVarieties' => $productVarieties,
+        ]);
     }
 
     public function store(Request $request)
@@ -118,6 +134,8 @@ class SalesController extends Controller
             'empty_bottles.*.quantity' => 'nullable|integer|min:1',
             'empty_bottles.*.price' => 'nullable|numeric|min:0',
             'empty_bottles.*.variant' => 'nullable|string|max:32',
+            'items.*.volume' => 'nullable|integer',
+            'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
         ]);
 
@@ -178,13 +196,43 @@ class SalesController extends Controller
             $stockMovements = [];
             $discountDetails = [];
 
+            // Per-product variety availability, validated against the picks
+            // made in the cart for oil fragrance products.
+            $varietyStock = $this->varieties->stockForProducts(
+                $branchId,
+                array_map(fn ($i) => (int) ($i['product_id'] ?? 0), $validated['items']),
+                fresh: true
+            );
+
             foreach ($validated['items'] as $item) {
-                $stock = $stockMap[$item['product_id']] ?? null;
+                $stock = $stockMap[$item['product_id'] ] ?? null;
 
                 if (!$stock || ($stock['quantity'] ?? 0) < $item['quantity']) {
                     return back()->withErrors([
                         "items.{$item['product_id']}" => "Insufficient stock. Available: " . ($stock['quantity'] ?? 0),
                     ])->withInput();
+                }
+
+                // Oil fragrance products with variety records must state WHICH
+                // bottling is sold, and enough of that exact bucket must exist.
+                $isOil = ($stock['product']['category'] ?? '') === 'Oil Fragrance';
+                $pickVolume = 0;
+                $pickVariant = '';
+                if ($isOil && !empty($varietyStock[(int) $item['product_id']])) {
+                    $pickVolume = (int) ($item['volume'] ?? 0);
+                    $pickVariant = trim((string) ($item['variant'] ?? ''));
+                    if ($pickVolume <= 0 || $pickVariant === '') {
+                        return back()->withErrors([
+                            "items.{$item['product_id']}" => 'Select the bottle volume and variety for ' . ($stock['product']['name'] ?? 'product') . '.',
+                        ])->withInput();
+                    }
+                    $bucket = (int) ($varietyStock[(int) $item['product_id']][$pickVolume][$pickVariant] ?? 0);
+                    if ($bucket < (int) $item['quantity']) {
+                        return back()->withErrors([
+                            "items.{$item['product_id']}" => 'Insufficient stock for ' . ($stock['product']['name'] ?? 'product') . ' — '
+                                . $this->varieties->pickLabel($pickVolume, $pickVariant) . ". Available: {$bucket}.",
+                        ])->withInput();
+                    }
                 }
 
                 // Price logic:
@@ -219,6 +267,8 @@ class SalesController extends Controller
                     'unit_price' => $unitPrice,
                     'unit_cost' => (float) ($stock['buying_cost'] ?? 0),
                     'total' => $lineTotal,
+                    'volume' => $pickVolume > 0 ? $pickVolume : null,
+                    'variant' => $pickVolume > 0 ? $pickVariant : null,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ];
@@ -226,6 +276,10 @@ class SalesController extends Controller
                 $stockUpdates[] = [
                     'id' => $stock['id'],
                     'newQty' => $newQty,
+                    'soldQty' => (int) $item['quantity'],
+                    'productId' => (int) $item['product_id'],
+                    'varietyVolume' => $pickVolume,
+                    'varietyVariant' => $pickVariant,
                 ];
 
                 $stockMovements[] = [
@@ -388,12 +442,23 @@ class SalesController extends Controller
                 return back()->withErrors(['error' => 'Sale items could not be saved. Please try again.'])->withInput();
             }
 
-            // 8. Update stock quantities
+            // 8. Update stock quantities and deduct the exact per-product
+            // variety buckets sold (oil fragrance products).
             foreach ($stockUpdates as $su) {
                 $this->supabase->update('branch_stock', [
                     'quantity' => $su['newQty'],
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $su['id']]);
+
+                if (($su['varietyVolume'] ?? 0) > 0 && ($su['varietyVariant'] ?? '') !== '') {
+                    $this->varieties->adjust(
+                        $branchId,
+                        (int) $su['productId'],
+                        (int) $su['varietyVolume'],
+                        (string) $su['varietyVariant'],
+                        -(int) ($su['soldQty'] ?? 0)
+                    );
+                }
             }
 
             // 9. Batch insert stock movements

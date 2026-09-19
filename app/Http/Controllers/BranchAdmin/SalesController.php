@@ -4,6 +4,7 @@ namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
+use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -12,10 +13,13 @@ class SalesController extends Controller
     private SupabaseService $supabase;
     private BottleStockService $bottles;
 
+    private ProductVarietyStockService $varieties;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
         $this->bottles = new BottleStockService($this->supabase);
+        $this->varieties = new ProductVarietyStockService($this->supabase);
     }
 
     public function index(Request $request)
@@ -121,7 +125,19 @@ class SalesController extends Controller
         $bottleStock = $this->bottles->stockMap($branchId);
         $bottleVariants = $this->bottles->variantStock($branchId);
 
-        return view('branch-admin.sales.create', ['products' => $products, 'bottleStock' => $bottleStock, 'bottleVariants' => $bottleVariants]);
+        // Per-product bottling breakdown for oil fragrance products, so the
+        // sale form can ask WHICH volume/variety is being sold.
+        $productVarieties = $this->varieties->stockForProducts(
+            $branchId,
+            $products->pluck('product_id')->all()
+        );
+
+        return view('branch-admin.sales.create', [
+            'products' => $products,
+            'bottleStock' => $bottleStock,
+            'bottleVariants' => $bottleVariants,
+            'productVarieties' => $productVarieties,
+        ]);
     }
 
     public function store(Request $request)
@@ -143,6 +159,8 @@ class SalesController extends Controller
             'empty_bottles.*.quantity' => 'nullable|integer|min:1',
             'empty_bottles.*.price' => 'nullable|numeric|min:0',
             'empty_bottles.*.variant' => 'nullable|string|max:32',
+            'items.*.volume' => 'nullable|integer',
+            'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
         ]);
 
@@ -197,6 +215,20 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                 $stockMap[$s['product_id']] = $s;
             }
 
+            // Product categories for the sold items (needed to detect oil
+            // fragrance products) and their per-product variety availability.
+            $itemProductIds = array_values(array_unique(array_filter(array_map(fn ($i) => (int) ($i['product_id'] ?? 0), $validated['items']))));
+            $categoryMap = [];
+            if ($itemProductIds) {
+                foreach ($this->supabase->query('products', [
+                    'select' => 'id,category',
+                    'id' => 'in.(' . implode(',', $itemProductIds) . ')',
+                ]) as $p) {
+                    $categoryMap[(int) $p['id']] = $p['category'] ?? '';
+                }
+            }
+            $varietyStock = $this->varieties->stockForProducts($branchId, $itemProductIds, fresh: true);
+
             // 3. Validate stock and calculate totals
             $subtotal = 0;
             $saleItems = [];
@@ -210,6 +242,27 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                     return back()->withErrors([
                         "items.{$item['product_id']}" => "Insufficient stock. Available: " . ($stock['quantity'] ?? 0),
                     ])->withInput();
+                }
+
+                // Oil fragrance products with variety records must state WHICH
+                // bottling is sold, and enough of that exact bucket must exist.
+                $pickVolume = 0;
+                $pickVariant = '';
+                if (($categoryMap[(int) $item['product_id']] ?? '') === 'Oil Fragrance' && !empty($varietyStock[(int) $item['product_id']])) {
+                    $pickVolume = (int) ($item['volume'] ?? 0);
+                    $pickVariant = trim((string) ($item['variant'] ?? ''));
+                    if ($pickVolume <= 0 || $pickVariant === '') {
+                        return back()->withErrors([
+                            "items.{$item['product_id']}" => 'Select the bottle volume and variety for this product.',
+                        ])->withInput();
+                    }
+                    $bucket = (int) ($varietyStock[(int) $item['product_id']][$pickVolume][$pickVariant] ?? 0);
+                    if ($bucket < (int) $item['quantity']) {
+                        return back()->withErrors([
+                            "items.{$item['product_id']}" => 'Insufficient stock for this product — '
+                                . $this->varieties->pickLabel($pickVolume, $pickVariant) . ". Available: {$bucket}.",
+                        ])->withInput();
+                    }
                 }
 
                 // Price customization: honor custom price on both retail and wholesale
@@ -230,6 +283,8 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                     'unit_price' => $unitPrice,
                     'unit_cost' => (float) ($stock['buying_cost'] ?? 0),
                     'total' => $lineTotal,
+                    'volume' => $pickVolume > 0 ? $pickVolume : null,
+                    'variant' => $pickVolume > 0 ? $pickVariant : null,
                     'created_at' => now()->toIso8601String(),
                     'updated_at' => now()->toIso8601String(),
                 ];
@@ -237,6 +292,10 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                 $stockUpdates[] = [
                     'id' => $stock['id'],
                     'newQty' => $newQty,
+                    'soldQty' => (int) $item['quantity'],
+                    'productId' => (int) $item['product_id'],
+                    'varietyVolume' => $pickVolume,
+                    'varietyVariant' => $pickVariant,
                 ];
 
                 $stockMovements[] = [
@@ -400,12 +459,23 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
                 return back()->withErrors(['error' => 'Sale items could not be saved. Please try again.'])->withInput();
             }
 
-            // 6. Update stock quantities
+            // 6. Update stock quantities and deduct the exact per-product
+            // variety buckets sold (oil fragrance products).
             foreach ($stockUpdates as $su) {
                 $this->supabase->update('branch_stock', [
                     'quantity' => $su['newQty'],
                     'updated_at' => now()->toIso8601String(),
                 ], ['id' => $su['id']]);
+
+                if (($su['varietyVolume'] ?? 0) > 0 && ($su['varietyVariant'] ?? '') !== '') {
+                    $this->varieties->adjust(
+                        $branchId,
+                        (int) $su['productId'],
+                        (int) $su['varietyVolume'],
+                        (string) $su['varietyVariant'],
+                        -(int) ($su['soldQty'] ?? 0)
+                    );
+                }
             }
 
             // 7. Batch insert stock movements
