@@ -236,6 +236,11 @@
                         `<option value="${x.key}">${PRODUCT_VARIANT_LABELS[x.key] || x.key} (${x.available || 0} in stock)</option>`
                     ).join('');
                 varSel.classList.toggle('hidden', !this.value);
+                // New volume — the previously picked variety (and its price)
+                // no longer applies until a variety is picked again.
+                tr.dataset.varietyPrice = '';
+                const priceInput = tr.querySelector('.cart-custom-price');
+                if (priceInput) priceInput.placeholder = 'Custom price';
                 calculateTotal();
             });
             varSel.addEventListener('change', function () {
