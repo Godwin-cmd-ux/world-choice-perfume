@@ -18,7 +18,7 @@
 <div class="bg-white rounded-xl shadow p-6" id="products-card">
     <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold"><i class="fas fa-box mr-1"></i> Products</h3>
-        <span class="text-[10px] text-gray-400">Search &amp; check items to add</span>
+        <span class="text-[10px] text-gray-400">Search &amp; tick items or bottlings to sell</span>
     </div>
 
     <input type="text" id="productSearch" placeholder="Search products..." autocomplete="off"
@@ -26,42 +26,59 @@
 
     <div id="product-list" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 mb-3">
         @foreach($products as $stock)
-            <label class="product-pick flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-{{ $accent }}-50/40 transition">
-                <input type="checkbox" class="product-check rounded text-{{ $accent }}-600 focus:ring-{{ $accent }}-500"
-                    value="{{ $stock->product_id }}"
-                    data-price="{{ $stock->selling_price }}"
-                    data-stock="{{ $stock->quantity }}"
-                    data-name="{{ $stock->product->name }}"
-                    data-category="{{ $stock->product->category ?? '' }}">
-                <span class="flex-1 min-w-0">
-                    <span class="block text-sm font-medium truncate">{{ $stock->product->name }}</span>
-                    @php
-                        $meta = $productMeta[$stock->product_id] ?? null;
-                        $hasVarieties = ($meta['category'] ?? '') === 'Oil Fragrance' && count($meta['varieties'] ?? []) > 0;
-                    @endphp
-                    <span class="block text-xs text-gray-500">@if(!$hasVarieties)TZS {{ number_format($stock->selling_price) }} &middot; @endif{{ $stock->quantity }} in stock</span>
-                    @if($hasVarieties)
+            @php
+                $meta = $productMeta[$stock->product_id] ?? null;
+                $hasVarieties = ($meta['category'] ?? '') === 'Oil Fragrance' && count($meta['varieties'] ?? []) > 0;
+            @endphp
+            @if($hasVarieties)
+                {{-- Bottled product: each variety is its own checkbox and is sold
+                     at ITS recorded price. The single product checkbox is hidden —
+                     you cannot sell "the product" without choosing a bottling. --}}
+                <div class="product-pick flex items-start gap-3 px-3 py-2 hover:bg-{{ $accent }}-50/40 transition">
+                    <input type="checkbox" class="product-check hidden" tabindex="-1" aria-hidden="true"
+                        value="{{ $stock->product_id }}"
+                        data-price="{{ $stock->selling_price }}"
+                        data-stock="{{ $stock->quantity }}"
+                        data-name="{{ $stock->product->name }}"
+                        data-category="{{ $stock->product->category ?? '' }}">
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-medium truncate">{{ $stock->product->name }}</span>
+                        <span class="block text-[10px] text-gray-400 mb-1">{{ $stock->quantity }} in stock &middot; tick a bottling to sell it at its price</span>
                         <span class="block mt-1 flex flex-wrap gap-1">
                             @foreach($meta['varieties'] as $vol)
                                 @foreach($vol['variants'] as $v)
-                                    <button type="button"
-                                        class="variety-chip inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:border-emerald-300"
-                                        data-product-id="{{ $stock->product_id }}"
-                                        data-volume="{{ $vol['volume'] }}"
-                                        data-variant="{{ $v['key'] }}"
-                                        title="Sell this bottling">
-                                        {{ $vol['label'] }} &middot; {{ $v['label'] }}
+                                    <label class="variety-chip inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-gray-50 border border-gray-200 cursor-pointer hover:bg-emerald-50 hover:border-emerald-300 transition">
+                                        <input type="checkbox" class="variety-check accent-emerald-600"
+                                            data-product-id="{{ $stock->product_id }}"
+                                            data-volume="{{ $vol['volume'] }}"
+                                            data-variant="{{ $v['key'] }}"
+                                            data-price="{{ $v['price'] ?? 0 }}"
+                                            data-available="{{ $v['available'] }}">
+                                        <span>{{ $vol['label'] }} &middot; {{ $v['label'] }}</span>
                                         <span class="font-semibold text-emerald-700">&times; {{ $v['available'] }}</span>
                                         @if(($v['price'] ?? 0) > 0)
                                             <span class="text-gray-500">&middot; TZS {{ number_format($v['price']) }}</span>
                                         @endif
-                                    </button>
+                                    </label>
                                 @endforeach
                             @endforeach
                         </span>
-                    @endif
-                </span>
-            </label>
+                    </span>
+                </div>
+            @else
+                <label class="product-pick flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-{{ $accent }}-50/40 transition">
+                    <input type="checkbox" class="product-check rounded text-{{ $accent }}-600 focus:ring-{{ $accent }}-500"
+                        value="{{ $stock->product_id }}"
+                        data-price="{{ $stock->selling_price }}"
+                        data-stock="{{ $stock->quantity }}"
+                        data-name="{{ $stock->product->name }}"
+                        data-category="{{ $stock->product->category ?? '' }}">
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-medium truncate">{{ $stock->product->name }}</span>
+                        <span class="block text-xs text-gray-500">TZS {{ number_format($stock->selling_price) }} &middot; {{ $stock->quantity }} in stock</span>
+                    </span>
+                </label>
+            @endif
         @endforeach
     </div>
     <p id="product-no-match" class="hidden text-xs text-gray-400 mb-3"><i class="fas fa-info-circle mr-1"></i> No products match your search.</p>
