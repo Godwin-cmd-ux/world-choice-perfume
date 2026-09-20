@@ -4,9 +4,19 @@
     let paymentRowIndex = 1;
     let bottleRowIndex = 1;
 
+    @php
+        // [product_id => [category, varieties]] for the JS variety picker.
+        // Built from bucketsForProducts() data, which every sale controller
+        // passes. A product only gets variety rows when it is stocked in as
+        // an Oil Fragrance product, so anything with buckets is one.
+        $scriptProductMeta = [];
+        foreach (($productVarieties ?? []) as $metaPid => $metaVols) {
+            $scriptProductMeta[(string) $metaPid] = ['category' => 'Oil Fragrance', 'varieties' => $metaVols];
+        }
+    @endphp
     // Per-product bottling breakdown for oil fragrance products — the sale
     // must record WHICH volume/variety was sold.
-    const PRODUCT_META = @json($productMeta ?? []);
+    const PRODUCT_META = @json($scriptProductMeta);
     const PRODUCT_VARIANT_LABELS = {
         'box_logo_yellow': 'With Box · With Logo · Yellow',
         'box_logo_black': 'With Box · With Logo · Black',
