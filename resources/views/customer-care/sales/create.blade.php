@@ -23,7 +23,7 @@
                         <i class="fas fa-store mr-1"></i> Retail
                     </button>
                     <button type="button" onclick="setSaleType('wholesale')" id="tab-wholesale"
-                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200">
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700">
                         <i class="fas fa-boxes mr-1"></i> Wholesale
                     </button>
                 </div>

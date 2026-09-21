@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\AuditService;
 use App\Services\BottleStockService;
+use App\Services\ProductVarietyStockService;
 use App\Services\StockManagerScope;
 use App\Services\SupabaseService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class StockTransferController extends Controller
@@ -13,12 +17,14 @@ class StockTransferController extends Controller
     public const TYPES = ['product', 'bottle', 'oil_fragrance', 'bottle_accessories'];
 
     private SupabaseService $supabase;
+
     private BottleStockService $bottles;
+
     private StockManagerScope $scope;
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
         $this->bottles = new BottleStockService($this->supabase);
         $this->scope = new StockManagerScope($this->supabase);
     }
@@ -40,9 +46,10 @@ class StockTransferController extends Controller
     private function assertValidType(?string $type): string
     {
         $type = (string) $type;
-        if (!in_array($type, self::TYPES, true)) {
+        if (! in_array($type, self::TYPES, true)) {
             abort(404);
         }
+
         return $type;
     }
 
@@ -81,20 +88,20 @@ class StockTransferController extends Controller
         $supById = [];
         $supRows = $this->supabase->query('users', [
             'select' => 'id,name',
-            'id' => 'in.(' . implode(',', $ids) . ')',
+            'id' => 'in.('.implode(',', $ids).')',
             'limit' => 100,
         ]);
         foreach ($supRows as $u) {
             $supById[(int) $u['id']] = $u['name'];
         }
 
-        $localUsers = \App\Models\User::whereIn('id', $ids)
+        $localUsers = User::whereIn('id', $ids)
             ->get(['id', 'name', 'supabase_id'])
             ->keyBy('id');
 
         foreach ($ids as $id) {
             $local = $localUsers->get($id);
-            if ($local && !empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
+            if ($local && ! empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
                 $map[$id] = $supById[(int) $local->supabase_id];
             } elseif (isset($supById[$id])) {
                 $map[$id] = $supById[$id];
@@ -116,11 +123,12 @@ class StockTransferController extends Controller
 
         $rows = $this->supabase->query('branches', [
             'select' => 'id,name',
-            'id' => 'in.(' . implode(',', $ids) . ')',
+            'id' => 'in.('.implode(',', $ids).')',
         ]);
         foreach ($rows as $b) {
             $map[(int) $b['id']] = $b['name'];
         }
+
         return $map;
     }
 
@@ -197,10 +205,10 @@ class StockTransferController extends Controller
         if ($transferIds) {
             $items = $this->supabase->query('stock_transfer_items', [
                 'select' => 'transfer_id,status',
-                'transfer_id' => 'in.(' . implode(',', $transferIds) . ')',
+                'transfer_id' => 'in.('.implode(',', $transferIds).')',
             ]);
             foreach ($items as $it) {
-                if (!isset($itemCounts[(int) $it['transfer_id']])) {
+                if (! isset($itemCounts[(int) $it['transfer_id']])) {
                     $itemCounts[(int) $it['transfer_id']] = ['total' => 0, 'pending' => 0];
                 }
                 $itemCounts[(int) $it['transfer_id']]['total']++;
@@ -218,8 +226,8 @@ class StockTransferController extends Controller
                 'stock_type_label' => $this->typeLabel($t['stock_type'] ?? ''),
                 'from_branch_id' => (int) ($t['from_branch_id'] ?? 0),
                 'to_branch_id' => (int) ($t['to_branch_id'] ?? 0),
-                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? 'Branch #' . ($t['from_branch_id'] ?? '?'),
-                'to_branch_name' => $branchNames[(int) ($t['to_branch_id'] ?? 0)] ?? 'Branch #' . ($t['to_branch_id'] ?? '?'),
+                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? 'Branch #'.($t['from_branch_id'] ?? '?'),
+                'to_branch_name' => $branchNames[(int) ($t['to_branch_id'] ?? 0)] ?? 'Branch #'.($t['to_branch_id'] ?? '?'),
                 'status' => $t['status'] ?? 'in_transit',
                 'officer_name' => $t['officer_name'] ?? null,
                 'officer_phone' => $t['officer_phone'] ?? null,
@@ -268,7 +276,7 @@ class StockTransferController extends Controller
             if ($productIds) {
                 $list = $this->supabase->query('products', [
                     'select' => 'id,name,brand,category',
-                    'id' => 'in.(' . implode(',', $productIds) . ')',
+                    'id' => 'in.('.implode(',', $productIds).')',
                 ]);
                 foreach ($list as $p) {
                     $products[(int) $p['id']] = $p;
@@ -334,7 +342,7 @@ class StockTransferController extends Controller
                 $productVarieties[(string) $pid] = $volumes;
             }
             $data['productVarieties'] = $productVarieties;
-            $data['hasVarietyTracking'] = !empty($productVarieties);
+            $data['hasVarietyTracking'] = ! empty($productVarieties);
 
             $options = [];
             foreach ($rows as $r) {
@@ -342,7 +350,7 @@ class StockTransferController extends Controller
                 $p = $products[$pid] ?? null;
                 $options[] = [
                     'product_id' => $pid,
-                    'name' => $p['name'] ?? ('Product #' . $pid),
+                    'name' => $p['name'] ?? ('Product #'.$pid),
                     'brand' => $p['brand'] ?? null,
                     'available' => (int) ($r['quantity'] ?? 0),
                     'unit_cost' => (float) ($r['buying_cost'] ?? 0),
@@ -450,12 +458,12 @@ class StockTransferController extends Controller
 
         $rawItems = $request->input('items', []);
         $resolved = $this->resolveItems($type, $rawItems, $fromBranchId);
-        if ($resolved instanceof \Illuminate\Http\RedirectResponse) {
+        if ($resolved instanceof RedirectResponse) {
             return $resolved;
         }
 
         $toBranchName = $this->scope->branchName($toBranchId);
-        $transferNumber = 'TF-' . now()->format('YmdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+        $transferNumber = 'TF-'.now()->format('YmdHis').'-'.strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 
         $transfer = $this->supabase->insert('stock_transfers', [
             'transfer_number' => $transferNumber,
@@ -472,7 +480,7 @@ class StockTransferController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        if (!$transfer || empty($transfer['id'])) {
+        if (! $transfer || empty($transfer['id'])) {
             return back()->withErrors(['error' => 'Could not create the transfer record. Please run database/supabase_stock_transfers.sql in Supabase first, then retry.'])->withInput();
         }
 
@@ -495,6 +503,7 @@ class StockTransferController extends Controller
         $inserted = $this->supabase->insertMany('stock_transfer_items', $itemRows);
         if ($inserted === null) {
             $this->supabase->delete('stock_transfers', ['id' => $transferId]);
+
             return back()->withErrors(['error' => 'Could not save the transfer items. Please try again.'])->withInput();
         }
 
@@ -503,6 +512,13 @@ class StockTransferController extends Controller
             $this->applyOut($type, $item, $fromBranchId, $transferNumber, $toBranchName);
         }
 
+        $this->recordTransferAudit(
+            'transfer_created',
+            'Stock transfer confirmed',
+            'Transfer '.$transferNumber.' of '.$this->typeLabel($type).' with '.count($resolved)
+                .' item(s) created from '.$this->scope->activeBranchName().' to '.$toBranchName.'.'
+        );
+
         return redirect()->route('stock-manager.stock-transfers.index')
             ->with('success', "Transfer {$transferNumber} created. {$this->typeLabel($type)} has been moved to transfer stock and is waiting for {$toBranchName} to receive it.");
     }
@@ -510,6 +526,7 @@ class StockTransferController extends Controller
     private function isHQBranch(int $branchId): bool
     {
         $name = $this->scope->branchName($branchId);
+
         return $name !== null && mb_strtolower(trim($name)) === mb_strtolower(trim(StockManagerScope::HQ_BRANCH_NAME));
     }
 
@@ -517,9 +534,9 @@ class StockTransferController extends Controller
      * Validate raw form items against the source branch stock and return the
      * enriched rows (with the columns needed for stock_transfer_items).
      */
-    private function resolveItems(string $type, array $rawItems, int $fromBranchId): array|\Illuminate\Http\RedirectResponse
+    private function resolveItems(string $type, array $rawItems, int $fromBranchId): array|RedirectResponse
     {
-        if (empty($rawItems) || !is_array($rawItems)) {
+        if (empty($rawItems) || ! is_array($rawItems)) {
             return back()->withErrors(['items' => 'Add at least one item to transfer.'])->withInput();
         }
 
@@ -565,7 +582,7 @@ class StockTransferController extends Controller
             if ($pidMap) {
                 $list = $this->supabase->query('products', [
                     'select' => 'id,name,brand,category',
-                    'id' => 'in.(' . implode(',', array_keys($pidMap)) . ')',
+                    'id' => 'in.('.implode(',', array_keys($pidMap)).')',
                 ]);
                 foreach ($list as $p) {
                     $productMap[(int) $p['id']] = $p;
@@ -578,19 +595,23 @@ class StockTransferController extends Controller
                 $qty = (int) ($ri['quantity'] ?? 0);
                 if ($pid <= 0) {
                     $errors[] = 'Every row must have a product selected.';
+
                     continue;
                 }
                 if ($qty <= 0) {
-                    $errors[] = 'Quantity for ' . ($productMap[$pid]['name'] ?? 'product') . ' must be at least 1.';
+                    $errors[] = 'Quantity for '.($productMap[$pid]['name'] ?? 'product').' must be at least 1.';
+
                     continue;
                 }
                 $stock = $stockMap[$pid] ?? null;
-                if (!$stock) {
-                    $errors[] = (($productMap[$pid]['name'] ?? 'Product #' . $pid) . ' has no stock record at your branch.');
+                if (! $stock) {
+                    $errors[] = (($productMap[$pid]['name'] ?? 'Product #'.$pid).' has no stock record at your branch.');
+
                     continue;
                 }
                 if (((int) ($stock['quantity'] ?? 0)) < $qty) {
-                    $errors[] = 'Insufficient stock for ' . ($productMap[$pid]['name'] ?? 'product') . '. Available: ' . ($stock['quantity'] ?? 0) . '.';
+                    $errors[] = 'Insufficient stock for '.($productMap[$pid]['name'] ?? 'product').'. Available: '.($stock['quantity'] ?? 0).'.';
+
                     continue;
                 }
 
@@ -611,23 +632,27 @@ class StockTransferController extends Controller
                     $varietyVolume = trim((string) ($ri['volume'] ?? ''));
                     $varietyVariant = trim((string) ($ri['variant'] ?? ''));
                     $volumeInt = (int) $varietyVolume;
-                    if ($varietyVolume === '' || !in_array($volumeInt, BottleStockService::VOLUMES, true)) {
-                        $errors[] = 'Select the bottle volume for ' . ($productMap[$pid]['name'] ?? 'product') . '.';
+                    if ($varietyVolume === '' || ! in_array($volumeInt, BottleStockService::VOLUMES, true)) {
+                        $errors[] = 'Select the bottle volume for '.($productMap[$pid]['name'] ?? 'product').'.';
+
                         continue;
                     }
-                    if (!in_array($varietyVariant, $this->bottles->variantBuckets($volumeInt), true)) {
-                        $errors[] = 'Select the bottle variety (box / logo / color) for ' . ($productMap[$pid]['name'] ?? 'product') . '.';
+                    if (! in_array($varietyVariant, $this->bottles->variantBuckets($volumeInt), true)) {
+                        $errors[] = 'Select the bottle variety (box / logo / color) for '.($productMap[$pid]['name'] ?? 'product').'.';
+
                         continue;
                     }
                     $varietyAvailable = (int) ($varietyStock[$pid][$volumeInt][$varietyVariant] ?? 0);
                     if ($varietyAvailable <= 0) {
-                        $errors[] = ($productMap[$pid]['name'] ?? 'product') . ' — ' . $this->bottles->volumeLabel($volumeInt)
-                            . ' (' . $this->bottles->variantLabel($varietyVariant, $volumeInt) . ') has no stock at your branch for this product.';
+                        $errors[] = ($productMap[$pid]['name'] ?? 'product').' — '.$this->bottles->volumeLabel($volumeInt)
+                            .' ('.$this->bottles->variantLabel($varietyVariant, $volumeInt).') has no stock at your branch for this product.';
+
                         continue;
                     }
                     if ($varietyAvailable < $qty) {
-                        $errors[] = 'Insufficient stock for ' . ($productMap[$pid]['name'] ?? 'product') . ' — ' . $this->bottles->volumeLabel($volumeInt)
-                            . ' (' . $this->bottles->variantLabel($varietyVariant, $volumeInt) . '). Available: ' . $varietyAvailable . '.';
+                        $errors[] = 'Insufficient stock for '.($productMap[$pid]['name'] ?? 'product').' — '.$this->bottles->volumeLabel($volumeInt)
+                            .' ('.$this->bottles->variantLabel($varietyVariant, $volumeInt).'). Available: '.$varietyAvailable.'.';
+
                         continue;
                     }
                 }
@@ -640,7 +665,7 @@ class StockTransferController extends Controller
                 if ($isOil && $varietyVolume !== '' && $varietyVariant !== '') {
                     $varietyPrice = (float) trim((string) ($ri['variety_price'] ?? ''));
                     if ($varietyPrice <= 0) {
-                        $varietyPrice = (new \App\Services\ProductVarietyStockService($this->supabase))
+                        $varietyPrice = (new ProductVarietyStockService($this->supabase))
                             ->priceFor($fromBranchId, $pid, (int) $varietyVolume, $varietyVariant);
                     }
                     if ($varietyPrice <= 0) {
@@ -664,8 +689,9 @@ class StockTransferController extends Controller
                 ];
             }
             if ($errors) {
-                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? ' And more.' : '')])->withInput();
+                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)).(count($errors) > 3 ? ' And more.' : '')])->withInput();
             }
+
             return $resolved;
         }
 
@@ -681,7 +707,7 @@ class StockTransferController extends Controller
                     continue;
                 }
                 $variant = (string) ($b['variant'] ?? BottleStockService::VARIANT_PLAIN);
-                $stockMap[$volume . '|' . $variant] = (int) ($b['quantity'] ?? 0);
+                $stockMap[$volume.'|'.$variant] = (int) ($b['quantity'] ?? 0);
             }
 
             $errors = [];
@@ -692,18 +718,21 @@ class StockTransferController extends Controller
                 $volume = $this->bottles->parseVolume($label);
                 if ($volume === null) {
                     $errors[] = 'Every bottle row must have a valid volume.';
+
                     continue;
                 }
                 if ($qty <= 0) {
                     $errors[] = "Quantity for {$label} bottles must be at least 1.";
+
                     continue;
                 }
-                if (!in_array($variant, $this->bottles->variantBuckets($volume), true)) {
+                if (! in_array($variant, $this->bottles->variantBuckets($volume), true)) {
                     $variant = BottleStockService::VARIANT_PLAIN;
                 }
-                $available = $stockMap[$volume . '|' . $variant] ?? 0;
+                $available = $stockMap[$volume.'|'.$variant] ?? 0;
                 if ($available < $qty) {
                     $errors[] = "Insufficient {$label} ({$this->bottles->variantLabel($variant, $volume)}) bottles. Available: {$available}.";
+
                     continue;
                 }
                 $resolved[] = [
@@ -715,8 +744,9 @@ class StockTransferController extends Controller
                 ];
             }
             if ($errors) {
-                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? ' And more.' : '')])->withInput();
+                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)).(count($errors) > 3 ? ' And more.' : '')])->withInput();
             }
+
             return $resolved;
         }
 
@@ -727,7 +757,7 @@ class StockTransferController extends Controller
             ]);
             $stockMap = [];
             foreach ($rows as $o) {
-                $stockMap[(string) ($o['name'] ?? '') . '|' . (string) (int) ($o['volume'] ?? 0)] = (int) ($o['quantity'] ?? 0);
+                $stockMap[(string) ($o['name'] ?? '').'|'.(string) (int) ($o['volume'] ?? 0)] = (int) ($o['quantity'] ?? 0);
             }
 
             $errors = [];
@@ -737,15 +767,18 @@ class StockTransferController extends Controller
                 $qty = (int) ($ri['quantity'] ?? 0);
                 if ($name === '') {
                     $errors[] = 'Every oil fragrance row must have a fragrance selected.';
+
                     continue;
                 }
                 if ($qty <= 0) {
                     $errors[] = "Quantity for {$name} must be at least 1.";
+
                     continue;
                 }
-                $available = $stockMap[$name . '|' . ($vol !== '' ? $vol : '0')] ?? 0;
+                $available = $stockMap[$name.'|'.($vol !== '' ? $vol : '0')] ?? 0;
                 if ($available < $qty) {
-                    $errors[] = "Insufficient {$name} (" . ($vol ? $vol . 'ml' : 'no volume') . ") oil fragrance. Available: {$available}.";
+                    $errors[] = "Insufficient {$name} (".($vol ? $vol.'ml' : 'no volume').") oil fragrance. Available: {$available}.";
+
                     continue;
                 }
                 $resolved[] = [
@@ -757,8 +790,9 @@ class StockTransferController extends Controller
                 ];
             }
             if ($errors) {
-                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? ' And more.' : '')])->withInput();
+                return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)).(count($errors) > 3 ? ' And more.' : '')])->withInput();
             }
+
             return $resolved;
         }
 
@@ -769,7 +803,7 @@ class StockTransferController extends Controller
         ]);
         $stockMap = [];
         foreach ($rows as $a) {
-            $stockMap[(string) ($a['type'] ?? '') . '|' . (string) ($a['color'] ?? '')] = (int) ($a['quantity'] ?? 0);
+            $stockMap[(string) ($a['type'] ?? '').'|'.(string) ($a['color'] ?? '')] = (int) ($a['quantity'] ?? 0);
         }
 
         $errors = [];
@@ -777,17 +811,20 @@ class StockTransferController extends Controller
             $typeVal = (string) ($ri['type'] ?? '');
             $color = (string) ($ri['color'] ?? '');
             $qty = (int) ($ri['quantity'] ?? 0);
-            if (!in_array($typeVal, ['straws', 'bottlenecks', 'bottle_tops'], true) || !in_array($color, ['silver', 'gold'], true)) {
+            if (! in_array($typeVal, ['straws', 'bottlenecks', 'bottle_tops'], true) || ! in_array($color, ['silver', 'gold'], true)) {
                 $errors[] = 'Every bottle accessories row must have a type and color.';
+
                 continue;
             }
             if ($qty <= 0) {
                 $errors[] = 'Quantity for bottle accessories must be at least 1.';
+
                 continue;
             }
-            $available = $stockMap[$typeVal . '|' . $color] ?? 0;
+            $available = $stockMap[$typeVal.'|'.$color] ?? 0;
             if ($available < $qty) {
-                $errors[] = "Insufficient " . ucfirst(str_replace('_', ' ', $typeVal)) . ' (' . ucfirst($color) . ') packets. Available: ' . $available . '.';
+                $errors[] = 'Insufficient '.ucfirst(str_replace('_', ' ', $typeVal)).' ('.ucfirst($color).') packets. Available: '.$available.'.';
+
                 continue;
             }
             $resolved[] = [
@@ -799,8 +836,9 @@ class StockTransferController extends Controller
             ];
         }
         if ($errors) {
-            return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? ' And more.' : '')])->withInput();
+            return back()->withErrors(['items' => implode(' ', array_slice($errors, 0, 3)).(count($errors) > 3 ? ' And more.' : '')])->withInput();
         }
+
         return $resolved;
     }
 
@@ -853,9 +891,10 @@ class StockTransferController extends Controller
         $volumeInt = (int) $volume;
         $label = $this->bottles->volumeLabel($volumeInt);
         if ($variant !== '') {
-            $label .= ' ' . $this->bottles->variantLabel($variant, $volumeInt);
+            $label .= ' '.$this->bottles->variantLabel($variant, $volumeInt);
         }
-        return ' — ' . $label;
+
+        return ' — '.$label;
     }
 
     /**
@@ -876,7 +915,7 @@ class StockTransferController extends Controller
                 'limit' => 1,
             ]);
             $current = $row[0] ?? null;
-            if (!$current) {
+            if (! $current) {
                 return;
             }
             $newQty = (int) ($current['quantity'] ?? 0) - $item['quantity'];
@@ -904,10 +943,11 @@ class StockTransferController extends Controller
                 'unit_cost' => $item['columns']['unit_cost'] ?? null,
                 'unit_price' => $item['columns']['unit_price'] ?? null,
                 'performed_by' => $performedBy,
-                'notes' => $reason . $this->varietySuffix($item['columns']),
+                'notes' => $reason.$this->varietySuffix($item['columns']),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
             return;
         }
 
@@ -916,6 +956,7 @@ class StockTransferController extends Controller
             if ($volume !== null) {
                 $this->bottles->deduct($fromBranchId, $volume, $item['quantity'], $reason, (string) $performedBy, (string) ($item['columns']['variant'] ?? ''));
             }
+
             return;
         }
 
@@ -931,7 +972,7 @@ class StockTransferController extends Controller
             }
             $row = $this->supabase->queryFresh('oil_fragrance_stock', $params);
             $current = $row[0] ?? null;
-            if (!$current) {
+            if (! $current) {
                 return;
             }
             $newQty = (int) ($current['quantity'] ?? 0) - $item['quantity'];
@@ -947,6 +988,7 @@ class StockTransferController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
             return;
         }
 
@@ -959,7 +1001,7 @@ class StockTransferController extends Controller
             'limit' => 1,
         ]);
         $current = $row[0] ?? null;
-        if (!$current) {
+        if (! $current) {
             return;
         }
         $newQty = (int) ($current['quantity'] ?? 0) - $item['quantity'];
@@ -998,7 +1040,7 @@ class StockTransferController extends Controller
         if ($transferIds) {
             $items = $this->supabase->query('stock_transfer_items', [
                 'select' => 'id,transfer_id,stock_type,item_index,product_id,name,volume,variant,type,color,quantity,unit_cost,unit_price,category,supplier',
-                'transfer_id' => 'in.(' . implode(',', $transferIds) . ')',
+                'transfer_id' => 'in.('.implode(',', $transferIds).')',
                 'status' => 'eq.in_transit',
                 'limit' => 300,
             ]);
@@ -1026,7 +1068,7 @@ class StockTransferController extends Controller
         if ($productIds) {
             $list = $this->supabase->query('products', [
                 'select' => 'id,name,brand',
-                'id' => 'in.(' . implode(',', array_keys($productIds)) . ')',
+                'id' => 'in.('.implode(',', array_keys($productIds)).')',
             ]);
             foreach ($list as $p) {
                 $productNames[(int) $p['id']] = $p;
@@ -1036,16 +1078,21 @@ class StockTransferController extends Controller
 
         foreach ($items as $it) {
             $t = $transferMap[(int) $it['transfer_id']] ?? null;
-            if (!$t) {
+            if (! $t) {
                 continue;
             }
+            $labels = $this->incomingLabels($it, $productNames);
             $rows[] = (object) [
                 'item' => (object) $it,
+                'item_name' => $labels['name'],
+                'variety_label' => $labels['variety'],
+                'oil_type' => $labels['type'],
                 'item_label' => $this->itemLabel($it, $productNames),
                 'transfer_number' => $t['transfer_number'] ?? null,
                 'stock_type' => $t['stock_type'] ?? null,
                 'stock_type_label' => $this->typeLabel($t['stock_type'] ?? ''),
-                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? 'Branch #' . ($t['from_branch_id'] ?? '?'),
+                'from_branch_id' => (int) ($t['from_branch_id'] ?? 0),
+                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? 'Branch #'.($t['from_branch_id'] ?? '?'),
                 'note' => $t['note'] ?? null,
                 'officer_name' => $t['officer_name'] ?? null,
                 'officer_phone' => $t['officer_phone'] ?? null,
@@ -1069,25 +1116,75 @@ class StockTransferController extends Controller
         if ($type === 'product') {
             $id = (int) ($item['product_id'] ?? 0);
             $p = $productNames[$id] ?? null;
-            return ($p['name'] ?? ('Product #' . $id)) . $this->varietySuffix($item);
+
+            return ($p['name'] ?? ('Product #'.$id)).$this->varietySuffix($item);
         }
 
         if ($type === 'bottle') {
             $volume = (string) ($item['volume'] ?? '');
             $variant = (string) ($item['variant'] ?? BottleStockService::VARIANT_PLAIN);
             $label = $this->bottles->volumeLabel($this->bottles->parseVolume($volume) ?? 0);
-            return $label . ' — ' . $this->bottles->variantLabel($variant, $this->bottles->parseVolume($volume) ?? 0);
+
+            return $label.' — '.$this->bottles->variantLabel($variant, $this->bottles->parseVolume($volume) ?? 0);
         }
 
         if ($type === 'oil_fragrance') {
-            return (string) ($item['name'] ?? '') . ($item['volume'] ? ' (' . $item['volume'] . 'ml)' : '');
+            return (string) ($item['name'] ?? '').($item['volume'] ? ' ('.$item['volume'].'ml)' : '');
         }
 
         if ($type === 'bottle_accessories') {
-            return ucfirst(str_replace('_', ' ', (string) ($item['type'] ?? ''))) . ' — ' . ucfirst((string) ($item['color'] ?? ''));
+            return ucfirst(str_replace('_', ' ', (string) ($item['type'] ?? ''))).' — '.ucfirst((string) ($item['color'] ?? ''));
         }
 
         return 'Item';
+    }
+
+    /**
+     * Split an incoming transfer item into the display fields shown on the
+     * Pending Incoming Stock report: item name, bottle variety, and the
+     * oil / fragrance type (where applicable).
+     */
+    private function incomingLabels(array $item, array $productNames): array
+    {
+        $type = (string) ($item['stock_type'] ?? '');
+        $name = 'Item';
+        $variety = '';
+        $oilType = $this->typeLabel($type);
+
+        if ($type === 'product') {
+            $id = (int) ($item['product_id'] ?? 0);
+            $p = $productNames[$id] ?? null;
+            $name = $p['name'] ?? ('Product #'.$id);
+            $volume = $this->bottles->parseVolume((string) ($item['volume'] ?? ''));
+            $variant = (string) ($item['variant'] ?? '');
+            if ($volume !== null && $volume > 0) {
+                $variety = $this->bottles->volumeLabel($volume);
+                if ($variant !== '') {
+                    $variety .= ' · '.$this->bottles->variantLabel($variant, $volume);
+                }
+            }
+            $category = (string) ($item['category'] ?? '');
+            if ($category !== '') {
+                $oilType = $category;
+            }
+        } elseif ($type === 'bottle') {
+            $volume = $this->bottles->parseVolume((string) ($item['volume'] ?? ''));
+            $name = $this->bottles->volumeLabel($volume ?? 0);
+            $variant = (string) ($item['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $variety = $this->bottles->variantLabel($variant, $volume ?? 0);
+            $oilType = 'Bottle Stock';
+        } elseif ($type === 'oil_fragrance') {
+            $name = (string) ($item['name'] ?? '');
+            $vol = (string) ($item['volume'] ?? '');
+            $variety = $vol !== '' ? $vol.'ml' : '';
+            $oilType = 'Oil Fragrance';
+        } elseif ($type === 'bottle_accessories') {
+            $name = ucfirst(str_replace('_', ' ', (string) ($item['type'] ?? '')));
+            $variety = ucfirst((string) ($item['color'] ?? ''));
+            $oilType = 'Bottle Accessories';
+        }
+
+        return ['name' => $name, 'variety' => $variety, 'type' => $oilType];
     }
 
     // .=====================================================================
@@ -1099,12 +1196,12 @@ class StockTransferController extends Controller
         $branchId = $this->scope->activeBranchId();
 
         $item = $this->supabase->find('stock_transfer_items', $itemId);
-        if (!$item) {
+        if (! $item) {
             return back()->withErrors(['error' => 'Transfer item not found.']);
         }
 
         $transfer = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
-        if (!$transfer || ($transfer['status'] ?? '') !== 'in_transit') {
+        if (! $transfer || ($transfer['status'] ?? '') !== 'in_transit') {
             return back()->withErrors(['error' => 'This transfer is no longer awaiting receipt.']);
         }
         if ((int) ($transfer['to_branch_id'] ?? 0) !== (int) $branchId) {
@@ -1115,15 +1212,24 @@ class StockTransferController extends Controller
         }
 
         $itemType = (string) ($item['stock_type'] ?? 'product');
+        if ($itemType !== (string) ($transfer['stock_type'] ?? '')) {
+            return back()->withErrors(['error' => 'The item type does not match the transfer. Verification blocked.']);
+        }
         $this->assertBottleAccess($itemType, receiving: true);
+
+        // The quantity added to this branch on verification is always the
+        // exact quantity sent — a branch may never confirm a different amount.
+        if ((int) ($item['quantity'] ?? 0) <= 0) {
+            return back()->withErrors(['error' => 'This transfer item has an invalid quantity and cannot be verified.']);
+        }
 
         $now = now()->toIso8601String();
         $performedBy = $this->performingUserId();
         $fromBranchName = $this->scope->branchName((int) ($transfer['from_branch_id'] ?? 0));
-        $reason = "Received from stock transfer " . ($transfer['transfer_number'] ?? '') . " (from " . ($fromBranchName ?? 'another branch') . ')';
+        $reason = 'Received from stock transfer '.($transfer['transfer_number'] ?? '').' (from '.($fromBranchName ?? 'another branch').')';
 
         $received = $this->applyIn($itemType, $item, $branchId, $reason);
-        if (!$received) {
+        if (! $received) {
             return back()->withErrors(['error' => 'Could not record the stock-in. Please try again.']);
         }
 
@@ -1151,8 +1257,44 @@ class StockTransferController extends Controller
             ], ['id' => (int) $transfer['id']]);
         }
 
+        $this->recordTransferAudit(
+            'transfer_item_received',
+            'Stock item verified & received',
+            "{$this->typeLabel($itemType)} {$this->itemDescription($item)} (qty {$item['quantity']}) verified and added to "
+                .$this->scope->activeBranchName().' from transfer '.($transfer['transfer_number'] ?? '')
+        );
+
         return redirect()->route('stock-manager.stock-transfers.incoming')
-            ->with('success', 'Item received and added to ' . $this->scope->activeBranchName() . ' stock.');
+            ->with('success', 'Item verified and added to '.$this->scope->activeBranchName().' stock.');
+    }
+
+    /**
+     * Short human description of a transfer item for audit messages.
+     */
+    private function itemDescription(array $item, array $productNames = []): string
+    {
+        $label = $this->itemLabel($item, $productNames);
+
+        return $label !== 'Item' ? "'{$label}'" : '';
+    }
+
+    /**
+     * Record a transfer action in the durable audit trail (audit_logs +
+     * admin_notifications). Failures are swallowed by AuditService so the
+     * business action never breaks because of an audit hiccup.
+     */
+    private function recordTransferAudit(string $action, string $title, string $message): void
+    {
+        try {
+            (new AuditService)->recordCriticalAction(
+                'stock_transfer',
+                $action,
+                $title,
+                $message
+            );
+        } catch (\Throwable $e) {
+            // Audit is best-effort; never block verification on it.
+        }
     }
 
     /**
@@ -1181,7 +1323,7 @@ class StockTransferController extends Controller
             ]);
 
             if ($existing) {
-                $done = !empty($this->supabase->update('branch_stock', [
+                $done = ! empty($this->supabase->update('branch_stock', [
                     'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
                     'date_received' => now()->format('Y-m-d'),
                     'updated_at' => $now,
@@ -1203,7 +1345,7 @@ class StockTransferController extends Controller
                 $done = $created !== null;
             }
 
-            if (!$done) {
+            if (! $done) {
                 return false;
             }
 
@@ -1242,10 +1384,11 @@ class StockTransferController extends Controller
                 'unit_cost' => $item['unit_cost'] ?? null,
                 'unit_price' => $item['unit_price'] ?? null,
                 'performed_by' => $performedBy,
-                'notes' => $reason . $this->varietySuffix($item),
+                'notes' => $reason.$this->varietySuffix($item),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
             return true;
         }
 
@@ -1273,7 +1416,7 @@ class StockTransferController extends Controller
             }
 
             if ($existing) {
-                $done = !empty($this->supabase->update('bottle_stock', array_merge([
+                $done = ! empty($this->supabase->update('bottle_stock', array_merge([
                     'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
                     'updated_at' => $now,
                 ], $details), ['id' => $existing['id']]));
@@ -1291,7 +1434,7 @@ class StockTransferController extends Controller
                 $done = $this->supabase->insert('bottle_stock', array_merge($row, $details)) !== null;
             }
 
-            if (!$done) {
+            if (! $done) {
                 return false;
             }
 
@@ -1309,6 +1452,7 @@ class StockTransferController extends Controller
                 $movement['variant'] = $variant;
             }
             $this->supabase->insert('bottle_stock_movements', array_merge($movement, $details));
+
             return true;
         }
 
@@ -1323,7 +1467,7 @@ class StockTransferController extends Controller
             $existing = $this->supabase->findOne('oil_fragrance_stock', $conditions);
 
             if ($existing) {
-                $done = !empty($this->supabase->update('oil_fragrance_stock', [
+                $done = ! empty($this->supabase->update('oil_fragrance_stock', [
                     'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
                     'updated_at' => $now,
                 ], ['id' => $existing['id']]));
@@ -1339,7 +1483,7 @@ class StockTransferController extends Controller
                 $done = $this->supabase->insert('oil_fragrance_stock', $row) !== null;
             }
 
-            if (!$done) {
+            if (! $done) {
                 return false;
             }
 
@@ -1354,6 +1498,7 @@ class StockTransferController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
             return true;
         }
 
@@ -1367,7 +1512,7 @@ class StockTransferController extends Controller
         ]);
 
         if ($existing) {
-            $done = !empty($this->supabase->update('bottle_accessories', [
+            $done = ! empty($this->supabase->update('bottle_accessories', [
                 'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
                 'updated_at' => $now,
             ], ['id' => $existing['id']]));
@@ -1382,7 +1527,7 @@ class StockTransferController extends Controller
             ]) !== null;
         }
 
-        if (!$done) {
+        if (! $done) {
             return false;
         }
 
@@ -1397,6 +1542,7 @@ class StockTransferController extends Controller
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+
         return true;
     }
 
@@ -1407,14 +1553,14 @@ class StockTransferController extends Controller
     public function show($transferId)
     {
         $transfer = $this->supabase->find('stock_transfers', $transferId);
-        if (!$transfer) {
+        if (! $transfer) {
             abort(404);
         }
 
         $branchId = $this->scope->activeBranchId();
         $fromId = (int) ($transfer['from_branch_id'] ?? 0);
         $toId = (int) ($transfer['to_branch_id'] ?? 0);
-        if ($fromId !== $branchId && $toId !== $branchId && !$this->scope->isSuperAdmin()) {
+        if ($fromId !== $branchId && $toId !== $branchId && ! $this->scope->isSuperAdmin()) {
             abort(403);
         }
 
@@ -1437,7 +1583,7 @@ class StockTransferController extends Controller
         if ($productIds) {
             $list = $this->supabase->query('products', [
                 'select' => 'id,name,brand',
-                'id' => 'in.(' . implode(',', array_keys($productIds)) . ')',
+                'id' => 'in.('.implode(',', array_keys($productIds)).')',
             ]);
             foreach ($list as $p) {
                 $productNames[(int) $p['id']] = $p;
@@ -1459,8 +1605,8 @@ class StockTransferController extends Controller
         return view('stock-manager.stock-transfers.show', [
             'transfer' => (object) $transfer,
             'stock_type_label' => $this->typeLabel((string) ($transfer['stock_type'] ?? '')),
-            'from_branch_name' => $branchNames[$fromId] ?? 'Branch #' . $fromId,
-            'to_branch_name' => $branchNames[$toId] ?? 'Branch #' . $toId,
+            'from_branch_name' => $branchNames[$fromId] ?? 'Branch #'.$fromId,
+            'to_branch_name' => $branchNames[$toId] ?? 'Branch #'.$toId,
             'created_by_name' => $userNames[(int) ($transfer['created_by'] ?? 0)] ?? null,
             'received_by_name' => $userNames[(int) ($transfer['received_by'] ?? 0)] ?? null,
             'items' => $items,

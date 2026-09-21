@@ -33,7 +33,7 @@
 
     // ===================== SALE TYPE =====================
     function accentActive() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-' + ACCENT + '-600 text-white shadow'; }
-    function accentIdle() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200'; }
+    function accentIdle() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-' + ACCENT + '-100 hover:text-' + ACCENT + '-700'; }
 
     function setSaleType(type) {
         document.getElementById('sale_type').value = type;

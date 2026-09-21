@@ -33,7 +33,7 @@
         <div class="flex items-center gap-2">
             <a href="{{ route('stock-manager.stock-transfers.incoming') }}"
                class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-emerald-700 border border-gray-300 hover:border-emerald-500 px-4 py-2 rounded-lg bg-white">
-                <i class="fas fa-inbox"></i> Incoming Stock
+                <i class="fas fa-inbox"></i> Pending Incoming Stock
                 @if($transfers->contains(fn ($t) => $t->status === 'in_transit' && $t->to_branch_id === $activeBranchId && $t->items_pending > 0))
                     <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $transfers->filter(fn ($t) => $t->status === 'in_transit' && $t->to_branch_id === $activeBranchId)->sum('items_pending') }}</span>
                 @endif
