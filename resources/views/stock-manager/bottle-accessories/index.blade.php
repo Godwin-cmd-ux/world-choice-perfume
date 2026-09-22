@@ -1,6 +1,7 @@
 @extends('stock-manager.layouts.app')
 @section('title', 'Bottle Accessories')
 @section('header', 'Bottle Accessories')
+@section('header-subtitle', 'Stock held at ' . ($activeBranchName ?? 'your branch'))
 
 @section('header-actions')
     @if(!($inCrossBranch ?? false))
@@ -20,13 +21,39 @@
 @endsection
 
 @section('content')
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-500">Total Accessories:</span>
+@php
+    $hasAnyRecord = collect($grouped)->flatten(1)->isNotEmpty();
+@endphp
+<div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+        <span class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+            <i class="fas fa-cogs text-emerald-600"></i>
+        </span>
+        <div>
+            <p class="text-sm font-semibold text-gray-800">{{ $activeBranchName ?? 'Your branch' }}</p>
+            <p class="text-xs text-gray-500">Accessories stock held at this branch only</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-500">Total:</span>
         <span class="text-lg font-bold text-emerald-700">{{ number_format($totalPackets) }} packets</span>
     </div>
 </div>
 
+@if(!$hasAnyRecord)
+    <div class="bg-white rounded-xl shadow p-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-emerald-50 flex items-center justify-center">
+            <i class="fas fa-box-open text-2xl text-emerald-300"></i>
+        </div>
+        <p class="text-lg font-semibold text-gray-700">No bottle accessories stock yet</p>
+        <p class="text-sm text-gray-400 mt-1">{{ $activeBranchName ?? 'This branch' }} has no straws, bottle necks or bottle tops recorded.</p>
+        @if(!($inCrossBranch ?? false))
+            <a href="{{ route('stock-manager.bottle-accessories.create') }}" class="inline-block mt-5 hover:opacity-90 text-white px-5 py-2.5 rounded-lg text-sm font-medium" style="background-color: #F89A1E;">
+                <i class="fas fa-plus mr-1"></i> Record first stock in
+            </a>
+        @endif
+    </div>
+@else
 @foreach(['straws' => 'Straws', 'bottlenecks' => 'Bottle Necks', 'bottle_tops' => 'Bottle Tops'] as $key => $label)
     <div class="bg-white rounded-xl shadow overflow-hidden mb-6">
         <div class="px-6 py-4 border-b bg-gray-50">
@@ -84,4 +111,5 @@
         </div>
     </div>
 @endforeach
+@endif
 @endsection

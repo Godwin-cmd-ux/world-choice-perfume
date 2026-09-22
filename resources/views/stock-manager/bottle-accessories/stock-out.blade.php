@@ -1,6 +1,7 @@
 @extends('stock-manager.layouts.app')
 @section('title', 'Bottle Accessories Stock Out')
 @section('header', 'Bottle Accessories — Stock Out')
+@section('header-subtitle', 'Deducting from ' . ($activeBranchName ?? 'your branch') . ' stock only')
 
 @section('content')
 <div class="max-w-lg mx-auto">
@@ -70,7 +71,10 @@
                         <td class="px-4 text-right font-bold">{{ number_format($a->quantity) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="3" class="py-4 text-center text-gray-400">No accessories in stock</td></tr>
+                    <tr><td colspan="3" class="py-6 text-center text-gray-400">
+                        <i class="fas fa-box-open block text-2xl mb-2 text-gray-200"></i>
+                        No accessories in stock at {{ $activeBranchName ?? 'this branch' }} — record a stock in first.
+                    </td></tr>
                 @endforelse
             </tbody>
         </table>

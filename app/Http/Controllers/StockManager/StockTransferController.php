@@ -408,15 +408,13 @@ class StockTransferController extends Controller
         }
 
         if ($type === 'bottle_accessories') {
+            // Strictly this branch's rows — never fall back to unfiltered
+            // rows, or branches with no accessories stock (e.g. Dodoma)
+            // would see and transfer another branch's stock.
             $rows = $this->supabase->query('bottle_accessories', [
                 'select' => 'type,color,quantity',
                 'branch_id' => "eq.{$branchId}",
             ]);
-            if (empty($rows)) {
-                $rows = $this->supabase->query('bottle_accessories', [
-                    'select' => 'type,color,quantity',
-                ]);
-            }
             $options = [];
             foreach ($rows as $a) {
                 $options[] = [

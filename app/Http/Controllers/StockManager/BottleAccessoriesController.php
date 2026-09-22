@@ -22,18 +22,14 @@ class BottleAccessoriesController extends Controller
     {
         $branchId = $this->scope->activeBranchId();
 
-        $accessories = $this->supabase->query('bottle_accessories', $this->scope->branchParams([
+        // Strictly this branch's rows. Never fall back to unfiltered rows —
+        // branches that have not been filled yet (e.g. Dodoma) must see zero
+        // stock, not another branch's stock.
+        $accessories = $this->supabase->query('bottle_accessories', [
             'select' => '*',
+            'branch_id' => "eq.{$branchId}",
             'order' => 'type.asc,color.asc',
-        ]));
-
-        // Guard: if PostgREST returns empty (RLS/filter issue), fall back to all rows
-        if (empty($accessories)) {
-            $accessories = $this->supabase->query('bottle_accessories', [
-                'select' => '*',
-                'order' => 'type.asc,color.asc',
-            ]);
-        }
+        ]);
 
         // Group by type
         $grouped = [
@@ -237,15 +233,10 @@ class BottleAccessoriesController extends Controller
             'order' => 'type.asc,color.asc',
         ]);
 
-        // Guard: fall back to all rows if branch filter returns empty
-        if (empty($accessories)) {
-            $accessories = $this->supabase->query('bottle_accessories', [
-                'select' => '*',
-                'order' => 'type.asc,color.asc',
-            ]);
-        }
-
-        return view('stock-manager.bottle-accessories.stock-out', ['accessories' => collect($accessories)->map(fn($a) => (object) $a)]);
+        return view('stock-manager.bottle-accessories.stock-out', [
+            'accessories' => collect($accessories)->map(fn($a) => (object) $a),
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
     }
 
     private function performingUserId(): int
