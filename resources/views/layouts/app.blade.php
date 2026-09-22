@@ -10,7 +10,28 @@
     @include('partials.theme')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sidebar { width: 260px; min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; overflow-y: auto; overflow-x: hidden; }
+        /* Fixed height (not min-height) is what makes overflow-y actually
+           engage on a position:fixed sidebar, so long menus scroll down to
+           the logout link. scrollbar-width: thin covers Firefox. */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            height: 100dvh; /* follow mobile browser chrome collapse */
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 40;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+        .sidebar > nav { min-width: 0; }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 3px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
         .main-content { margin-left: 260px; min-height: 100vh; }
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }

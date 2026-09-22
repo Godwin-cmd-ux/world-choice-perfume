@@ -467,6 +467,12 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/stock-transfers', [$stc, 'store'])->name('stock-transfers.store');
         Route::get('/stock-transfers/incoming', [$stc, 'incoming'])->name('stock-transfers.incoming');
         Route::post('/stock-transfers/items/{item}/receive', [$stc, 'receiveItem'])->name('stock-transfers.receive-item');
+        Route::post('/stock-transfers/items/{item}/receive-invalid', [$stc, 'receiveItemInvalid'])->name('stock-transfers.receive-item-invalid');
+        Route::get('/stock-transfers/returns', [$stc, 'returns'])->name('stock-transfers.returns');
+        Route::post('/stock-transfers/items/{item}/resend', [$stc, 'resendReturned'])->name('stock-transfers.resend-returned');
+        Route::post('/stock-transfers/items/{item}/write-off', [$stc, 'writeOffReturned'])->name('stock-transfers.write-off-returned');
+        Route::get('/stock-transfers/lost-items', [$stc, 'lostForm'])->name('stock-transfers.lost-form');
+        Route::post('/stock-transfers/lost-items', [$stc, 'declareLost'])->name('stock-transfers.declare-lost');
         Route::get('/stock-transfers/{transfer}', [$stc, 'show'])->name('stock-transfers.show');
 
         // QR Code

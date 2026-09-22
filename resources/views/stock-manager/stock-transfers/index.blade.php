@@ -38,6 +38,10 @@
                     <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $transfers->filter(fn ($t) => $t->status === 'in_transit' && $t->to_branch_id === $activeBranchId)->sum('items_pending') }}</span>
                 @endif
             </a>
+            <a href="{{ route('stock-manager.stock-transfers.returns') }}"
+               class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-red-700 border border-gray-300 hover:border-red-500 px-4 py-2 rounded-lg bg-white">
+                <i class="fas fa-undo"></i> Returned Items
+            </a>
         </div>
     @endif
 </div>
@@ -82,7 +86,9 @@
                             @endif
                         </td>
                         <td class="px-4">
-                            @if($transfer->status === 'received')
+                            @if($transfer->items_returned > 0 && ($transfer->items_pending ?? 0) === 0)
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800"><i class="fas fa-undo mr-1"></i>{{ $transfer->items_returned }} Returned</span>
+                            @elseif($transfer->status === 'received')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800"><i class="fas fa-check mr-1"></i>Received</span>
                             @elseif($transfer->items_pending > 0 && $transfer->items_pending < $transfer->items_total)
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">Partial</span>

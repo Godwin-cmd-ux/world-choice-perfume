@@ -428,8 +428,15 @@ class SupabaseService
                 'created_at','updated_at',
             ],
             'stock_transfer_items' => [
-                'stock_transfer_id','product_id','name','quantity','unit_cost','unit_price','variety_unit_price',
-                'category','supplier','volume','variant','created_at','updated_at',
+                // NOTE: 'stock_transfer_id' was wrong — the real column is
+                // 'transfer_id' (see database/supabase_stock_transfers.sql).
+                // Stripping 'transfer_id' made every item insert fail without
+                // it (NOT NULL) → "Could not save the transfer items.".
+                'transfer_id','stock_type','item_index','product_id','name','quantity','unit_cost','unit_price','variety_unit_price',
+                'category','supplier','volume','variant','type','color',
+                'status','received_by','received_at','returned_by','returned_at',
+                'return_reason','return_status','loss_reason','resent_transfer_id',
+                'created_at','updated_at',
             ],
             'oil_fragrance_stock' => [
                 'branch_id','name','volume','quantity','created_at','updated_at',

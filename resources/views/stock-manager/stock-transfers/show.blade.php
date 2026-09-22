@@ -117,6 +117,10 @@
                         <td class="px-6 text-center">
                             @if($item->item->status === 'received')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800"><i class="fas fa-check mr-1"></i>Received</span>
+                            @elseif($item->item->status === 'returned')
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800" title="{{ $item->item->return_reason ?? '' }}"><i class="fas fa-undo mr-1"></i>Returned</span>
+                            @elseif($item->item->status === 'lost')
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600" title="{{ $item->item->loss_reason ?? '' }}"><i class="fas fa-question-circle mr-1"></i>Lost</span>
                             @else
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">In Transit</span>
                             @endif

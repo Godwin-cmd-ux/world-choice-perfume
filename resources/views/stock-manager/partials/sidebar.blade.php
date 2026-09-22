@@ -17,10 +17,16 @@
 
         $sbPendingIncoming = 0;
         try {
-            $sbPendingIncoming = (new \App\Services\SupabaseService())->count('stock_transfers', [
+            $incomingQuery = [
                 'to_branch_id' => 'eq.' . $smScope->activeBranchId(),
                 'status' => 'eq.in_transit',
-            ]);
+            ];
+            // HQ only receives Product Stock — mirror the incoming-page filter
+            // so the badge never counts bottle transfers HQ cannot see.
+            if ($stockManagerIsHQ) {
+                $incomingQuery['stock_type'] = 'eq.product';
+            }
+            $sbPendingIncoming = (new \App\Services\SupabaseService())->count('stock_transfers', $incomingQuery);
         } catch (\Throwable $e) {}
     @endphp
 
@@ -129,6 +135,12 @@
             @if($sbPendingIncoming > 0)
                 <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingIncoming }}</span>
             @endif
+        </a>
+
+        <a href="{{ route('stock-manager.stock-transfers.returns') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.stock-transfers.returns', 'stock-manager.stock-transfers.lost-form') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-undo w-5 text-center"></i>
+            <span>Returned Items</span>
         </a>
 
         <div class="pt-3 mt-3 border-t border-gray-700">

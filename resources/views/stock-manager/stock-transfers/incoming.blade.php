@@ -74,13 +74,34 @@
                             <td class="px-4 text-gray-600">{{ $item->from_branch_name }}</td>
                             <td class="px-6 text-right whitespace-nowrap">
                                 @if(!($inCrossBranch ?? false))
-                                    <form method="POST" action="{{ route('stock-manager.stock-transfers.receive-item', $item->item->id) }}" class="inline"
-                                          data-confirm="Verify {{ $item->item->quantity }} x '{{ $item->item_name }}' into {{ $branchName }} stock?">
-                                        @csrf
-                                        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                                            <i class="fas fa-check mr-1"></i> Verify
-                                        </button>
-                                    </form>
+                                    <div class="inline-flex items-center gap-2">
+                                        <form method="POST" action="{{ route('stock-manager.stock-transfers.receive-item', $item->item->id) }}" class="inline"
+                                              data-confirm="Verify {{ $item->item->quantity }} x '{{ $item->item_name }}' into {{ $branchName }} stock?">
+                                            @csrf
+                                            <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                                <i class="fas fa-check mr-1"></i> Valid
+                                            </button>
+                                        </form>
+                                        <details class="relative inline-block text-left">
+                                            <summary class="list-none cursor-pointer inline-flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                                <i class="fas fa-times mr-1"></i> Invalid
+                                            </summary>
+                                            <div class="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-20">
+                                                <form method="POST" action="{{ route('stock-manager.stock-transfers.receive-item-invalid', $item->item->id) }}">
+                                                    @csrf
+                                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Why is this item invalid?</label>
+                                                    <textarea name="reason" rows="3" required minlength="3" maxlength="500" placeholder="e.g. broken bottles, wrong variety, missing items..."
+                                                              class="w-full text-sm border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"></textarea>
+                                                    <p class="text-[11px] text-gray-500 mt-1 mb-2">The item goes back to {{ $item->from_branch_name }} stock and the admin is notified.</p>
+                                                    <button type="submit"
+                                                            data-confirm="Reject {{ $item->item->quantity }} x '{{ $item->item_name }}' and return it to {{ $item->from_branch_name }}?"
+                                                            class="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium">
+                                                        <i class="fas fa-undo mr-1"></i> Return to sender
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </details>
+                                    </div>
                                 @else
                                     <span class="text-gray-300 text-xs">read-only</span>
                                 @endif

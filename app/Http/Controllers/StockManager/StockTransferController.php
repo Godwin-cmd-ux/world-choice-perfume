@@ -209,11 +209,13 @@ class StockTransferController extends Controller
             ]);
             foreach ($items as $it) {
                 if (! isset($itemCounts[(int) $it['transfer_id']])) {
-                    $itemCounts[(int) $it['transfer_id']] = ['total' => 0, 'pending' => 0];
+                    $itemCounts[(int) $it['transfer_id']] = ['total' => 0, 'pending' => 0, 'returned' => 0];
                 }
                 $itemCounts[(int) $it['transfer_id']]['total']++;
                 if (($it['status'] ?? 'in_transit') === 'in_transit') {
                     $itemCounts[(int) $it['transfer_id']]['pending']++;
+                } elseif (($it['status'] ?? '') === 'returned') {
+                    $itemCounts[(int) $it['transfer_id']]['returned']++;
                 }
             }
         }
@@ -235,6 +237,7 @@ class StockTransferController extends Controller
                 'created_at' => $t['created_at'] ?? null,
                 'items_total' => $itemCounts[(int) $t['id']]['total'] ?? 0,
                 'items_pending' => $itemCounts[(int) $t['id']]['pending'] ?? 0,
+                'items_returned' => $itemCounts[(int) $t['id']]['returned'] ?? 0,
             ];
         });
 
@@ -1035,11 +1038,20 @@ class StockTransferController extends Controller
             'limit' => 50,
         ]);
 
+        // Head Quarters-Mikocheni only receives Product Stock — hide any
+        // bottle / oil fragrance / bottle accessories transfer sent to it.
+        if ($this->isHQBranch((int) $branchId)) {
+            $transfers = array_values(array_filter(
+                $transfers,
+                fn ($t) => ! $this->isBottleType((string) ($t['stock_type'] ?? ''))
+            ));
+        }
+
         $transferIds = array_map(fn ($t) => (int) $t['id'], $transfers);
         $items = [];
         if ($transferIds) {
             $items = $this->supabase->query('stock_transfer_items', [
-                'select' => 'id,transfer_id,stock_type,item_index,product_id,name,volume,variant,type,color,quantity,unit_cost,unit_price,category,supplier',
+                'select' => 'id,transfer_id,stock_type,item_index,product_id,name,volume,variant,type,color,quantity,unit_cost,unit_price,variety_unit_price,category,supplier,status',
                 'transfer_id' => 'in.('.implode(',', $transferIds).')',
                 'status' => 'eq.in_transit',
                 'limit' => 300,
@@ -1613,5 +1625,838 @@ class StockTransferController extends Controller
             'pendingCount' => $items->filter(fn ($i) => $i->item->status === 'in_transit')->count(),
             'activeBranchId' => $branchId,
         ]);
+    }
+
+    // .=====================================================================
+    // RECEIVE (INVALID) — reject an item, return it to the sending branch,
+    // and alert the admins. The sending branch's stock manager can then
+    // re-send it or file a lost-items form.
+    // .=====================================================================
+
+    public function receiveItemInvalid(Request $request, $itemId)
+    {
+        $branchId = $this->scope->activeBranchId();
+
+        $validated = $request->validate([
+            'reason' => 'required|string|min:3|max:500',
+        ]);
+
+        $item = $this->supabase->find('stock_transfer_items', $itemId);
+        if (! $item) {
+            return back()->withErrors(['error' => 'Transfer item not found.']);
+        }
+
+        $transfer = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+        if (! $transfer || ($transfer['status'] ?? '') !== 'in_transit') {
+            return back()->withErrors(['error' => 'This transfer is no longer awaiting receipt.']);
+        }
+        if ((int) ($transfer['to_branch_id'] ?? 0) !== (int) $branchId) {
+            return back()->withErrors(['error' => 'This transfer is not destined for your branch.']);
+        }
+        if (($item['status'] ?? '') !== 'in_transit') {
+            return back()->withErrors(['error' => 'This item has already been received or returned.']);
+        }
+
+        $itemType = (string) ($item['stock_type'] ?? 'product');
+        if ($itemType !== (string) ($transfer['stock_type'] ?? '')) {
+            return back()->withErrors(['error' => 'The item type does not match the transfer. Verification blocked.']);
+        }
+        $this->assertBottleAccess($itemType, receiving: true);
+
+        $now = now()->toIso8601String();
+        $performedBy = $this->performingUserId();
+        $fromBranchId = (int) ($transfer['from_branch_id'] ?? 0);
+        $fromBranchName = $this->scope->branchName($fromBranchId) ?? 'the sending branch';
+        $itemDescription = $this->itemDescription($item);
+
+        // Put the quantity back into the SENDING branch's stock — the goods
+        // physically travel back with the officer.
+        $restored = $this->applyReturnIn($itemType, $item, $fromBranchId,
+            'Returned by '.($this->scope->activeBranchName() ?? 'receiver').
+            ' — invalid item from stock transfer '.($transfer['transfer_number'] ?? ''));
+
+        if (! $restored) {
+            return back()->withErrors(['error' => 'Could not return the item to '.$fromBranchName.'. Please try again.']);
+        }
+
+        $this->supabase->update('stock_transfer_items', [
+            'status' => 'returned',
+            'return_reason' => $validated['reason'],
+            'return_status' => 'pending',
+            'returned_by' => $performedBy,
+            'returned_at' => $now,
+            'updated_at' => $now,
+        ], ['id' => (int) $item['id']]);
+
+        // Once every item is settled the transfer is complete.
+        $remaining = $this->supabase->query('stock_transfer_items', [
+            'select' => 'id',
+            'transfer_id' => "eq.{$transfer['id']}",
+            'status' => 'eq.in_transit',
+            'limit' => 1,
+        ]);
+        if (count($remaining) === 0) {
+            $this->supabase->update('stock_transfers', [
+                'status' => 'received',
+                'received_by' => $performedBy,
+                'received_at' => $now,
+                'updated_at' => $now,
+            ], ['id' => (int) $transfer['id']]);
+        }
+
+        $this->recordTransferAudit(
+            'transfer_item_returned',
+            'Transfer item rejected (invalid)',
+            "{$this->typeLabel($itemType)} {$itemDescription} (qty {$item['quantity']}) from transfer "
+                .($transfer['transfer_number'] ?? '').' was rejected by '.$this->scope->activeBranchName()
+                .' and returned to '.$fromBranchName.'. Reason: '.$validated['reason']
+        );
+
+        return redirect()->route('stock-manager.stock-transfers.incoming')
+            ->with('success', 'Item rejected and returned to '.$fromBranchName.' stock. Their stock manager has been notified.');
+    }
+
+    /**
+     * Stock a returned item back into the SENDING branch and record the
+     * matching return movement. Returns false on failure.
+     */
+    private function applyReturnIn(string $type, array $item, int $branchId, string $reason): bool
+    {
+        $now = now()->toIso8601String();
+        $performedBy = $this->performingUserId();
+        $qty = (int) ($item['quantity'] ?? 0);
+
+        if ($qty <= 0) {
+            return false;
+        }
+
+        if ($type === 'product') {
+            $productId = (int) ($item['product_id'] ?? 0);
+            if ($productId <= 0) {
+                return false;
+            }
+
+            $existing = $this->supabase->findOne('branch_stock', [
+                'branch_id' => $branchId,
+                'product_id' => $productId,
+            ]);
+
+            if ($existing) {
+                $done = ! empty($this->supabase->update('branch_stock', [
+                    'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
+                    'updated_at' => $now,
+                ], ['id' => $existing['id']]));
+            } else {
+                $created = $this->supabase->insert('branch_stock', [
+                    'branch_id' => $branchId,
+                    'product_id' => $productId,
+                    'quantity' => $qty,
+                    'buying_cost' => (float) ($item['unit_cost'] ?? 0),
+                    'selling_price' => (float) (($item['variety_unit_price'] ?? 0) > 0 ? $item['variety_unit_price'] : ($item['unit_price'] ?? 0)),
+                    'category' => $item['category'] ?? null,
+                    'supplier' => $item['supplier'] ?? null,
+                    'date_received' => now()->format('Y-m-d'),
+                    'entered_by' => $performedBy,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $done = $created !== null;
+            }
+
+            if (! $done) {
+                return false;
+            }
+
+            $volume = (int) ($item['volume'] ?? 0);
+            $variant = (string) ($item['variant'] ?? '');
+            if ($volume > 0 && $variant !== '') {
+                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, $qty);
+            }
+
+            $this->supabase->insert('stock_movements', [
+                'branch_id' => $branchId,
+                'product_id' => $productId,
+                'type' => 'transfer_in',
+                'quantity' => $qty,
+                'unit_cost' => $item['unit_cost'] ?? null,
+                'unit_price' => $item['unit_price'] ?? null,
+                'performed_by' => $performedBy,
+                'notes' => $reason.$this->varietySuffix($item),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return true;
+        }
+
+        if ($type === 'bottle') {
+            $label = (string) ($item['volume'] ?? '');
+            $volume = $this->bottles->parseVolume($label);
+            if ($volume === null) {
+                return false;
+            }
+            $variant = (string) ($item['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $useVariants = $this->supabase->tableHasColumn('bottle_stock', 'variant');
+            $details = $this->bottles->variantDetails($variant);
+
+            if ($useVariants) {
+                $existing = $this->supabase->findOne('bottle_stock', [
+                    'branch_id' => $branchId,
+                    'volume' => $label,
+                    'variant' => $variant,
+                ]);
+            } else {
+                $existing = $this->supabase->findOne('bottle_stock', [
+                    'branch_id' => $branchId,
+                    'volume' => $label,
+                ]);
+            }
+
+            if ($existing) {
+                $done = ! empty($this->supabase->update('bottle_stock', array_merge([
+                    'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
+                    'updated_at' => $now,
+                ], $details), ['id' => $existing['id']]));
+            } else {
+                $row = [
+                    'branch_id' => $branchId,
+                    'volume' => $label,
+                    'quantity' => $qty,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                if ($useVariants) {
+                    $row['variant'] = $variant;
+                }
+                $done = $this->supabase->insert('bottle_stock', array_merge($row, $details)) !== null;
+            }
+
+            if (! $done) {
+                return false;
+            }
+
+            $movement = [
+                'branch_id' => $branchId,
+                'volume' => $label,
+                'type' => 'stock_in',
+                'quantity' => $qty,
+                'reason' => $reason,
+                'performed_by' => $performedBy,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            if ($this->supabase->tableHasColumn('bottle_stock_movements', 'variant')) {
+                $movement['variant'] = $variant;
+            }
+            $this->supabase->insert('bottle_stock_movements', array_merge($movement, $details));
+
+            return true;
+        }
+
+        if ($type === 'oil_fragrance') {
+            $name = (string) ($item['name'] ?? '');
+            $volume = ($item['volume'] ?? null) !== '' && ($item['volume'] ?? null) !== null ? (int) $item['volume'] : null;
+
+            $conditions = ['branch_id' => $branchId, 'name' => $name];
+            if ($volume !== null) {
+                $conditions['volume'] = $volume;
+            }
+            $existing = $this->supabase->findOne('oil_fragrance_stock', $conditions);
+
+            if ($existing) {
+                $done = ! empty($this->supabase->update('oil_fragrance_stock', [
+                    'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
+                    'updated_at' => $now,
+                ], ['id' => $existing['id']]));
+            } else {
+                $done = $this->supabase->insert('oil_fragrance_stock', [
+                    'branch_id' => $branchId,
+                    'name' => $name,
+                    'volume' => $volume,
+                    'quantity' => $qty,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]) !== null;
+            }
+
+            if (! $done) {
+                return false;
+            }
+
+            $this->supabase->insert('oil_fragrance_movements', [
+                'branch_id' => $branchId,
+                'name' => $name,
+                'volume' => $volume,
+                'type' => 'stock_in',
+                'quantity' => $qty,
+                'reason' => $reason,
+                'performed_by' => $performedBy,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return true;
+        }
+
+        // bottle_accessories
+        $typeVal = (string) ($item['type'] ?? '');
+        $color = (string) ($item['color'] ?? '');
+        $existing = $this->supabase->findOne('bottle_accessories', [
+            'branch_id' => $branchId,
+            'type' => $typeVal,
+            'color' => $color,
+        ]);
+
+        if ($existing) {
+            $done = ! empty($this->supabase->update('bottle_accessories', [
+                'quantity' => ((int) ($existing['quantity'] ?? 0)) + $qty,
+                'updated_at' => $now,
+            ], ['id' => $existing['id']]));
+        } else {
+            $done = $this->supabase->insert('bottle_accessories', [
+                'branch_id' => $branchId,
+                'type' => $typeVal,
+                'color' => $color,
+                'quantity' => $qty,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]) !== null;
+        }
+
+        if (! $done) {
+            return false;
+        }
+
+        $this->supabase->insert('bottle_accessories_movements', [
+            'branch_id' => $branchId,
+            'type' => $typeVal,
+            'color' => $color,
+            'movement_type' => 'stock_in',
+            'quantity' => $qty,
+            'reason' => $reason,
+            'performed_by' => $performedBy,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        return true;
+    }
+
+    // .=====================================================================
+    // RETURNS — returned items for the branches the active user's stock
+    // manager controls; resend or write the item off as lost.
+    // .=====================================================================
+
+    public function returns()
+    {
+        $senderIds = $this->senderBranchIds();
+        $rows = [];
+
+        if (! empty($senderIds)) {
+            $transfers = $this->supabase->query('stock_transfers', [
+                'select' => 'id,transfer_number,stock_type,from_branch_id,to_branch_id,status,created_at',
+                'from_branch_id' => 'in.('.implode(',', $senderIds).')',
+                'order' => 'created_at.desc',
+                'limit' => 100,
+            ]);
+
+            $transferIds = array_map(fn ($t) => (int) $t['id'], $transfers);
+            $items = [];
+            if ($transferIds) {
+                $items = $this->supabase->query('stock_transfer_items', [
+                    'select' => 'id,transfer_id,stock_type,item_index,product_id,name,volume,variant,type,color,quantity,unit_cost,unit_price,variety_unit_price,category,supplier,status,return_reason,return_status,returned_at,resent_transfer_id',
+                    'transfer_id' => 'in.('.implode(',', $transferIds).')',
+                    'status' => 'eq.returned',
+                    'limit' => 300,
+                ]);
+            }
+
+            $transferMap = [];
+            foreach ($transfers as $t) {
+                $transferMap[(int) $t['id']] = $t;
+            }
+
+            $productIds = [];
+            foreach ($items as $it) {
+                if ((int) ($it['product_id'] ?? 0) > 0) {
+                    $productIds[(int) $it['product_id']] = true;
+                }
+            }
+            $productNames = [];
+            if ($productIds) {
+                $list = $this->supabase->query('products', [
+                    'select' => 'id,name,brand',
+                    'id' => 'in.('.implode(',', array_keys($productIds)).')',
+                ]);
+                foreach ($list as $p) {
+                    $productNames[(int) $p['id']] = $p;
+                }
+            }
+
+            foreach ($items as $it) {
+                $t = $transferMap[(int) $it['transfer_id']] ?? null;
+                if (! $t) {
+                    continue;
+                }
+                $rows[] = (object) [
+                    'item' => (object) $it,
+                    'item_label' => $this->itemLabel($it, $productNames),
+                    'transfer_number' => $t['transfer_number'] ?? null,
+                    'stock_type' => $t['stock_type'] ?? null,
+                    'stock_type_label' => $this->typeLabel($t['stock_type'] ?? ''),
+                    'to_branch_name' => $this->scope->branchName((int) ($t['to_branch_id'] ?? 0)) ?? ('Branch #'.($t['to_branch_id'] ?? '?')),
+                    'created_at' => $t['created_at'] ?? null,
+                    'returned_at' => $it['returned_at'] ?? null,
+                ];
+            }
+        }
+
+        usort($rows, fn ($a, $b) => strcmp((string) ($b->returned_at ?? ''), (string) ($a->returned_at ?? '')));
+
+        return view('stock-manager.stock-transfers.returns', [
+            'rows' => collect($rows),
+            'branchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+        ]);
+    }
+
+    /**
+     * Re-send a returned item to the same branch in a fresh transfer.
+     * The stock is deducted again (it was credited back on return).
+     */
+    public function resendReturned(Request $request, $itemId)
+    {
+        $senderIds = $this->senderBranchIds();
+
+        $item = $this->supabase->find('stock_transfer_items', $itemId);
+        if (! $item || ($item['status'] ?? '') !== 'returned') {
+            return back()->withErrors(['error' => 'Returned item not found.']);
+        }
+
+        $original = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+        if (! $original || ! in_array((int) ($original['from_branch_id'] ?? 0), $senderIds, true)) {
+            abort(403);
+        }
+
+        $type = (string) ($item['stock_type'] ?? 'product');
+        $fromBranchId = (int) ($original['from_branch_id'] ?? 0);
+        $toBranchId = (int) ($original['to_branch_id'] ?? 0);
+        if ($toBranchId === $fromBranchId || ($this->isBottleType($type) && $this->isHQBranch($toBranchId))) {
+            return back()->withErrors(['error' => 'This item cannot be re-sent to that branch.']);
+        }
+
+        // Re-validate against CURRENT stock at the sending branch.
+        $resolved = $this->resolveItems($type, [[
+            'product_id' => $item['product_id'] ?? null,
+            'name' => $item['name'] ?? null,
+            'volume' => $item['volume'] ?? null,
+            'variant' => $item['variant'] ?? null,
+            'type' => $item['type'] ?? null,
+            'color' => $item['color'] ?? null,
+            'quantity' => $item['quantity'] ?? 0,
+        ]], $fromBranchId);
+        if ($resolved instanceof RedirectResponse) {
+            return $resolved;
+        }
+        if (count($resolved) !== 1) {
+            return back()->withErrors(['error' => 'Could not re-validate this item for resending.']);
+        }
+
+        $toBranchName = $this->scope->branchName($toBranchId) ?? 'the target branch';
+        $transferNumber = 'TF-'.now()->format('YmdHis').'-'.strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+
+        $transfer = $this->supabase->insert('stock_transfers', [
+            'transfer_number' => $transferNumber,
+            'stock_type' => $type,
+            'from_branch_id' => $fromBranchId,
+            'to_branch_id' => $toBranchId,
+            'status' => 'in_transit',
+            'note' => 'Re-send of item from '.($original['transfer_number'] ?? 'transfer'),
+            'officer_name' => $request->input('officer_name', auth()->user()->name ?? 'Stock Manager'),
+            'officer_phone' => $request->input('officer_phone', '-'),
+            'officer_id' => $request->input('officer_id'),
+            'created_by' => $this->performingUserId(),
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        if (! $transfer || empty($transfer['id'])) {
+            return back()->withErrors(['error' => 'Could not create the re-send transfer record. Please try again.']);
+        }
+
+        $now = now()->toIso8601String();
+        $inserted = $this->supabase->insertMany('stock_transfer_items', [[
+            'transfer_id' => (int) $transfer['id'],
+            'stock_type' => $type,
+            'item_index' => 1,
+            'quantity' => $resolved[0]['quantity'],
+            'status' => 'in_transit',
+            'created_at' => $now,
+            'updated_at' => $now,
+            ...$resolved[0]['columns'],
+        ]]);
+
+        if ($inserted === null) {
+            $this->supabase->delete('stock_transfers', ['id' => (int) $transfer['id']]);
+
+            return back()->withErrors(['error' => 'Could not save the re-send transfer items. Please try again.']);
+        }
+
+        $this->applyOut($type, $resolved[0], $fromBranchId, $transferNumber, $toBranchName);
+
+        $this->supabase->update('stock_transfer_items', [
+            'return_status' => 'resent',
+            'resent_transfer_id' => (int) $transfer['id'],
+            'updated_at' => $now,
+        ], ['id' => (int) $item['id']]);
+
+        $this->recordTransferAudit(
+            'transfer_item_resent',
+            'Returned item re-sent',
+            "{$this->typeLabel($type)} {$this->itemDescription($item)} (qty {$item['quantity']}) returned from "
+                .$toBranchName.' was re-sent in transfer '.$transferNumber.'.'
+        );
+
+        return redirect()->route('stock-manager.stock-transfers.index')
+            ->with('success', "Item re-sent to {$toBranchName} in transfer {$transferNumber}.");
+    }
+
+    /**
+     * Write a returned item off as lost (no stock changes — the sender's
+     * stock was already credited back when the item was returned, so the
+     * loss is recorded by deducting the quantity with a movement trail).
+     */
+    public function writeOffReturned(Request $request, $itemId)
+    {
+        $validated = $request->validate([
+            'loss_reason' => 'required|string|min:3|max:500',
+        ]);
+
+        $senderIds = $this->senderBranchIds();
+
+        $item = $this->supabase->find('stock_transfer_items', $itemId);
+        if (! $item || ($item['status'] ?? '') !== 'returned') {
+            return back()->withErrors(['error' => 'Returned item not found.']);
+        }
+
+        $original = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+        if (! $original || ! in_array((int) ($original['from_branch_id'] ?? 0), $senderIds, true)) {
+            abort(403);
+        }
+
+        $fromBranchId = (int) ($original['from_branch_id'] ?? 0);
+        $type = (string) ($item['stock_type'] ?? 'product');
+        $qty = (int) ($item['quantity'] ?? 0);
+        $now = now()->toIso8601String();
+        $reason = 'Written off as lost after return from '.
+            ($this->scope->branchName((int) ($original['to_branch_id'] ?? 0)) ?? 'another branch').
+            ' (transfer '.($original['transfer_number'] ?? '').'): '.$validated['loss_reason'];
+
+        $this->deductForLoss($type, $item, $fromBranchId, $reason);
+
+        $this->supabase->update('stock_transfer_items', [
+            'return_status' => 'written_off',
+            'loss_reason' => $validated['loss_reason'],
+            'updated_at' => $now,
+        ], ['id' => (int) $item['id']]);
+
+        $this->recordTransferAudit(
+            'transfer_item_written_off',
+            'Returned item written off as lost',
+            "{$this->typeLabel($type)} {$this->itemDescription($item)} (qty {$qty}) from transfer "
+                .($original['transfer_number'] ?? '').' was written off as lost. Reason: '.$validated['loss_reason']
+        );
+
+        return redirect()->route('stock-manager.stock-transfers.returns')
+            ->with('success', 'Item written off as lost.');
+    }
+
+    /**
+     * Deduct a returned item's quantity from the sending branch's stock,
+     * recording the matching movement. Best-effort per stock type.
+     */
+    private function deductForLoss(string $type, array $item, int $branchId, string $reason): void
+    {
+        $now = now()->toIso8601String();
+        $performedBy = $this->performingUserId();
+        $qty = (int) ($item['quantity'] ?? 0);
+        if ($qty <= 0) {
+            return;
+        }
+
+        if ($type === 'product') {
+            $productId = (int) ($item['product_id'] ?? 0);
+            $row = $productId > 0 ? $this->supabase->queryFresh('branch_stock', [
+                'select' => 'id,quantity',
+                'branch_id' => "eq.{$branchId}",
+                'product_id' => "eq.{$productId}",
+                'limit' => 1,
+            ]) : [];
+            $current = $row[0] ?? null;
+            if ($current) {
+                $this->supabase->update('branch_stock', [
+                    'quantity' => max(((int) ($current['quantity'] ?? 0)) - $qty, 0),
+                    'updated_at' => $now,
+                ], ['id' => $current['id']]);
+            }
+
+            $volume = (int) ($item['volume'] ?? 0);
+            $variant = (string) ($item['variant'] ?? '');
+            if ($productId > 0 && $volume > 0 && $variant !== '') {
+                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, -$qty);
+            }
+
+            $this->supabase->insert('stock_movements', [
+                'branch_id' => $branchId,
+                'product_id' => $productId > 0 ? $productId : null,
+                'type' => 'transfer_out',
+                'quantity' => -$qty,
+                'unit_cost' => $item['unit_cost'] ?? null,
+                'unit_price' => $item['unit_price'] ?? null,
+                'performed_by' => $performedBy,
+                'notes' => $reason.$this->varietySuffix($item),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        if ($type === 'bottle') {
+            $volume = $this->bottles->parseVolume((string) ($item['volume'] ?? ''));
+            if ($volume !== null) {
+                $this->bottles->deduct($branchId, $volume, $qty, $reason, (string) $performedBy, (string) ($item['variant'] ?? ''));
+            }
+
+            return;
+        }
+
+        if ($type === 'oil_fragrance') {
+            $params = [
+                'select' => 'id,quantity',
+                'branch_id' => "eq.{$branchId}",
+                'name' => "eq.{$item['name']}",
+                'limit' => 1,
+            ];
+            if (($item['volume'] ?? '') !== '') {
+                $params['volume'] = "eq.{$item['volume']}";
+            }
+            $row = $this->supabase->queryFresh('oil_fragrance_stock', $params);
+            $current = $row[0] ?? null;
+            if ($current) {
+                $this->supabase->update('oil_fragrance_stock', [
+                    'quantity' => max(((int) ($current['quantity'] ?? 0)) - $qty, 0),
+                    'updated_at' => $now,
+                ], ['id' => $current['id']]);
+            }
+            $this->supabase->insert('oil_fragrance_movements', [
+                'branch_id' => $branchId,
+                'name' => $item['name'] ?? null,
+                'volume' => ($item['volume'] ?? '') !== '' ? (int) $item['volume'] : null,
+                'type' => 'stock_out',
+                'quantity' => $qty,
+                'reason' => $reason,
+                'performed_by' => $performedBy,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        // bottle_accessories
+        $row = $this->supabase->queryFresh('bottle_accessories', [
+            'select' => 'id,quantity',
+            'branch_id' => "eq.{$branchId}",
+            'type' => 'eq.'.($item['type'] ?? ''),
+            'color' => 'eq.'.($item['color'] ?? ''),
+            'limit' => 1,
+        ]);
+        $current = $row[0] ?? null;
+        if ($current) {
+            $this->supabase->update('bottle_accessories', [
+                'quantity' => max(((int) ($current['quantity'] ?? 0)) - $qty, 0),
+                'updated_at' => $now,
+            ], ['id' => $current['id']]);
+        }
+        $this->supabase->insert('bottle_accessories_movements', [
+            'branch_id' => $branchId,
+            'type' => $item['type'] ?? null,
+            'color' => $item['color'] ?? null,
+            'movement_type' => 'stock_out',
+            'quantity' => $qty,
+            'reason' => $reason,
+            'performed_by' => $performedBy,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    // .=====================================================================
+    // LOST ITEMS — form for the sender to declare items lost during a
+    // transfer (stock out with an audit trail + admin notification).
+    // .=====================================================================
+
+    public function lostForm()
+    {
+        $senderIds = $this->senderBranchIds();
+        $transfers = collect();
+
+        if (! empty($senderIds)) {
+            $rows = $this->supabase->query('stock_transfers', [
+                'select' => 'id,transfer_number,stock_type,from_branch_id,to_branch_id,created_at',
+                'from_branch_id' => 'in.('.implode(',', $senderIds).')',
+                'order' => 'created_at.desc',
+                'limit' => 50,
+            ]);
+            $branchIds = array_map(fn ($t) => (int) ($t['to_branch_id'] ?? 0), $rows);
+            $branchNames = $this->branchNameMap($branchIds);
+
+            $transfers = collect($rows)->map(fn ($t) => (object) [
+                'id' => $t['id'],
+                'transfer_number' => $t['transfer_number'] ?? null,
+                'stock_type_label' => $this->typeLabel($t['stock_type'] ?? ''),
+                'to_branch_name' => $branchNames[(int) ($t['to_branch_id'] ?? 0)] ?? ('Branch #'.($t['to_branch_id'] ?? '?')),
+                'created_at' => $t['created_at'] ?? null,
+            ])->values();
+        }
+
+        return view('stock-manager.stock-transfers.lost', [
+            'transfers' => $transfers,
+            'branchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+        ]);
+    }
+
+    public function declareLost(Request $request)
+    {
+        $validated = $request->validate([
+            'transfer_id' => 'required|integer',
+            'item' => 'required|string|min:1|max:191',
+            'quantity' => 'required|integer|min:1|max:100000',
+            'reason' => 'required|string|min:3|max:500',
+        ]);
+
+        $senderIds = $this->senderBranchIds();
+
+        $transfer = $this->supabase->find('stock_transfers', (int) $validated['transfer_id']);
+        if (! $transfer || ! in_array((int) ($transfer['from_branch_id'] ?? 0), $senderIds, true)) {
+            return back()->withErrors(['error' => 'Transfer not found among your outgoing transfers.'])->withInput();
+        }
+
+        $fromBranchId = (int) ($transfer['from_branch_id'] ?? 0);
+        $type = (string) ($transfer['stock_type'] ?? 'product');
+        $now = now()->toIso8601String();
+        $reason = 'Declared lost during transfer '.($transfer['transfer_number'] ?? '').': '.$validated['reason'];
+
+        // Best-effort stock-out from the sending branch. The item name is
+        // free-text here, so match product/bottle stock loosely.
+        if ($type === 'product') {
+            $productRow = $this->supabase->queryFresh('products', [
+                'select' => 'id,name',
+                'name' => "eq.{$validated['item']}",
+                'limit' => 1,
+            ]);
+            $productId = (int) ($productRow[0]['id'] ?? 0);
+            if ($productId > 0) {
+                $row = $this->supabase->queryFresh('branch_stock', [
+                    'select' => 'id,quantity',
+                    'branch_id' => "eq.{$fromBranchId}",
+                    'product_id' => "eq.{$productId}",
+                    'limit' => 1,
+                ]);
+                $current = $row[0] ?? null;
+                if ($current) {
+                    $this->supabase->update('branch_stock', [
+                        'quantity' => max(((int) ($current['quantity'] ?? 0)) - (int) $validated['quantity'], 0),
+                        'updated_at' => $now,
+                    ], ['id' => $current['id']]);
+                }
+                $this->supabase->insert('stock_movements', [
+                    'branch_id' => $fromBranchId,
+                    'product_id' => $productId,
+                    'type' => 'transfer_out',
+                    'quantity' => -(int) $validated['quantity'],
+                    'performed_by' => $this->performingUserId(),
+                    'notes' => $reason,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        } elseif ($type === 'bottle') {
+            $volume = $this->bottles->parseVolume($validated['item']);
+            if ($volume !== null) {
+                $this->bottles->deduct($fromBranchId, $volume, (int) $validated['quantity'], $reason, (string) $this->performingUserId());
+            }
+        } elseif ($type === 'oil_fragrance') {
+            // The description is usually the fragrance name (e.g. "Test Oil");
+            // a bare number is treated as the volume in ml.
+            $isNumericVolume = is_numeric($validated['item']) && (int) $validated['item'] > 0;
+            $conditions = ['branch_id' => "eq.{$fromBranchId}"];
+            if ($isNumericVolume) {
+                $conditions['volume'] = 'eq.'.(int) $validated['item'];
+            } else {
+                $conditions['name'] = 'eq.'.$validated['item'];
+            }
+            $row = $this->supabase->queryFresh('oil_fragrance_stock', array_merge([
+                'select' => 'id,quantity,name,volume',
+                'limit' => 1,
+            ], $conditions));
+            $current = $row[0] ?? null;
+            if ($current) {
+                $this->supabase->update('oil_fragrance_stock', [
+                    'quantity' => max(((int) ($current['quantity'] ?? 0)) - (int) $validated['quantity'], 0),
+                    'updated_at' => $now,
+                ], ['id' => $current['id']]);
+            }
+            $this->supabase->insert('oil_fragrance_movements', [
+                'branch_id' => $fromBranchId,
+                'name' => $isNumericVolume ? 'Unknown fragrance' : $validated['item'],
+                'volume' => $isNumericVolume ? (int) $validated['item'] : ($current['volume'] ?? null),
+                'type' => 'stock_out',
+                'quantity' => (int) $validated['quantity'],
+                'reason' => $reason,
+                'performed_by' => $this->performingUserId(),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        // Notify the admins (durable audit + notification feed).
+        try {
+            (new AuditService)->recordCriticalAction(
+                'lost_items',
+                'transfer_items_declared_lost',
+                'Lost items declared during transfer',
+                $this->scope->activeBranchName().' declared '.(int) $validated['quantity'].' x \''.$validated['item']
+                    .'\' lost during transfer '.($transfer['transfer_number'] ?? '').' to '
+                    .($this->scope->branchName((int) ($transfer['to_branch_id'] ?? 0)) ?? 'another branch')
+                    .'. Reason: '.$validated['reason'],
+                ['transfer_id' => $transfer['id'] ?? null]
+            );
+        } catch (\Throwable $e) {
+            // Audit is best-effort.
+        }
+
+        return redirect()->route('stock-manager.stock-transfers.lost-form')
+            ->with('success', 'Lost items declared. The admin has been notified for cross-checking.');
+    }
+
+    /**
+     * Branch ids the active stock manager may act on as the SENDER of a
+     * transfer: the active branch, or all branches when monitoring.
+     */
+    private function senderBranchIds(): array
+    {
+        if ($this->scope->inCrossBranchMode()) {
+            $rows = $this->supabase->query('branches', [
+                'select' => 'id',
+                'is_active' => 'eq.true',
+            ]);
+
+            return array_map(fn ($b) => (int) $b['id'], $rows);
+        }
+
+        return [$this->scope->activeBranchId()];
     }
 }
