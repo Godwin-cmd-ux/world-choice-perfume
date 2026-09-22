@@ -63,19 +63,10 @@ class StockManagerController extends Controller
         ]));
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
-        // Sales summary (today, paid only)
+        // Sales figures are intentionally NOT fetched here — the stock
+        // manager dashboard must not expose sales details (totals, expenses,
+        // transaction counts or links to sales records).
         $todayStart = now()->startOfDay()->toIso8601String();
-        $todaySalesRows = $this->supabase->query('sales', [
-            'branch_id' => "eq.{$branchId}",
-            'payment_status' => 'eq.paid',
-            'created_at' => "gte.{$todayStart}",
-            'select' => 'id,total',
-        ]);
-        $salesToday = (float) array_sum(array_map(fn($s) => (float) ($s['total'] ?? 0), $todaySalesRows));
-        $salesTodayCount = count($todaySalesRows);
-
-        // Daily financials for the active branch (sales, expenses, actual = sales - expenses)
-        $dailySummary = (new \App\Services\FinancialService())->getDailySummary((int) $branchId);
 
         // Orders summary
         $pendingOrders = $this->supabase->count('orders', [
@@ -100,8 +91,7 @@ class StockManagerController extends Controller
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements',
             'isHQ', 'inCrossBranch', 'activeBranchName',
-            'salesToday', 'salesTodayCount', 'pendingOrders', 'openOrders', 'ordersToday',
-            'dailySummary'
+            'pendingOrders', 'openOrders', 'ordersToday'
         ));
     }
 
