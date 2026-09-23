@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Branch;
+use App\Models\User;
+use App\Services\CloudinaryService;
+use App\Services\CompanySettingService;
 use App\Services\OtpService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -17,7 +19,7 @@ class AuthController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     public function showLoginForm()
@@ -31,7 +33,7 @@ class AuthController extends Controller
             'secret_code' => 'required|string',
         ]);
 
-        $validCode = \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026');
+        $validCode = CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026');
 
         if ($request->secret_code !== $validCode) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
@@ -52,7 +54,7 @@ class AuthController extends Controller
         // Look up user in Supabase
         $sbUser = $this->supabase->findOne('users', ['email' => $credentials['email']]);
 
-        if (!$sbUser || !Hash::check($credentials['password'], $sbUser['password'])) {
+        if (! $sbUser || ! Hash::check($credentials['password'], $sbUser['password'])) {
             return back()->withErrors(['email' => 'Invalid email or password.']);
         }
 
@@ -69,7 +71,7 @@ class AuthController extends Controller
         }
 
         // Ensure branch exists in SQLite before creating user
-        if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
+        if (! empty($sbUser['branch_id']) && ! Branch::find($sbUser['branch_id'])) {
             $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
             if ($sbBranch) {
                 Branch::updateOrCreate(
@@ -81,7 +83,7 @@ class AuthController extends Controller
 
         // Ensure user exists in SQLite for Auth::login()
         $localUser = User::where('email', $credentials['email'])->first();
-        if (!$localUser) {
+        if (! $localUser) {
             // Create minimal local record for auth
             $localUser = User::create([
                 'name' => $sbUser['name'],
@@ -105,7 +107,7 @@ class AuthController extends Controller
                 'profile_picture' => $sbUser['profile_picture'] ?? $localUser->profile_picture,
             ]);
             // If branch exists in Supabase but not SQLite, sync it
-            if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
+            if (! empty($sbUser['branch_id']) && ! Branch::find($sbUser['branch_id'])) {
                 $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
                 if ($sbBranch) {
                     Branch::updateOrCreate(
@@ -139,6 +141,7 @@ class AuthController extends Controller
     {
         session()->forget('staff_access_verified');
         Auth::logout();
+
         return redirect()->route('home');
     }
 
@@ -161,7 +164,7 @@ class AuthController extends Controller
             'secret_code' => 'required|string',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
         }
 
@@ -199,7 +202,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
 
         return view('auth.verify-otp', [
@@ -216,7 +219,7 @@ class AuthController extends Controller
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('auth.register-branch-admin', ['branches' => $branches]);
     }
@@ -232,7 +235,7 @@ class AuthController extends Controller
             'branch_id' => 'required|integer',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
         }
 
@@ -244,14 +247,14 @@ class AuthController extends Controller
 
         // Verify branch exists
         $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
+        if (! $branch) {
             return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
         }
 
         $hashedPassword = Hash::make($validated['password']);
 
         // Sync branch to SQLite BEFORE creating user (foreign key constraint)
-        if (!Branch::find($validated['branch_id'])) {
+        if (! Branch::find($validated['branch_id'])) {
             Branch::updateOrCreate(
                 ['id' => $branch['id']],
                 ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
@@ -286,7 +289,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
 
         return view('auth.verify-otp', [
@@ -303,7 +306,7 @@ class AuthController extends Controller
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('auth.register-cashier', ['branches' => $branches]);
     }
@@ -314,7 +317,7 @@ class AuthController extends Controller
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('auth.register-stock-manager', ['branches' => $branches]);
     }
@@ -325,7 +328,7 @@ class AuthController extends Controller
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('auth.register-customer-care', ['branches' => $branches]);
     }
@@ -341,7 +344,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -353,12 +356,12 @@ class AuthController extends Controller
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
+        if (! $branch) {
             return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
-        if (!Branch::find($validated['branch_id'])) {
+        if (! Branch::find($validated['branch_id'])) {
             Branch::updateOrCreate(
                 ['id' => $branch['id']],
                 ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
@@ -381,7 +384,7 @@ class AuthController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        if (!$sbUser || !isset($sbUser['id'])) {
+        if (! $sbUser || ! isset($sbUser['id'])) {
             return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
         }
 
@@ -400,7 +403,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
 
         return view('auth.verify-otp', [
@@ -417,7 +420,7 @@ class AuthController extends Controller
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('auth.register-seller', ['branches' => $branches]);
     }
@@ -433,7 +436,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -445,12 +448,12 @@ class AuthController extends Controller
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
+        if (! $branch) {
             return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
-        if (!Branch::find($validated['branch_id'])) {
+        if (! Branch::find($validated['branch_id'])) {
             Branch::updateOrCreate(
                 ['id' => $branch['id']],
                 ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
@@ -473,7 +476,7 @@ class AuthController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        if (!$sbUser || !isset($sbUser['id'])) {
+        if (! $sbUser || ! isset($sbUser['id'])) {
             return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
         }
 
@@ -492,7 +495,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
 
         return view('auth.verify-otp', [
@@ -518,7 +521,7 @@ class AuthController extends Controller
             'secret_code' => 'required|string',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -544,7 +547,7 @@ class AuthController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        if (!$sbUser || !isset($sbUser['id'])) {
+        if (! $sbUser || ! isset($sbUser['id'])) {
             return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
         }
 
@@ -563,7 +566,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
 
         return view('auth.verify-otp', [
@@ -585,7 +588,7 @@ class AuthController extends Controller
             'branch_id' => 'required',
         ]);
 
-        if ($validated['secret_code'] !== \App\Services\CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
+        if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
             return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
@@ -597,12 +600,12 @@ class AuthController extends Controller
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
+        if (! $branch) {
             return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
-        if (!Branch::find($validated['branch_id'])) {
+        if (! Branch::find($validated['branch_id'])) {
             Branch::updateOrCreate(
                 ['id' => $branch['id']],
                 ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
@@ -625,7 +628,7 @@ class AuthController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        if (!$sbUser || !isset($sbUser['id'])) {
+        if (! $sbUser || ! isset($sbUser['id'])) {
             return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
         }
 
@@ -644,7 +647,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
 
         return view('auth.verify-otp', [
@@ -663,7 +666,7 @@ class AuthController extends Controller
             'phone' => 'required|string|max:20',
             'password' => 'required|string|min:8|confirmed',
             'branch_id' => 'required',
-            'profile_picture' => 'nullable|image|max:4096',
+            'profile_picture' => 'nullable|image|max:51200',
         ]);
 
         // Check if email already exists in Supabase
@@ -674,7 +677,7 @@ class AuthController extends Controller
 
         $profilePicture = null;
         if ($request->hasFile('profile_picture')) {
-            $cloudinaryService = new \App\Services\CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $profilePicture = $cloudinaryService->upload($request->file('profile_picture'), 'profiles');
         }
 
@@ -682,12 +685,12 @@ class AuthController extends Controller
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
-        if (!$branch) {
+        if (! $branch) {
             return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
-        if (!Branch::find($validated['branch_id'])) {
+        if (! Branch::find($validated['branch_id'])) {
             Branch::updateOrCreate(
                 ['id' => $branch['id']],
                 ['name' => $branch['name'], 'address' => $branch['address'] ?? null, 'is_active' => $branch['is_active'] ?? false]
@@ -724,7 +727,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
 
         return view('auth.verify-otp', [
@@ -748,7 +751,7 @@ class AuthController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         if ($otpService->verify($validated['email'], $validated['otp'], $validated['type'])) {
             // Update both SQLite and Supabase
             $user = User::find($validated['user_id']);
@@ -776,7 +779,7 @@ class AuthController extends Controller
         ]);
 
         $user = User::find($validated['user_id']);
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], $validated['type'], $validated['user_id'], $user->name ?? 'User');
 
         return back()->with('success', 'A new verification code has been sent to your email.');
@@ -799,12 +802,12 @@ class AuthController extends Controller
 
         // Check if user exists in Supabase
         $sbUser = $this->supabase->findOne('users', ['email' => $validated['email']]);
-        if (!$sbUser) {
+        if (! $sbUser) {
             return back()->withErrors(['email' => 'No account found with this email address.']);
         }
 
         // Ensure branch exists in SQLite before creating user
-        if (!empty($sbUser['branch_id']) && !Branch::find($sbUser['branch_id'])) {
+        if (! empty($sbUser['branch_id']) && ! Branch::find($sbUser['branch_id'])) {
             $sbBranch = $this->supabase->find('branches', $sbUser['branch_id']);
             if ($sbBranch) {
                 Branch::updateOrCreate(
@@ -827,7 +830,7 @@ class AuthController extends Controller
             ]
         );
 
-        $otpService = new OtpService();
+        $otpService = new OtpService;
         $otpService->generate($validated['email'], 'password_reset', $user->id, $sbUser['name'] ?? 'User');
 
         return view('auth.reset-password', ['email' => $validated['email']])
@@ -838,7 +841,7 @@ class AuthController extends Controller
     {
         $email = $request->query('email');
 
-        if (!$email) {
+        if (! $email) {
             return redirect()->route('password.forgot')->with('error', 'Invalid request. Please start over.');
         }
 
@@ -853,8 +856,8 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $otpService = new OtpService();
-        if (!$otpService->verify($validated['email'], $validated['otp'], 'password_reset')) {
+        $otpService = new OtpService;
+        if (! $otpService->verify($validated['email'], $validated['otp'], 'password_reset')) {
             return back()->withErrors(['otp' => 'Invalid or expired verification code.'])->withInput();
         }
 
@@ -873,7 +876,7 @@ class AuthController extends Controller
 
     private function redirectByRole(array $sbUser)
     {
-        return match($sbUser['role'] ?? '') {
+        return match ($sbUser['role'] ?? '') {
             'super_admin' => redirect()->route('super-admin.dashboard'),
             'branch_admin' => redirect()->route('branch-admin.dashboard'),
             'cashier' => redirect()->route('cashier.dashboard'),

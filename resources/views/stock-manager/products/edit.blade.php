@@ -92,7 +92,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Add More Images</label>
                     <input type="file" name="images[]" multiple accept="image/*"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    <p class="text-[11px] text-gray-400 mt-1">Max 4MB each.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">Max 50MB each.</p>
                 </div>
             </div>
 

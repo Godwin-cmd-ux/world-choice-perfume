@@ -16,7 +16,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Logo / Photo</label>
                     <input type="file" name="logo" accept="image/*" class="w-full px-3 py-2 border rounded-lg">
-                    <p class="text-[11px] text-gray-400 mt-1">Shown on the home page Featured Brands section. Max 4MB.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">Shown on the home page Featured Brands section. Max 50MB.</p>
                 </div>
 
                 <label class="flex items-center gap-2">

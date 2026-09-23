@@ -89,7 +89,7 @@ class ProductController extends Controller
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
             'sex_category' => 'nullable|in:male,female,unisex,accessories',
             'fundamental_ingredient' => 'nullable|in:'.implode(',', self::FUNDAMENTAL_INGREDIENTS),
-            'images.*' => 'nullable|image|max:4096',
+            'images.*' => 'nullable|image|max:51200',
         ], [
             'brand.in' => 'The selected brand is not registered. Brands are added by the graphic designer.',
         ]);
@@ -191,7 +191,7 @@ class ProductController extends Controller
             'sex_category' => 'nullable|in:male,female,unisex,accessories',
             'fundamental_ingredient' => 'nullable|in:'.implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'is_active' => 'boolean',
-            'images.*' => 'nullable|image|max:4096',
+            'images.*' => 'nullable|image|max:51200',
         ], [
             'brand.in' => 'The selected brand is not registered. Brands are added by the graphic designer.',
         ]);

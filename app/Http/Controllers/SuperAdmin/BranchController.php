@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\User;
+use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -13,7 +16,7 @@ class BranchController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     public function index()
@@ -25,7 +28,7 @@ class BranchController extends Controller
 
         // Get cashier counts per branch and cast to objects for views
         $branches = collect($branches)->map(function ($branch) {
-            $supabase = new SupabaseService();
+            $supabase = new SupabaseService;
             $branch['cashiers_count'] = $supabase->count('users', [
                 'role' => 'eq.cashier',
                 'branch_id' => "eq.{$branch['id']}",
@@ -33,7 +36,8 @@ class BranchController extends Controller
             $branch['users'] = collect($supabase->query('users', [
                 'select' => 'id,name,email,role,status',
                 'branch_id' => "eq.{$branch['id']}",
-            ]))->map(fn($u) => (object) $u);
+            ]))->map(fn ($u) => (object) $u);
+
             return (object) $branch;
         });
 
@@ -50,7 +54,7 @@ class BranchController extends Controller
             'branch_id' => 'is.null',
         ]);
 
-        return view('super-admin.branches.create', ['admins' => collect($admins)->map(fn($a) => (object) $a)]);
+        return view('super-admin.branches.create', ['admins' => collect($admins)->map(fn ($a) => (object) $a)]);
     }
 
     public function store(Request $request)
@@ -61,12 +65,12 @@ class BranchController extends Controller
             'admin_id' => 'nullable|numeric',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
-            'profile_picture' => 'nullable|image|max:4096',
+            'profile_picture' => 'nullable|image|max:51200',
         ]);
 
         $profilePicture = null;
         if ($request->hasFile('profile_picture')) {
-            $cloudinaryService = new CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $profilePicture = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
         }
 
@@ -83,7 +87,7 @@ class BranchController extends Controller
         ]);
 
         // Also create in SQLite
-        $localBranch = \App\Models\Branch::create([
+        $localBranch = Branch::create([
             'name' => $validated['name'],
             'address' => $validated['address'] ?? null,
             'latitude' => $validated['latitude'] ?? null,
@@ -93,9 +97,9 @@ class BranchController extends Controller
         ]);
 
         // Assign admin if provided
-        if (!empty($validated['admin_id']) && $branch) {
+        if (! empty($validated['admin_id']) && $branch) {
             $this->supabase->update('users', ['branch_id' => $branch['id']], ['id' => $validated['admin_id']]);
-            \App\Models\User::where('id', $validated['admin_id'])->update(['branch_id' => $localBranch->id]);
+            User::where('id', $validated['admin_id'])->update(['branch_id' => $localBranch->id]);
         }
 
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch created successfully.');
@@ -104,14 +108,16 @@ class BranchController extends Controller
     public function edit($branchId)
     {
         $branch = $this->supabase->find('branches', $branchId);
-        if (!$branch) abort(404);
+        if (! $branch) {
+            abort(404);
+        }
 
         $admins = $this->supabase->query('users', [
             'select' => 'id,name,email',
             'role' => 'eq.branch_admin',
         ]);
 
-        return view('super-admin.branches.edit', ['branch' => (object) $branch, 'admins' => collect($admins)->map(fn($a) => (object) $a)]);
+        return view('super-admin.branches.edit', ['branch' => (object) $branch, 'admins' => collect($admins)->map(fn ($a) => (object) $a)]);
     }
 
     public function update(Request $request, $branchId)
@@ -122,11 +128,11 @@ class BranchController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'is_active' => 'boolean',
-            'profile_picture' => 'nullable|image|max:4096',
+            'profile_picture' => 'nullable|image|max:51200',
         ]);
 
         if ($request->hasFile('profile_picture')) {
-            $cloudinaryService = new CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $validated['profile_picture'] = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
         }
 
@@ -139,7 +145,7 @@ class BranchController extends Controller
         // Also update in SQLite by matching name
         $branch = $this->supabase->find('branches', $branchId);
         if ($branch) {
-            \App\Models\Branch::where('name', $branch['name'])->update($validated);
+            Branch::where('name', $branch['name'])->update($validated);
         }
 
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch updated successfully.');
@@ -151,10 +157,10 @@ class BranchController extends Controller
 
         $branch = $this->supabase->find('branches', $branchId);
         if ($branch) {
-            \App\Models\Branch::where('name', $branch['name'])->update(['is_active' => false]);
+            Branch::where('name', $branch['name'])->update(['is_active' => false]);
         }
 
-        (new \App\Services\AuditService())->recordCriticalAction(
+        (new AuditService)->recordCriticalAction(
             'branch_deactivated',
             'branch_deactivated',
             'Branch Deactivated',

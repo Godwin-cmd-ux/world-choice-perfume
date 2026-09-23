@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\GraphicDesigner;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditService;
+use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class NewsController extends Controller
@@ -12,7 +15,7 @@ class NewsController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     private function hasStatusColumn(): bool
@@ -43,6 +46,7 @@ class NewsController extends Controller
         if (in_array($raw, ['approved', 'rejected', 'pending'], true)) {
             return $raw;
         }
+
         return ($p['is_published'] ?? false) ? 'approved' : 'pending';
     }
 
@@ -61,12 +65,14 @@ class NewsController extends Controller
         $branchIds = $posts->pluck('branch_id')->filter()->unique()->values()->toArray();
 
         $branches = [];
-        if (!empty($branchIds)) {
+        if (! empty($branchIds)) {
             $branchesList = $this->supabase->query('branches', [
                 'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $branchIds) . ')',
+                'id' => 'in.('.implode(',', $branchIds).')',
             ]);
-            foreach ($branchesList as $b) $branches[$b['id']] = $b['name'];
+            foreach ($branchesList as $b) {
+                $branches[$b['id']] = $b['name'];
+            }
         }
 
         $posts = $posts->map(function ($p) use ($branches) {
@@ -74,17 +80,21 @@ class NewsController extends Controller
                 ? (object) ['id' => $p['branch_id'], 'name' => $branches[$p['branch_id']]] : null;
             $p['status'] = $this->normaliseStatus($p);
             $p['rejection_reason'] = $p['rejection_reason'] ?? null;
+
             return (object) $p;
         });
 
         $counts = [
             'total' => $posts->count(),
-            'approved' => $posts->filter(fn($p) => $p->status === 'approved')->count(),
-            'pending' => $posts->filter(fn($p) => $p->status === 'pending')->count(),
-            'rejected' => $posts->filter(fn($p) => $p->status === 'rejected')->count(),
+            'approved' => $posts->filter(fn ($p) => $p->status === 'approved')->count(),
+            'pending' => $posts->filter(fn ($p) => $p->status === 'pending')->count(),
+            'rejected' => $posts->filter(fn ($p) => $p->status === 'rejected')->count(),
             'today' => $posts->filter(function ($p) {
-                if (!$p->created_at) return false;
-                return \Carbon\Carbon::parse($p->created_at)->setTimezone('Africa/Dar_es_Salaam')->isToday();
+                if (! $p->created_at) {
+                    return false;
+                }
+
+                return Carbon::parse($p->created_at)->setTimezone('Africa/Dar_es_Salaam')->isToday();
             })->count(),
         ];
 
@@ -101,12 +111,12 @@ class NewsController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'image' => 'nullable|image|max:4096',
+            'image' => 'nullable|image|max:51200',
         ]);
 
         $imageUrl = null;
         if ($request->hasFile('image')) {
-            $cloudinaryService = new \App\Services\CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $imageUrl = $cloudinaryService->upload($request->file('image'), 'news');
         }
 
@@ -138,7 +148,9 @@ class NewsController extends Controller
     public function edit($postId)
     {
         $post = $this->supabase->find('news_posts', $postId);
-        if (!$post) abort(404);
+        if (! $post) {
+            abort(404);
+        }
 
         return view('graphic-designer.news.edit', ['post' => (object) $post]);
     }
@@ -174,11 +186,11 @@ class NewsController extends Controller
 
         $this->supabase->delete('news_posts', ['id' => $postId]);
 
-        (new \App\Services\AuditService())->recordCriticalAction(
+        (new AuditService)->recordCriticalAction(
             'content_deleted',
             'news_post_deleted',
             'News Post Deleted',
-            "News post deleted: " . ($post['title'] ?? "#{$postId}") . ".",
+            'News post deleted: '.($post['title'] ?? "#{$postId}").'.',
             ['post_id' => $postId, 'title' => $post['title'] ?? null],
             'news_posts',
             (string) $postId,

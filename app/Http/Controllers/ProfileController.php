@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class ProfileController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     public function edit()
@@ -24,11 +25,13 @@ class ProfileController extends Controller
         $branch = null;
         if ($user->branch_id) {
             $branch = $this->supabase->findOne('branches', ['id' => $user->branch_id]);
-            if ($branch) $branch = (object) $branch;
+            if ($branch) {
+                $branch = (object) $branch;
+            }
         }
 
         // Use role-specific profile view where available
-        $view = match($user->role) {
+        $view = match ($user->role) {
             'stock_manager' => 'stock-manager.profile',
             default => 'profile.edit',
         };
@@ -44,7 +47,7 @@ class ProfileController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|email',
-            'profile_picture' => 'nullable|image|max:4096',
+            'profile_picture' => 'nullable|image|max:51200',
         ]);
 
         if ($request->hasFile('profile_picture')) {
@@ -52,15 +55,16 @@ class ProfileController extends Controller
 
             // Surface the most common production failure (PHP post_max_size
             // exceeded — the file never reaches the validation step) clearly.
-            if (!$file->isValid()) {
+            if (! $file->isValid()) {
                 $code = $file->getError();
                 $message = $code === UPLOAD_ERR_INI_SIZE
-                    ? 'The picture is too large. Please choose an image under 4MB.'
-                    : 'The picture could not be uploaded (error code ' . $code . '). Please try again.';
+                    ? 'The picture is too large. Please choose an image under 50MB.'
+                    : 'The picture could not be uploaded (error code '.$code.'). Please try again.';
+
                 return back()->withErrors(['profile_picture' => $message])->withInput();
             }
 
-            $cloudinary = new CloudinaryService();
+            $cloudinary = new CloudinaryService;
             $uploadedUrl = $cloudinary->upload($file, 'profiles');
             if ($uploadedUrl) {
                 $validated['profile_picture'] = $uploadedUrl;
@@ -96,7 +100,7 @@ class ProfileController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        if (!Hash::check($validated['current_password'], auth()->user()->password)) {
+        if (! Hash::check($validated['current_password'], auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
@@ -118,7 +122,7 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user->isBranchAdmin() && !$user->isSuperAdmin()) {
+        if (! $user->isBranchAdmin() && ! $user->isSuperAdmin()) {
             abort(403);
         }
 
@@ -135,7 +139,7 @@ class ProfileController extends Controller
         ], ['id' => $user->branch_id]);
 
         // Update in SQLite
-        \App\Models\Branch::where('id', $user->branch_id)->update([
+        Branch::where('id', $user->branch_id)->update([
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
         ]);

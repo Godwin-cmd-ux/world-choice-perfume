@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\GraphicDesigner;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class BrandsController extends Controller
 {
@@ -14,7 +14,7 @@ class BrandsController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     /**
@@ -33,12 +33,15 @@ class BrandsController extends Controller
         $products = $this->supabase->query('products', ['select' => 'brand']);
         foreach ($products as $p) {
             $name = trim((string) ($p['brand'] ?? ''));
-            if ($name === '') continue;
+            if ($name === '') {
+                continue;
+            }
             $counts[$name] = ($counts[$name] ?? 0) + 1;
         }
 
         $brands = $brands->map(function ($b) use ($counts) {
             $b['product_count'] = $counts[$b['name']] ?? 0;
+
             return (object) $b;
         });
 
@@ -46,7 +49,7 @@ class BrandsController extends Controller
             'total' => $brands->count(),
             'active' => $brands->where('is_active', true)->count(),
             'inactive' => $brands->where('is_active', false)->count(),
-            'with_logo' => $brands->filter(fn($b) => !empty($b->logo_url))->count(),
+            'with_logo' => $brands->filter(fn ($b) => ! empty($b->logo_url))->count(),
         ];
 
         return view('graphic-designer.brands.index', compact('brands', 'countsUi'));
@@ -61,7 +64,7 @@ class BrandsController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'logo' => 'nullable|image|max:4096',
+            'logo' => 'nullable|image|max:51200',
             'is_active' => 'boolean',
         ]);
 
@@ -72,7 +75,7 @@ class BrandsController extends Controller
 
         $logoUrl = null;
         if ($request->hasFile('logo')) {
-            $logoUrl = (new CloudinaryService())->upload($request->file('logo'), 'brands');
+            $logoUrl = (new CloudinaryService)->upload($request->file('logo'), 'brands');
         }
 
         $this->supabase->insert('brands', [
@@ -91,7 +94,9 @@ class BrandsController extends Controller
     public function edit($brandId)
     {
         $brand = $this->supabase->find('brands', $brandId);
-        if (!$brand) abort(404);
+        if (! $brand) {
+            abort(404);
+        }
 
         return view('graphic-designer.brands.edit', ['brand' => (object) $brand]);
     }
@@ -99,11 +104,13 @@ class BrandsController extends Controller
     public function update(Request $request, $brandId)
     {
         $brand = $this->supabase->find('brands', $brandId);
-        if (!$brand) abort(404);
+        if (! $brand) {
+            abort(404);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'logo' => 'nullable|image|max:4096',
+            'logo' => 'nullable|image|max:51200',
             'is_active' => 'boolean',
         ]);
 
@@ -120,7 +127,7 @@ class BrandsController extends Controller
         ];
 
         if ($request->hasFile('logo')) {
-            $data['logo_url'] = (new CloudinaryService())->upload($request->file('logo'), 'brands');
+            $data['logo_url'] = (new CloudinaryService)->upload($request->file('logo'), 'brands');
         }
 
         $this->supabase->update('brands', $data, ['id' => $brandId]);
@@ -128,7 +135,7 @@ class BrandsController extends Controller
         // Keep product brand strings in sync when the brand is renamed.
         if ($validated['name'] !== $brand['name']) {
             $this->supabase->update('products', ['brand' => $validated['name']], ['brand' => $brand['name']]);
-            \App\Models\Product::where('brand', $brand['name'])->update(['brand' => $validated['name']]);
+            Product::where('brand', $brand['name'])->update(['brand' => $validated['name']]);
         }
 
         return redirect()->route('graphic-designer.brands.index')
@@ -138,7 +145,9 @@ class BrandsController extends Controller
     public function destroy($brandId)
     {
         $brand = $this->supabase->find('brands', $brandId);
-        if (!$brand) abort(404);
+        if (! $brand) {
+            abort(404);
+        }
 
         // Protect data integrity — brands still used by products must not vanish.
         $products = $this->supabase->query('products', [
@@ -146,7 +155,7 @@ class BrandsController extends Controller
             'brand' => "eq.{$brand['name']}",
         ]);
         if (count($products) > 0) {
-            return back()->with('error', "This brand is still used by " . count($products) . " product(s). Reassign or delete those products first.");
+            return back()->with('error', 'This brand is still used by '.count($products).' product(s). Reassign or delete those products first.');
         }
 
         $this->supabase->delete('brands', ['id' => $brandId]);
@@ -162,7 +171,7 @@ class BrandsController extends Controller
     {
         $rows = $this->supabase->query('brands', [
             'select' => 'id,name',
-            'name' => 'ilike.' . urlencode($name),
+            'name' => 'ilike.'.urlencode($name),
         ]);
         foreach ($rows as $row) {
             if (mb_strtolower(trim($row['name'])) === mb_strtolower(trim($name))
@@ -170,6 +179,7 @@ class BrandsController extends Controller
                 return true;
             }
         }
+
         return false;
     }
 }

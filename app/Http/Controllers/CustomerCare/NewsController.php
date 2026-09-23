@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditService;
+use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -12,7 +14,7 @@ class NewsController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     private function hasStatusColumn(): bool
@@ -38,21 +40,25 @@ class NewsController extends Controller
         $authorIds = $posts->pluck('author_id')->filter()->unique()->values()->toArray();
 
         $branches = [];
-        if (!empty($branchIds)) {
+        if (! empty($branchIds)) {
             $branchesList = $this->supabase->query('branches', [
                 'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $branchIds) . ')',
+                'id' => 'in.('.implode(',', $branchIds).')',
             ]);
-            foreach ($branchesList as $b) $branches[$b['id']] = $b['name'];
+            foreach ($branchesList as $b) {
+                $branches[$b['id']] = $b['name'];
+            }
         }
 
         $authors = [];
-        if (!empty($authorIds)) {
+        if (! empty($authorIds)) {
             $authorsList = $this->supabase->query('users', [
                 'select' => 'id,name,role',
-                'id' => 'in.(' . implode(',', $authorIds) . ')',
+                'id' => 'in.('.implode(',', $authorIds).')',
             ]);
-            foreach ($authorsList as $u) $authors[$u['id']] = $u;
+            foreach ($authorsList as $u) {
+                $authors[$u['id']] = $u;
+            }
         }
 
         return collect($posts)->map(function ($p) use ($branches, $authors) {
@@ -65,6 +71,7 @@ class NewsController extends Controller
 
             $p['status'] = $this->normaliseStatus($p);
             $p['rejection_reason'] = $p['rejection_reason'] ?? null;
+
             return (object) $p;
         });
     }
@@ -75,6 +82,7 @@ class NewsController extends Controller
         if (in_array($raw, ['approved', 'rejected', 'pending'], true)) {
             return $raw;
         }
+
         return ($p['is_published'] ?? false) ? 'approved' : 'pending';
     }
 
@@ -82,23 +90,23 @@ class NewsController extends Controller
     {
         $posts = $this->loadPosts();
 
-        $designerPosts = $posts->filter(fn($p) => ($p->author->role ?? null) === 'graphic_designer')->values();
-        $customPosts = $posts->reject(fn($p) => ($p->author->role ?? null) === 'graphic_designer')->values();
+        $designerPosts = $posts->filter(fn ($p) => ($p->author->role ?? null) === 'graphic_designer')->values();
+        $customPosts = $posts->reject(fn ($p) => ($p->author->role ?? null) === 'graphic_designer')->values();
 
         $branches = collect($this->supabase->query('branches', [
             'select' => 'id,name',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         $tab = in_array($request->query('tab'), ['designer', 'custom'], true) ? $request->query('tab') : 'designer';
 
         $counts = [
             'designer' => count($designerPosts),
             'custom' => count($customPosts),
-            'pending' => $designerPosts->filter(fn($p) => $p->status === 'pending')->count(),
-            'rejected' => $designerPosts->filter(fn($p) => $p->status === 'rejected')->count(),
-            'approved' => $designerPosts->filter(fn($p) => $p->status === 'approved')->count(),
+            'pending' => $designerPosts->filter(fn ($p) => $p->status === 'pending')->count(),
+            'rejected' => $designerPosts->filter(fn ($p) => $p->status === 'rejected')->count(),
+            'approved' => $designerPosts->filter(fn ($p) => $p->status === 'approved')->count(),
         ];
 
         return view('customer-care.news.index', compact('designerPosts', 'customPosts', 'tab', 'counts', 'branches'));
@@ -110,12 +118,12 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'branch_id' => 'required',
-            'image' => 'nullable|image|max:4096',
+            'image' => 'nullable|image|max:51200',
         ]);
 
         $imageUrl = null;
         if ($request->hasFile('image')) {
-            $cloudinaryService = new \App\Services\CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $imageUrl = $cloudinaryService->upload($request->file('image'), 'news');
         }
 
@@ -145,7 +153,9 @@ class NewsController extends Controller
     public function edit($postId)
     {
         $post = $this->supabase->find('news_posts', $postId);
-        if (!$post) abort(404);
+        if (! $post) {
+            abort(404);
+        }
 
         $post['status'] = $this->normaliseStatus($post);
         $post['rejection_reason'] = $post['rejection_reason'] ?? null;
@@ -154,7 +164,7 @@ class NewsController extends Controller
             'select' => 'id,name',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         return view('customer-care.news.edit', ['post' => (object) $post, 'branches' => $branches]);
     }
@@ -165,7 +175,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'branch_id' => 'required',
-            'image' => 'nullable|image|max:4096',
+            'image' => 'nullable|image|max:51200',
         ]);
 
         $data = [
@@ -176,7 +186,7 @@ class NewsController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $cloudinaryService = new \App\Services\CloudinaryService();
+            $cloudinaryService = new CloudinaryService;
             $data['image_url'] = $cloudinaryService->upload($request->file('image'), 'news');
         }
 
@@ -189,7 +199,9 @@ class NewsController extends Controller
     public function approve($postId)
     {
         $post = $this->supabase->find('news_posts', $postId);
-        if (!$post) abort(404);
+        if (! $post) {
+            abort(404);
+        }
 
         $data = [
             'is_published' => true,
@@ -216,7 +228,9 @@ class NewsController extends Controller
         ]);
 
         $post = $this->supabase->find('news_posts', $postId);
-        if (!$post) abort(404);
+        if (! $post) {
+            abort(404);
+        }
 
         $data = [
             'is_published' => false,
@@ -242,11 +256,11 @@ class NewsController extends Controller
 
         $this->supabase->delete('news_posts', ['id' => $postId]);
 
-        (new \App\Services\AuditService())->recordCriticalAction(
+        (new AuditService)->recordCriticalAction(
             'content_deleted',
             'news_post_deleted',
             'News Post Deleted',
-            "News post deleted by customer care: " . ($post['title'] ?? "#{$postId}") . ".",
+            'News post deleted by customer care: '.($post['title'] ?? "#{$postId}").'.',
             ['post_id' => $postId, 'title' => $post['title'] ?? null],
             'news_posts',
             (string) $postId,
