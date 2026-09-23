@@ -101,14 +101,16 @@
             <!-- Hero Visual: square logo sunk into the background behind a translucent blur -->
             <div class="hidden lg:flex justify-center items-center relative">
                 <div class="relative w-[26rem] h-[26rem]">
-                    <!-- Background logo (square, blurred, translucent) -->
-                    <div class="absolute inset-0 overflow-hidden">
+                    <!-- Background logo (square, rounded, blurred, translucent) -->
+                    <div class="absolute inset-0 overflow-hidden rounded-[3rem] shadow-[0_0_90px_rgba(212,175,55,0.12)]">
                         <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[6px] opacity-40">
                         <!-- Translucent blur layer over the logo -->
                         <div class="absolute inset-0 bg-dark-950/40 backdrop-blur-md"></div>
                         <!-- Soft gold glow so the backdrop blends into the hero -->
                         <div class="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-transparent to-dark-950/60"></div>
-                        <div class="absolute inset-0 ring-1 ring-gold-500/10"></div>
+                        <!-- Vignette so the rounded edges melt softly into the background -->
+                        <div class="absolute inset-0 rounded-[3rem] shadow-[inset_0_0_60px_rgba(10,10,15,0.55)]"></div>
+                        <div class="absolute inset-0 rounded-[3rem] ring-1 ring-gold-500/20"></div>
                     </div>
                     <!-- Rating & location cards sit in front of the backdrop -->
                     <div class="absolute top-8 right-6 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
