@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -17,7 +21,7 @@ class ProductController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     /**
@@ -39,7 +43,7 @@ class ProductController extends Controller
             'order' => 'created_at.desc',
         ];
 
-        if (!$request->boolean('include_inactive')) {
+        if (! $request->boolean('include_inactive')) {
             $params['is_active'] = 'eq.true';
         }
 
@@ -62,6 +66,7 @@ class ProductController extends Controller
                 // an object so views can use ->image_url safely.
                 $p['images'] = collect($p['images'])->map(fn ($img) => (object) $img);
             }
+
             return (object) $p;
         });
 
@@ -80,10 +85,10 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'brand' => ['nullable', \Illuminate\Validation\Rule::in($brands)],
+            'brand' => ['nullable', Rule::in($brands)],
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
-            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
-            'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
+            'sex_category' => 'nullable|in:male,female,unisex,accessories',
+            'fundamental_ingredient' => 'nullable|in:'.implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'images.*' => 'nullable|image|max:4096',
         ], [
             'brand.in' => 'The selected brand is not registered. Brands are added by the graphic designer.',
@@ -105,7 +110,7 @@ class ProductController extends Controller
         ]);
 
         // Also create in SQLite for Eloquent compatibility
-        $localProduct = \App\Models\Product::create([
+        $localProduct = Product::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'brand' => $validated['brand'] ?? null,
@@ -116,7 +121,7 @@ class ProductController extends Controller
 
         // Upload images to Cloudinary
         if ($request->hasFile('images')) {
-            $cloudinary = new CloudinaryService();
+            $cloudinary = new CloudinaryService;
             foreach ($request->file('images') as $index => $image) {
                 $url = $cloudinary->upload($image, 'products');
                 if ($url && $product) {
@@ -129,7 +134,7 @@ class ProductController extends Controller
                     ]);
                     // Also in SQLite
                     if ($localProduct) {
-                        \App\Models\ProductImage::create([
+                        ProductImage::create([
                             'product_id' => $localProduct->id,
                             'image_url' => $url,
                             'sort_order' => $index,
@@ -145,7 +150,9 @@ class ProductController extends Controller
     public function edit($productId)
     {
         $product = $this->supabase->find('products', $productId, '*, images:product_images(*)');
-        if (!$product) abort(404);
+        if (! $product) {
+            abort(404);
+        }
 
         if (isset($product['images'])) {
             $product['images'] = collect($product['images'])->map(fn ($img) => (object) $img);
@@ -156,7 +163,7 @@ class ProductController extends Controller
         // the dropdown never loses the existing value.
         $brands = $this->registeredBrandNames();
         $currentBrand = trim((string) ($product['brand'] ?? ''));
-        if ($currentBrand !== '' && !in_array($currentBrand, $brands, true)) {
+        if ($currentBrand !== '' && ! in_array($currentBrand, $brands, true)) {
             $brands[] = $currentBrand;
         }
 
@@ -166,21 +173,23 @@ class ProductController extends Controller
     public function update(Request $request, $productId)
     {
         $currentProduct = $this->supabase->find('products', $productId);
-        if (!$currentProduct) abort(404);
+        if (! $currentProduct) {
+            abort(404);
+        }
 
         $brands = $this->registeredBrandNames();
         $currentBrand = trim((string) ($currentProduct['brand'] ?? ''));
-        if ($currentBrand !== '' && !in_array($currentBrand, $brands, true)) {
+        if ($currentBrand !== '' && ! in_array($currentBrand, $brands, true)) {
             $brands[] = $currentBrand;
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'brand' => ['nullable', \Illuminate\Validation\Rule::in($brands)],
+            'brand' => ['nullable', Rule::in($brands)],
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
-            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
-            'fundamental_ingredient' => 'nullable|in:' . implode(',', self::FUNDAMENTAL_INGREDIENTS),
+            'sex_category' => 'nullable|in:male,female,unisex,accessories',
+            'fundamental_ingredient' => 'nullable|in:'.implode(',', self::FUNDAMENTAL_INGREDIENTS),
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:4096',
         ], [
@@ -199,11 +208,11 @@ class ProductController extends Controller
         // Also update in SQLite by matching name
         $product = $this->supabase->find('products', $productId);
         if ($product) {
-            \App\Models\Product::where('name', $product['name'])->update($productData);
+            Product::where('name', $product['name'])->update($productData);
         }
 
         if ($request->hasFile('images')) {
-            $cloudinary = new CloudinaryService();
+            $cloudinary = new CloudinaryService;
             // Get current image count for sort_order
             $existingImages = $this->supabase->query('product_images', [
                 'product_id' => "eq.{$productId}",
@@ -224,7 +233,7 @@ class ProductController extends Controller
             }
         }
 
-        (new \App\Services\AuditService())->recordCriticalAction(
+        (new AuditService)->recordCriticalAction(
             'product_updated',
             'product_updated',
             'Product Updated',
@@ -247,9 +256,9 @@ class ProductController extends Controller
         // Also update SQLite
         $product = $this->supabase->find('products', $productId);
         if ($product) {
-            \App\Models\Product::where('name', $product['name'])->update(['is_active' => false]);
+            Product::where('name', $product['name'])->update(['is_active' => false]);
 
-            (new \App\Services\AuditService())->recordCriticalAction(
+            (new AuditService)->recordCriticalAction(
                 'product_deactivated',
                 'product_deactivated',
                 'Product Deactivated',
@@ -268,7 +277,9 @@ class ProductController extends Controller
     public function removeImage($imageId)
     {
         $image = $this->supabase->find('product_images', $imageId);
-        if (!$image) abort(404);
+        if (! $image) {
+            abort(404);
+        }
 
         $productId = $image['product_id'];
         $this->supabase->delete('product_images', ['id' => $imageId]);

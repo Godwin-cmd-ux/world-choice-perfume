@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -13,7 +16,7 @@ class ProductController extends Controller
 
     public function __construct()
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = new SupabaseService;
     }
 
     public function index(Request $request)
@@ -23,7 +26,7 @@ class ProductController extends Controller
             'order' => 'created_at.desc',
         ];
 
-        if (!$request->boolean('include_inactive')) {
+        if (! $request->boolean('include_inactive')) {
             $params['is_active'] = 'eq.true';
         }
 
@@ -45,6 +48,7 @@ class ProductController extends Controller
                 // an object so views can use ->image_url safely.
                 $p['images'] = collect($p['images'])->map(fn ($img) => (object) $img);
             }
+
             return (object) $p;
         });
 
@@ -63,7 +67,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'brand' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
-            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
+            'sex_category' => 'nullable|in:male,female,unisex,accessories',
             'images.*' => 'nullable|image|max:4096',
         ]);
 
@@ -80,7 +84,7 @@ class ProductController extends Controller
         ]);
 
         // Also create in SQLite for Eloquent compatibility
-        $localProduct = \App\Models\Product::create([
+        $localProduct = Product::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'brand' => $validated['brand'] ?? null,
@@ -90,7 +94,7 @@ class ProductController extends Controller
 
         // Upload images to Cloudinary
         if ($request->hasFile('images')) {
-            $cloudinary = new CloudinaryService();
+            $cloudinary = new CloudinaryService;
             foreach ($request->file('images') as $index => $image) {
                 $url = $cloudinary->upload($image, 'products');
                 if ($url && $product) {
@@ -103,7 +107,7 @@ class ProductController extends Controller
                     ]);
                     // Also in SQLite
                     if ($localProduct) {
-                        \App\Models\ProductImage::create([
+                        ProductImage::create([
                             'product_id' => $localProduct->id,
                             'image_url' => $url,
                             'sort_order' => $index,
@@ -119,7 +123,9 @@ class ProductController extends Controller
     public function edit($productId)
     {
         $product = $this->supabase->find('products', $productId, '*, images:product_images(*)');
-        if (!$product) abort(404);
+        if (! $product) {
+            abort(404);
+        }
 
         if (isset($product['images'])) {
             $product['images'] = collect($product['images'])->map(fn ($img) => (object) $img);
@@ -135,7 +141,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'brand' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
-            'sex_category' => 'nullable|in:male,female,unisex,accessories,gift sets',
+            'sex_category' => 'nullable|in:male,female,unisex,accessories',
             'is_active' => 'boolean',
             'images.*' => 'nullable|image|max:4096',
         ]);
@@ -152,11 +158,11 @@ class ProductController extends Controller
         // Also update in SQLite by matching name
         $product = $this->supabase->find('products', $productId);
         if ($product) {
-            \App\Models\Product::where('name', $product['name'])->update($productData);
+            Product::where('name', $product['name'])->update($productData);
         }
 
         if ($request->hasFile('images')) {
-            $cloudinary = new CloudinaryService();
+            $cloudinary = new CloudinaryService;
             // Get current image count for sort_order
             $existingImages = $this->supabase->query('product_images', [
                 'product_id' => "eq.{$productId}",
@@ -177,7 +183,7 @@ class ProductController extends Controller
             }
         }
 
-        (new \App\Services\AuditService())->recordCriticalAction(
+        (new AuditService)->recordCriticalAction(
             'product_updated',
             'product_updated',
             'Product Updated',
@@ -200,9 +206,9 @@ class ProductController extends Controller
         // Also update SQLite
         $product = $this->supabase->find('products', $productId);
         if ($product) {
-            \App\Models\Product::where('name', $product['name'])->update(['is_active' => false]);
+            Product::where('name', $product['name'])->update(['is_active' => false]);
 
-            (new \App\Services\AuditService())->recordCriticalAction(
+            (new AuditService)->recordCriticalAction(
                 'product_deactivated',
                 'product_deactivated',
                 'Product Deactivated',
@@ -221,7 +227,9 @@ class ProductController extends Controller
     public function removeImage($imageId)
     {
         $image = $this->supabase->find('product_images', $imageId);
-        if (!$image) abort(404);
+        if (! $image) {
+            abort(404);
+        }
 
         $productId = $image['product_id'];
         $this->supabase->delete('product_images', ['id' => $imageId]);

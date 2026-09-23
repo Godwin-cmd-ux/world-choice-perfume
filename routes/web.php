@@ -1,31 +1,59 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\BranchAdmin\ExpenseController;
+use App\Http\Controllers\BranchAdmin\SalesController;
+use App\Http\Controllers\Cashier\CashierController;
+use App\Http\Controllers\Cashier\SaleController;
+use App\Http\Controllers\Customer\InquiryController;
+use App\Http\Controllers\Customer\NavigationController;
+use App\Http\Controllers\Customer\NewsController;
+use App\Http\Controllers\Customer\OrderController;
+use App\Http\Controllers\Customer\ProductController;
+use App\Http\Controllers\CustomerCare\CustomerController;
+use App\Http\Controllers\GraphicDesigner\BrandsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Seller\SellerController;
+use App\Http\Controllers\StockManager\BottleAccessoriesController;
+use App\Http\Controllers\StockManager\StockManagerController;
+use App\Http\Controllers\StockManager\StockTransferController;
+use App\Http\Controllers\SuperAdmin\BranchController;
+use App\Http\Controllers\SuperAdmin\CashierApprovalController;
+use App\Http\Controllers\SuperAdmin\DashboardController;
+use App\Http\Controllers\SuperAdmin\NotificationController;
+use App\Http\Controllers\SuperAdmin\ReportController;
+use App\Http\Controllers\SuperAdmin\SettingsController;
+use App\Http\Controllers\SuperAdmin\StaffController;
+use App\Services\SupabaseService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ========================
 // PUBLIC / CUSTOMER ROUTES
 // ========================
-Route::get('/', function() {
+Route::get('/', function () {
     $categoryImages = [];
-    foreach (['male', 'female', 'unisex', 'gift sets', 'accessories'] as $cat) {
+    foreach (['male', 'female', 'unisex', 'accessories'] as $cat) {
         $categoryImages[$cat] = collect();
     }
     try {
-        $supabase = new \App\Services\SupabaseService();
+        $supabase = new SupabaseService;
         $branches = collect($supabase->query('branches', [
             'select' => 'id,name,address,latitude,longitude,is_active,profile_picture',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
+            $name = mb_strtolower($b->name ?? '');
+
+            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
+        })->values();
 
         $remarks = collect($supabase->query('inquiries', [
             'select' => 'email,subject,message,created_at',
             'is_featured' => 'eq.true',
             'order' => 'created_at.desc',
             'limit' => 6,
-        ]))->map(fn($r) => (object) $r);
+        ]))->map(fn ($r) => (object) $r);
 
         // Featured brands — the first 12 active brands (2 rows of 6)
         $featuredBrands = collect($supabase->query('brands', [
@@ -33,7 +61,7 @@ Route::get('/', function() {
             'is_active' => 'eq.true',
             'order' => 'name.asc',
             'limit' => 12,
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b);
 
         // Product images per sex category, for the category-card slideshows
         $categoryProducts = collect($supabase->query('products', [
@@ -43,60 +71,66 @@ Route::get('/', function() {
         ]));
         foreach ($categoryProducts as $p) {
             $cat = strtolower(trim($p['sex_category'] ?? ''));
-            if (!isset($categoryImages[$cat])) continue;
+            if (! isset($categoryImages[$cat])) {
+                continue;
+            }
             foreach ($p['images'] ?? [] as $img) {
-                if (!empty($img['image_url'])) {
+                if (! empty($img['image_url'])) {
                     $categoryImages[$cat]->push($img['image_url']);
                 }
             }
         }
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         $branches = collect();
         $remarks = collect();
         $featuredBrands = collect();
     }
+
     return view('home', compact('branches', 'remarks', 'categoryImages', 'featuredBrands'));
 })->name('home');
-Route::get('/brands', function() {
+Route::get('/brands', function () {
     $brands = [];
     try {
-        $supabase = new \App\Services\SupabaseService();
+        $supabase = new SupabaseService;
         $brands = collect($supabase->query('brands', [
             'select' => 'id,name,logo_url',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
-    } catch (\Exception $e) {
+        ]))->map(fn ($b) => (object) $b);
+    } catch (Exception $e) {
         $brands = collect();
     }
+
     return view('customer.brands', compact('brands'));
 })->name('customer.brands');
-Route::get('/products', [\App\Http\Controllers\Customer\ProductController::class, 'index'])->name('customer.products.index');
-Route::get('/products/{product}', [\App\Http\Controllers\Customer\ProductController::class, 'show'])->name('customer.products.show');
-Route::get('/news', [\App\Http\Controllers\Customer\NewsController::class, 'index'])->name('customer.news');
-Route::post('/contact', [\App\Http\Controllers\Customer\InquiryController::class, 'store'])->name('customer.contact.store');
+Route::get('/products', [ProductController::class, 'index'])->name('customer.products.index');
+Route::get('/products/{product}', [ProductController::class, 'show'])->name('customer.products.show');
+Route::get('/news', [NewsController::class, 'index'])->name('customer.news');
+Route::post('/contact', [InquiryController::class, 'store'])->name('customer.contact.store');
 
 // Customer Orders
 Route::prefix('orders')->name('customer.orders.')->group(function () {
-    Route::get('/create', [\App\Http\Controllers\Customer\OrderController::class, 'create'])->name('create');
-    Route::post('/', [\App\Http\Controllers\Customer\OrderController::class, 'store'])->name('store');
-    Route::get('/track', [\App\Http\Controllers\Customer\OrderController::class, 'track'])->name('track');
-    Route::post('/track', [\App\Http\Controllers\Customer\OrderController::class, 'trackByPhone'])->name('track-by-phone');
+    Route::get('/create', [OrderController::class, 'create'])->name('create');
+    Route::post('/', [OrderController::class, 'store'])->name('store');
+    Route::get('/track', [OrderController::class, 'track'])->name('track');
+    Route::post('/track', [OrderController::class, 'trackByPhone'])->name('track-by-phone');
 });
 
 // Twende Dukani — Navigate to branch
-Route::get('/twende-dukani/{branch}', [\App\Http\Controllers\Customer\NavigationController::class, 'show'])->name('customer.twende-dukani');
+Route::get('/twende-dukani/{branch}', [NavigationController::class, 'show'])->name('customer.twende-dukani');
 
 // Customer search API (for sales)
-Route::get('/api/customers/search', function(\Illuminate\Http\Request $request) {
+Route::get('/api/customers/search', function (Request $request) {
     $q = $request->q ?? '';
-    if (strlen($q) < 2) return response()->json([]);
-    $sb = new \App\Services\SupabaseService();
+    if (strlen($q) < 2) {
+        return response()->json([]);
+    }
+    $sb = new SupabaseService;
 
     // Search by name first
     $byName = $sb->query('customers', [
         'select' => '*',
-        'name' => 'ilike.*' . urlencode($q) . '*',
+        'name' => 'ilike.*'.urlencode($q).'*',
         'limit' => 10,
         'order' => 'name.asc',
     ]);
@@ -104,7 +138,7 @@ Route::get('/api/customers/search', function(\Illuminate\Http\Request $request) 
     // Search by phone
     $byPhone = $sb->query('customers', [
         'select' => '*',
-        'phone' => 'ilike.*' . urlencode($q) . '*',
+        'phone' => 'ilike.*'.urlencode($q).'*',
         'limit' => 10,
         'order' => 'name.asc',
     ]);
@@ -119,12 +153,12 @@ Route::get('/api/customers/search', function(\Illuminate\Http\Request $request) 
     return response()->json(array_values(array_slice($merged, 0, 10)));
 })->name('api.customers.search');
 
-Route::post('/api/customers', function(\Illuminate\Http\Request $request) {
+Route::post('/api/customers', function (Request $request) {
     $request->validate([
         'name' => 'nullable|string|max:255',
         'phone' => 'nullable|string|max:20',
     ]);
-    $sb = new \App\Services\SupabaseService();
+    $sb = new SupabaseService;
     $customer = $sb->insert('customers', [
         'name' => $request->name ?? null,
         'phone' => $request->phone ?? null,
@@ -132,6 +166,7 @@ Route::post('/api/customers', function(\Illuminate\Http\Request $request) {
         'created_at' => now()->toIso8601String(),
         'updated_at' => now()->toIso8601String(),
     ]);
+
     return response()->json($customer);
 })->name('api.customers.store');
 
@@ -190,88 +225,87 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // SUPER ADMIN ROUTES
     // ========================
     Route::prefix('super-admin')->name('super-admin.')->middleware('role:super_admin')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\SuperAdmin\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // Daily sales overview across all branches (same as the chief cashier)
-        Route::get('/daily-sales-overview', [\App\Http\Controllers\Cashier\CashierController::class, 'dailySalesOverview'])->name('daily-sales');
+        Route::get('/daily-sales-overview', [CashierController::class, 'dailySalesOverview'])->name('daily-sales');
 
         // Branches (no model binding - we fetch from Supabase)
-        Route::get('/branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'index'])->name('branches.index');
-        Route::get('/branches/create', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'create'])->name('branches.create');
-        Route::post('/branches', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'store'])->name('branches.store');
-        Route::get('/branches/{branch}/edit', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'edit'])->name('branches.edit');
-        Route::put('/branches/{branch}', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'update'])->name('branches.update');
-        Route::delete('/branches/{branch}', [\App\Http\Controllers\SuperAdmin\BranchController::class, 'destroy'])->name('branches.destroy');
+        Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
+        Route::get('/branches/create', [BranchController::class, 'create'])->name('branches.create');
+        Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+        Route::get('/branches/{branch}/edit', [BranchController::class, 'edit'])->name('branches.edit');
+        Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
+        Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
 
         // Cashier Approval
-        Route::get('/cashiers', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'index'])->name('cashiers.index');
-        Route::get('/cashiers/{cashier}', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'show'])->name('cashiers.show');
-        Route::post('/cashiers/{cashier}/approve', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'approve'])->name('cashiers.approve');
-        Route::post('/cashiers/{cashier}/reject', [\App\Http\Controllers\SuperAdmin\CashierApprovalController::class, 'reject'])->name('cashiers.reject');
+        Route::get('/cashiers', [CashierApprovalController::class, 'index'])->name('cashiers.index');
+        Route::get('/cashiers/{cashier}', [CashierApprovalController::class, 'show'])->name('cashiers.show');
+        Route::post('/cashiers/{cashier}/approve', [CashierApprovalController::class, 'approve'])->name('cashiers.approve');
+        Route::post('/cashiers/{cashier}/reject', [CashierApprovalController::class, 'reject'])->name('cashiers.reject');
 
         // Orders Monitor
-        Route::get('/orders', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [\App\Http\Controllers\SuperAdmin\OrderController::class, 'show'])->name('orders.show');
+        Route::get('/orders', [App\Http\Controllers\SuperAdmin\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [App\Http\Controllers\SuperAdmin\OrderController::class, 'show'])->name('orders.show');
 
         // Reports
         Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'index'])->name('index');
-            Route::get('/sales', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'sales'])->name('sales');
-            Route::get('/sales/generate', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'generateSalesReport'])->name('generate-sales-report');
-            Route::get('/expenses', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'expenses'])->name('expenses');
-            Route::get('/stock', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'stock'])->name('stock');
-            Route::get('/staff-performance', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'staffPerformance'])->name('staff-performance');
-            Route::get('/product-performance', [\App\Http\Controllers\SuperAdmin\ReportController::class, 'productPerformance'])->name('product-performance');
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+            Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
+            Route::get('/sales/generate', [ReportController::class, 'generateSalesReport'])->name('generate-sales-report');
+            Route::get('/expenses', [ReportController::class, 'expenses'])->name('expenses');
+            Route::get('/stock', [ReportController::class, 'stock'])->name('stock');
+            Route::get('/staff-performance', [ReportController::class, 'staffPerformance'])->name('staff-performance');
+            Route::get('/product-performance', [ReportController::class, 'productPerformance'])->name('product-performance');
         });
 
         // Notifications
-        Route::get('/notifications', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'index'])->name('notifications.index');
-        Route::post('/notifications/{notification}/mark-read', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'markRead'])->name('notifications.mark-read');
-        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
-        Route::get('/notifications/report', [\App\Http\Controllers\SuperAdmin\NotificationController::class, 'generateReport'])->name('notifications.generate-report');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('notifications.mark-read');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/report', [NotificationController::class, 'generateReport'])->name('notifications.generate-report');
 
         // Staff Management
-        Route::get('/staff/create', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'create'])->name('staff.create');
-        Route::post('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'store'])->name('staff.store');
-        Route::get('/staff', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'index'])->name('staff.index');
-        Route::get('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'show'])->name('staff.show');
-        Route::post('/staff/{user}/toggle-status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
-        Route::post('/staff/{user}/status', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'changeStatus'])->name('staff.change-status');
-        Route::delete('/staff/{user}', [\App\Http\Controllers\SuperAdmin\StaffController::class, 'destroy'])->name('staff.destroy');
+        Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
+        Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::get('/staff/{user}', [StaffController::class, 'show'])->name('staff.show');
+        Route::post('/staff/{user}/toggle-status', [StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
+        Route::post('/staff/{user}/status', [StaffController::class, 'changeStatus'])->name('staff.change-status');
+        Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
 
-        Route::get('/settings', [\App\Http\Controllers\SuperAdmin\SettingsController::class, 'index'])->name('settings.index');
-        Route::post('/settings', [\App\Http\Controllers\SuperAdmin\SettingsController::class, 'update'])->name('settings.update');
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     });
 
     // ========================
     // BRANCH ADMIN ROUTES
     // ========================
     Route::prefix('branch-admin')->name('branch-admin.')->middleware('role:branch_admin')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\BranchAdmin\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\BranchAdmin\DashboardController::class, 'index'])->name('dashboard');
 
         // Sales
-        Route::get('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'index'])->name('sales.index');
-        Route::get('/sales/create', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'create'])->name('sales.create');
-        Route::post('/sales', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'store'])->name('sales.store');
-        Route::get('/sales/{sale}', [\App\Http\Controllers\BranchAdmin\SalesController::class, 'show'])->name('sales.show');
+        Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [SalesController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show');
 
         // Orders
-        Route::get('/orders', [\App\Http\Controllers\BranchAdmin\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [\App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/cancel', [\App\Http\Controllers\BranchAdmin\OrderController::class, 'cancel'])->name('orders.cancel');
+        Route::get('/orders', [App\Http\Controllers\BranchAdmin\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/cancel', [App\Http\Controllers\BranchAdmin\OrderController::class, 'cancel'])->name('orders.cancel');
 
         // Expenses (view only — cashier commits expenses)
-        Route::get('/expenses', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'index'])->name('expenses.index');
-        Route::get('/expenses/{expense}', [\App\Http\Controllers\BranchAdmin\ExpenseController::class, 'show'])->name('expenses.show');
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
 
         // Staff Management (stock managers, sellers, customer care, cashiers)
-        $baStaff = \App\Http\Controllers\BranchAdmin\StaffController::class;
+        $baStaff = App\Http\Controllers\BranchAdmin\StaffController::class;
         Route::get('/staffs/create', [$baStaff, 'create'])->name('staffs.create');
         Route::post('/staffs', [$baStaff, 'store'])->name('staffs.store');
         Route::get('/staffs', [$baStaff, 'index'])->name('staffs.index');
         Route::post('/staffs/{user}/approve', [$baStaff, 'approve'])->name('staffs.approve');
         Route::post('/staffs/{user}/reject', [$baStaff, 'reject'])->name('staffs.reject');
-
 
     });
 
@@ -279,7 +313,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // CASHIER ROUTES
     // ========================
     Route::prefix('cashier')->name('cashier.')->middleware('role:cashier,super_admin', 'cashier-cross-branch.readonly')->group(function () {
-        $cc = \App\Http\Controllers\Cashier\CashierController::class;
+        $cc = CashierController::class;
 
         // Cross-Branch Monitoring (HQ cashier / Super Admin only)
         Route::middleware('cashier-cross-branch.access')->group(function () use ($cc) {
@@ -288,40 +322,40 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/cross-branch/{branch}', [$cc, 'enterCrossBranch'])->name('cross-branch.enter');
         });
 
-        Route::get('/dashboard', [\App\Http\Controllers\Cashier\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\Cashier\DashboardController::class, 'index'])->name('dashboard');
 
         // Daily sales overview across all branches (chief cashier / super admin)
-        Route::get('/daily-sales-overview', [\App\Http\Controllers\Cashier\CashierController::class, 'dailySalesOverview'])
+        Route::get('/daily-sales-overview', [CashierController::class, 'dailySalesOverview'])
             ->middleware('cashier-cross-branch.access')
             ->name('daily-sales-overview');
 
         // Sales
-        Route::get('/sales', [\App\Http\Controllers\Cashier\SaleController::class, 'index'])->name('sales.index');
-        Route::get('/sales/create', [\App\Http\Controllers\Cashier\SaleController::class, 'create'])->name('sales.create');
-        Route::post('/sales', [\App\Http\Controllers\Cashier\SaleController::class, 'store'])->name('sales.store');
-        Route::get('/sales/{sale}', [\App\Http\Controllers\Cashier\SaleController::class, 'show'])->name('sales.show');
+        Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
 
         // Expenses (cashier commits expenses; sees all branch expenses)
-        Route::get('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'index'])->name('expenses.index');
-        Route::get('/expenses/create', [\App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
-        Route::post('/expenses', [\App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses', [App\Http\Controllers\Cashier\ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/create', [App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
 
         // Orders
-        Route::get('/orders', [\App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [\App\Http\Controllers\Cashier\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/pick', [\App\Http\Controllers\Cashier\OrderController::class, 'pick'])->name('orders.pick');
-        Route::post('/orders/{order}/ready', [\App\Http\Controllers\Cashier\OrderController::class, 'markReady'])->name('orders.ready');
-        Route::post('/orders/{order}/complete', [\App\Http\Controllers\Cashier\OrderController::class, 'complete'])->name('orders.complete');
-        Route::post('/orders/{order}/serve', [\App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
+        Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [App\Http\Controllers\Cashier\OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/pick', [App\Http\Controllers\Cashier\OrderController::class, 'pick'])->name('orders.pick');
+        Route::post('/orders/{order}/ready', [App\Http\Controllers\Cashier\OrderController::class, 'markReady'])->name('orders.ready');
+        Route::post('/orders/{order}/complete', [App\Http\Controllers\Cashier\OrderController::class, 'complete'])->name('orders.complete');
+        Route::post('/orders/{order}/serve', [App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
     });
 
     // ========================
     // SELLER ROUTES
     // ========================
     Route::prefix('seller')->name('seller.')->middleware('role:seller')->group(function () {
-        $selSale = \App\Http\Controllers\Seller\SaleController::class;
-        $selOrder = \App\Http\Controllers\Seller\OrderController::class;
-        Route::get('/dashboard', [\App\Http\Controllers\Seller\SellerController::class, 'dashboard'])->name('dashboard');
+        $selSale = App\Http\Controllers\Seller\SaleController::class;
+        $selOrder = App\Http\Controllers\Seller\OrderController::class;
+        Route::get('/dashboard', [SellerController::class, 'dashboard'])->name('dashboard');
 
         // Sales
         Route::get('/sales', [$selSale, 'index'])->name('sales.index');
@@ -339,35 +373,35 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // CUSTOMER CARE ROUTES
     // ========================
     Route::prefix('customer-care')->name('customer-care.')->middleware('role:customer_care')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\CustomerCare\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\CustomerCare\DashboardController::class, 'index'])->name('dashboard');
 
         // Clients / Customer records
-        Route::get('/customers', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'index'])->name('customers.index');
-        Route::get('/customers/create', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'create'])->name('customers.create');
-        Route::post('/customers', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'store'])->name('customers.store');
-        Route::get('/customers/{customer}', [\App\Http\Controllers\CustomerCare\CustomerController::class, 'show'])->name('customers.show');
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
         // Sales
-        Route::get('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'index'])->name('sales.index');
-        Route::get('/sales/create', [\App\Http\Controllers\CustomerCare\SalesController::class, 'create'])->name('sales.create');
-        Route::post('/sales', [\App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
-        Route::get('/sales/{sale}', [\App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
+        Route::get('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'index'])->name('sales.index');
+        Route::get('/sales/create', [App\Http\Controllers\CustomerCare\SalesController::class, 'create'])->name('sales.create');
+        Route::post('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
         // Orders
-        Route::get('/orders', [\App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [\App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/status', [\App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
+        Route::get('/orders', [App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/status', [App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
 
         // Inquiries — Head Quarters-Mikocheni customer care only
         Route::middleware('customer-care.hq')->group(function () {
-            Route::get('/inquiries', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
-            Route::get('/inquiries/{inquiry}', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
-            Route::post('/inquiries/{inquiry}/reply', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
-            Route::post('/inquiries/{inquiry}/read', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
-            Route::post('/inquiries/{inquiry}/comment', [\App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
+            Route::get('/inquiries', [App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
+            Route::get('/inquiries/{inquiry}', [App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
+            Route::post('/inquiries/{inquiry}/reply', [App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
+            Route::post('/inquiries/{inquiry}/read', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
+            Route::post('/inquiries/{inquiry}/comment', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
 
             // News moderation — Head Quarters-Mikocheni customer care only
-            $ccon = \App\Http\Controllers\CustomerCare\NewsController::class;
+            $ccon = App\Http\Controllers\CustomerCare\NewsController::class;
             Route::get('/news', [$ccon, 'index'])->name('news.index');
             Route::post('/news', [$ccon, 'store'])->name('news.store');
             Route::get('/news/{post}/edit', [$ccon, 'edit'])->name('news.edit');
@@ -382,11 +416,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // GRAPHIC DESIGNER ROUTES
     // ========================
     Route::prefix('graphic-designer')->name('graphic-designer.')->middleware('role:graphic_designer')->group(function () {
-        $gdn = \App\Http\Controllers\GraphicDesigner\NewsController::class;
-        $gbc = \App\Http\Controllers\GraphicDesigner\BrandsController::class;
+        $gdn = App\Http\Controllers\GraphicDesigner\NewsController::class;
+        $gbc = BrandsController::class;
 
         // News dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\GraphicDesigner\DashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [App\Http\Controllers\GraphicDesigner\DashboardController::class, 'dashboard'])->name('dashboard');
 
         // News
         Route::get('/news', [$gdn, 'index'])->name('news.index');
@@ -409,7 +443,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     // STOCK MANAGER ROUTES
     // ========================
     Route::prefix('stock-manager')->name('stock-manager.')->middleware('role:stock_manager,super_admin', 'cross-branch.readonly')->group(function () {
-        $smc = \App\Http\Controllers\StockManager\StockManagerController::class;
+        $smc = StockManagerController::class;
 
         // Cross-Branch Monitoring (Kinondoni branch stock manager only)
         Route::middleware('cross-branch.access')->group(function () use ($smc) {
@@ -449,7 +483,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/oil-fragrance/movements', [$smc, 'oilFragranceMovements'])->name('oil-fragrance-movements');
 
             // Bottle Accessories
-            $bac = \App\Http\Controllers\StockManager\BottleAccessoriesController::class;
+            $bac = BottleAccessoriesController::class;
             Route::get('/bottle-accessories', [$bac, 'index'])->name('bottle-accessories.index');
             Route::get('/bottle-accessories/create', [$bac, 'create'])->name('bottle-accessories.create');
             Route::post('/bottle-accessories', [$bac, 'store'])->name('bottle-accessories.store');
@@ -461,7 +495,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         });
 
         // Stock Transfers (multi-branch; Head Quarters only handles Product Stock)
-        $stc = \App\Http\Controllers\StockManager\StockTransferController::class;
+        $stc = StockTransferController::class;
         Route::get('/stock-transfers', [$stc, 'index'])->name('stock-transfers.index');
         Route::get('/stock-transfers/create', [$stc, 'create'])->name('stock-transfers.create');
         Route::post('/stock-transfers', [$stc, 'store'])->name('stock-transfers.store');
@@ -480,19 +514,19 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
         // Product Management
         // Sales
-        $smSales = \App\Http\Controllers\StockManager\SalesController::class;
+        $smSales = App\Http\Controllers\StockManager\SalesController::class;
         Route::get('/sales', [$smSales, 'index'])->name('sales.index');
         Route::get('/sales/create', [$smSales, 'create'])->name('sales.create');
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
 
         // Orders
-        $smOrder = \App\Http\Controllers\StockManager\OrderController::class;
+        $smOrder = App\Http\Controllers\StockManager\OrderController::class;
         Route::get('/orders', [$smOrder, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [$smOrder, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [$smOrder, 'updateStatus'])->name('orders.update-status');
 
-        $pmc = \App\Http\Controllers\StockManager\ProductController::class;
+        $pmc = App\Http\Controllers\StockManager\ProductController::class;
         Route::get('/products', [$pmc, 'index'])->name('products.index');
         Route::get('/products/create', [$pmc, 'create'])->name('products.create');
         Route::post('/products', [$pmc, 'store'])->name('products.store');

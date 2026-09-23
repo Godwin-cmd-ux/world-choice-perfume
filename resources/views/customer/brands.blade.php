@@ -19,8 +19,9 @@
                     <a href="{{ route('customer.products.index', ['brand' => $brand->name]) }}"
                        class="group bg-dark-800/50 border border-dark-600 rounded-xl overflow-hidden hover:border-gold-500/30 hover:bg-dark-800 transition-all duration-300 text-center card-hover">
                         @if($brand->logo_url)
-                            <div class="h-24 flex items-center justify-center px-4 pt-6">
-                                <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" loading="lazy" class="object-contain" style="max-height: 4.5rem;">
+                            <div class="h-24 w-full overflow-hidden bg-dark-700">
+                                <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" loading="lazy"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" style="object-position: center;">
                             </div>
                         @else
                             <div class="w-14 h-14 mx-auto rounded-full bg-dark-700 group-hover:bg-gold-500/10 flex items-center justify-center mt-6 transition-all">

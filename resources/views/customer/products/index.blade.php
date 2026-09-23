@@ -14,7 +14,7 @@
                     <span class="text-gold-400">Shop</span>
                 </nav>
                 <h1 class="font-display text-3xl sm:text-4xl font-bold">
-                    <span class="text-white">Our </span><span class="gold-text">Collection</span>
+                    <span class="text-white">New </span><span class="gold-text">Arrivals</span>
                 </h1>
                 @if($selectedBranch)
                     <p class="text-gray-400 mt-2">
@@ -59,7 +59,7 @@
             <!-- Sidebar Filters -->
             <aside class="w-full lg:w-72 flex-shrink-0">
                 @php
-                    $sexOptions = ['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'gift sets' => 'Gift Sets', 'accessories' => 'Accessories'];
+                    $sexOptions = ['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'accessories' => 'Accessories'];
                     $typeOptions = ['Oil Fragrance' => 'Oil Fragrance', 'Brand Perfume' => 'Brand Perfume'];
                     $scentOptions = ['Floral', 'Fresh/Citrus', 'Wood', 'Amber/Spicy', 'Fruity', 'Oud', 'Gourmand', 'Aromatic'];
                 @endphp
@@ -268,7 +268,7 @@
                                         @endif
                                         <!-- Availability -->
                                         @if($stock->quantity <= 0)
-                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                                 Out of Stock
                                             </span>
                                         @endif
@@ -343,7 +343,7 @@
                                     @endif
                                     <!-- Availability -->
                                     @if($stock->quantity <= 0)
-                                        <span class="absolute top-3 right-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                        <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                             Out of Stock
                                         </span>
                                     @endif

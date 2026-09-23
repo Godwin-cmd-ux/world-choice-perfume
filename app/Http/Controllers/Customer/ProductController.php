@@ -17,12 +17,16 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        // Fetch active branches from Supabase
+        // Fetch the three branches shown on the site: Kinondoni, Mikocheni, Dodoma
         $branches = collect($this->supabase->query('branches', [
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
+            $name = mb_strtolower($b->name ?? '');
+
+            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
+        })->values();
 
         // Full active product catalogue (independent of stock) — so out-of-stock
         // products still appear on the shop.
@@ -35,9 +39,9 @@ class ProductController extends Controller
         // Distinct brands across the catalogue for the "Brand" shop filter.
         $availableBrands = collect($allProducts)
             ->pluck('brand')
-            ->filter(fn($b) => !empty($b))
+            ->filter(fn ($b) => ! empty($b))
             ->unique()
-            ->sortBy(fn($b) => strtolower($b))
+            ->sortBy(fn ($b) => strtolower($b))
             ->values()
             ->all();
 
@@ -63,10 +67,10 @@ class ProductController extends Controller
                 $stockCollection = collect($rawStock);
 
                 // Merge in catalogue products that have no stock row at this branch
-                $stockedIds = $stockCollection->pluck('product_id')->map(fn($id) => (int) $id)->all();
+                $stockedIds = $stockCollection->pluck('product_id')->map(fn ($id) => (int) $id)->all();
                 $missing = collect($allProducts)
-                    ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
-                    ->map(fn($p) => [
+                    ->filter(fn ($p) => ! in_array((int) $p['id'], $stockedIds))
+                    ->map(fn ($p) => [
                         'id' => null,
                         'branch_id' => $selectedBranch->id,
                         'product_id' => $p['id'],
@@ -91,17 +95,17 @@ class ProductController extends Controller
             $stockCollection = collect($rawStock);
 
             // Merge in catalogue products that have no stock row anywhere
-            $stockedIds = $stockCollection->pluck('product_id')->map(fn($id) => (int) $id)->all();
+            $stockedIds = $stockCollection->pluck('product_id')->map(fn ($id) => (int) $id)->all();
             $missing = collect($allProducts)
-                ->filter(fn($p) => !in_array((int) $p['id'], $stockedIds))
-->map(fn($p) => [
-                        'id' => null,
-                        'branch_id' => null,
-                        'product_id' => $p['id'],
-                        'quantity' => 0,
-                        'selling_price' => null,
-                        'product' => $p,
-                    ]);
+                ->filter(fn ($p) => ! in_array((int) $p['id'], $stockedIds))
+                ->map(fn ($p) => [
+                    'id' => null,
+                    'branch_id' => null,
+                    'product_id' => $p['id'],
+                    'quantity' => 0,
+                    'selling_price' => null,
+                    'product' => $p,
+                ]);
 
             // Deduplicate by product_id — keep only one entry per product,
             // preferring an in-stock row so a product available at any branch
@@ -122,16 +126,20 @@ class ProductController extends Controller
         // Fetch product from Supabase (unit cost columns excluded — internal only)
         $product = $this->supabase->find('products', $productId, 'id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*)');
 
-        if (!$product) {
+        if (! $product) {
             abort(404);
         }
 
-        // Fetch active branches
+        // Fetch the three branches shown on the site: Kinondoni, Mikocheni, Dodoma
         $branches = collect($this->supabase->query('branches', [
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn($b) => (object) $b);
+        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
+            $name = mb_strtolower($b->name ?? '');
+
+            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
+        })->values();
 
         // Fetch branch stock for this product
         $rawStock = $this->supabase->query('branch_stock', [
@@ -186,6 +194,7 @@ class ProductController extends Controller
             $search = strtolower($request->search);
             $stockCollection = $stockCollection->filter(function ($item) use ($search) {
                 $product = $item['product'] ?? [];
+
                 return str_contains(strtolower($product['name'] ?? ''), $search)
                     || str_contains(strtolower($product['brand'] ?? ''), $search)
                     || str_contains(strtolower($product['category'] ?? ''), $search)
@@ -193,7 +202,7 @@ class ProductController extends Controller
             });
         }
 
-        // Sex category filter (male, female, unisex, accessories, gift sets)
+        // Sex category filter (male, female, unisex, accessories)
         if ($request->sex_category) {
             $sexCategory = $request->sex_category;
             $stockCollection = $stockCollection->filter(function ($item) use ($sexCategory) {
@@ -226,15 +235,11 @@ class ProductController extends Controller
             });
         }
 
-        // Hide out-of-stock products — unless the customer is using the search
-        // box (search results may include out-of-stock items).
-        if (!$request->search) {
-            $stockCollection = $stockCollection->filter(function ($item) {
-                return ($item['quantity'] ?? 0) > 0;
-            });
-        }
+        // Show all products — including out-of-stock items, which are flagged
+        // with an "Out of Stock" badge in the view so customers always see the
+        // full catalogue when filtering.
 
-        return $stockCollection->values()->map(fn($item) => (object) [
+        return $stockCollection->values()->map(fn ($item) => (object) [
             'id' => $item['id'] ?? null,
             'branch_id' => $item['branch_id'] ?? null,
             'product_id' => $item['product_id'] ?? null,

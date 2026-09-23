@@ -63,7 +63,7 @@
                     <select name="sex_category"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 @error('sex_category') border-red-500 @enderror">
                         <option value="">Select a category</option>
-                        @foreach(['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'accessories' => 'Accessories', 'gift sets' => 'Gift Sets'] as $value => $label)
+                        @foreach(['male' => 'Male', 'female' => 'Female', 'unisex' => 'Unisex', 'accessories' => 'Accessories'] as $value => $label)
                             <option value="{{ $value }}" {{ old('sex_category') === $value ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>

@@ -214,28 +214,6 @@
                 </div>
             </a>
 
-            <a href="{{ route('customer.products.index', ['sex_category' => 'gift sets']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
-                @if($categoryImages['gift sets']->count())
-                    <div class="cat-slideshow absolute inset-0">
-                        @foreach($categoryImages['gift sets'] as $imgUrl)
-                            <img src="{{ $imgUrl }}" alt="Gift sets" loading="lazy" decoding="async" class="cat-slide">
-                        @endforeach
-                    </div>
-                @endif
-                <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/60 to-transparent z-10"></div>
-                <div class="absolute inset-0 bg-gradient-to-br from-gold-900/20 to-dark-800"></div>
-                <div class="absolute bottom-0 left-0 right-0 p-6 z-20">
-                    <div class="w-12 h-12 rounded-xl bg-gold-500/10 flex items-center justify-center mb-4">
-                        <i class="fas fa-gift text-gold-400 text-xl"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold text-white mb-1">Gift Sets</h3>
-                    <p class="text-sm text-gray-400">The perfect present</p>
-                    <div class="mt-3 flex items-center gap-2 text-gold-400 text-sm font-medium group-hover:gap-3 transition-all">
-                        Explore <i class="fas fa-arrow-right text-xs"></i>
-                    </div>
-                </div>
-            </a>
-
             <a href="{{ route('customer.products.index', ['sex_category' => 'accessories']) }}" class="group relative h-80 rounded-2xl overflow-hidden bg-dark-800 border border-dark-600 card-hover">
                 @if($categoryImages['accessories']->count())
                     <div class="cat-slideshow absolute inset-0">
@@ -276,8 +254,9 @@
                 @foreach($featuredBrands->take(12) as $brand)
                     <a href="{{ route('customer.products.index', ['brand' => $brand->name]) }}" class="group bg-dark-800/50 border border-dark-600 rounded-xl overflow-hidden hover:border-gold-500/30 hover:bg-dark-800 transition-all duration-300 text-center">
                         @if($brand->logo_url)
-                            <div class="h-24 flex items-center justify-center px-4 pt-6">
-                                <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" loading="lazy" class="max-h-18 max-w-full object-contain" style="max-height: 4.5rem;">
+                            <div class="h-24 w-full overflow-hidden bg-dark-700">
+                                <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" loading="lazy"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" style="object-position: center;">
                             </div>
                         @else
                             <div class="w-14 h-14 mx-auto rounded-full bg-dark-700 group-hover:bg-gold-500/10 flex items-center justify-center mt-6 transition-all">
@@ -323,7 +302,7 @@
                         Every bottle we carry is sourced directly from authorized distributors, ensuring you receive only genuine products. From the iconic Chanel No. 5 to the exclusive Creed Aventus, our collection spans over 200 fragrances from the world's most prestigious perfume houses.
                     </p>
                     <p>
-                        With five strategically located branches across Dar es Salaam, Arusha, Mwanza, and Zanzibar, we're always close to you. Our expert consultants are trained to help you find your perfect signature scent.
+                        With three branches in Kinondoni, Mikocheni, and Dodoma, we're always close to you. Our expert consultants are trained to help you find your perfect signature scent.
                     </p>
                 </div>
 
@@ -466,7 +445,7 @@
             <span class="text-white">Find Your </span><span class="gold-text">Signature Scent</span>
         </h2>
         <p class="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
-            Visit any of our 5 branches across Tanzania or shop online. Our fragrance experts are ready to help you discover your perfect match.
+            Visit any of our branches across Tanzania or shop online. Our fragrance experts are ready to help you discover your perfect match.
         </p>
         <div class="flex flex-wrap justify-center gap-4">
             <a href="{{ route('customer.products.index') }}" class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition-all duration-300 shadow-lg shadow-gold-500/25">
