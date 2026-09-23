@@ -307,7 +307,7 @@
                         <strong class="gold-text">"Be Smart, Nukia Kijanja"</strong> — World Choice Perfume was founded with a singular vision: to bring the world's finest fragrances to Tanzania. What started as a passion for scent has grown into Tanzania's most trusted destination for authentic, premium perfumes.
                     </p>
                     <p>
-                        Every bottle we carry is sourced directly from authorized distributors, ensuring you receive only genuine products. From the iconic Chanel No. 5 to the exclusive Creed Aventus, our collection spans over 200 fragrances from the world's most prestigious perfume houses.
+                        Every bottle we carry is sourced directly from authorized distributors and manufacturers, ensuring you receive only genuine products.
                     </p>
                     <p>
                         With three branches in Kinondoni, Mikocheni, and Dodoma, we're always close to you. Our expert consultants are trained to help you find your perfect signature scent.
