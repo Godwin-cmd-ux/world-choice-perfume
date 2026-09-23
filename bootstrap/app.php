@@ -34,4 +34,19 @@ return Application::configure(basePath: dirname(__DIR__))
                 'trace' => $e->getTraceAsString(),
             ]);
         });
+
+        // An image/post body over the PHP limits (upload_max_filesize = 50M,
+        // post_max_size = 64M) throws PostTooLargeException before validation
+        // can run. Render a friendly page telling the user to stay under 50MB
+        // instead of a raw 413 error.
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, \Illuminate\Http\Request $request) {
+            $message = 'The uploaded file is too large. Images must be 50MB or less — please choose a smaller file and try again.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message, 'errors' => ['file' => [$message]]], 413);
+            }
+
+            return response()
+                ->view('errors.413', ['message' => $message, 'previousUrl' => url()->previous()], 413);
+        });
     })->create();

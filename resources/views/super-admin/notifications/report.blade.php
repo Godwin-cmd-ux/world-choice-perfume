@@ -16,6 +16,7 @@
             <option value="discount_used" {{ ($type ?? '') === 'discount_used' ? 'selected' : '' }}>Discount Used</option>
             <option value="price_customization" {{ ($type ?? '') === 'price_customization' ? 'selected' : '' }}>Price Customization</option>
             <option value="order_placed" {{ ($type ?? '') === 'order_placed' ? 'selected' : '' }}>Order Placed</option>
+            <option value="returned_stock" {{ ($type ?? '') === 'returned_stock' ? 'selected' : '' }}>Returned Stock (Lost / Broken)</option>
         </select>
         <input type="date" name="date_from" value="{{ $date_from ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">
         <input type="date" name="date_to" value="{{ $date_to ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">

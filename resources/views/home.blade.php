@@ -98,14 +98,20 @@
                 </div>
             </div>
 
-            <!-- Hero Image/Visual -->
+            <!-- Hero Visual: square logo sunk into the background behind a translucent blur -->
             <div class="hidden lg:flex justify-center items-center relative">
-                <div class="relative">
-                    <div class="w-80 h-80 rounded-full bg-gradient-to-br from-gold-500/20 to-gold-700/10 flex items-center justify-center border border-gold-500/20">
-                        <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-48 h-48 rounded-full object-cover shadow-2xl shadow-gold-500/20">
+                <div class="relative w-[26rem] h-[26rem]">
+                    <!-- Background logo (square, blurred, translucent) -->
+                    <div class="absolute inset-0 overflow-hidden">
+                        <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[6px] opacity-40">
+                        <!-- Translucent blur layer over the logo -->
+                        <div class="absolute inset-0 bg-dark-950/40 backdrop-blur-md"></div>
+                        <!-- Soft gold glow so the backdrop blends into the hero -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-transparent to-dark-950/60"></div>
+                        <div class="absolute inset-0 ring-1 ring-gold-500/10"></div>
                     </div>
-                    <!-- Floating Cards -->
-                    <div class="absolute -top-4 -right-4 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
+                    <!-- Rating & location cards sit in front of the backdrop -->
+                    <div class="absolute top-8 right-6 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
                         <div class="flex items-center gap-2">
                             <div class="flex -space-x-1">
                                 @for($i = 0; $i < 5; $i++)
@@ -116,7 +122,7 @@
                         </div>
                         <p class="text-[10px] text-gray-400 mt-1">Trusted by 10,000+ customers</p>
                     </div>
-                    <div class="absolute -bottom-4 -left-4 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
+                    <div class="absolute bottom-8 left-6 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
                         <p class="text-xs font-semibold text-gold-400">{{ $branches->count() }} Location{{ $branches->count() !== 1 ? 's' : '' }}</p>
                         <p class="text-[10px] text-gray-400">Across Tanzania</p>
                     </div>

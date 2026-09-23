@@ -436,6 +436,7 @@ class SupabaseService
                 'category','supplier','volume','variant','type','color',
                 'status','received_by','received_at','returned_by','returned_at',
                 'return_reason','return_status','loss_reason','resent_transfer_id',
+                'damage_type','damage_reason','damage_reported_by','damage_reported_at',
                 'created_at','updated_at',
             ],
             'oil_fragrance_stock' => [

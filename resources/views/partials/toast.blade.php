@@ -68,7 +68,13 @@
         openConfirm(message, function () {
             const form = trigger.closest('form');
             if (form) {
-                form.submit();
+                // requestSubmit() runs HTML5 validation (required, minlength…)
+                // first, unlike form.submit() which silently skips it.
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
             } else if (trigger.tagName === 'A') {
                 window.location.href = trigger.href;
             } else {
@@ -92,6 +98,28 @@
     const toastText = document.getElementById('toastMessageText');
     const toastIcon = document.getElementById('toastMessageIcon');
     let toastTimer = null;
+
+    // ============================================================
+    // Image upload size guard — accept files up to 50MB. Validates
+    // every file input the moment a file is chosen so users get
+    // instant feedback instead of a silent server rejection.
+    // ============================================================
+    const MAX_IMAGE_MB = 50;
+    const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
+
+    document.addEventListener('change', function (e) {
+        const input = e.target;
+        if (!input || input.type !== 'file' || !input.files || !input.files.length) return;
+
+        const oversize = Array.from(input.files).filter(function (f) {
+            return f.size > MAX_IMAGE_BYTES;
+        });
+        if (!oversize.length) return;
+        // Clear the selection so the oversized file is never submitted.
+        input.value = '';
+        const names = oversize.map(function (f) { return f.name; }).join(', ');
+        window.wcpToast.show('"' + names + '" is over the ' + MAX_IMAGE_MB + 'MB limit. Please choose a smaller image.', 'error');
+    });
 
     window.wcpToast = {
         show: function (message, type) {

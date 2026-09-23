@@ -2142,6 +2142,18 @@ class StockTransferController extends Controller
             abort(403);
         }
 
+        // The Kinondoni stock manager must use the dedicated Returned Stock
+        // module's mandatory lost / broken report instead of a bare write-off,
+        // so the Super Admin always gets the details, reasons and officer.
+        if ($this->scope->isKinondoniStockManager()) {
+            if (($item['return_status'] ?? '') === 'reported' || ! empty($item['damage_reported_at'])) {
+                return back()->withErrors(['error' => 'A lost / broken report was already filed for this item.']);
+            }
+
+            return redirect()->route('stock-manager.returned-stock.damage-report', (int) $item['id'])
+                ->with('warning', 'File the lost / broken report form first — the Super Admin needs the details and reasons.');
+        }
+
         $fromBranchId = (int) ($original['from_branch_id'] ?? 0);
         $type = (string) ($item['stock_type'] ?? 'product');
         $qty = (int) ($item['quantity'] ?? 0);
@@ -2456,5 +2468,290 @@ class StockTransferController extends Controller
         }
 
         return [$this->scope->activeBranchId()];
+    }
+
+    // .=====================================================================
+    // RETURNED STOCK MODULE (Kinondoni branch stock manager only) — the
+    // dedicated view of stock rejected by receiving branches, plus the
+    // MANDATORY lost / broken report that is forwarded to the Super Admin
+    // (with the transfer officer attached) for physical follow-up.
+    // .=====================================================================
+
+    private function ensureReturnedStockAccess(): void
+    {
+        if (! $this->scope->isKinondoniStockManager()) {
+            abort(403, 'The Returned Stock module is reserved for the Kinondoni branch stock manager.');
+        }
+    }
+
+    public function returnedStockIndex()
+    {
+        $this->ensureReturnedStockAccess();
+
+        // The damage-report columns come from database/supabase_returned_stock.sql.
+        // Probe first so the module still renders (with a setup banner) before
+        // the migration is run, instead of failing the whole select.
+        $hasDamageColumns = $this->supabase->tableHasColumn('stock_transfer_items', 'damage_type');
+        $damageSelect = $hasDamageColumns
+            ? ',loss_reason,damage_type,damage_reason,damage_reported_by,damage_reported_at'
+            : '';
+
+        $transfers = $this->supabase->query('stock_transfers', [
+            'select' => 'id,transfer_number,stock_type,from_branch_id,to_branch_id,status,officer_name,officer_phone,officer_id,created_at',
+            'from_branch_id' => 'eq.'.$this->scope->activeBranchId(),
+            'order' => 'created_at.desc',
+            'limit' => 200,
+        ]);
+
+        $transferMap = [];
+        foreach ($transfers as $t) {
+            $transferMap[(int) $t['id']] = $t;
+        }
+
+        $transferIds = array_keys($transferMap);
+
+        $items = [];
+        if ($transferIds !== []) {
+            $items = $this->supabase->query('stock_transfer_items', [
+                'select' => 'id,transfer_id,stock_type,item_index,product_id,name,volume,variant,type,color,quantity,unit_cost,unit_price,variety_unit_price,category,supplier,status,return_reason,return_status,returned_by,returned_at,resent_transfer_id'.$damageSelect,
+                'transfer_id' => 'in.('.implode(',', $transferIds).')',
+                'status' => 'eq.returned',
+                'limit' => 300,
+            ]);
+        }
+
+        $branchIds = [];
+        $userIds = [];
+        $productIds = [];
+        foreach ($items as $it) {
+            $t = $transferMap[(int) ($it['transfer_id'] ?? 0)] ?? null;
+            if (! $t) {
+                continue;
+            }
+            $branchIds[] = (int) ($t['from_branch_id'] ?? 0);
+            $branchIds[] = (int) ($t['to_branch_id'] ?? 0);
+            foreach (['returned_by', 'damage_reported_by'] as $key) {
+                if (! empty($it[$key])) {
+                    $userIds[] = (int) $it[$key];
+                }
+            }
+            if ((int) ($it['product_id'] ?? 0) > 0) {
+                $productIds[] = (int) $it['product_id'];
+            }
+        }
+
+        $branchNames = $this->branchNameMap($branchIds);
+        $userNames = $this->resolveUserNames($userIds);
+
+        $productNames = [];
+        $productIds = array_values(array_unique(array_filter($productIds)));
+        if ($productIds !== []) {
+            $list = $this->supabase->query('products', [
+                'select' => 'id,name,brand',
+                'id' => 'in.('.implode(',', $productIds).')',
+            ]);
+            foreach ($list as $p) {
+                $productNames[(int) $p['id']] = $p;
+            }
+        }
+
+        $rows = [];
+        foreach ($items as $it) {
+            $t = $transferMap[(int) ($it['transfer_id'] ?? 0)] ?? null;
+            if (! $t) {
+                continue;
+            }
+            $rows[] = (object) [
+                'item' => (object) $it,
+                'item_label' => $this->itemLabel($it, $productNames),
+                'transfer_number' => $t['transfer_number'] ?? null,
+                'stock_type_label' => $this->typeLabel((string) ($t['stock_type'] ?? '')),
+                'from_branch_id' => (int) ($t['from_branch_id'] ?? 0),
+                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? ('Branch #'.($t['from_branch_id'] ?? '?')),
+                'to_branch_name' => $branchNames[(int) ($t['to_branch_id'] ?? 0)] ?? ('Branch #'.($t['to_branch_id'] ?? '?')),
+                'officer_name' => $t['officer_name'] ?? null,
+                'officer_phone' => $t['officer_phone'] ?? null,
+                'officer_id' => $t['officer_id'] ?? null,
+                'return_reason' => $it['return_reason'] ?? null,
+                'return_status' => $it['return_status'] ?? 'pending',
+                'damage_type' => $it['damage_type'] ?? null,
+                'damage_reason' => $it['damage_reason'] ?? null,
+                'damage_reported_by_name' => $userNames[(int) ($it['damage_reported_by'] ?? 0)] ?? null,
+                'damage_reported_at' => $it['damage_reported_at'] ?? null,
+                'returned_at' => $it['returned_at'] ?? null,
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => strcmp((string) ($b->returned_at ?? ''), (string) ($a->returned_at ?? '')));
+
+        return view('stock-manager.returned-stock.index', [
+            'rows' => collect($rows),
+            'branchName' => $this->scope->activeBranchName(),
+            'activeBranchId' => $this->scope->activeBranchId(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+            'hasDamageColumns' => $hasDamageColumns,
+        ]);
+    }
+
+    public function returnedStockReportForm($itemId)
+    {
+        $this->ensureReturnedStockAccess();
+
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('stock-manager.returned-stock.index')
+                ->with('warning', 'Exit the branch monitoring session before filing lost / broken reports.');
+        }
+
+        $item = $this->supabase->find('stock_transfer_items', $itemId);
+        if (! $item || ($item['status'] ?? '') !== 'returned') {
+            return redirect()->route('stock-manager.returned-stock.index')
+                ->withErrors(['error' => 'Returned item not found.']);
+        }
+
+        if (($item['return_status'] ?? '') === 'reported' || ! empty($item['damage_reported_at'])) {
+            return redirect()->route('stock-manager.returned-stock.index')
+                ->withErrors(['error' => 'A lost / broken report has already been filed for this item.']);
+        }
+
+        $transfer = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+        if (! $transfer) {
+            return redirect()->route('stock-manager.returned-stock.index')
+                ->withErrors(['error' => 'Originating transfer not found.']);
+        }
+
+        if ((int) ($transfer['from_branch_id'] ?? 0) !== $this->scope->activeBranchId()) {
+            abort(403, 'Only items sent from your own branch can be reported as lost or broken.');
+        }
+
+        $productNames = [];
+        $productId = (int) ($item['product_id'] ?? 0);
+        if ($productId > 0) {
+            $product = $this->supabase->find('products', $productId, 'id,name');
+            if ($product) {
+                $productNames[$productId] = $product;
+            }
+        }
+
+        return view('stock-manager.returned-stock.report-form', [
+            'item' => (object) $item,
+            'itemLabel' => $this->itemLabel($item, $productNames),
+            'transfer' => (object) $transfer,
+            'fromBranchName' => $this->scope->branchName((int) ($transfer['from_branch_id'] ?? 0)) ?? 'your branch',
+            'toBranchName' => $this->scope->branchName((int) ($transfer['to_branch_id'] ?? 0)) ?? 'another branch',
+        ]);
+    }
+
+    public function returnedStockReportStore(Request $request, $itemId)
+    {
+        $this->ensureReturnedStockAccess();
+
+        if ($this->scope->inCrossBranchMode()) {
+            return back()->withErrors(['error' => 'Exit the branch monitoring session before filing lost / broken reports.']);
+        }
+
+        $validated = $request->validate([
+            'damage_type' => 'required|in:lost,broken',
+            'damage_reason' => 'required|string|min:3|max:500',
+        ]);
+
+        $item = $this->supabase->find('stock_transfer_items', $itemId);
+        if (! $item || ($item['status'] ?? '') !== 'returned') {
+            return back()->withErrors(['error' => 'Returned item not found.']);
+        }
+
+        $transfer = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+        if (! $transfer) {
+            return back()->withErrors(['error' => 'Originating transfer not found.']);
+        }
+
+        $fromBranchId = (int) ($transfer['from_branch_id'] ?? 0);
+        if ($fromBranchId !== $this->scope->activeBranchId()) {
+            abort(403, 'Only items sent from your own branch can be reported as lost or broken.');
+        }
+
+        if (($item['return_status'] ?? '') === 'reported' || ! empty($item['damage_reported_at'])) {
+            return back()->withErrors(['error' => 'A lost / broken report has already been filed for this item.']);
+        }
+
+        $now = now()->toIso8601String();
+        $performedBy = $this->performingUserId();
+        $qty = (int) ($item['quantity'] ?? 0);
+        $toBranchId = (int) ($transfer['to_branch_id'] ?? 0);
+        $toBranchName = $this->scope->branchName($toBranchId) ?? 'another branch';
+        $damageType = (string) $validated['damage_type'];
+
+        $productNames = [];
+        $productId = (int) ($item['product_id'] ?? 0);
+        if ($productId > 0) {
+            $product = $this->supabase->find('products', $productId, 'id,name');
+            if ($product) {
+                $productNames[$productId] = $product;
+            }
+        }
+
+        // Record the report FIRST so a failed stock write never causes the
+        // report to be filed twice (and the stock deducted twice).
+        $updated = $this->supabase->update('stock_transfer_items', [
+            'return_status' => 'reported',
+            'damage_type' => $damageType,
+            'damage_reason' => $validated['damage_reason'],
+            'damage_reported_by' => $performedBy,
+            'damage_reported_at' => $now,
+            'updated_at' => $now,
+        ], ['id' => (int) $item['id']]);
+
+        if (empty($updated)) {
+            return back()->withErrors(['error' =>
+                'Could not save the report. Make sure database/supabase_returned_stock.sql has been run in the Supabase SQL editor, then try again.'])->withInput();
+        }
+
+        // The quantity was credited back when the item was returned; take it
+        // out of stock again now that it is confirmed lost / broken.
+        $writeOffReason = ucfirst($damageType).' after return from '.$toBranchName
+            .' (transfer '.($transfer['transfer_number'] ?? '').'): '.$validated['damage_reason'];
+        $this->deductForLoss((string) ($item['stock_type'] ?? 'product'), $item, $fromBranchId, $writeOffReason);
+
+        // Attach the transfer officer (registered on the transfer) so the
+        // Super Admin knows exactly who carried the stock.
+        $officerBits = [];
+        if (! empty($transfer['officer_name'])) {
+            $officerBits[] = 'Officer: '.$transfer['officer_name'];
+        }
+        if (! empty($transfer['officer_phone'])) {
+            $officerBits[] = 'phone '.$transfer['officer_phone'];
+        }
+        if (! empty($transfer['officer_id'])) {
+            $officerBits[] = 'ID '.$transfer['officer_id'];
+        }
+        $officerText = $officerBits === [] ? 'Officer: not recorded on the transfer' : implode(', ', $officerBits);
+
+        try {
+            (new AuditService)->recordCriticalAction(
+                'returned_stock',
+                'transfer_item_damage_report',
+                'Lost / broken item report filed',
+                $this->scope->activeBranchName().' reported '.ucfirst($damageType).' stock: '
+                    .$this->itemLabel($item, $productNames).' (qty '.$qty.') from transfer '
+                    .($transfer['transfer_number'] ?? '').' — sent to '.$toBranchName.', rejected for: '
+                    .($item['return_reason'] ?? 'no reason given').'. '.$officerText
+                    .'. Reason: '.$validated['damage_reason'],
+                [
+                    'transfer_id' => (int) ($transfer['id'] ?? 0),
+                    'item_id' => (int) ($item['id'] ?? 0),
+                    'damage_type' => $damageType,
+                    'quantity' => $qty,
+                    'officer_name' => $transfer['officer_name'] ?? null,
+                    'officer_phone' => $transfer['officer_phone'] ?? null,
+                    'officer_id' => $transfer['officer_id'] ?? null,
+                    'from_branch_id' => $fromBranchId,
+                    'to_branch_id' => $toBranchId,
+                ]
+            );
+        } catch (\Throwable $e) {
+            // Audit is best-effort; never block the report on it.
+        }
+
+        return redirect()->route('stock-manager.returned-stock.index')
+            ->with('success', ucfirst($damageType).' report filed. The Super Admin has been notified to take action.');
     }
 }

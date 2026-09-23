@@ -22,6 +22,7 @@ use App\Http\Controllers\SuperAdmin\CashierApprovalController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\NotificationController;
 use App\Http\Controllers\SuperAdmin\ReportController;
+use App\Http\Controllers\SuperAdmin\ReturnedStockController;
 use App\Http\Controllers\SuperAdmin\SettingsController;
 use App\Http\Controllers\SuperAdmin\StaffController;
 use App\Services\SupabaseService;
@@ -264,6 +265,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/notifications/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('notifications.mark-read');
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/report', [NotificationController::class, 'generateReport'])->name('notifications.generate-report');
+
+        // Returned Stock module (lost / broken reports)
+        Route::get('/returned-stock', [ReturnedStockController::class, 'index'])->name('returned-stock.index');
+        Route::get('/returned-stock/report', [ReturnedStockController::class, 'printableReport'])->name('returned-stock.report');
 
         // Staff Management
         Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
@@ -508,6 +513,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/stock-transfers/lost-items', [$stc, 'lostForm'])->name('stock-transfers.lost-form');
         Route::post('/stock-transfers/lost-items', [$stc, 'declareLost'])->name('stock-transfers.declare-lost');
         Route::get('/stock-transfers/{transfer}', [$stc, 'show'])->name('stock-transfers.show');
+
+        // Returned Stock module (Kinondoni branch stock manager only)
+        Route::get('/returned-stock', [$stc, 'returnedStockIndex'])->name('returned-stock.index');
+        Route::get('/returned-stock/items/{item}/damage-report', [$stc, 'returnedStockReportForm'])->name('returned-stock.damage-report');
+        Route::post('/returned-stock/items/{item}/damage-report', [$stc, 'returnedStockReportStore'])->name('returned-stock.damage-report.store');
 
         // QR Code
         Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');

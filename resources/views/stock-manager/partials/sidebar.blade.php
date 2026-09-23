@@ -28,6 +28,33 @@
             }
             $sbPendingIncoming = (new \App\Services\SupabaseService())->count('stock_transfers', $incomingQuery);
         } catch (\Throwable $e) {}
+
+        // Returned Stock module (Kinondoni only): rejected items still
+        // awaiting their mandatory lost / broken report.
+        $sbPendingDamageReports = 0;
+        if ($stockManagerIsKinondoni) {
+            try {
+                $sbReturnedTransfers = (new \App\Services\SupabaseService())->query('stock_transfers', [
+                    'select' => 'id',
+                    'from_branch_id' => 'eq.' . $smScope->activeBranchId(),
+                    'limit' => 200,
+                ]);
+                $sbReturnedIds = array_map(fn ($t) => (int) $t['id'], $sbReturnedTransfers);
+                if ($sbReturnedIds !== []) {
+                    $sbReturnedItems = (new \App\Services\SupabaseService())->query('stock_transfer_items', [
+                        'select' => 'id,return_status,damage_reported_at',
+                        'transfer_id' => 'in.(' . implode(',', $sbReturnedIds) . ')',
+                        'status' => 'eq.returned',
+                        'limit' => 300,
+                    ]);
+                    $sbPendingDamageReports = collect($sbReturnedItems)
+                        ->filter(fn ($it) => ($it['return_status'] ?? 'pending') !== 'reported'
+                            && ($it['return_status'] ?? '') !== 'resent'
+                            && empty($it['damage_reported_at']))
+                        ->count();
+                }
+            } catch (\Throwable $e) {}
+        }
     @endphp
 
     {{-- Logo --}}
@@ -136,6 +163,17 @@
                 <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingIncoming }}</span>
             @endif
         </a>
+
+        @if($stockManagerIsKinondoni)
+            <a href="{{ route('stock-manager.returned-stock.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.returned-stock.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <i class="fas fa-box-open w-5 text-center"></i>
+                <span>Returned Stock</span>
+                @if($sbPendingDamageReports > 0)
+                    <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingDamageReports }}</span>
+                @endif
+            </a>
+        @endif
 
         <a href="{{ route('stock-manager.stock-transfers.returns') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.stock-transfers.returns', 'stock-manager.stock-transfers.lost-form') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
