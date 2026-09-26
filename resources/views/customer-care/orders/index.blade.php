@@ -3,42 +3,45 @@
 @section('header', 'Orders')
 
 @section('content')
-@php
-    $tabs = [
-        'pending' => ['label' => 'Pending Orders', 'icon' => 'fa-clock'],
-        'ongoing' => ['label' => 'My Ongoing Orders', 'icon' => 'fa-box-open'],
-        'completed' => ['label' => 'My Completed Orders', 'icon' => 'fa-circle-check'],
-    ];
-@endphp
+@include('partials.order-tabs', ['tabRoute' => $tabRoute])
 
-{{-- Orders split three ways: nobody has touched the pending ones yet,
-     while picked and served orders belong to the staff member who picked them. --}}
-<div class="border-b border-gray-200 mb-6 -mx-1 px-1 overflow-x-auto">
-    <div class="flex items-center gap-1 min-w-max">
-        @foreach($tabs as $slug => $meta)
-            <a href="{{ route('customer-care.orders.index', ['tab' => $slug]) }}"
-               class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $tab === $slug ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
-                <i class="fas {{ $meta['icon'] }} mr-1"></i> {{ $meta['label'] }}
-                <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $tab === $slug ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $counts[$slug] }}</span>
-            </a>
-        @endforeach
+<form method="GET" action="{{ route($tabRoute) }}" class="mb-4 flex justify-end">
+    <input type="hidden" name="tab" value="{{ $tab }}">
+    <div class="relative w-full sm:w-72">
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search order number or personal name"
+               class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+        <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
     </div>
-</div>
+</form>
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Order #</th>
+                <th class="text-left px-4">Personal Name</th>
                 <th class="text-left px-4">Customer</th>
                 <th class="text-right px-4">Total</th>
                 <th class="text-center px-4">Status</th>
+                <th class="text-left px-4">Picked By</th>
                 <th class="text-center px-4">Actions</th>
             </tr></thead>
             <tbody>
                 @forelse($orders as $order)
+                    @php
+                        // assigned_to is the current picker column, cashier_id
+                        // the legacy one still set on orders placed before it.
+                        $me = (string) $userId;
+                        $isMine = (string) ($order->assigned_to ?? '') === $me
+                            || (string) ($order->cashier_id ?? '') === $me;
+                        $canName = $isMine && in_array($order->status, ['picked', 'served'], true);
+                        $next = $order->status === 'pending' ? 'picked' : ($order->status === 'picked' && $isMine ? 'served' : null);
+                    @endphp
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 font-medium">{{ $order->order_number ?? 'N/A' }}</td>
+                        <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
+                        <td class="px-4">
+                            @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
+                        </td>
                         <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
@@ -47,25 +50,31 @@
                                 {{ ucfirst($order->status) }}
                             </span>
                         </td>
+                        <td class="px-4 text-gray-600">
+                            {{ $order->assigned_to ? ($pickers[(string) $order->assigned_to] ?? 'Staff') : '—' }}
+                        </td>
                         <td class="px-4 text-center">
                             <a href="{{ route('customer-care.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
-                            @php $next = collect($transitions[$order->status] ?? [])->first(); @endphp
                             @if($next)
                                 <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                     @csrf
                                     <input type="hidden" name="status" value="{{ $next }}">
                                     <input type="hidden" name="note">
-                                    <button type="submit" class="text-amber-600 hover:underline font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
+                                    <button type="submit" class="{{ $next === 'picked' ? 'text-green-600' : 'text-green-700 font-bold' }} hover:underline font-medium">
+                                        <i class="fas {{ $next === 'picked' ? 'fa-hand-pointer' : 'fa-hand-holding' }} mr-1"></i>{{ ucfirst($next) }}
+                                    </button>
                                 </form>
                             @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="py-8 text-center text-gray-400">
-                            @if($tab === 'pending')
+                        <td colspan="7" class="py-8 text-center text-gray-400">
+                            @if(request('q'))
+                                No orders match "{{ request('q') }}".
+                            @elseif($tab === 'pending')
                                 No orders waiting to be picked.
-                            @elseif($tab === 'ongoing')
+                            @elseif($tab === 'progress')
                                 You have no orders in progress.
                             @else
                                 You have not completed any orders yet.

@@ -1,39 +1,47 @@
-@extends('stock-manager.layouts.app')
+@extends('layouts.app')
 @section('title', 'Orders')
 @section('header', 'Orders')
-@section('header-subtitle', $activeBranchName ?? 'All branches')
 
 @section('content')
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <form method="GET" class="bg-white rounded-xl shadow px-4 py-3 flex flex-wrap items-center gap-3">
-        <label class="text-sm font-medium text-gray-600">Status</label>
-        <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-            <option value="">All statuses</option>
-            @foreach(['pending', 'picked', 'served'] as $status)
-                <option value="{{ $status }}" @selected(request('status') === $status)>{{ ucfirst($status) }}</option>
-            @endforeach
-        </select>
-        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i>Filter</button>
-        @if(request('status'))
-            <a href="{{ route('stock-manager.orders.index') }}" class="text-sm text-gray-500 hover:text-gray-700"><i class="fas fa-times mr-1"></i>Clear</a>
-        @endif
-    </form>
-</div>
+@include('partials.order-tabs', ['tabRoute' => $tabRoute])
+
+<form method="GET" action="{{ route($tabRoute) }}" class="mb-4 flex justify-end">
+    <input type="hidden" name="tab" value="{{ $tab }}">
+    <div class="relative w-full sm:w-72">
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search order number or personal name"
+               class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+        <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+    </div>
+</form>
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Order #</th>
+                <th class="text-left px-4">Personal Name</th>
                 <th class="text-left px-4">Customer</th>
                 <th class="text-right px-4">Total</th>
                 <th class="text-center px-4">Status</th>
+                <th class="text-left px-4">Picked By</th>
                 <th class="text-center px-4">Actions</th>
             </tr></thead>
             <tbody>
                 @forelse($orders as $order)
+                    @php
+                        // assigned_to is the current picker column, cashier_id
+                        // the legacy one still set on orders placed before it.
+                        $me = (string) $userId;
+                        $isMine = (string) ($order->assigned_to ?? '') === $me
+                            || (string) ($order->cashier_id ?? '') === $me;
+                        $canName = $isMine && in_array($order->status, ['picked', 'served'], true);
+                        $next = $order->status === 'pending' ? 'picked' : ($order->status === 'picked' && $isMine ? 'served' : null);
+                    @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
+                        <td class="px-4">
+                            @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
+                        </td>
                         <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
@@ -42,31 +50,37 @@
                                 {{ ucfirst($order->status) }}
                             </span>
                         </td>
+                        <td class="px-4 text-gray-600">
+                            {{ $order->assigned_to ? ($pickers[(string) $order->assigned_to] ?? 'Staff') : '—' }}
+                        </td>
                         <td class="px-4 text-center">
-                            <a href="{{ route('stock-manager.orders.show', $order->id) }}" class="text-emerald-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
-                            @if(!($inCrossBranch ?? false))
-                                @php
-                                    $allowed = $transitions[$order->status] ?? [];
-                                    $me = (string) ($userId ?? '');
-                                    $isLocked = $order->status !== 'pending'
-                                        && !in_array((string) ($order->assigned_to ?? ''), [$me], true)
-                                        && !in_array((string) ($order->cashier_id ?? ''), [$me], true);
-                                @endphp
-                                @if($isLocked)
-                                    <span class="text-xs text-gray-400"><i class="fas fa-lock mr-1"></i>Other staff</span>
-                                @elseif($next = collect($allowed)->first())
-                                    <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
-                                        @csrf
-                                        <input type="hidden" name="status" value="{{ $next }}">
-                                        <input type="hidden" name="note">
-                                        <button type="submit" class="text-amber-600 hover:underline font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ ucfirst($next) }}</button>
-                                    </form>
-                                @endif
+                            <a href="{{ route('stock-manager.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
+                            @if($next)
+                                <form action="{{ route('stock-manager.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf
+                                    <input type="hidden" name="status" value="{{ $next }}">
+                                    <input type="hidden" name="note">
+                                    <button type="submit" class="{{ $next === 'picked' ? 'text-green-600' : 'text-green-700 font-bold' }} hover:underline font-medium">
+                                        <i class="fas {{ $next === 'picked' ? 'fa-hand-pointer' : 'fa-hand-holding' }} mr-1"></i>{{ ucfirst($next) }}
+                                    </button>
+                                </form>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No orders available</td></tr>
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-gray-400">
+                            @if(request('q'))
+                                No orders match "{{ request('q') }}".
+                            @elseif($tab === 'pending')
+                                No orders waiting to be picked.
+                            @elseif($tab === 'progress')
+                                You have no orders in progress.
+                            @else
+                                You have not completed any orders yet.
+                            @endif
+                        </td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>

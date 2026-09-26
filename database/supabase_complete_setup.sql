@@ -314,16 +314,27 @@ CREATE TABLE orders (
     branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
     cashier_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     customer_id BIGINT REFERENCES customers(id) ON DELETE SET NULL,
+    -- The staff member who picked/claimed the order. This is the picker of
+    -- record for the pending -> picked -> served flow; cashier_id stays as the
+    -- legacy counter column and is only backfilled into this one.
+    assigned_to BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    -- Staff-only private label ("Mama Asha", "Customer from Mwanza"). It is
+    -- always an ADDITIONAL identifier: the official order_number above is
+    -- never replaced by it, and no customer detail is stored here.
+    personal_order_name TEXT NULL,
     status order_status NOT NULL DEFAULT 'pending',
     total NUMERIC(12, 2) NOT NULL DEFAULT 0,
     delivery_notes TEXT,
     assigned_at TIMESTAMP NULL,
+    served_at TIMESTAMP NULL,
     completed_at TIMESTAMP NULL,
     cancelled_at TIMESTAMP NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
 );
 CREATE INDEX idx_orders_branch_status ON orders(branch_id, status);
+-- Backs "My Orders On Progress" and "My Completed Orders" tab lookups.
+CREATE INDEX idx_orders_assigned_status ON orders(assigned_to, status);
 
 -- order_items (depends on orders, products)
 CREATE TABLE order_items (
@@ -336,6 +347,20 @@ CREATE TABLE order_items (
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
 );
+
+-- order_notes (depends on orders, users)
+-- Staff must enter a note every time they change an order's status (what point
+-- they have reached). These notes are shown to the customer when they track the
+-- order, which is why the note is mandatory on every transition.
+CREATE TABLE order_notes (
+    id BIGSERIAL PRIMARY KEY,
+    order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    note TEXT NOT NULL,
+    created_by BIGINT REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_order_notes_order ON order_notes(order_id);
 
 -- expenses (depends on branches, users)
 CREATE TABLE expenses (

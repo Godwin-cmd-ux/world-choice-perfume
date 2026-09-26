@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cashier;
 use App\Http\Controllers\Controller;
 use App\Services\CashierScope;
 use App\Services\BottleStockService;
+use App\Services\OrderWorkflowService;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -16,79 +17,59 @@ class OrderController extends Controller
 
     private ProductVarietyStockService $varieties;
 
+    private OrderWorkflowService $workflow;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
         $this->varieties = new ProductVarietyStockService($this->supabase);
         $this->scope = new CashierScope($this->supabase);
+        $this->workflow = new OrderWorkflowService($this->supabase);
     }
 
+    /**
+     * The three tabs. Pending is the shared queue anyone can claim; picked and
+     * served orders are only ever shown to the cashier who picked them.
+     */
     public function index(Request $request)
     {
         $branchId = $this->scope->activeBranchId();
         $userId = auth()->user()->supabase_id ?? auth()->id();
-        $inCrossBranch = $this->scope->inCrossBranchMode();
 
-        $params = [
-            'select' => '*, customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
-            'branch_id' => "eq.{$branchId}",
-            'order' => 'created_at.desc',
-            'limit' => 50,
-        ];
+        $tab = $this->workflow->resolveTab($request->query('tab'));
+        $orders = $this->workflow->tabRows($branchId, $tab, $userId, true, $request->query('q'));
 
-        if ($request->status) {
-            $params['status'] = "eq.{$request->status}";
-        }
-
-        $orders = $this->supabase->query('orders', $params);
-
-        // With no status filter, show the shared pending queue plus the
-        // orders this cashier picked. Once picked, an order belongs to
-        // that cashier alone.
-        if (!$request->status) {
-            $orders = array_filter($orders, function ($o) use ($userId) {
-                return ($o['status'] ?? '') === 'pending' || $this->isOwnedBy($o, $userId);
-            });
-        }
-
-        $orders = collect(array_values($orders))->map(function ($o) {
-            if (isset($o['customer']) && is_array($o['customer'])) $o['customer'] = (object) $o['customer'];
-            if (isset($o['items'])) {
-                $o['items'] = collect($o['items'])->map(function ($item) {
-                    if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                    return (object) $item;
-                });
-            }
-            return (object) $o;
-        });
-
-        return view('cashier.orders.index', compact('orders') + [
-            'inCrossBranch' => $inCrossBranch,
+        return view('cashier.orders.index', [
+            'orders' => $orders,
+            'counts' => $this->workflow->counts($branchId, $userId),
+            'pickers' => $this->workflow->pickerNames($orders),
+            'tab' => $tab,
+            'tabRoute' => 'cashier.orders.index',
+            'nameRoute' => 'cashier.orders.personal-name',
+            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'userId' => $userId,
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
             'activeBranchName' => $this->scope->activeBranchName(),
         ]);
     }
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, customer:customers(*), items:order_items(*, product:products(id,name,brand)), cashier:users!orders_cashier_id_fkey(id,name), branch:branches(id,name,address), notes:order_notes(*)');
-        if (!$order || (int) ($order['branch_id'] ?? 0) !== $this->scope->activeBranchId()) {
+        $userId = auth()->user()->supabase_id ?? auth()->id();
+
+        $order = $this->workflow->findForShow((int) $orderId, $this->scope->activeBranchId(), $userId);
+
+        if (!$order) {
             abort(404);
         }
 
-        if (isset($order['customer']) && is_array($order['customer'])) $order['customer'] = (object) $order['customer'];
-        if (isset($order['cashier']) && is_array($order['cashier'])) $order['cashier'] = (object) $order['cashier'];
-        if (isset($order['branch']) && is_array($order['branch'])) $order['branch'] = (object) $order['branch'];
-        if (isset($order['items'])) {
-            $order['items'] = collect($order['items'])->map(function ($item) {
-                if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                return (object) $item;
-            });
-        }
-        if (isset($order['notes'])) {
-            $order['notes'] = collect($order['notes'])->sortBy('created_at')->map(fn($n) => (object) $n)->values();
-        }
-
-        return view('cashier.orders.show', ['order' => (object) $order]);
+        return view('cashier.orders.show', [
+            'order' => $order,
+            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'userId' => $userId,
+            'nameRoute' => 'cashier.orders.personal-name',
+            'canName' => $this->workflow->isOwnedBy((array) $order, $userId),
+        ]);
     }
 
     private function noteFromRequest(Request $request): array
@@ -102,59 +83,56 @@ class OrderController extends Controller
     }
 
     /**
-     * Whether this cashier is the one holding the order.
+     * Claim a pending order.
      *
-     * assigned_to is the canonical picker column; cashier_id is the older one
-     * and still the only value written on orders placed before it existed.
+     * The claim itself lives in the workflow service so the compare-and-set is
+     * checked: if another cashier picked this order a moment earlier the write
+     * matches no row, and the cashier is told it has gone rather than being
+     * shown a success that did not happen.
      */
-    private function isOwnedBy($order, $userId): bool
-    {
-        foreach (['assigned_to', 'cashier_id'] as $column) {
-            if (isset($order[$column]) && (string) $order[$column] === (string) $userId) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public function pick(Request $request, $orderId)
     {
         $request->validate(['note' => 'required|string|max:2000']);
 
-        $order = $this->supabase->find('orders', $orderId);
-        if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
-            abort(404);
+        // The branch the cashier is currently working in, not their home
+        // branch: the list they clicked "Pick" from is scoped to
+        // activeBranchId(), so the write has to use the same branch or the
+        // order is rejected as "not found" while it is plainly on screen.
+        $result = $this->workflow->pick(
+            (int) $orderId,
+            (int) $this->scope->activeBranchId(),
+            auth()->user()->supabase_id ?? auth()->id(),
+            $request->note
+        );
+
+        if (!$result['ok']) {
+            return back()->with('error', $result['message']);
         }
 
-        if (($order['status'] ?? '') !== 'pending') {
-            return back()->with('error', 'This order is no longer available for picking.');
-        }
+        return redirect()->route('cashier.orders.show', $orderId)->with('success', $result['message']);
+    }
 
-        // Try to assign
-        $this->supabase->update('orders', [
-            'cashier_id' => auth()->user()->supabase_id ?? auth()->id(),
-            'assigned_to' => auth()->user()->supabase_id ?? auth()->id(),
-            'status' => 'picked',
-            'assigned_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $orderId, 'status' => 'pending']);
-
-        // Record the progress note
-        $note = $this->noteFromRequest($request);
-        $note['order_id'] = $orderId;
-        $this->supabase->insert('order_notes', $note);
-
-        // Audit
-        $this->supabase->insert('audit_logs', [
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
-            'action' => 'order_picked',
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
+    /**
+     * Save, edit or clear this cashier's personal name for the order.
+     */
+    public function personalName(Request $request, $orderId)
+    {
+        $request->validate([
+            'personal_order_name' => 'nullable|string|max:' . OrderWorkflowService::LABEL_MAX,
         ]);
 
-        return redirect()->route('cashier.orders.show', $orderId)
-            ->with('success', 'Order picked successfully. Prepare the order.');
+        $result = $this->workflow->savePersonalName(
+            (int) $orderId,
+            $this->scope->activeBranchId(),
+            auth()->user()->supabase_id ?? auth()->id(),
+            $request->personal_order_name
+        );
+
+        if (!$result['ok']) {
+            return back()->with('error', $result['message'])->withInput();
+        }
+
+        return back()->with('success', $result['message']);
     }
 
     /**
@@ -167,7 +145,7 @@ class OrderController extends Controller
 
         $order = $this->supabase->find('orders', $orderId);
         $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
-        if (!$order || !$this->isOwnedBy($order, $supabaseUserId) || ($order['status'] ?? '') !== 'picked') {
+        if (!$order || !$this->workflow->isOwnedBy($order, $supabaseUserId) || ($order['status'] ?? '') !== 'picked') {
             abort(403);
         }
 
@@ -180,7 +158,18 @@ class OrderController extends Controller
             if ($this->supabase->tableHasColumn('orders', 'served_at')) {
                 $serveData['served_at'] = now()->toIso8601String();
             }
-            $this->supabase->update('orders', $serveData, ['id' => $orderId, 'status' => 'picked']);
+            if ($this->supabase->tableHasColumn('orders', 'completed_at')) {
+                $serveData['completed_at'] = now()->toIso8601String();
+            }
+            $closed = $this->supabase->update('orders', $serveData, ['id' => $orderId, 'status' => 'picked']);
+
+            if (empty($closed)) {
+                // The row was no longer 'picked' by the time we wrote, so this
+                // order was served from another tab or another cashier between
+                // the check above and here. Stop before a second sale, a second
+                // stock deduction and a second movement row get recorded.
+                return back()->with('error', 'This order has already been served. No sale was recorded.');
+            }
 
             // Record the progress note
             $note = $this->noteFromRequest($request);

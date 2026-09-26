@@ -456,7 +456,7 @@ class SupabaseService
             'orders' => [
                 'order_number','branch_id','cashier_id','customer_id','status','total',
                 'delivery_notes','assigned_to','assigned_at','completed_at','served_at',
-                'cancelled_at','paid_at',
+                'cancelled_at','paid_at','personal_order_name',
                 'payment_status','payment_method','payment_confirmation_code',
                 'created_at','updated_at',
             ],

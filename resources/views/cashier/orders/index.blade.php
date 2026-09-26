@@ -4,20 +4,46 @@
 
 @section('content')
 @include('cashier.partials.cross-branch-banner')
+
+@include('partials.order-tabs', ['tabRoute' => $tabRoute])
+
+<form method="GET" action="{{ route($tabRoute) }}" class="mb-4 flex justify-end">
+    <input type="hidden" name="tab" value="{{ $tab }}">
+    <div class="relative w-full sm:w-72">
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search order number or personal name"
+               class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+        <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+    </div>
+</form>
+
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Order #</th>
+                <th class="text-left px-4">Personal Name</th>
                 <th class="text-left px-4">Customer</th>
                 <th class="text-right px-4">Total</th>
                 <th class="text-center px-4">Status</th>
+                <th class="text-left px-4">Picked By</th>
                 <th class="text-center px-4">Actions</th>
             </tr></thead>
             <tbody>
                 @forelse($orders as $order)
+                    @php
+                        // An order is only ever held by the cashier who picked
+                        // it. assigned_to is the current column, cashier_id is
+                        // the legacy one still set on older orders.
+                        $me = (string) $userId;
+                        $isMine = (string) ($order->assigned_to ?? '') === $me
+                            || (string) ($order->cashier_id ?? '') === $me;
+                        $canName = $isMine && in_array($order->status, ['picked', 'served'], true);
+                    @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
+                        <td class="px-4">
+                            @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
+                        </td>
                         <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
@@ -25,6 +51,9 @@
                                 {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                                 {{ ucfirst($order->status) }}
                             </span>
+                        </td>
+                        <td class="px-4 text-gray-600">
+                            {{ $order->assigned_to ? ($pickers[(string) $order->assigned_to] ?? 'Staff') : '—' }}
                         </td>
                         <td class="px-4 text-center">
                             <a href="{{ route('cashier.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
@@ -34,11 +63,6 @@
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-600 hover:underline font-medium"><i class="fas fa-hand-pointer mr-1"></i>Pick</button>
                                 </form>
                             @endif
-                            @php
-                                $me = (string) (auth()->user()->supabase_id ?? auth()->id());
-                                $isMine = in_array((string) ($order->assigned_to ?? ''), [$me], true)
-                                    || in_array((string) ($order->cashier_id ?? ''), [$me], true);
-                            @endphp
                             @if($order->status === 'picked' && $isMine)
                                 <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-700 hover:underline font-bold"><i class="fas fa-hand-holding mr-1"></i>Served</button>
@@ -48,7 +72,19 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No orders available</td></tr>
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-gray-400">
+                            @if(request('q'))
+                                No orders match "{{ request('q') }}".
+                            @elseif($tab === 'pending')
+                                No orders waiting to be picked.
+                            @elseif($tab === 'progress')
+                                You have no orders in progress.
+                            @else
+                                You have not completed any orders yet.
+                            @endif
+                        </td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>

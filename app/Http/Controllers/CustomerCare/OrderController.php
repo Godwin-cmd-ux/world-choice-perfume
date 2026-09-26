@@ -3,213 +3,111 @@
 namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
+use App\Services\OrderWorkflowService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    private const TRANSITIONS = [
-        'pending' => ['picked'],
-        'picked' => ['served'],
-        'served' => [],
-    ];
-
-    /** Tab slug => the single status that tab shows. */
-    private const TABS = [
-        'pending' => 'pending',
-        'ongoing' => 'picked',
-        'completed' => 'served',
-    ];
-
     private SupabaseService $supabase;
+
+    private OrderWorkflowService $workflow;
 
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->workflow = new OrderWorkflowService($this->supabase);
     }
 
     /**
-     * Whether the order sits with this staff member.
-     *
-     * assigned_to is the canonical picker column, but orders created
-     * before that column existed only ever got cashier_id written, so
-     * both have to be checked or older orders would look unowned.
+     * The three tabs. Pending is the shared queue anyone can claim; picked and
+     * served orders are only shown to the staff member who picked them.
      */
-    private function isOwnedBy($order, $userId): bool
-    {
-        foreach (['assigned_to', 'cashier_id'] as $column) {
-            if (isset($order[$column]) && (string) $order[$column] === (string) $userId) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function cast($o)
-    {
-        if (isset($o['cashier']) && is_array($o['cashier'])) $o['cashier'] = (object) $o['cashier'];
-        if (isset($o['customer']) && is_array($o['customer'])) $o['customer'] = (object) $o['customer'];
-        if (isset($o['items'])) {
-            $o['items'] = collect($o['items'])->map(function ($item) {
-                if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                return (object) $item;
-            });
-        }
-        return (object) $o;
-    }
-
     public function index(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
+        $branchId = (int) auth()->user()->branch_id;
         $userId = auth()->user()->supabase_id ?? auth()->id();
-        $tab = array_key_exists($request->query('tab'), self::TABS) ? $request->query('tab') : 'pending';
-        $tabStatus = self::TABS[$tab];
 
-        // Three columns is a cheap pass over the branch and gives the tab
-        // counts without an extra round trip per tab.
-        $counts = ['pending' => 0, 'ongoing' => 0, 'completed' => 0];
-        foreach ($this->supabase->query('orders', [
-            'select' => 'status,assigned_to,cashier_id',
-            'branch_id' => "eq.{$branchId}",
-            'limit' => 1000,
-        ]) as $row) {
-            $status = $row['status'] ?? 'pending';
-            if ($status === 'pending') {
-                $counts['pending']++;
-            } elseif (in_array($status, ['picked', 'served'], true) && $this->isOwnedBy($row, $userId)) {
-                $counts[$status === 'picked' ? 'ongoing' : 'completed']++;
-            }
-        }
-
-        $rows = $this->supabase->query('orders', [
-            'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
-            'branch_id' => "eq.{$branchId}",
-            'status' => "eq.{$tabStatus}",
-            'order' => 'created_at.desc',
-            'limit' => 200,
-        ]);
-
-        // Pending work belongs to whoever gets there first. Picked and
-        // served work belongs to the staff member who picked it, so
-        // orders sitting with a colleague never reach this list.
-        if ($tabStatus !== 'pending') {
-            $rows = array_values(array_filter($rows, fn($o) => $this->isOwnedBy($o, $userId)));
-        }
-
-        $orders = collect($rows)->map(fn($o) => $this->cast($o));
+        $tab = $this->workflow->resolveTab($request->query('tab'));
+        $orders = $this->workflow->tabRows($branchId, $tab, $userId, true, $request->query('q'));
 
         return view('customer-care.orders.index', [
             'orders' => $orders,
-            'counts' => $counts,
+            'counts' => $this->workflow->counts($branchId, $userId),
+            'pickers' => $this->workflow->pickerNames($orders),
             'tab' => $tab,
-            'transitions' => self::TRANSITIONS,
+            'tabRoute' => 'customer-care.orders.index',
+            'nameRoute' => 'customer-care.orders.personal-name',
+            'transitions' => OrderWorkflowService::TRANSITIONS,
             'userId' => $userId,
         ]);
     }
 
     public function show($orderId)
     {
-        $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address), notes:order_notes(*)');
-        if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
+        $userId = auth()->user()->supabase_id ?? auth()->id();
+        $order = $this->workflow->findForShow((int) $orderId, (int) auth()->user()->branch_id, $userId);
+
+        if (!$order) {
             abort(404);
         }
 
-        // An order another staff member has picked is not visible here at all.
-        if (($order['status'] ?? 'pending') !== 'pending'
-            && !$this->isOwnedBy($order, auth()->user()->supabase_id ?? auth()->id())) {
-            abort(404);
-        }
-
-        if (isset($order['cashier']) && is_array($order['cashier'])) $order['cashier'] = (object) $order['cashier'];
-        if (isset($order['customer']) && is_array($order['customer'])) $order['customer'] = (object) $order['customer'];
-        if (isset($order['branch']) && is_array($order['branch'])) $order['branch'] = (object) $order['branch'];
-        if (isset($order['items'])) {
-            $order['items'] = collect($order['items'])->map(function ($item) {
-                if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                return (object) $item;
-            });
-        }
-        if (isset($order['notes'])) {
-            $order['notes'] = collect($order['notes'])->sortBy('created_at')->map(fn($n) => (object) $n)->values();
-        }
-
-        return view('customer-care.orders.show', ['order' => (object) $order, 'transitions' => self::TRANSITIONS, 'userId' => auth()->user()->supabase_id ?? auth()->id()]);
+        return view('customer-care.orders.show', [
+            'order' => $order,
+            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'userId' => $userId,
+            'nameRoute' => 'customer-care.orders.personal-name',
+            'canName' => $this->workflow->isOwnedBy((array) $order, $userId),
+        ]);
     }
 
+    /**
+     * Move an order forward. Only picked and served are accepted: an order
+     * never goes back to pending, so a crafted request cannot un-claim work
+     * that has already been picked.
+     */
     public function updateStatus(Request $request, $orderId)
     {
-        $request->validate([
-            'status' => 'required|in:pending,picked,served',
-            'note' => 'required|string|max:2000',
-        ]);
+        $request->validate($this->workflow->statusChangeRules());
 
-        $order = $this->supabase->find('orders', $orderId);
-        if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
-            abort(404);
-        }
-
-        $current = $order['status'] ?? 'pending';
         $next = $request->status;
+
+        if (!in_array($next, ['picked', 'served'], true)) {
+            return back()->with('error', 'An order can only move to picked or served.');
+        }
+
         $userId = auth()->user()->supabase_id ?? auth()->id();
+        $branchId = (int) auth()->user()->branch_id;
 
-        if (!in_array($next, self::TRANSITIONS[$current] ?? [], true)) {
-            return back()->with('error', 'Invalid status transition.');
-        }
+        $result = $next === 'picked'
+            ? $this->workflow->pick((int) $orderId, $branchId, $userId, $request->note)
+            : $this->workflow->serve((int) $orderId, $branchId, $userId, $request->note);
 
-        if ($current !== 'pending' && !$this->isOwnedBy($order, $userId)) {
-            return back()->with('error', 'This order was picked by another staff member. Only they can update it.');
-        }
+        return $result['ok']
+            ? back()->with('success', $result['message'])
+            : back()->with('error', $result['message']);
+    }
 
-        $updateData = [
-            'status' => $next,
-            'updated_at' => now()->toIso8601String(),
-        ];
-        if ($next === 'picked') {
-            $updateData['assigned_to'] = $userId;
-            $updateData['cashier_id'] = $userId;
-            $updateData['assigned_at'] = now()->toIso8601String();
-        }
-        if ($next === 'served') {
-            $updateData['served_at'] = now()->toIso8601String();
-        }
-
-        $updated = $this->supabase->update('orders', $updateData, ['id' => $orderId, 'status' => $current]);
-
-        if (empty($updated)) {
-            // Optimistic-lock missed the row: another staff member changed it.
-            // Re-read and reflect the real status instead of guessing.
-            $liveStatus = $this->supabase->find('orders', $orderId)['status'] ?? null;
-
-            if ($liveStatus === $next) {
-                return back()->with('success', 'Order status is already ' . $next . '.');
-            }
-
-            $reason = $this->supabase->lastErrorMessage();
-            $detail = $reason ? ' (' . $reason . ')' : '';
-            return back()->with('error', 'The order is now "' . ($liveStatus ?: 'unknown') . '". Please refresh and try again.' . $detail);
-        }
-
-        $this->supabase->insert('order_notes', [
-            'order_id' => $orderId,
-            'note' => $request->note,
-            'created_by' => $userId,
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
+    /**
+     * Save, edit or clear this staff member's personal name for the order.
+     */
+    public function personalName(Request $request, $orderId)
+    {
+        $request->validate([
+            'personal_order_name' => 'nullable|string|max:' . OrderWorkflowService::LABEL_MAX,
         ]);
 
-        (new \App\Services\AuditService())->recordCriticalAction(
-            'order_status_changed',
-            'order_status_changed',
-            'Order Status Changed',
-            "Order {$order['order_number']} status changed to {$next}.",
-            ['order_id' => $orderId, 'order_number' => $order['order_number'], 'total' => $order['total'] ?? null],
-            'orders',
-            (string) $orderId,
-            ['status' => $current],
-            ['status' => $next]
+        $result = $this->workflow->savePersonalName(
+            (int) $orderId,
+            (int) auth()->user()->branch_id,
+            auth()->user()->supabase_id ?? auth()->id(),
+            $request->personal_order_name
         );
 
-        return back()->with('success', 'Order status updated.');
+        if (!$result['ok']) {
+            return back()->with('error', $result['message'])->withInput();
+        }
+
+        return back()->with('success', $result['message']);
     }
 }

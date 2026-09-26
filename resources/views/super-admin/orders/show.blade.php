@@ -20,6 +20,22 @@
                 </span>
             </div>
 
+            {{-- Super Admin inspects any order, so the picker and their label
+                 are both shown here. The label is never editable from the
+                 order number's point of view: it stays an extra identifier. --}}
+            <div class="px-6 py-3 border-b bg-gray-50 space-y-2">
+                <div class="text-sm text-gray-600">
+                    <span class="text-gray-500">Picked by:</span>
+                    <span class="font-medium text-gray-800">
+                        {{ $order->assigned_to ? ($pickers[(string) $order->assigned_to] ?? 'Staff') : 'Not picked yet' }}
+                    </span>
+                    @if($order->assigned_at)
+                        <span class="text-gray-400">· {{ \Carbon\Carbon::parse($order->assigned_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y \a\t h:i A') }}</span>
+                    @endif
+                </div>
+                @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => true, 'modalId' => 'order-name-super'])
+            </div>
+
             <table class="w-full text-sm">
                 <thead class="bg-gray-50">
                     <tr>

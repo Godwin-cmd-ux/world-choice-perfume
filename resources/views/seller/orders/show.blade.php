@@ -14,6 +14,10 @@
                 {{ ucfirst($order->status) }}
             </span>
         </div>
+        {{-- Staff-only memory aid. The official order number above is unchanged. --}}
+        <div class="mb-4">
+            @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
+        </div>
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">
             <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}</span></div>
             <div class="flex justify-between"><span>Phone:</span><span>{{ $order->customer?->phone ?? 'N/A' }}</span></div>
