@@ -101,6 +101,126 @@ class ProductVarietyStockService
     }
 
     /**
+     * Flat list of the variety buckets that actually hold stock, each with
+     * its own id, quantity, selling price and display label. Stock and sale
+     * pages list these as independent product lines named
+     * "Product - 50ml With Box · With Logo · Yellow".
+     *
+     * Returns [[id, product_id, volume, variant, quantity, selling_price,
+     * label], ...] ordered by product, then volume, then the canonical
+     * variant order.
+     */
+    public function listForProducts(int $branchId, array $productIds): array
+    {
+        $wanted = array_flip(array_map('intval', $productIds));
+        if (empty($wanted)) {
+            return [];
+        }
+
+        $bottles = new BottleStockService($this->supabase);
+        $variantOrder = [];
+        foreach (BottleStockService::VOLUMES as $v) {
+            foreach ($bottles->variantBuckets($v) as $i => $key) {
+                $variantOrder[$v . '|' . $key] = $i;
+            }
+        }
+
+        $result = [];
+        foreach ($this->fetchRows($branchId) as $r) {
+            $pid = (int) ($r['product_id'] ?? 0);
+            $volume = (int) ($r['volume'] ?? 0);
+            if ($pid <= 0 || $volume <= 0 || !isset($wanted[$pid])) {
+                continue;
+            }
+            $quantity = (int) ($r['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                continue; // an empty bucket is not a product line
+            }
+            $variant = (string) ($r['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $result[] = [
+                'id' => (int) ($r['id'] ?? 0),
+                'product_id' => $pid,
+                'volume' => $volume,
+                'variant' => $variant,
+                'quantity' => $quantity,
+                'selling_price' => (float) ($r['selling_price'] ?? 0),
+                'label' => $this->pickLabel($volume, $variant),
+            ];
+        }
+
+        usort($result, function ($a, $b) use ($variantOrder) {
+            return [$a['product_id'], $a['volume'], $variantOrder[$a['volume'] . '|' . $a['variant']] ?? 99]
+                <=> [$b['product_id'], $b['volume'], $variantOrder[$b['volume'] . '|' . $b['variant']] ?? 99];
+        });
+
+        return $result;
+    }
+
+    /**
+     * One variety bucket by id, scoped to the branch so a manager can never
+     * reach another branch's stock. Null when it does not belong here.
+     */
+    public function findRow(int $branchId, int $varietyId): ?array
+    {
+        $rows = $this->supabase->query('branch_stock_varieties', [
+            'select' => 'id,product_id,volume,variant,quantity,selling_price',
+            'id' => "eq.{$varietyId}",
+            'branch_id' => "eq.{$branchId}",
+            'limit' => 1,
+        ]);
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Set one bucket's quantity and selling price. $price is ignored when
+     * null/0 so a caller that only corrects the count leaves the price be.
+     */
+    public function updateRow(int $varietyId, int $quantity, ?float $price = null): void
+    {
+        $update = [
+            'quantity' => max($quantity, 0),
+            'updated_at' => now()->toIso8601String(),
+        ];
+        if ($price !== null && $price > 0) {
+            $update['selling_price'] = round($price, 2);
+        }
+        $this->supabase->update('branch_stock_varieties', $update, ['id' => $varietyId]);
+    }
+
+    /**
+     * Remove one variety bucket. The product's aggregate branch_stock row
+     * is the caller's to adjust — see syncAggregateQuantity().
+     */
+    public function deleteRow(int $varietyId): void
+    {
+        $this->supabase->delete('branch_stock_varieties', ['id' => $varietyId]);
+    }
+
+    /**
+     * Move the product's aggregate branch_stock quantity by $delta so it
+     * keeps matching the sum of its variety buckets. Sales already deduct
+     * both, so editing one side has to move the other.
+     */
+    public function syncAggregateQuantity(int $branchId, int $productId, int $delta): void
+    {
+        if ($delta === 0) {
+            return;
+        }
+        $stock = $this->supabase->findOne('branch_stock', [
+            'branch_id' => $branchId,
+            'product_id' => $productId,
+        ]);
+        if (!$stock) {
+            return;
+        }
+        $this->supabase->update('branch_stock', [
+            'quantity' => max(((int) ($stock['quantity'] ?? 0)) + $delta, 0),
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $stock['id']]);
+    }
+
+    /**
      * Whether the product has any variety records at the branch —
      * products stocked in before variety tracking have none and may
      * be sold/transferred without picking a variety.
@@ -239,6 +359,18 @@ class ProductVarietyStockService
         ];
 
         return $fresh ? $this->supabase->queryFresh('branch_stock_varieties', $params) : $this->supabase->query('branch_stock_varieties', $params);
+    }
+
+    /**
+     * Raw rows including the primary key, for the stock page's per-variety
+     * edit and delete actions.
+     */
+    private function fetchRows(int $branchId): array
+    {
+        return $this->supabase->query('branch_stock_varieties', [
+            'select' => 'id,product_id,volume,variant,quantity,selling_price',
+            'branch_id' => "eq.{$branchId}",
+        ]);
     }
 
     private function mapRows(array $rows): array

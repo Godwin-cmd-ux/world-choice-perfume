@@ -6,7 +6,7 @@
     <form method="GET" action="{{ route('stock-manager.product-stock') }}" class="flex items-center gap-2 mr-2">
         <input type="text" name="search" value="{{ request('search') }}"
             class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Search by product or brand…">
+            placeholder="Search by product, brand or variety…">
         <button type="submit" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-2 rounded-lg text-sm">
             <i class="fas fa-search"></i>
         </button>
@@ -49,37 +49,44 @@
                 <th class="text-right px-4">Actions</th>
             </tr></thead>
             <tbody>
-                @forelse($stocks as $stock)
+                @forelse($rows as $row)
                     @php
-                        $stockValue = ($stock->quantity ?? 0) * ($stock->selling_price ?? 0);
-                        $lowQty = ($stock->quantity <= 5);
+                        $stockValue = $row['quantity'] * $row['selling_price'];
+                        $lowQty = ($row['quantity'] <= 5);
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 font-medium">{{ $stock->product->name }}</td>
-                        <td class="px-4 text-right">
-                            <span class="{{ $lowQty ? 'text-red-600 font-bold' : '' }}">{{ $stock->quantity }}</span>
+                        <td class="py-3 px-4">
+                            <span class="font-medium block">{{ $row['label'] }}</span>
+                            @if($row['kind'] === 'variety')
+                                <span class="inline-flex items-center gap-1 mt-1 text-[10px] text-gray-500">
+                                    <i class="fas fa-wine-bottle"></i> Variety
+                                </span>
+                            @endif
                         </td>
-                        <td class="px-4 text-right text-gray-500">TZS {{ number_format($stock->buying_cost ?? 0) }}</td>
-                        <td class="px-4 text-right">TZS {{ number_format($stock->selling_price) }}</td>
+                        <td class="px-4 text-right">
+                            <span class="{{ $lowQty ? 'text-red-600 font-bold' : '' }}">{{ $row['quantity'] }}</span>
+                        </td>
+                        <td class="px-4 text-right text-gray-500">TZS {{ number_format($row['buying_cost']) }}</td>
+                        <td class="px-4 text-right">TZS {{ number_format($row['selling_price']) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($stockValue) }}</td>
-                        <td class="px-4">@if(!empty($stock->category))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $stock->category }}</span>@else <span class="text-gray-400">—</span> @endif</td>
-                        <td class="px-4 text-gray-500">{{ $stock->date_received ? \Carbon\Carbon::parse($stock->date_received)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '-' }}</td>
+                        <td class="px-4">@if(!empty($row['category']))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $row['category'] }}</span>@else <span class="text-gray-400">—</span> @endif</td>
+                        <td class="px-4 text-gray-500">{{ $row['date_received'] ? \Carbon\Carbon::parse($row['date_received'])->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '-' }}</td>
                         <td class="px-4 text-right">
                             @if(!($inCrossBranch ?? false))
                                 <div class="flex items-center justify-end gap-2">
                                     <button type="button"
                                         class="edit-stock-btn inline-flex items-center gap-1 text-white px-2.5 py-1.5 rounded text-xs font-medium hover:opacity-90"
                                         style="background-color: #F89A1E;"
-                                        data-stock-id="{{ $stock->id }}"
-                                        data-product="{{ $stock->product->name }}"
-                                        data-quantity="{{ $stock->quantity }}"
-                                        data-price="{{ $stock->selling_price ?? 0 }}">
+                                        data-update-url="{{ $row['kind'] === 'variety' ? route('stock-manager.product-stock.variety-update', ['variety' => $row['variety']['id']]) : route('stock-manager.product-stock.update', ['stock' => $row['stock_id']]) }}"
+                                        data-product="{{ $row['label'] }}"
+                                        data-quantity="{{ $row['quantity'] }}"
+                                        data-price="{{ $row['selling_price'] }}">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
-                                    <form method="POST" action="{{ route('stock-manager.product-stock.destroy', $stock->id) }}" class="inline">
+                                    <form method="POST" action="{{ $row['kind'] === 'variety' ? route('stock-manager.product-stock.variety-destroy', ['variety' => $row['variety']['id']]) : route('stock-manager.product-stock.destroy', $row['stock_id']) }}" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs" title="Delete" data-confirm="Delete stock record for {{ $stock->product->name }}?">
+                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs" title="Delete" data-confirm="Delete stock record for {{ $row['label'] }}?">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </form>
@@ -89,34 +96,6 @@
                             @endif
                         </td>
                     </tr>
-                    @php
-                        $varieties = $varietyMap[$stock->product_id] ?? [];
-                        $varietyPrices = $varietyPriceMap[$stock->product_id] ?? [];
-                    @endphp
-                    @if(($stock->category ?? '') === 'Oil Fragrance' && count($varieties) > 0)
-                        <tr class="border-t bg-gray-50/60">
-                            <td colspan="8" class="px-12 py-2">
-                                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                    <i class="fas fa-wine-bottle mr-1"></i>Bottled varieties — {{ $stock->product->name }}
-                                </p>
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach($varieties as $volume => $variants)
-                                        @foreach($variants as $variantKey => $qty)
-                                            @if($qty > 0)
-                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-white border border-gray-200">
-                                                    {{ $volume }}ml &middot; {{ str_replace('_', ' ', $variantKey) }}
-                                                    <span class="font-semibold text-emerald-700">&times; {{ $qty }}</span>
-                                                    @if(($varietyPrices[$volume][$variantKey] ?? 0) > 0)
-                                                        <span class="text-gray-500">&middot; TZS {{ number_format((float) $varietyPrices[$volume][$variantKey]) }}</span>
-                                                    @endif
-                                                </span>
-                                            @endif
-                                        @endforeach
-                                    @endforeach
-                                </div>
-                            </td>
-                        </tr>
-                    @endif
                 @empty
                     <tr><td colspan="8" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
@@ -126,7 +105,7 @@
 </div>
 
 <!-- Edit Stock Modal -->
-<div id="editStockModal" class="fixed inset-0 z-50 bg-black/50 hidden" data-update-url="{{ route('stock-manager.product-stock.update', ['stock' => '__STOCK__']) }}">
+<div id="editStockModal" class="fixed inset-0 z-50 bg-black/50 hidden">
     <div class="flex min-h-full items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50">
@@ -198,7 +177,6 @@
         var qtyInput = document.getElementById('editStockQuantity');
         var priceInput = document.getElementById('editStockPrice');
         var preview = document.getElementById('editStockPreview');
-        var updateUrl = modal.getAttribute('data-update-url');
 
         function formatTzs(value) {
             var n = parseFloat(value) || 0;
@@ -210,7 +188,9 @@
         }
 
         function openModal(btn) {
-            form.setAttribute('action', updateUrl.replace('__STOCK__', btn.getAttribute('data-stock-id')));
+            // Each row posts to its own endpoint: a variety row edits that
+            // bottling, a plain product row edits the whole stock record.
+            form.setAttribute('action', btn.getAttribute('data-update-url'));
             productEl.textContent = btn.getAttribute('data-product') || '';
             qtyInput.value = btn.getAttribute('data-quantity') || '0';
             priceInput.value = btn.getAttribute('data-price') || '0';

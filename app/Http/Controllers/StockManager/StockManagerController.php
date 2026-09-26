@@ -275,25 +275,6 @@ class StockManagerController extends Controller
 
         $stocks = $this->supabase->query('branch_stock', $params);
 
-        if ($request->search) {
-            $search = strtolower($request->search);
-            $stocks = array_filter($stocks, function ($s) use ($search) {
-                $product = $s['product'] ?? [];
-                return str_contains(strtolower($product['name'] ?? ''), $search)
-                    || str_contains(strtolower($product['brand'] ?? ''), $search);
-            });
-        }
-
-        $stocks = array_values($stocks);
-        $totalValue = array_sum(array_map(fn($s) => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0), $stocks));
-
-        // Per-product bottling breakdown (volume/variety) for oil fragrance
-        // products — shown under each stock row, with each bucket's own
-        // selling price (50ml ≠ 30ml).
-        $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
-        $varietyMap = $varietyService->stockForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
-        $varietyPriceMap = $varietyService->pricesForProducts($branchId, array_map(fn($s) => (int) ($s['product_id'] ?? 0), $stocks));
-
         $stocks = collect($stocks)->map(function ($s) {
             if (isset($s['product']) && is_array($s['product'])) {
                 if (isset($s['product']['images']) && is_array($s['product']['images'])) {
@@ -302,13 +283,76 @@ class StockManagerController extends Controller
                 $s['product'] = (object) $s['product'];
             }
             return (object) $s;
-        });
+        })->all();
+
+        // Bottling breakdown per product. A product stocked in with
+        // varieties is listed as those varieties, each behaving like its
+        // own product with its own price and quantity; its aggregate
+        // branch_stock row is hidden so nothing is counted twice.
+        $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
+        $bucketsByProduct = [];
+        foreach ($varietyService->listForProducts($branchId, array_map(fn ($s) => (int) ($s->product_id ?? 0), $stocks)) as $bucket) {
+            $bucketsByProduct[$bucket['product_id']][] = $bucket;
+        }
+
+        $rows = [];
+        foreach ($stocks as $stock) {
+            $product = $stock->product ?? null;
+            if (!$product) {
+                continue;
+            }
+            $name = (string) ($product->name ?? '');
+            $brand = (string) ($product->brand ?? '');
+            $category = $stock->category ?? ($product->category ?? '');
+            $buyingCost = (float) ($stock->buying_cost ?? 0);
+            $buckets = $bucketsByProduct[(int) ($stock->product_id ?? 0)] ?? [];
+
+            if (!empty($buckets)) {
+                foreach ($buckets as $bucket) {
+                    $rows[] = [
+                        'kind' => 'variety',
+                        'label' => $name . ' - ' . $bucket['label'],
+                        'search' => $name . ' ' . $brand . ' ' . $category . ' ' . $bucket['label'],
+                        'product' => $product,
+                        'stock_id' => $stock->id ?? null,
+                        'quantity' => $bucket['quantity'],
+                        'buying_cost' => $buyingCost,
+                        // 50ml can be priced differently from 30ml; fall back
+                        // to the product price when the bucket has none.
+                        'selling_price' => $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0),
+                        'category' => $category,
+                        'date_received' => $stock->date_received ?? null,
+                        'variety' => $bucket,
+                    ];
+                }
+                continue;
+            }
+
+            $rows[] = [
+                'kind' => 'product',
+                'label' => $name,
+                'search' => $name . ' ' . $brand . ' ' . $category,
+                'product' => $product,
+                'stock_id' => $stock->id ?? null,
+                'quantity' => (int) ($stock->quantity ?? 0),
+                'buying_cost' => $buyingCost,
+                'selling_price' => (float) ($stock->selling_price ?? 0),
+                'category' => $category,
+                'date_received' => $stock->date_received ?? null,
+                'variety' => null,
+            ];
+        }
+
+        if ($request->search) {
+            $search = strtolower(trim($request->search));
+            $rows = array_values(array_filter($rows, fn ($r) => str_contains(strtolower($r['search']), $search)));
+        }
+
+        $totalValue = array_sum(array_map(fn ($r) => $r['quantity'] * $r['selling_price'], $rows));
 
         return view('stock-manager.product-stock', [
-            'stocks' => $stocks,
+            'rows' => $rows,
             'totalValue' => $totalValue,
-            'varietyMap' => $varietyMap,
-            'varietyPriceMap' => $varietyPriceMap,
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
@@ -683,6 +727,122 @@ class StockManagerController extends Controller
         }
 
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock updated successfully.');
+    }
+
+    /**
+     * Edit one variety bucket. A variety is listed as its own product line,
+     * so its quantity and price are corrected here directly, and the
+     * product's aggregate branch_stock quantity follows the same
+     * difference — sales deduct both, so they cannot drift apart.
+     */
+    public function updateProductStockVariety(Request $request, $varietyId)
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:0',
+            'selling_price' => 'required|numeric|min:0',
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+        $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
+
+        $bucket = $varietyService->findRow($branchId, (int) $varietyId);
+
+        if (!$bucket) {
+            return back()->withErrors(['error' => 'Variety stock record not found.'])->withInput();
+        }
+
+        $oldQty = (int) ($bucket['quantity'] ?? 0);
+        $newQty = (int) $validated['quantity'];
+        $oldPrice = (float) ($bucket['selling_price'] ?? 0);
+        $newPrice = (float) $validated['selling_price'];
+        $productId = (int) $bucket['product_id'];
+        $label = $varietyService->pickLabel((int) $bucket['volume'], (string) $bucket['variant']);
+
+        $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice);
+        $varietyService->syncAggregateQuantity($branchId, $productId, $newQty - $oldQty);
+
+        if ($newQty !== $oldQty) {
+            $this->supabase->insert('stock_movements', [
+                'branch_id' => $branchId,
+                'product_id' => $productId,
+                'type' => 'adjustment',
+                'quantity' => $newQty - $oldQty,
+                'unit_price' => $oldPrice,
+                'performed_by' => $this->performingUserId(),
+                'notes' => "Manual variety adjustment — {$label}",
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        $audit = new \App\Services\AuditService();
+
+        if ($oldPrice !== $newPrice) {
+            $audit->recordCriticalAction(
+                'price_customization',
+                'variety_price_change_manual',
+                'Price Changed',
+                "Manual selling price change for product #{$productId} ({$label}): " . number_format($oldPrice, 2) . ' → ' . number_format($newPrice, 2) . ' TZS.',
+                ['branch_stock_varieties_id' => $bucket['id'], 'product_id' => $productId, 'label' => $label, 'old_price' => $oldPrice, 'new_price' => $newPrice],
+                'branch_stock_varieties',
+                (string) $bucket['id'],
+                ['selling_price' => $oldPrice],
+                ['selling_price' => $newPrice]
+            );
+        }
+
+        if ($newQty !== $oldQty) {
+            $audit->recordCriticalAction(
+                'stock_adjusted',
+                'variety_stock_adjusted_manual',
+                'Stock Adjusted',
+                "Manual stock adjustment for product #{$productId} ({$label}): {$oldQty} → {$newQty} units.",
+                ['branch_stock_varieties_id' => $bucket['id'], 'product_id' => $productId, 'label' => $label, 'old_qty' => $oldQty, 'new_qty' => $newQty],
+                'branch_stock_varieties',
+                (string) $bucket['id'],
+                ['quantity' => $oldQty],
+                ['quantity' => $newQty]
+            );
+        }
+
+        return redirect()->route('stock-manager.product-stock')->with('success', "{$label} updated successfully.");
+    }
+
+    /**
+     * Clear one variety bucket. The product's aggregate quantity drops by
+     * the same amount so the hidden parent row still matches the varieties.
+     */
+    public function destroyProductStockVariety($varietyId)
+    {
+        $branchId = auth()->user()->branch_id;
+        $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
+
+        $bucket = $varietyService->findRow($branchId, (int) $varietyId);
+
+        if (!$bucket) {
+            return back()->withErrors(['error' => 'Variety stock record not found.']);
+        }
+
+        $productId = (int) $bucket['product_id'];
+        $removedQty = (int) ($bucket['quantity'] ?? 0);
+        $label = $varietyService->pickLabel((int) $bucket['volume'], (string) $bucket['variant']);
+
+        $varietyService->deleteRow((int) $bucket['id']);
+        $varietyService->syncAggregateQuantity($branchId, $productId, -$removedQty);
+
+        (new \App\Services\AuditService())->recordCriticalAction(
+            'stock_deleted',
+            'variety_stock_record_deleted',
+            'Variety Stock Deleted',
+            "Variety stock deleted for product #{$productId} ({$label}, {$removedQty} units).",
+            ['branch_stock_varieties_id' => $bucket['id'], 'product_id' => $productId, 'label' => $label, 'quantity' => $removedQty],
+            'branch_stock_varieties',
+            (string) $bucket['id'],
+            ['quantity' => $removedQty, 'selling_price' => $bucket['selling_price'] ?? 0],
+            []
+        );
+
+        return redirect()->route('stock-manager.product-stock')->with('success', "{$label} stock deleted.");
     }
 
     public function productStockMovements(Request $request)

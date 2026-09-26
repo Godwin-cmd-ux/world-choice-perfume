@@ -4,32 +4,9 @@
     let paymentRowIndex = 1;
     let bottleRowIndex = 1;
 
-    @php
-        // [product_id => [category, varieties]] for the JS variety picker.
-        // Built from bucketsForProducts() data, which every sale controller
-        // passes. A product only gets variety rows when it is stocked in as
-        // an Oil Fragrance product, so anything with buckets is one.
-        $scriptProductMeta = [];
-        foreach (($productVarieties ?? []) as $metaPid => $metaVols) {
-            $scriptProductMeta[(string) $metaPid] = ['category' => 'Oil Fragrance', 'varieties' => $metaVols];
-        }
-    @endphp
-    // Per-product bottling breakdown for oil fragrance products — the sale
-    // must record WHICH volume/variety was sold.
-    const PRODUCT_META = @json($scriptProductMeta);
-    const PRODUCT_VARIANT_LABELS = {
-        'box_logo_yellow': 'With Box · With Logo · Yellow',
-        'box_logo_black': 'With Box · With Logo · Black',
-        'box_nologo_black': 'With Box · No Logo · Black',
-        'box_nologo_white': 'With Box · No Logo · White',
-        'no_box': 'Without Box',
-        'plain': 'Plain (no details)',
-    };
-
-    function productNeedsVariety(productId) {
-        const meta = PRODUCT_META[String(productId)];
-        return !!(meta && meta.category === 'Oil Fragrance' && (meta.varieties || []).length > 0);
-    }
+    // Every product line carries its own identity: plain products have an
+    // empty volume/variant, a variety line is pre-bound to its bottling, so
+    // the cart never has to ask which bottling is being sold.
 
     // ===================== SALE TYPE =====================
     function accentActive() { return 'flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all bg-' + ACCENT + '-600 text-white shadow'; }
@@ -162,7 +139,7 @@
     document.querySelectorAll('.product-check').forEach(cb => {
         cb.addEventListener('change', function () {
             if (this.checked) addToCart(this);
-            else removeFromCartRow(this.value + '||');
+            else removeFromCartRow(this.dataset.rowKey);
         });
         const label = cb.closest('label');
         if (label) {
@@ -178,76 +155,48 @@
 
     function formatMoney(n) { return 'TZS ' + Number(n).toLocaleString(); }
 
-    // Each bottling chip is its own checkbox: ticking it adds that exact
-    // volume + variety to the cart at ITS recorded price; unticking removes
-    // the row. One product can appear once per bottling.
-    document.querySelectorAll('.variety-check').forEach(cb => {
-        cb.addEventListener('change', function () {
-            setChipChecked(this, this.checked);
-            const key = this.dataset.productId + '|' + this.dataset.volume + '|' + this.dataset.variant;
-            if (this.checked) {
-                const productCb = document.querySelector('.product-check[value="' + this.dataset.productId + '"]');
-                if (!productCb) { this.checked = false; return; }
-                addToCart(productCb, {
-                    volume: this.dataset.volume,
-                    variant: this.dataset.variant,
-                    price: parseFloat(this.dataset.price || 0),
-                    available: parseInt(this.dataset.available || 0),
-                });
-            } else {
-                removeFromCartRow(key);
-            }
-        });
-    });
-
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',"'": '&#39;' }[c]));
     }
 
     function cartCount() { return document.querySelectorAll('.cart-row').length; }
 
-    // Unique key per cart line: product (+ volume + variety when bottled),
-    // so one product can appear once per bottling.
+    // Unique key per cart line: a variety line is product|volume|variant,
+    // a plain product is product|| — so the same product can sit in the
+    // cart once per bottling.
     function rowKey(productId, volume, variant) {
         return productId + '|' + (volume || '') + '|' + (variant || '');
     }
 
-    function varietyRowMeta(productId, volume, variant) {
-        const meta = PRODUCT_META[String(productId)] || {};
-        const bucket = (meta.varieties || []).find(v => String(v.volume) === String(volume));
-        const vr = bucket ? ((bucket.variants) || []).find(x => String(x.key) === String(variant)) : null;
-        return {
-            label: (bucket ? bucket.label : (volume ? volume + 'ml' : '')) + ' · ' + (PRODUCT_VARIANT_LABELS[variant] || variant),
-            available: vr ? (vr.available || 0) : 0,
-        };
-    }
-
-    function addToCart(cb, pick) {
+    // One checkbox = one saleable line. A variety checkbox already knows
+    // its bottling, price and available count, so the cart line inherits
+    // all three and posts volume/variant straight through.
+    function addToCart(cb) {
         const cart = document.getElementById('cart-rows');
-        const needsVariety = productNeedsVariety(cb.value);
-        if (needsVariety && !pick) return; // bottled products are added via their variety checkboxes
-
-        const volume = needsVariety ? String(pick.volume || '') : '';
-        const variant = needsVariety ? String(pick.variant || '') : '';
-        const key = rowKey(cb.value, volume, variant);
+        const volume = String(cb.dataset.volume || '');
+        const variant = String(cb.dataset.variant || '');
+        const isVariety = volume !== '' && variant !== '';
+        const key = cb.dataset.rowKey || rowKey(cb.value, volume, variant);
         if (cart.querySelector('.cart-row[data-row-key="' + key + '"]')) return;
 
-        const vm = needsVariety ? varietyRowMeta(cb.value, volume, variant) : null;
+        const name = cb.dataset.name;
+        const available = parseInt(cb.dataset.stock || 0);
+        const price = parseFloat(cb.dataset.price || 0);
 
         const tr = document.createElement('tr');
         tr.className = 'cart-row';
         tr.dataset.productId = cb.value;
         tr.dataset.rowKey = key;
-        if (needsVariety) tr.dataset.stock = vm.available;
+        tr.dataset.stock = available;
+        tr.dataset.unitPrice = price;
         tr.innerHTML =
             '<td class="px-3 py-2">' +
-                '<span class="font-medium text-sm block">' + escapeHtml(cb.dataset.name) + '</span>' +
-                (needsVariety ?
-                    '<span class="text-xs font-medium text-emerald-700 block">' + escapeHtml(vm.label) + '</span>' +
-                    '<span class="text-xs text-gray-500">' + vm.available + ' in stock</span>' +
-                    '<input type="hidden" class="cart-variety-volume" value="' + escapeHtml(volume) + '">' +
-                    '<input type="hidden" class="cart-variety-variant" value="' + escapeHtml(variant) + '">'
-                    : '<span class="text-xs text-gray-500">' + Number(cb.dataset.stock) + ' in stock</span>') +
+                '<span class="font-medium text-sm block">' + escapeHtml(name) + '</span>' +
+                '<span class="text-xs text-gray-500">' + available + ' in stock</span>' +
+                (isVariety
+                    ? '<input type="hidden" class="cart-variety-volume" value="' + escapeHtml(volume) + '">' +
+                      '<input type="hidden" class="cart-variety-variant" value="' + escapeHtml(variant) + '">'
+                    : '') +
                 '<input type="hidden" class="cart-product-hidden">' +
                 '<input type="hidden" class="cart-qty-hidden" value="1">' +
             '</td>' +
@@ -277,14 +226,13 @@
         cart.appendChild(tr);
         document.getElementById('cart-empty').classList.add('hidden');
 
-        // Per-variety pricing: the row sells at the ticked bottling's recorded
-        // price (50ml ≠ 30ml). Custom/discount inputs still override.
-        if (needsVariety && pick.price > 0) {
-            tr.dataset.varietyPrice = pick.price;
+        // Show the line's own default price so it is obvious what a variety
+        // sells for before anything is overridden.
+        if (price > 0) {
             const priceInput = tr.querySelector('.cart-custom-price');
             if (priceInput) {
                 priceInput.value = '';
-                priceInput.placeholder = 'Default ' + Number(pick.price).toLocaleString();
+                priceInput.placeholder = 'Default ' + Number(price).toLocaleString();
             }
         }
 
@@ -303,28 +251,13 @@
         calculateTotal();
     }
 
-    function setChipChecked(chipCb, checked) {
-        if (!chipCb) return;
-        chipCb.checked = checked;
-        const chip = chipCb.closest('.variety-chip');
-        if (chip) {
-            chip.classList.toggle('bg-emerald-50', checked);
-            chip.classList.toggle('border-emerald-400', checked);
-        }
-    }
-
-    // Remove a cart line by its row key and clear the matching picker
-    // (variety checkbox for bottled lines, product checkbox for plain ones).
+    // Remove a cart line by its row key and untick the product line it came
+    // from, so the picker and the cart never disagree.
     function removeFromCartRow(key) {
         const row = document.getElementById('cart-rows').querySelector('.cart-row[data-row-key="' + key + '"]');
         if (row) row.remove();
-        const parts = key.split('|');
-        if (parts[1] || parts[2]) {
-            setChipChecked(document.querySelector('.variety-check[data-product-id="' + parts[0] + '"][data-volume="' + parts[1] + '"][data-variant="' + parts[2] + '"]'), false);
-        } else {
-            const cb = document.querySelector('.product-check[value="' + parts[0] + '"]');
-            if (cb) cb.checked = false;
-        }
+        const cb = document.querySelector('.product-check[data-row-key="' + key + '"]');
+        if (cb) cb.checked = false;
         if (cartCount() === 0) document.getElementById('cart-empty').classList.remove('hidden');
         reindex();
         calculateTotal();
@@ -368,9 +301,10 @@
         const isWholesale = type === 'wholesale';
         const isRetail = type === 'retail';
         document.querySelectorAll('.cart-row').forEach(row => {
-            const cb = document.querySelector('.product-check[value="' + row.dataset.productId + '"]');
-            // A picked variety carries its own selling price.
-            const price = parseFloat((row.dataset.varietyPrice || '') !== '' ? row.dataset.varietyPrice : (cb ? cb.dataset.price : 0));
+            // Each line carries its own unit price. A product id is no longer
+            // enough to find it: one product can be in the cart once per
+            // bottling, each at its own price.
+            const price = parseFloat(row.dataset.unitPrice || 0);
             const qty = parseInt(row.querySelector('.cart-qty-hidden').value || 0);
             const custom = row.querySelector('.cart-custom-price');
             let unit = price;
@@ -525,11 +459,14 @@
         form.addEventListener('submit', function (e) {
             const missing = [];
             document.querySelectorAll('.cart-row').forEach(row => {
-                if (!productNeedsVariety(row.dataset.productId)) return;
+                // A bottled line is one that carries a variety at all; the
+                // picker fills these in, so this only catches tampering.
                 const vol = row.querySelector('.cart-variety-volume');
+                if (!vol) return;
                 const varSel = row.querySelector('.cart-variety-variant');
-                if (!vol || !vol.value || !varSel || !varSel.value) {
-                    missing.push(row.querySelector('.font-medium') ? row.querySelector('.font-medium').textContent : 'a product');
+                if (!vol.value || !varSel || !varSel.value) {
+                    const nameEl = row.querySelector('.font-medium');
+                    missing.push(nameEl ? nameEl.textContent : 'a product');
                 }
             });
             if (missing.length) {
