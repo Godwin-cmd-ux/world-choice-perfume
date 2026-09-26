@@ -222,7 +222,7 @@
                             <td class="px-4 text-right font-medium text-blue-700">TZS {{ number_format($order->total) }}</td>
                             <td class="px-4 text-center">
                                 <span class="px-2 py-1 rounded-full text-xs
-                                    {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+                                    {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                                     {{ ucfirst($order->status) }}
                                 </span>
                             </td>

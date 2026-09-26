@@ -13,9 +13,8 @@
                 </div>
                 <span class="px-3 py-1 rounded-full text-xs font-medium
                     @if(($order->status ?? '') === 'pending') bg-yellow-100 text-yellow-800
-                    @elseif(($order->status ?? '') === 'assigned') bg-blue-100 text-blue-800
-                    @elseif(($order->status ?? '') === 'ready') bg-emerald-100 text-emerald-800
-                    @elseif(($order->status ?? '') === 'completed') bg-purple-100 text-purple-800
+                    @elseif(($order->status ?? '') === 'picked') bg-blue-100 text-blue-800
+                    @elseif(($order->status ?? '') === 'served') bg-emerald-100 text-emerald-800
                     @else bg-gray-100 text-gray-800 @endif">
                     {{ ucfirst($order->status ?? 'unknown') }}
                 </span>

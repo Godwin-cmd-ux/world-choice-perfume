@@ -10,7 +10,7 @@
                 <h2 class="text-xl font-bold">{{ $order->order_number ?? 'N/A' }}</h2>
                 <p class="text-sm text-gray-500">{{ $order->branch->name }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                 {{ ucfirst($order->status) }}
             </span>
         </div>
@@ -34,7 +34,7 @@
             <div class="mt-4 border-t pt-3">
                 <h3 class="text-sm font-semibold mb-2"><i class="fas fa-sticky-note mr-1 text-blue-600"></i>Order Updates</h3>
                 <div class="space-y-2">
-                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                    @foreach(collect($order->notes)->sortBy('created_at') as $note)
                         <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
                             <p>{{ $note->note }}</p>
                             <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
@@ -44,16 +44,8 @@
             </div>
         @endif
 
-        @php
-            $allowed = $transitions[$order->status] ?? [];
-            $lockOwner = $order->assigned_to ?? $order->cashier_id ?? null;
-            $isLocked = in_array($order->status, ['assigned', 'ready', 'completed']) && (string)($lockOwner ?? '') !== (string)($userId ?? '');
-        @endphp
-        @if($isLocked)
-            <div class="mt-4 bg-gray-50 border border-gray-200 text-gray-500 px-4 py-3 rounded-lg text-sm">
-                <i class="fas fa-lock mr-1"></i> This order is assigned to another staff member. Only they can update it.
-            </div>
-        @elseif($allowed)
+        @php $allowed = $transitions[$order->status] ?? []; @endphp
+        @if($allowed)
             <div class="mt-4 border-t pt-3">
                 <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
                 <p class="text-xs text-gray-400 mb-2">Enter what point you have reached for this order before changing the status.</p>
@@ -64,11 +56,9 @@
                         <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
                             <input type="hidden" name="status" value="{{ $s }}">
                             <input type="hidden" name="note">
-                            <button type="submit"
-                                class="{{ $s === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white px-4 py-2 rounded-lg"
-                                {{ $s === 'cancelled' ? 'onclick="return confirm(\'Cancel order?\')"' : '' }}>
-                                <i class="fas {{ $s === 'cancelled' ? 'fa-times' : 'fa-arrow-right' }} mr-1"></i>
-                                {{ $s === 'cancelled' ? 'Cancel Order' : 'Mark ' . ucfirst($s) }}
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-arrow-right mr-1"></i>
+                                Mark {{ ucfirst($s) }}
                             </button>
                         </form>
                     @endforeach
@@ -76,7 +66,7 @@
             </div>
         @endif
     </div>
-    <a href="{{ route('customer-care.orders.index') }}" class="mt-4 inline-block text-blue-700 hover:underline">&larr; Back to Orders</a>
+    <a href="{{ route('customer-care.orders.index', ['tab' => request('tab') ?: 'pending']) }}" class="mt-4 inline-block text-blue-700 hover:underline">&larr; Back to Orders</a>
 </div>
 <script>
 function attachOrderNote(form) {

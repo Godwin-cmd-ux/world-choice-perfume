@@ -50,11 +50,10 @@ class OrderController extends Controller
 
         // Stats
         $pending = $orders->filter(fn($o) => ($o->status ?? '') === 'pending')->count();
-        $assigned = $orders->filter(fn($o) => ($o->status ?? '') === 'assigned')->count();
-        $ready = $orders->filter(fn($o) => ($o->status ?? '') === 'ready')->count();
-        $completed = $orders->filter(fn($o) => in_array($o->status ?? '', ['completed', 'served']))->count();
+        $picked = $orders->filter(fn($o) => ($o->status ?? '') === 'picked')->count();
+        $served = $orders->filter(fn($o) => ($o->status ?? '') === 'served')->count();
 
-        return view('super-admin.orders.index', compact('orders', 'branches', 'pending', 'assigned', 'ready', 'completed'));
+        return view('super-admin.orders.index', compact('orders', 'branches', 'pending', 'picked', 'served'));
     }
 
     public function show($orderId)

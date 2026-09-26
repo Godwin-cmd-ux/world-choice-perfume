@@ -10,7 +10,7 @@
                 <h2 class="text-xl font-bold">{{ $order->order_number }}</h2>
                 <p class="text-sm text-gray-500">{{ $order->branch->name }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                 {{ ucfirst($order->status) }}
             </span>
         </div>
@@ -46,12 +46,14 @@
 
         @php
             $allowed = $transitions[$order->status] ?? [];
-            $lockOwner = $order->assigned_to ?? $order->cashier_id ?? null;
-            $isLocked = in_array($order->status, ['assigned', 'ready', 'completed']) && (string)($lockOwner ?? '') !== (string)($userId ?? '');
+            $me = (string) ($userId ?? '');
+            $isLocked = $order->status !== 'pending'
+                && !in_array((string) ($order->assigned_to ?? ''), [$me], true)
+                && !in_array((string) ($order->cashier_id ?? ''), [$me], true);
         @endphp
         @if($isLocked)
             <div class="mt-4 bg-gray-50 border border-gray-200 text-gray-500 px-4 py-3 rounded-lg text-sm">
-                <i class="fas fa-lock mr-1"></i> This order is assigned to another staff member. Only they can update it.
+                <i class="fas fa-lock mr-1"></i> This order was picked by another staff member. Only they can update it.
             </div>
         @elseif($allowed)
             <div class="mt-4 border-t pt-3">
@@ -64,11 +66,9 @@
                         <form action="{{ route('seller.orders.update-status', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
                             <input type="hidden" name="status" value="{{ $s }}">
                             <input type="hidden" name="note">
-                            <button type="submit"
-                                class="{{ $s === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-cyan-600 hover:bg-cyan-700' }} text-white px-4 py-2 rounded-lg"
-                                {{ $s === 'cancelled' ? 'onclick="return confirm(\'Cancel order?\')"' : '' }}>
-                                <i class="fas {{ $s === 'cancelled' ? 'fa-times' : 'fa-arrow-right' }} mr-1"></i>
-                                {{ $s === 'cancelled' ? 'Cancel Order' : 'Mark ' . ucfirst($s) }}
+                            <button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-arrow-right mr-1"></i>
+                                Mark {{ ucfirst($s) }}
                             </button>
                         </form>
                     @endforeach

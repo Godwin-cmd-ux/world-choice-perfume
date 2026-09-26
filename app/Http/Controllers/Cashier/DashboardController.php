@@ -80,7 +80,7 @@ class DashboardController extends Controller
 
         $todaySales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySalesData));
         $todayTransactions = count($todaySalesData);
-        $myAssignedCount = count(array_filter($activeOrders, fn($o) => in_array($o['status'] ?? '', ['assigned', 'ready'])));
+        $myAssignedCount = count(array_filter($activeOrders, fn($o) => ($o['status'] ?? '') === 'picked'));
 
         // Daily financials (sales, expenses, actual = sales - expenses) for the
         // branch the dashboard is currently scoped to.

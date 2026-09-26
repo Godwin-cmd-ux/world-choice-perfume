@@ -4,22 +4,18 @@
 
 @section('content')
 {{-- Stats --}}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl shadow p-4 text-center">
         <p class="text-2xl font-bold text-yellow-600">{{ $pending }}</p>
         <p class="text-xs text-gray-500 mt-1">Pending</p>
     </div>
     <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-2xl font-bold text-blue-600">{{ $assigned }}</p>
-        <p class="text-xs text-gray-500 mt-1">Assigned</p>
+        <p class="text-2xl font-bold text-blue-600">{{ $picked }}</p>
+        <p class="text-xs text-gray-500 mt-1">Picked</p>
     </div>
     <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-2xl font-bold text-emerald-600">{{ $ready }}</p>
-        <p class="text-xs text-gray-500 mt-1">Ready</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-2xl font-bold text-gray-600">{{ $completed }}</p>
-        <p class="text-xs text-gray-500 mt-1">Completed/Served</p>
+        <p class="text-2xl font-bold text-gray-600">{{ $served }}</p>
+        <p class="text-xs text-gray-500 mt-1">Served</p>
     </div>
 </div>
 
@@ -29,9 +25,7 @@
         <select name="status" class="px-3 py-2 border rounded-lg text-sm">
             <option value="">All Status</option>
             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
-            <option value="assigned" {{ request('status') === 'assigned' ? 'selected' : '' }}>Assigned</option>
-            <option value="ready" {{ request('status') === 'ready' ? 'selected' : '' }}>Ready</option>
-            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+            <option value="picked" {{ request('status') === 'picked' ? 'selected' : '' }}>Picked</option>
             <option value="served" {{ request('status') === 'served' ? 'selected' : '' }}>Served</option>
         </select>
         <select name="branch_id" class="px-3 py-2 border rounded-lg text-sm">
@@ -65,10 +59,8 @@
                     @php
                         $statusColors = [
                             'pending' => 'bg-yellow-100 text-yellow-800',
-                            'assigned' => 'bg-blue-100 text-blue-800',
-                            'ready' => 'bg-emerald-100 text-emerald-800',
-                            'completed' => 'bg-purple-100 text-purple-800',
-                            'served' => 'bg-gray-100 text-gray-800',
+                            'picked' => 'bg-blue-100 text-blue-800',
+                            'served' => 'bg-emerald-100 text-emerald-800',
                         ];
                         $dur = $order->minutes_ago;
                         $durColor = $dur > 1440 ? 'text-red-600 font-bold' : ($dur > 60 ? 'text-amber-600 font-bold' : 'text-gray-500');
@@ -77,7 +69,7 @@
                         <td class="py-3 px-4 font-medium">{{ $order->order_number ?? 'N/A' }}</td>
                         <td class="px-4 text-gray-500">{{ $order->branch?->name ?? '—' }}</td>
                         <td class="px-4">{{ $order->customer?->name ?? 'Walk-in' }}</td>
-                        <td class="px-4 text-gray-500">{{ $order->cashier?->name ?? 'Unassigned' }}</td>
+                        <td class="px-4 text-gray-500">{{ $order->cashier?->name ?? '—' }}</td>
                         <td class="px-4 text-center">
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$order->status ?? ''] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($order->status ?? 'unknown') }}

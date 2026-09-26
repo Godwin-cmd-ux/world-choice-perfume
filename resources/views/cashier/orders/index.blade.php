@@ -22,7 +22,7 @@
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
                             <span class="px-2 py-1 rounded-full text-xs
-                                {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+                                {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                                 {{ ucfirst($order->status) }}
                             </span>
                         </td>
@@ -34,17 +34,12 @@
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-600 hover:underline font-medium"><i class="fas fa-hand-pointer mr-1"></i>Pick</button>
                                 </form>
                             @endif
-                            @if($order->status === 'assigned' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
-                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check mr-1"></i>Ready</button>
-                                </form>
-                            @endif
-                            @if($order->status === 'ready' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
-                                    @csrf <input type="hidden" name="note"><button type="submit" class="text-amber-600 hover:underline mr-2"><i class="fas fa-check-double mr-1"></i>Complete</button>
-                                </form>
-                            @endif
-                            @if($order->status === 'completed' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
+                            @php
+                                $me = (string) (auth()->user()->supabase_id ?? auth()->id());
+                                $isMine = in_array((string) ($order->assigned_to ?? ''), [$me], true)
+                                    || in_array((string) ($order->cashier_id ?? ''), [$me], true);
+                            @endphp
+                            @if($order->status === 'picked' && $isMine)
                                 <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                     @csrf <input type="hidden" name="note"><button type="submit" class="text-green-700 hover:underline font-bold"><i class="fas fa-hand-holding mr-1"></i>Served</button>
                                 </form>

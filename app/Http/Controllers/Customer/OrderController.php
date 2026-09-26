@@ -174,15 +174,24 @@ class OrderController extends Controller
             return back()->with('error', 'No orders found for this phone number.');
         }
 
-        // Fetch orders for this customer
+        // Fetch orders for this customer. Oldest first so the list reads
+        // as a history rather than jumping around between visits.
         $rawOrders = $this->supabase->query('orders', [
             'select' => '*, branch:branches(name), items:order_items(*, product:products(name)), notes:order_notes(*)',
             'customer_id' => "eq.{$customer['id']}",
-            'order' => 'created_at.desc',
+            'order' => 'created_at.asc',
             'limit' => 10,
         ]);
 
-        $orders = collect($rawOrders)->map(function ($o) {
+        // Every step the order has actually reached, oldest first. Legacy
+        // rows predate served_at, so completed_at is used as the fallback.
+        $steps = [
+            'created_at' => 'Order placed',
+            'assigned_at' => 'Order picked',
+            'served_at' => 'Order served',
+        ];
+
+        $orders = collect($rawOrders)->map(function ($o) use ($steps) {
             $o['items'] = collect($o['items'] ?? [])->map(function ($item) {
                 return (object) [
                     'quantity' => $item['quantity'],
@@ -191,8 +200,21 @@ class OrderController extends Controller
                     'product' => (object) ($item['product'] ?? []),
                 ];
             });
-            $o['notes'] = collect($o['notes'] ?? [])->map(fn($n) => (object) $n);
+            $o['notes'] = collect($o['notes'] ?? [])
+                ->sortBy('created_at')
+                ->map(fn($n) => (object) $n)
+                ->values();
             $o['branch'] = (object) ($o['branch'] ?? []);
+
+            $o['timeline'] = collect([
+                ['at' => $o['created_at'] ?? null, 'label' => $steps['created_at']],
+                ['at' => $o['assigned_at'] ?? null, 'label' => $steps['assigned_at']],
+                ['at' => $o['served_at'] ?? ($o['completed_at'] ?? null), 'label' => $steps['served_at']],
+            ])
+                ->filter(fn($s) => !empty($s['at']))
+                ->sortBy('at')
+                ->values();
+
             return (object) $o;
         });
 

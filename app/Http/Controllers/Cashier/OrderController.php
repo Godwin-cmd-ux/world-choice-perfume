@@ -42,11 +42,12 @@ class OrderController extends Controller
 
         $orders = $this->supabase->query('orders', $params);
 
-        // If no status filter, show pending and my assigned orders
+        // With no status filter, show the shared pending queue plus the
+        // orders this cashier picked. Once picked, an order belongs to
+        // that cashier alone.
         if (!$request->status) {
             $orders = array_filter($orders, function ($o) use ($userId) {
-                return ($o['status'] ?? '') === 'pending'
-                    || (($o['cashier_id'] ?? '') == $userId && in_array($o['status'] ?? '', ['assigned', 'ready', 'completed']));
+                return ($o['status'] ?? '') === 'pending' || $this->isOwnedBy($o, $userId);
             });
         }
 
@@ -84,7 +85,7 @@ class OrderController extends Controller
             });
         }
         if (isset($order['notes'])) {
-            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
+            $order['notes'] = collect($order['notes'])->sortBy('created_at')->map(fn($n) => (object) $n)->values();
         }
 
         return view('cashier.orders.show', ['order' => (object) $order]);
@@ -98,6 +99,23 @@ class OrderController extends Controller
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * Whether this cashier is the one holding the order.
+     *
+     * assigned_to is the canonical picker column; cashier_id is the older one
+     * and still the only value written on orders placed before it existed.
+     */
+    private function isOwnedBy($order, $userId): bool
+    {
+        foreach (['assigned_to', 'cashier_id'] as $column) {
+            if (isset($order[$column]) && (string) $order[$column] === (string) $userId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function pick(Request $request, $orderId)
@@ -117,7 +135,7 @@ class OrderController extends Controller
         $this->supabase->update('orders', [
             'cashier_id' => auth()->user()->supabase_id ?? auth()->id(),
             'assigned_to' => auth()->user()->supabase_id ?? auth()->id(),
-            'status' => 'assigned',
+            'status' => 'picked',
             'assigned_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $orderId, 'status' => 'pending']);
@@ -139,52 +157,30 @@ class OrderController extends Controller
             ->with('success', 'Order picked successfully. Prepare the order.');
     }
 
-    public function markReady(Request $request, $orderId)
+    /**
+     * Mark a picked order as served — the customer has received it.
+     * Records the sale, deducts branch stock, then closes the order.
+     */
+    public function serve(Request $request, $orderId)
     {
         $request->validate(['note' => 'required|string|max:2000']);
 
         $order = $this->supabase->find('orders', $orderId);
         $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
-        if (!$order || $order['cashier_id'] != $supabaseUserId || ($order['status'] ?? '') !== 'assigned') {
-            abort(403);
-        }
-
-        $this->supabase->update('orders', [
-            'status' => 'ready',
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $orderId]);
-
-        $note = $this->noteFromRequest($request);
-        $note['order_id'] = $orderId;
-        $this->supabase->insert('order_notes', $note);
-
-        $this->supabase->insert('audit_logs', [
-            'user_id' => auth()->user()->supabase_id ?? auth()->id(),
-            'action' => 'order_ready',
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        return back()->with('success', 'Order marked as ready for pickup.');
-    }
-
-    public function complete(Request $request, $orderId)
-    {
-        $request->validate(['note' => 'required|string|max:2000']);
-
-        $order = $this->supabase->find('orders', $orderId);
-        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
-        if (!$order || $order['cashier_id'] != $supabaseUserId || ($order['status'] ?? '') !== 'ready') {
+        if (!$order || !$this->isOwnedBy($order, $supabaseUserId) || ($order['status'] ?? '') !== 'picked') {
             abort(403);
         }
 
         try {
-            // 1. Mark order as completed
-            $this->supabase->update('orders', [
-                'status' => 'completed',
-                'completed_at' => now()->toIso8601String(),
+            // 1. Close the order
+            $serveData = [
+                'status' => 'served',
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $orderId]);
+            ];
+            if ($this->supabase->tableHasColumn('orders', 'served_at')) {
+                $serveData['served_at'] = now()->toIso8601String();
+            }
+            $this->supabase->update('orders', $serveData, ['id' => $orderId, 'status' => 'picked']);
 
             // Record the progress note
             $note = $this->noteFromRequest($request);
@@ -274,7 +270,7 @@ class OrderController extends Controller
                         'reference_type' => 'sale',
                         'reference_id' => $sale['id'],
                         'performed_by' => $supabaseUserId,
-                        'notes' => "Order {$order['order_number']} completed",
+                        'notes' => "Order {$order['order_number']} served",
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
                     ];
@@ -322,56 +318,16 @@ class OrderController extends Controller
             // 10. Audit log
             $this->supabase->insert('audit_logs', [
                 'user_id' => $supabaseUserId,
-                'action' => 'order_completed',
+                'action' => 'order_served',
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
             ]);
 
             return redirect()->route('cashier.orders.index')
-                ->with('success', 'Order completed and sale recorded!');
+                ->with('success', 'Order served and sale recorded!');
 
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Failed to complete order: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to serve order: ' . $e->getMessage()]);
         }
-    }
-
-    /**
-     * Mark order as served — customer has received the order.
-     * Prevents the customer from claiming the order again.
-     */
-    public function serve(Request $request, $orderId)
-    {
-        $request->validate(['note' => 'required|string|max:2000']);
-
-        $order = $this->supabase->find('orders', $orderId);
-        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
-
-        if (!$order || $order['cashier_id'] != $supabaseUserId || ($order['status'] ?? '') !== 'completed') {
-            abort(403);
-        }
-
-        $serveData = [
-            'status' => 'served',
-            'updated_at' => now()->toIso8601String(),
-        ];
-        if ($this->supabase->tableHasColumn('orders', 'served_at')) {
-            $serveData['served_at'] = now()->toIso8601String();
-        }
-
-        $this->supabase->update('orders', $serveData, ['id' => $orderId]);
-
-        $note = $this->noteFromRequest($request);
-        $note['order_id'] = $orderId;
-        $this->supabase->insert('order_notes', $note);
-
-        $this->supabase->insert('audit_logs', [
-            'user_id' => $supabaseUserId,
-            'action' => 'order_served',
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        return redirect()->route('cashier.orders.index')
-            ->with('success', 'Order marked as served. Customer has received their order.');
     }
 }

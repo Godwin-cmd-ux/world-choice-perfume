@@ -6,7 +6,7 @@
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <form method="GET" class="flex gap-2 flex-wrap">
         <a href="{{ route('branch-admin.orders.index') }}" style="background-color: #F89A1E;" class="px-3 py-1 rounded-full text-sm {{ !request('status') ? ' text-white' : 'bg-gray-200 text-gray-600' }}">All</a>
-        @foreach(['pending','assigned','ready','completed','served','cancelled'] as $s)
+        @foreach(['pending','picked','served'] as $s)
             <a href="{{ route('branch-admin.orders.index', ['status' => $s]) }}" class="px-3 py-1 rounded-full text-sm {{ request('status') === $s ? ' text-white' : 'bg-gray-200 text-gray-600' }}">{{ ucfirst($s) }}</a>
         @endforeach
     </form>
@@ -30,7 +30,7 @@
                         <td class="px-4">{{ $order->cashier?->name ?? '-' }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
-                            <span class="px-2 py-1 rounded-full text-xs {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">{{ ucfirst($order->status) }}</span>
+                            <span class="px-2 py-1 rounded-full text-xs {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">{{ ucfirst($order->status) }}</span>
                         </td>
                         <td class="px-4 text-center"><a href="{{ route('branch-admin.orders.show', $order->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
                     </tr>

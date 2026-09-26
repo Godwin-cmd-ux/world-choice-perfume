@@ -298,7 +298,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Orders
         Route::get('/orders', [App\Http\Controllers\BranchAdmin\OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/cancel', [App\Http\Controllers\BranchAdmin\OrderController::class, 'cancel'])->name('orders.cancel');
 
         // Expenses (view only — cashier commits expenses)
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -349,8 +348,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\Cashier\OrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/pick', [App\Http\Controllers\Cashier\OrderController::class, 'pick'])->name('orders.pick');
-        Route::post('/orders/{order}/ready', [App\Http\Controllers\Cashier\OrderController::class, 'markReady'])->name('orders.ready');
-        Route::post('/orders/{order}/complete', [App\Http\Controllers\Cashier\OrderController::class, 'complete'])->name('orders.complete');
         Route::post('/orders/{order}/serve', [App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
     });
 

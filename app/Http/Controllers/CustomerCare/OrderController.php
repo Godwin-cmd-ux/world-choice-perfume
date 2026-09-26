@@ -9,12 +9,16 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
     private const TRANSITIONS = [
-        'pending' => ['assigned', 'cancelled'],
-        'assigned' => ['ready', 'cancelled'],
-        'ready' => ['completed', 'cancelled'],
-        'completed' => ['served'],
+        'pending' => ['picked'],
+        'picked' => ['served'],
         'served' => [],
-        'cancelled' => [],
+    ];
+
+    /** Tab slug => the single status that tab shows. */
+    private const TABS = [
+        'pending' => 'pending',
+        'ongoing' => 'picked',
+        'completed' => 'served',
     ];
 
     private SupabaseService $supabase;
@@ -24,40 +28,96 @@ class OrderController extends Controller
         $this->supabase = new SupabaseService();
     }
 
+    /**
+     * Whether the order sits with this staff member.
+     *
+     * assigned_to is the canonical picker column, but orders created
+     * before that column existed only ever got cashier_id written, so
+     * both have to be checked or older orders would look unowned.
+     */
+    private function isOwnedBy($order, $userId): bool
+    {
+        foreach (['assigned_to', 'cashier_id'] as $column) {
+            if (isset($order[$column]) && (string) $order[$column] === (string) $userId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function cast($o)
+    {
+        if (isset($o['cashier']) && is_array($o['cashier'])) $o['cashier'] = (object) $o['cashier'];
+        if (isset($o['customer']) && is_array($o['customer'])) $o['customer'] = (object) $o['customer'];
+        if (isset($o['items'])) {
+            $o['items'] = collect($o['items'])->map(function ($item) {
+                if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
+                return (object) $item;
+            });
+        }
+        return (object) $o;
+    }
+
     public function index(Request $request)
     {
         $branchId = auth()->user()->branch_id;
+        $userId = auth()->user()->supabase_id ?? auth()->id();
+        $tab = array_key_exists($request->query('tab'), self::TABS) ? $request->query('tab') : 'pending';
+        $tabStatus = self::TABS[$tab];
 
-        $params = [
-            'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
+        // Three columns is a cheap pass over the branch and gives the tab
+        // counts without an extra round trip per tab.
+        $counts = ['pending' => 0, 'ongoing' => 0, 'completed' => 0];
+        foreach ($this->supabase->query('orders', [
+            'select' => 'status,assigned_to,cashier_id',
             'branch_id' => "eq.{$branchId}",
-            'order' => 'created_at.desc',
-            'limit' => 50,
-        ];
-
-        if ($request->status) {
-            $params['status'] = "eq.{$request->status}";
+            'limit' => 1000,
+        ]) as $row) {
+            $status = $row['status'] ?? 'pending';
+            if ($status === 'pending') {
+                $counts['pending']++;
+            } elseif (in_array($status, ['picked', 'served'], true) && $this->isOwnedBy($row, $userId)) {
+                $counts[$status === 'picked' ? 'ongoing' : 'completed']++;
+            }
         }
 
-        $orders = collect($this->supabase->query('orders', $params))->map(function ($o) {
-            if (isset($o['cashier']) && is_array($o['cashier'])) $o['cashier'] = (object) $o['cashier'];
-            if (isset($o['customer']) && is_array($o['customer'])) $o['customer'] = (object) $o['customer'];
-            if (isset($o['items'])) {
-                $o['items'] = collect($o['items'])->map(function ($item) {
-                    if (isset($item['product']) && is_array($item['product'])) $item['product'] = (object) $item['product'];
-                    return (object) $item;
-                });
-            }
-            return (object) $o;
-        });
+        $rows = $this->supabase->query('orders', [
+            'select' => '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))',
+            'branch_id' => "eq.{$branchId}",
+            'status' => "eq.{$tabStatus}",
+            'order' => 'created_at.desc',
+            'limit' => 200,
+        ]);
 
-        return view('customer-care.orders.index', ['orders' => $orders, 'transitions' => self::TRANSITIONS, 'userId' => auth()->user()->supabase_id ?? auth()->id()]);
+        // Pending work belongs to whoever gets there first. Picked and
+        // served work belongs to the staff member who picked it, so
+        // orders sitting with a colleague never reach this list.
+        if ($tabStatus !== 'pending') {
+            $rows = array_values(array_filter($rows, fn($o) => $this->isOwnedBy($o, $userId)));
+        }
+
+        $orders = collect($rows)->map(fn($o) => $this->cast($o));
+
+        return view('customer-care.orders.index', [
+            'orders' => $orders,
+            'counts' => $counts,
+            'tab' => $tab,
+            'transitions' => self::TRANSITIONS,
+            'userId' => $userId,
+        ]);
     }
 
     public function show($orderId)
     {
         $order = $this->supabase->find('orders', $orderId, '*, cashier:users!orders_cashier_id_fkey(id,name), customer:customers(*), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name,address), notes:order_notes(*)');
         if (!$order || $order['branch_id'] != auth()->user()->branch_id) {
+            abort(404);
+        }
+
+        // An order another staff member has picked is not visible here at all.
+        if (($order['status'] ?? 'pending') !== 'pending'
+            && !$this->isOwnedBy($order, auth()->user()->supabase_id ?? auth()->id())) {
             abort(404);
         }
 
@@ -71,7 +131,7 @@ class OrderController extends Controller
             });
         }
         if (isset($order['notes'])) {
-            $order['notes'] = collect($order['notes'])->map(fn($n) => (object) $n);
+            $order['notes'] = collect($order['notes'])->sortBy('created_at')->map(fn($n) => (object) $n)->values();
         }
 
         return view('customer-care.orders.show', ['order' => (object) $order, 'transitions' => self::TRANSITIONS, 'userId' => auth()->user()->supabase_id ?? auth()->id()]);
@@ -80,7 +140,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, $orderId)
     {
         $request->validate([
-            'status' => 'required|in:pending,assigned,ready,completed,served,cancelled',
+            'status' => 'required|in:pending,picked,served',
             'note' => 'required|string|max:2000',
         ]);
 
@@ -97,27 +157,21 @@ class OrderController extends Controller
             return back()->with('error', 'Invalid status transition.');
         }
 
-        $lockOwner = $order['assigned_to'] ?? $order['cashier_id'] ?? null;
-        if ($current !== 'pending' && $lockOwner && (string) $lockOwner !== (string) $userId) {
-            return back()->with('error', 'This order is assigned to another staff member. Only they can update it.');
+        if ($current !== 'pending' && !$this->isOwnedBy($order, $userId)) {
+            return back()->with('error', 'This order was picked by another staff member. Only they can update it.');
         }
 
         $updateData = [
             'status' => $next,
             'updated_at' => now()->toIso8601String(),
         ];
-        if ($next === 'assigned') {
+        if ($next === 'picked') {
             $updateData['assigned_to'] = $userId;
+            $updateData['cashier_id'] = $userId;
             $updateData['assigned_at'] = now()->toIso8601String();
         }
-        if ($next === 'completed') {
-            $updateData['completed_at'] = now()->toIso8601String();
-        }
-        if ($next === 'served' && $this->supabase->tableHasColumn('orders', 'served_at')) {
+        if ($next === 'served') {
             $updateData['served_at'] = now()->toIso8601String();
-        }
-        if ($next === 'cancelled') {
-            $updateData['cancelled_at'] = now()->toIso8601String();
         }
 
         $updated = $this->supabase->update('orders', $updateData, ['id' => $orderId, 'status' => $current]);

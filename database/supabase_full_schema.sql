@@ -49,7 +49,7 @@ CREATE TYPE user_role AS ENUM ('super_admin', 'branch_admin', 'cashier', 'stock_
 CREATE TYPE user_status AS ENUM ('pending', 'approved', 'rejected', 'active');
 CREATE TYPE stock_movement_type AS ENUM ('entry', 'sale', 'return', 'adjustment', 'damage', 'missing');
 CREATE TYPE payment_status AS ENUM ('pending', 'paid', 'refunded');
-CREATE TYPE order_status AS ENUM ('pending', 'assigned', 'ready', 'completed', 'cancelled');
+CREATE TYPE order_status AS ENUM ('pending', 'picked', 'served');
 CREATE TYPE expense_category AS ENUM ('electricity', 'water', 'rent', 'transport', 'cleaning', 'packaging', 'other');
 CREATE TYPE cashier_account_status AS ENUM ('pending', 'balanced', 'loss', 'surplus');
 CREATE TYPE discrepancy_reason AS ENUM ('approved_expense', 'refund', 'discount', 'genuine_shortage', 'surplus', 'damaged_stock', 'missing_stock');

@@ -103,7 +103,7 @@
                 <div class="relative w-[26rem] h-[26rem]">
                     <!-- Background logo (square, rounded, blurred, translucent) -->
                     <div class="absolute inset-0 overflow-hidden rounded-[3rem] shadow-[0_0_90px_rgba(212,175,55,0.12)]">
-                        <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[6px] opacity-40">
+                        <img src="{{ asset('dark_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[6px] opacity-40">
                         <!-- Translucent blur layer over the logo -->
                         <div class="absolute inset-0 bg-dark-950/40 backdrop-blur-md"></div>
                         <!-- Soft gold glow so the backdrop blends into the hero -->

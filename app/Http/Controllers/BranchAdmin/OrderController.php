@@ -68,44 +68,4 @@ class OrderController extends Controller
 
         return view('branch-admin.orders.show', ['order' => (object) $order]);
     }
-
-    public function cancel(Request $request, $orderId)
-    {
-        $request->validate(['note' => 'required|string|max:2000']);
-
-        $order = $this->supabase->find('orders', $orderId);
-        if (!$order) abort(404);
-
-        if (in_array($order['status'] ?? '', ['completed', 'served'])) {
-            return back()->with('error', 'Cannot cancel a completed or served order.');
-        }
-
-        $this->supabase->update('orders', [
-            'status' => 'cancelled',
-            'cancelled_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $orderId]);
-
-        $this->supabase->insert('order_notes', [
-            'order_id' => $orderId,
-            'note' => 'Order cancelled: ' . $request->note,
-            'created_by' => auth()->user()->supabase_id ?? auth()->id(),
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        (new \App\Services\AuditService())->recordCriticalAction(
-            'order_cancelled',
-            'order_cancelled',
-            'Order Cancelled',
-            "Order {$order['order_number']} was cancelled.",
-            ['order_id' => $orderId, 'order_number' => $order['order_number'], 'total' => $order['total'] ?? null],
-            'orders',
-            (string) $orderId,
-            ['status' => $order['status'] ?? ''],
-            ['status' => 'cancelled']
-        );
-
-        return back()->with('success', 'Order cancelled.');
-    }
 }

@@ -346,20 +346,17 @@ VALUES
 -- ============================================================================
 INSERT INTO orders (order_number, branch_id, cashier_id, customer_id, status, total, delivery_notes, assigned_at, created_at, updated_at)
 VALUES
-    ('ORD-000001', 1, 6, 1, 'completed', 248000, 'Deliver to 12 Admiralty Way, Lekki', DATE_TRUNC('day', NOW()) - INTERVAL '8 days', DATE_TRUNC('day', NOW()) - INTERVAL '10 days', NOW()),
+    ('ORD-000001', 1, 6, 1, 'served', 248000, 'Deliver to 12 Admiralty Way, Lekki', DATE_TRUNC('day', NOW()) - INTERVAL '8 days', DATE_TRUNC('day', NOW()) - INTERVAL '10 days', NOW()),
     ('ORD-000002', 1, NULL, 3, 'pending', 350000, 'Gift wrapping needed, deliver to Victoria Island office', NULL, DATE_TRUNC('day', NOW()) - INTERVAL '2 days', NOW()),
-    ('ORD-000003', 1, 7, 5, 'ready', 190000, 'Call before delivery', DATE_TRUNC('day', NOW()) - INTERVAL '1 day', DATE_TRUNC('day', NOW()) - INTERVAL '3 days', NOW()),
-    ('ORD-000004', 2, 8, 4, 'completed', 95000, 'Deliver to Chevron Estate, Lekki', DATE_TRUNC('day', NOW()) - INTERVAL '4 days', DATE_TRUNC('day', NOW()) - INTERVAL '6 days', NOW()),
+    ('ORD-000003', 1, 7, 5, 'picked', 190000, 'Call before delivery', DATE_TRUNC('day', NOW()) - INTERVAL '1 day', DATE_TRUNC('day', NOW()) - INTERVAL '3 days', NOW()),
+    ('ORD-000004', 2, 8, 4, 'served', 95000, 'Deliver to Chevron Estate, Lekki', DATE_TRUNC('day', NOW()) - INTERVAL '4 days', DATE_TRUNC('day', NOW()) - INTERVAL '6 days', NOW()),
     ('ORD-000005', 2, NULL, 7, 'pending', 250000, 'Deliver to Mwanza office', NULL, DATE_TRUNC('day', NOW()) - INTERVAL '1 day', NOW()),
-    ('ORD-000006', 3, 9, 9, 'assigned', 180000, 'Deliver to Stone Town, Zanzibar', DATE_TRUNC('day', NOW()) - INTERVAL '1 day', DATE_TRUNC('day', NOW()) - INTERVAL '2 days', NOW()),
-    ('ORD-000007', 1, NULL, 10, 'cancelled', 138000, 'Customer cancelled', NULL, DATE_TRUNC('day', NOW()) - INTERVAL '5 days', NOW());
+    ('ORD-000006', 3, 9, 9, 'picked', 180000, 'Deliver to Stone Town, Zanzibar', DATE_TRUNC('day', NOW()) - INTERVAL '1 day', DATE_TRUNC('day', NOW()) - INTERVAL '2 days', NOW()),
+    ('ORD-000007', 1, NULL, 10, 'pending', 138000, 'Awaiting confirmation from customer', NULL, DATE_TRUNC('day', NOW()) - INTERVAL '5 days', NOW());
 
--- Update cancelled order timestamp
-UPDATE orders SET cancelled_at = created_at + INTERVAL '1 day' WHERE order_number = 'ORD-000007';
-
--- Update completed orders
-UPDATE orders SET completed_at = created_at + INTERVAL '2 days' WHERE order_number = 'ORD-000001';
-UPDATE orders SET completed_at = created_at + INTERVAL '3 days' WHERE order_number = 'ORD-000004';
+-- Update served orders
+UPDATE orders SET served_at = created_at + INTERVAL '2 days' WHERE order_number = 'ORD-000001';
+UPDATE orders SET served_at = created_at + INTERVAL '3 days' WHERE order_number = 'ORD-000004';
 
 -- ============================================================================
 -- ORDER ITEMS

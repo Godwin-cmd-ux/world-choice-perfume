@@ -75,7 +75,7 @@ class StockManagerController extends Controller
         ]);
         $openOrders = $this->supabase->count('orders', [
             'branch_id' => "eq.{$branchId}",
-            'status' => 'in.(pending,assigned,ready)',
+            'status' => 'in.(pending,picked)',
         ]);
         $ordersToday = $this->supabase->count('orders', [
             'branch_id' => "eq.{$branchId}",

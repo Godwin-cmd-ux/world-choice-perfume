@@ -52,17 +52,13 @@ class DashboardController extends Controller
             }
         }
 
-        // 3. Assigned (in-progress) orders per branch
-        $assignedOrdersRaw = $this->supabase->queryFresh('orders', [
+        // 3. Picked (in-progress) orders per branch
+        $pickedOrdersRaw = $this->supabase->queryFresh('orders', [
             'select' => 'id,branch_id,status',
-            'status' => 'eq.assigned',
-        ]);
-        $readyOrdersRaw = $this->supabase->queryFresh('orders', [
-            'select' => 'id,branch_id,status',
-            'status' => 'eq.ready',
+            'status' => 'eq.picked',
         ]);
         $inProgressByBranch = [];
-        foreach (array_merge($assignedOrdersRaw, $readyOrdersRaw) as $o) {
+        foreach ($pickedOrdersRaw as $o) {
             $bid = $o['branch_id'] ?? null;
             if ($bid) {
                 $inProgressByBranch[$bid] = ($inProgressByBranch[$bid] ?? 0) + 1;

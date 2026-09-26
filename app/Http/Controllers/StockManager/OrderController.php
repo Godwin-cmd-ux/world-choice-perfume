@@ -10,12 +10,9 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
     private const TRANSITIONS = [
-        'pending' => ['assigned', 'cancelled'],
-        'assigned' => ['ready', 'cancelled'],
-        'ready' => ['completed', 'cancelled'],
-        'completed' => ['served'],
+        'pending' => ['picked'],
+        'picked' => ['served'],
         'served' => [],
-        'cancelled' => [],
     ];
 
     private SupabaseService $supabase;
@@ -25,6 +22,23 @@ class OrderController extends Controller
     {
         $this->supabase = new SupabaseService();
         $this->scope = new StockManagerScope($this->supabase);
+    }
+
+    /**
+     * Whether this staff member is the one holding the order.
+     *
+     * assigned_to is the canonical picker column; cashier_id is the older one
+     * and still the only value written on orders placed before it existed.
+     */
+    private function isOwnedBy($order, $userId): bool
+    {
+        foreach (['assigned_to', 'cashier_id'] as $column) {
+            if (isset($order[$column]) && (string) $order[$column] === (string) $userId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function index(Request $request)
@@ -93,7 +107,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, $orderId)
     {
         $request->validate([
-            'status' => 'required|in:pending,assigned,ready,completed,served,cancelled',
+            'status' => 'required|in:pending,picked,served',
             'note' => 'required|string|max:2000',
         ]);
 
@@ -110,27 +124,21 @@ class OrderController extends Controller
             return back()->with('error', 'Invalid status transition.');
         }
 
-        $lockOwner = $order['assigned_to'] ?? $order['cashier_id'] ?? null;
-        if ($current !== 'pending' && $lockOwner && (string) $lockOwner !== (string) $userId) {
-            return back()->with('error', 'This order is assigned to another staff member. Only they can update it.');
+        if ($current !== 'pending' && !$this->isOwnedBy($order, $userId)) {
+            return back()->with('error', 'This order was picked by another staff member. Only they can update it.');
         }
 
         $updateData = [
             'status' => $next,
             'updated_at' => now()->toIso8601String(),
         ];
-        if ($next === 'assigned') {
+        if ($next === 'picked') {
             $updateData['assigned_to'] = $userId;
+            $updateData['cashier_id'] = $userId;
             $updateData['assigned_at'] = now()->toIso8601String();
-        }
-        if ($next === 'completed') {
-            $updateData['completed_at'] = now()->toIso8601String();
         }
         if ($next === 'served' && $this->supabase->tableHasColumn('orders', 'served_at')) {
             $updateData['served_at'] = now()->toIso8601String();
-        }
-        if ($next === 'cancelled') {
-            $updateData['cancelled_at'] = now()->toIso8601String();
         }
 
         // Conditional update prevents two staff assigning the same order at once

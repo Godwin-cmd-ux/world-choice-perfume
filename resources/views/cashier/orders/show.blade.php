@@ -10,7 +10,7 @@
                 <h2 class="text-xl font-bold">{{ $order->order_number }}</h2>
                 <p class="text-sm text-gray-500">{{ $order->branch->name }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'assigned' => 'bg-blue-100 text-blue-700', 'ready' => 'bg-green-100 text-green-700', 'completed' => 'bg-purple-100 text-purple-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'cancelled' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                 {{ ucfirst($order->status) }}
             </span>
         </div>
@@ -33,7 +33,7 @@
             <div class="mt-4 border-t pt-3">
                 <h3 class="text-sm font-semibold mb-2"><i class="fas fa-sticky-note mr-1 text-amber-600"></i>Order Updates</h3>
                 <div class="space-y-2">
-                    @foreach(collect($order->notes)->sortByDesc('created_at') as $note)
+                    @foreach(collect($order->notes)->sortBy('created_at') as $note)
                         <div class="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
                             <p>{{ $note->note }}</p>
                             <p class="text-xs text-gray-400 mt-1">{{ \Carbon\Carbon::parse($note->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</p>
@@ -43,7 +43,7 @@
             </div>
         @endif
 
-        @if(in_array($order->status, ['pending', 'assigned', 'ready', 'completed']))
+        @if(in_array($order->status, ['pending', 'picked']))
             <div class="mt-4 border-t pt-3">
                 <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
                 <p class="text-xs text-gray-400 mb-2">Enter what point you have reached for this order before changing the status.</p>
@@ -59,19 +59,7 @@
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-hand-pointer mr-1"></i> Pick Order</button>
                 </form>
             @endif
-            @if($order->status === 'assigned' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                <form action="{{ route('cashier.orders.ready', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
-                    <input type="hidden" name="note">
-                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check mr-1"></i> Mark Ready</button>
-                </form>
-            @endif
-            @if($order->status === 'ready' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
-                <form action="{{ route('cashier.orders.complete', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
-                    <input type="hidden" name="note">
-                    <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg"><i class="fas fa-check-double mr-1"></i> Complete Order</button>
-                </form>
-            @endif
-            @if($order->status === 'completed' && $order->cashier_id == (auth()->user()->supabase_id ?? auth()->id()))
+            @if($order->status === 'picked' && (in_array((string) ($order->assigned_to ?? ''), [(string) (auth()->user()->supabase_id ?? auth()->id())], true) || in_array((string) ($order->cashier_id ?? ''), [(string) (auth()->user()->supabase_id ?? auth()->id())], true)))
                 <form action="{{ route('cashier.orders.serve', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
                     <input type="hidden" name="note">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-hand-holding mr-1"></i> Mark as Served</button>
