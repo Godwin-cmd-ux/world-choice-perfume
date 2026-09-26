@@ -106,18 +106,23 @@
     </div>
 
     <div id="bottle-items-container" class="space-y-3">
-        <div class="bottle-item-row flex gap-2 items-start">
-            <select name="empty_bottles[0][volume]" class="w-32 px-3 py-2 border rounded-lg text-sm bottle-volume-select">
+        {{-- Each line wraps instead of pushing past the card. The fixed
+             widths that were here (w-32 + w-52 + w-20 + w-28) added up to more
+             than the column is wide, so a filled line spilled out of the card.
+             The selects are now flexible with a readable minimum, and only
+             the small controls hold their size. --}}
+        <div class="bottle-item-row flex flex-wrap gap-2 items-start">
+            <select name="empty_bottles[0][volume]" class="flex-1 min-w-[9rem] max-w-full px-3 py-2 border rounded-lg text-sm bottle-volume-select">
                 <option value="">-- Volume --</option>
                 @foreach(\App\Services\BottleStockService::VOLUMES as $v)
                     <option value="{{ $v }}" data-stock="{{ $bottleStock[$v] ?? 0 }}">{{ $v }}ml ({{ $bottleStock[$v] ?? 0 }} in stock)</option>
                 @endforeach
             </select>
-            <select name="empty_bottles[0][variant]" class="w-52 px-3 py-2 border rounded-lg text-sm bottle-variant-select hidden"></select>
-            <input type="number" name="empty_bottles[0][quantity]" value="1" min="1" class="w-20 px-3 py-2 border rounded-lg text-sm text-center bottle-qty-input">
-            <input type="number" name="empty_bottles[0][price]" step="0.01" min="0" placeholder="Price (TZS)" class="flex-1 px-3 py-2 border rounded-lg text-sm bottle-price-input">
-            <span class="bottle-line-total font-medium text-sm w-28 text-right pt-2">TZS 0</span>
-            <button type="button" onclick="removeBottleRow(this)" class="text-red-500 hover:text-red-700 px-2 pt-2"><i class="fas fa-times"></i></button>
+            <select name="empty_bottles[0][variant]" class="flex-1 min-w-[11rem] max-w-full px-3 py-2 border rounded-lg text-sm bottle-variant-select hidden"></select>
+            <input type="number" name="empty_bottles[0][quantity]" value="1" min="1" class="w-20 shrink-0 px-3 py-2 border rounded-lg text-sm text-center bottle-qty-input">
+            <input type="number" name="empty_bottles[0][price]" step="0.01" min="0" placeholder="Price (TZS)" class="flex-1 min-w-[7rem] max-w-full px-3 py-2 border rounded-lg text-sm bottle-price-input">
+            <span class="bottle-line-total font-medium text-sm w-24 shrink-0 text-right pt-2">TZS 0</span>
+            <button type="button" onclick="removeBottleRow(this)" class="text-red-500 hover:text-red-700 px-2 pt-2 shrink-0"><i class="fas fa-times"></i></button>
         </div>
     </div>
 
