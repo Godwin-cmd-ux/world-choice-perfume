@@ -557,28 +557,19 @@ class SupabaseService
     }
 
     /**
-     * Run multiple queries in parallel using Laravel's pool.
-     * Returns an array of results in the same order as the queries.
+     * Run several queries and return the results in the order they were given.
+     *
+     * Sequential on purpose: Http::pool() only collects requests issued through the
+     * pool instance it injects, so callbacks that build their own request here would
+     * be discarded and the pool would come back empty.
      */
     public function parallel(array $callbacks): array
     {
-        try {
-            $pool = Http::pool(function ($pool) use ($callbacks) {
-                $results = [];
-                foreach ($callbacks as $i => $callback) {
-                    $results[$i] = $callback();
-                }
-                return $results;
-            });
-            return $pool;
-        } catch (\Exception $e) {
-            // Fallback: sequential execution
-            $results = [];
-            foreach ($callbacks as $i => $callback) {
-                $results[$i] = $callback();
-            }
-            return $results;
+        $results = [];
+        foreach ($callbacks as $key => $callback) {
+            $results[$key] = $callback();
         }
+        return $results;
     }
 
     /**

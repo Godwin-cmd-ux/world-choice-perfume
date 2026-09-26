@@ -50,6 +50,21 @@
             </div>
         </div>
 
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="font-semibold text-sm mb-1"><i class="fas fa-receipt mr-1 text-amber-600"></i> Summary</h3>
+            <p class="text-[10px] text-gray-400 mb-4">{{ $selectedName }}</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Transactions</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ $transactions->count() }}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Total Spent</p>
+                    <p class="text-lg font-semibold text-green-600">{{ number_format($totalSpent) }}</p>
+                </div>
+            </div>
+        </div>
+
         <div class="flex gap-3">
             <a href="{{ route('customer-care.customers.index') }}"
                class="flex-1 text-center px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
@@ -62,48 +77,37 @@
         </div>
     </div>
 
-    {{-- Visits per branch + purchases --}}
+    {{-- Transactions for the selected branch --}}
     <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-            <div class="p-4 border-b">
-                <h3 class="font-semibold text-sm"><i class="fas fa-map-marker-alt mr-1 text-amber-600"></i> Last Visit by Branch</h3>
-                <p class="text-[10px] text-gray-400">Most recent date this client appeared at each branch (from walk-in sales).</p>
+        {{-- Branch switcher: only branches this client actually transacted at --}}
+        @if($branchTabs)
+            <div class="bg-white rounded-xl shadow px-4 pt-4 pb-0">
+                <h3 class="font-semibold text-sm mb-1"><i class="fas fa-map-marker-alt mr-1 text-amber-600"></i> Transactions by Branch</h3>
+                <p class="text-[10px] text-gray-400 mb-3">Pick a branch to see what this client bought there.</p>
+                <div class="flex items-center gap-1 border-b border-gray-200 -mb-px overflow-x-auto">
+                    <a href="{{ route('customer-care.customers.show', $customer->id) }}?branch=all"
+                       class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $selected === 'all' ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                        <i class="fas fa-store mr-1"></i> All Branches
+                        <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $selected === 'all' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $branchTabs->sum('count') }}</span>
+                    </a>
+                    @foreach($branchTabs as $tab)
+                        <a href="{{ route('customer-care.customers.show', $customer->id) }}?branch={{ $tab->id }}"
+                           class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $selected === (string) $tab->id ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
+                           title="Last visit {{ $tab->last_visit ? \Carbon\Carbon::parse($tab->last_visit)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '—' }}">
+                            {{ $tab->name }}
+                            <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $selected === (string) $tab->id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $tab->count }}</span>
+                        </a>
+                    @endforeach
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50"><tr>
-                        <th class="text-left py-3 px-4">Branch</th>
-                        <th class="text-left px-4">Location</th>
-                        <th class="text-left px-4">Last Visit</th>
-                    </tr></thead>
-                    <tbody>
-                        @forelse($branchVisits as $visit)
-                            <tr class="border-t hover:bg-gray-50">
-                                <td class="py-3 px-4 font-medium text-gray-700">
-                                    <i class="fas fa-store mr-1 text-gray-400"></i>{{ $visit->branch->name }}
-                                </td>
-                                <td class="px-4 text-gray-500">{{ $visit->branch->address ?? '—' }}</td>
-                                <td class="px-4">
-                                    @if($visit->last_visit)
-                                        <span class="text-gray-600">{{ \Carbon\Carbon::parse($visit->last_visit)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</span>
-                                        <span class="text-[10px] text-gray-400 block">{{ \Carbon\Carbon::parse($visit->last_visit)->setTimezone('Africa/Dar_es_Salaam')->diffForHumans() }}</span>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="3" class="py-8 text-center text-gray-400">No walk-in visits recorded yet.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        @endif
 
         <div class="bg-white rounded-xl shadow overflow-hidden">
-            <div class="p-4 border-b">
-                <h3 class="font-semibold text-sm"><i class="fas fa-box-open mr-1 text-amber-600"></i> Items Purchased</h3>
-                <p class="text-[10px] text-gray-400">Every product this client has bought across all branches.</p>
+            <div class="p-4 border-b flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-semibold text-sm"><i class="fas fa-box-open mr-1 text-amber-600"></i> Items Purchased</h3>
+                    <p class="text-[10px] text-gray-400">Every product this client has bought at {{ $selectedName }}.</p>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -128,7 +132,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="py-8 text-center text-gray-400">No items purchased yet.</td></tr>
+                            <tr><td colspan="6" class="py-8 text-center text-gray-400">No items purchased here yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -137,52 +141,73 @@
 
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="p-4 border-b">
-                <h3 class="font-semibold text-sm"><i class="fas fa-receipt mr-1 text-amber-600"></i> Purchase History</h3>
+                <h3 class="font-semibold text-sm"><i class="fas fa-receipt mr-1 text-amber-600"></i> Transaction History</h3>
+                <p class="text-[10px] text-gray-400">Oldest first at the top, latest at the bottom{{ $branchTabs ? ' — ' . $selectedName : '' }}.</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50"><tr>
-                        <th class="text-left py-3 px-4">Sale #</th>
+                        <th class="text-left py-3 px-4">#</th>
+                        <th class="text-left px-4">Sale #</th>
                         <th class="text-left px-4">Items</th>
-                        <th class="text-left px-4">Branch</th>
+                        @if($selected === 'all')
+                            <th class="text-left px-4">Branch</th>
+                        @endif
                         <th class="text-center px-4">Type</th>
                         <th class="text-right px-4">Total</th>
                         <th class="text-left px-4">Date</th>
                     </tr></thead>
                     <tbody>
-                        @forelse($recentSales as $sale)
+                        @forelse($transactions as $txn)
                             @php
-                                $itemLine = collect($sale->items)->map(fn ($i) => $i->name . ' ×' . $i->quantity);
-                                $extraItems = max(collect($sale->items)->count() - 3, 0);
+                                $itemLine = collect($txn->items)->map(fn ($i) => $i->name . ' ×' . $i->quantity);
+                                $extraItems = max(collect($txn->items)->count() - 3, 0);
                             @endphp
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="py-3 px-4 font-medium">
-                                    @if(($sale->branch_id ?? 0) === (int) (auth()->user()->branch_id ?? 0))
-                                        <a href="{{ route('customer-care.sales.show', $sale->id) }}"
-                                           class="text-blue-600 hover:text-blue-800 underline">{{ $sale->sale_number }}</a>
+                                <td class="py-3 px-4 text-xs text-gray-400">{{ $loop->iteration }}</td>
+                                <td class="px-4 font-medium">
+                                    @if($txn->branch_id === (int) (auth()->user()->branch_id ?? 0))
+                                        <a href="{{ route('customer-care.sales.show', $txn->id) }}"
+                                           class="text-blue-600 hover:text-blue-800 underline">{{ $txn->sale_number }}</a>
                                     @else
-                                        <span class="text-gray-700">{{ $sale->sale_number }}</span>
+                                        <span class="text-gray-700">{{ $txn->sale_number }}</span>
                                     @endif
                                 </td>
                                 <td class="px-4 text-gray-600">
                                     {{ $itemLine->take(3)->implode(', ') ?: '—' }}
                                     @if($extraItems > 0)<span class="text-xs text-gray-400"> +{{ $extraItems }} more</span>@endif
                                 </td>
-                                <td class="px-4 text-gray-500">{{ $sale->branch_name ?? '—' }}</td>
+                                @if($selected === 'all')
+                                    <td class="px-4 text-gray-500">{{ $txn->branch_name ?? '—' }}</td>
+                                @endif
                                 <td class="px-4 text-center">
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ $sale->sale_type === 'online' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                                        {{ ucfirst($sale->sale_type ?? 'walk-in') }}
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ ($txn->sale_type ?? 'walk-in') === 'online' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                                        {{ ucfirst($txn->sale_type ?? 'walk-in') }}
                                     </span>
                                 </td>
-                                <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($sale->total) }}</td>
-                                <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
+                                <td class="px-4 text-right font-medium text-green-600">TZS {{ number_format($txn->total) }}</td>
+                                <td class="px-4 text-gray-500">
+                                    <span class="text-gray-600">{{ \Carbon\Carbon::parse($txn->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</span>
+                                    <span class="text-[10px] text-gray-400 block">{{ \Carbon\Carbon::parse($txn->created_at)->setTimezone('Africa/Dar_es_Salaam')->diffForHumans() }}</span>
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="py-8 text-center text-gray-400">No purchases recorded yet.</td></tr>
+                            <tr>
+                                <td colspan="7" class="py-12 text-center text-gray-400">
+                                    <i class="fas fa-receipt text-3xl mb-2 block"></i>
+                                    No transactions{{ $branchTabs ? ' at ' . $selectedName : '' }} yet.
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            @if($transactions->isNotEmpty())
+                <div class="px-4 py-3 bg-gray-50 border-t text-xs text-gray-500 flex items-center justify-between">
+                    <span>{{ $transactions->count() }} {{ \Illuminate\Support\Str::plural('transaction', $transactions->count()) }} — oldest first</span>
+                    <span class="font-medium text-green-600">TZS {{ number_format($totalSpent) }}</span>
+                </div>
+            @endif
         </div>
     </div>
 </div>
