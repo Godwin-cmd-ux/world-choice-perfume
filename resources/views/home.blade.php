@@ -101,32 +101,16 @@
             <!-- Hero Visual: square logo sunk into the background behind a translucent blur -->
             <div class="hidden lg:flex justify-center items-center relative">
                 <div class="relative w-[26rem] h-[26rem]">
-                    <!-- Background logo (square, rounded, blurred, translucent) -->
+                    <!-- Background logo (square, rounded, softly blurred, translucent) -->
                     <div class="absolute inset-0 overflow-hidden rounded-[3rem] shadow-[0_0_90px_rgba(212,175,55,0.12)]">
-                        <img src="{{ asset('dark_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[6px] opacity-40">
-                        <!-- Translucent blur layer over the logo -->
-                        <div class="absolute inset-0 bg-dark-950/40 backdrop-blur-md"></div>
+                        <img src="{{ asset('dark_logo.jpeg') }}" alt="World Choice Perfume" class="w-full h-full object-cover scale-110 blur-[2px] opacity-55">
+                        <!-- Light wash so the mark reads through the water instead of vanishing -->
+                        <div class="absolute inset-0 bg-dark-950/25 backdrop-blur-[3px]"></div>
                         <!-- Soft gold glow so the backdrop blends into the hero -->
-                        <div class="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-transparent to-dark-950/60"></div>
-                        <!-- Vignette so the rounded edges melt softly into the background -->
-                        <div class="absolute inset-0 rounded-[3rem] shadow-[inset_0_0_60px_rgba(10,10,15,0.55)]"></div>
+                        <div class="absolute inset-0 bg-gradient-to-br from-gold-500/10 via-transparent to-dark-950/50"></div>
+                        <!-- Vignette so the rounded edges melt into the deep water -->
+                        <div class="absolute inset-0 rounded-[3rem] shadow-[inset_0_0_70px_rgba(8,16,30,0.45)]"></div>
                         <div class="absolute inset-0 rounded-[3rem] ring-1 ring-gold-500/20"></div>
-                    </div>
-                    <!-- Rating & location cards sit in front of the backdrop -->
-                    <div class="absolute top-8 right-6 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
-                        <div class="flex items-center gap-2">
-                            <div class="flex -space-x-1">
-                                @for($i = 0; $i < 5; $i++)
-                                    <i class="fas fa-star text-gold-400 text-xs"></i>
-                                @endfor
-                            </div>
-                            <span class="text-xs font-semibold text-white">4.9 Rating</span>
-                        </div>
-                        <p class="text-[10px] text-gray-400 mt-1">Trusted by 10,000+ customers</p>
-                    </div>
-                    <div class="absolute bottom-8 left-6 bg-dark-800/90 backdrop-blur-sm border border-dark-600 rounded-xl px-4 py-3 shadow-xl">
-                        <p class="text-xs font-semibold text-gold-400">{{ $branches->count() }} Location{{ $branches->count() !== 1 ? 's' : '' }}</p>
-                        <p class="text-[10px] text-gray-400">Across Tanzania</p>
                     </div>
                 </div>
             </div>
