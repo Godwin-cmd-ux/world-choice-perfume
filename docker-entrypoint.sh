@@ -88,6 +88,15 @@ write_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS:-}"
 write_env MAIL_FROM_NAME "${MAIL_FROM_NAME:-}"
 write_env RESEND_API_KEY "${RESEND_API_KEY:-}"
 
+# The resend transport reads RESEND_API_KEY from the environment, so selecting
+# it without a key does not fail at boot, it fails on every single send. That
+# reads like the mail feature is broken rather than misconfigured, so it is
+# called out loudly here instead.
+if [ "${MAIL_MAILER:-}" = "resend" ] && [ -z "${RESEND_API_KEY:-}" ]; then
+    echo "!!! WARNING: MAIL_MAILER is 'resend' but RESEND_API_KEY is not set."
+    echo "!!! Every outgoing mail will fail. Add RESEND_API_KEY on Render."
+fi
+
 echo "=== ENV VAR CHECK ==="
 echo "SUPABASE_URL: ${SUPABASE_URL:-(NOT SET!)}"
 echo "SUPABASE_ANON_KEY length: $(echo -n "$SUPABASE_ANON_KEY" | wc -c)"
