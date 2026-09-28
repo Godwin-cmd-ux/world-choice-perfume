@@ -7,6 +7,15 @@
                 'status' => 'eq.pending',
             ]);
         } catch (\Throwable $e) {}
+        $sbUnreadMails = 0;
+        if ((new \App\Services\CustomerCareScope())->isHqCustomerCare()) {
+            try {
+                $sbUnreadMails = (new \App\Services\InfoMailService(
+                    new \App\Services\SupabaseService(),
+                    new \App\Services\RawEmailParser(),
+                ))->unreadCount();
+            } catch (\Throwable $e) {}
+        }
     @endphp
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('customer-care.dashboard') }}" class="flex items-center gap-3">
@@ -52,6 +61,14 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.inquiries.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-envelope w-5 text-center"></i>
             <span>Inquiries</span>
+        </a>
+        <a href="{{ route('customer-care.mails.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.mails.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-paper-plane w-5 text-center"></i>
+            <span>Mails</span>
+            @if($sbUnreadMails > 0)
+                <span class="ml-auto bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbUnreadMails }}</span>
+            @endif
         </a>
         @endif
 

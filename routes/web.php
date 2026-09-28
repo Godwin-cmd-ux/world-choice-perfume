@@ -417,6 +417,17 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::post('/news/{post}/approve', [$ccon, 'approve'])->name('news.approve');
             Route::post('/news/{post}/reject', [$ccon, 'reject'])->name('news.reject');
             Route::delete('/news/{post}', [$ccon, 'destroy'])->name('news.destroy');
+
+            // Mails — the info@worldchoiceperfume.com inbox. Head Quarters
+            // customer care only: info@ is company-wide, not per branch.
+            $mcon = App\Http\Controllers\CustomerCare\InfoMailController::class;
+            Route::get('/mails', [$mcon, 'index'])->name('mails.index');
+            Route::get('/mails/{mail}', [$mcon, 'show'])->name('mails.show');
+            Route::post('/mails/{mail}/reply', [$mcon, 'reply'])->name('mails.reply');
+            Route::post('/mails/{mail}/read', [$mcon, 'toggleRead'])->name('mails.read');
+            Route::post('/mails/{mail}/star', [$mcon, 'star'])->name('mails.star');
+            Route::post('/mails/{mail}/status', [$mcon, 'status'])->name('mails.status');
+            Route::delete('/mails/{mail}', [$mcon, 'destroy'])->name('mails.destroy');
         });
     });
 

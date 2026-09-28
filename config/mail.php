@@ -19,6 +19,13 @@ return [
             'transport' => 'log',
             'channel' => env('MAIL_LOG_CHANNEL'),
         ],
+        // Uncomment-free opt-in: set MAIL_MAILER=resend and RESEND_API_KEY to
+        // send as info@worldchoiceperfume.com. Cloudflare Email Routing only
+        // receives — sending needs a provider that can sign the domain.
+        'resend' => [
+            'transport' => 'resend',
+            'key' => env('RESEND_API_KEY'),
+        ],
     ],
 
     'from' => [

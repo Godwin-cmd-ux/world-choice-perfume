@@ -484,6 +484,19 @@ class SupabaseService
                 'is_read','status','is_featured','reply_message','replied_by','replied_at',
                 'created_at','updated_at',
             ],
+            // The info@worldchoiceperfume.com mailbox — see
+            // database/supabase_info_mails.sql.
+            'info_emails' => [
+                'message_id','in_reply_to','reference_ids','from_email','from_name','to_email',
+                'cc','bcc','reply_to','subject','body_text','body_html','raw_email','headers',
+                'attachment_names','has_attachments','spf_result','dkim_result','is_read',
+                'is_starred','status','thread_key','parent_id','received_at','read_at',
+                'replied_at','created_at','updated_at',
+            ],
+            'info_email_replies' => [
+                'info_email_id','from_email','to_email','subject','body','message_id',
+                'in_reply_to','status','error','sent_by','sent_by_name','sent_at','created_at',
+            ],
             'audit_logs' => [
                 'user_id','action','created_at','updated_at','auditable_type',
                 'auditable_id','old_values','new_values','ip_address',
