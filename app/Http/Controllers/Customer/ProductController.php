@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -10,10 +11,14 @@ class ProductController extends Controller
 {
     private SupabaseService $supabase;
 
-    public function __construct(SupabaseService $supabase)
+    private ProductVarietyStockService $varieties;
+
+    public function __construct()
     {
-        $this->supabase = $supabase;
+        $this->supabase = new SupabaseService();
+        $this->varieties = new ProductVarietyStockService($this->supabase);
     }
+
 
     public function index(Request $request)
     {
@@ -118,7 +123,42 @@ class ProductController extends Controller
             $products = $this->applyFilters($stockCollection, $request);
         }
 
-        return view('customer.products.index', compact('branches', 'products', 'selectedBranch', 'availableBrands'));
+        return view('customer.products.index', [
+            ...compact('branches', 'products', 'selectedBranch', 'availableBrands'),
+            // In-stock bottlings per branch so an Oil Fragrance card that is
+            // sold in several varieties does not advertise a single price.
+            'varietiesByBranch' => $this->varietiesByBranch($products),
+        ]);
+    }
+
+    /**
+     * Variety picker data for every branch the listed cards point at.
+     *
+     * In "All branches" view each card links to the branch its own stock row
+     * belongs to, so the varieties have to be read per branch rather than
+     * once for the whole page.
+     *
+     * @return array<int, array<int, array>> [branch_id => [product_id => [volumes]]]
+     */
+    private function varietiesByBranch($products): array
+    {
+        $productIds = [];
+        foreach ($products as $stock) {
+            // Rows reach this point as arrays or objects depending on the
+            // branch view, so read them the same way the view does.
+            $branchId = (int) data_get($stock, 'branch_id');
+            $productId = (int) data_get($stock, 'product_id');
+            if ($branchId > 0 && $productId > 0) {
+                $productIds[$branchId][$productId] = true;
+            }
+        }
+
+        $result = [];
+        foreach ($productIds as $branchId => $ids) {
+            $result[$branchId] = $this->varieties->bucketsForProducts((int) $branchId, array_keys($ids));
+        }
+
+        return $result;
     }
 
     public function show(string $productId, Request $request)
@@ -159,6 +199,15 @@ class ProductController extends Controller
             ];
         });
 
+        // In-stock bottlings for this product at every branch it is stocked in.
+        // A product sold in several varieties has no single price, so the page
+        // lists each bottling with its own price and the customer orders the
+        // one they want.
+        $varietiesByBranch = [];
+        foreach ($branchStocks->map(fn ($s) => (int) $s->branch_id)->filter()->unique() as $branchId) {
+            $varietiesByBranch[$branchId] = $this->varieties->bucketsForProducts($branchId, [$productId])[(int) $productId] ?? [];
+        }
+
         // Get selected branch and price
         $selectedBranch = null;
         $price = null;
@@ -184,7 +233,11 @@ class ProductController extends Controller
             $product->images = collect($product->images)->map(fn ($img) => (object) $img);
         }
 
-        return view('customer.products.show', compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'));
+        return view('customer.products.show', [
+            ...compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'),
+            'varietiesByBranch' => $varietiesByBranch,
+            'varieties' => $selectedBranch ? ($varietiesByBranch[(int) $selectedBranch->id] ?? []) : [],
+        ]);
     }
 
     private function applyFilters($stockCollection, Request $request)

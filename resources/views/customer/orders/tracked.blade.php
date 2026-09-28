@@ -83,7 +83,13 @@
 
                 <div class="mt-4 pt-4 border-t border-gold-500/15 text-sm space-y-1">
                     @foreach($order->items as $item)
-                        <p class="text-gray-300"><span class="text-gold-400 font-medium">{{ $item->quantity }}x</span> {{ $item->product->name }} <span class="text-gray-500">- TZS {{ number_format($item->total) }}</span></p>
+                        <p class="text-gray-300">
+                            <span class="text-gold-400 font-medium">{{ $item->quantity }}x</span> {{ $item->product->name }}
+                            @if(!empty($item->variety_label))
+                                <span class="text-gray-400">- {{ $item->variety_label }}</span>
+                            @endif
+                            <span class="text-gray-500">- TZS {{ number_format($item->total) }}</span>
+                        </p>
                     @endforeach
                     <p class="font-display font-bold text-gold-400 pt-2">Total: TZS {{ number_format($order->total) }}</p>
                 </div>

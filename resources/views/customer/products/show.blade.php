@@ -64,6 +64,7 @@
                     </h3>
                     <div class="space-y-3">
                         @forelse($branchStocks->filter(fn($s) => $s->quantity > 0) as $bs)
+                            @php $branchVarieties = $varietiesByBranch[(int) $bs->branch_id] ?? []; @endphp
                             <div class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-dark-600' : '' }}">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center">
@@ -73,7 +74,13 @@
                                         <p class="text-sm font-medium text-white">{{ $bs->branch->name ?? 'Branch #' . $bs->branch_id }}</p>
                                     </div>
                                 </div>
-                                <p class="text-lg font-bold text-gold-400">TZS {{ number_format($bs->selling_price) }}</p>
+                                @if($branchVarieties)
+                                    {{-- Sold in several sizes, so one number would be
+                                         wrong — the prices are listed below. --}}
+                                    <p class="text-sm font-semibold text-gold-400">Depends on variety</p>
+                                @else
+                                    <p class="text-lg font-bold text-gold-400">TZS {{ number_format($bs->selling_price) }}</p>
+                                @endif
                             </div>
                         @empty
                             <p class="text-sm text-gray-500 py-3">Not currently in stock at any branch.</p>
@@ -81,13 +88,65 @@
                     </div>
                 </div>
 
+                <!-- Price by Variety: a product bottled in several sizes is
+                     priced per bottling, so every option in stock is listed
+                     with its own price and an order button. -->
+                @if($selectedBranch && !empty($varieties))
+                    <div class="bg-dark-800/50 border border-gold-500/20 rounded-2xl p-6 mb-6">
+                        <h3 class="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-1">
+                            <i class="fas fa-wine-bottle mr-2"></i> Price by Variety
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Available at {{ $selectedBranch->name }} — pick the size and packaging to order.</p>
+                        <div class="space-y-4">
+                            @foreach($varieties as $volume)
+                                <div>
+                                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $volume['label'] }}</p>
+                                    <div class="space-y-2">
+                                        @foreach($volume['variants'] as $variant)
+                                            @php
+                                                // A variety with no price of its own
+                                                // falls back to the product's price,
+                                                // exactly as the staff sale form does.
+                                                $variantPrice = (float) ($variant['price'] ?? 0) > 0 ? (float) $variant['price'] : (float) $price;
+                                            @endphp
+                                            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-dark-800 border border-dark-600">
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-medium text-white">{{ $variant['label'] }}</p>
+                                                    <p class="text-[11px] text-gray-500">{{ $variant['available'] }} in stock</p>
+                                                </div>
+                                                <div class="flex items-center gap-3">
+                                                    <p class="text-base font-bold text-gold-400">TZS {{ number_format($variantPrice) }}</p>
+                                                    <a href="{{ route('customer.orders.create', [
+                                                        'product_id' => $product->id,
+                                                        'branch_id' => $selectedBranch->id,
+                                                        'volume' => $volume['volume'],
+                                                        'variant' => $variant['key'],
+                                                    ]) }}"
+                                                       class="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-xs font-semibold rounded-lg hover:from-gold-400 hover:to-gold-500 transition">
+                                                        <i class="fas fa-shopping-cart mr-1"></i> Order Now
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Selected Branch Price -->
                 @if($selectedBranch && $price)
                     <div class="bg-gradient-to-r from-gold-500/10 to-gold-600/5 border border-gold-500/20 rounded-2xl p-6 mb-6">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm text-gold-400/80">Price at {{ $selectedBranch->name }}</p>
-                                <p class="font-display text-4xl font-bold text-gold-400 mt-1">TZS {{ number_format($price) }}</p>
+                                @if(!empty($varieties))
+                                    <p class="font-display text-2xl font-bold text-gold-400 mt-1">Depends on variety</p>
+                                    <p class="text-xs text-gray-400 mt-1">Choose one of the options above to see its price.</p>
+                                @else
+                                    <p class="font-display text-4xl font-bold text-gold-400 mt-1">TZS {{ number_format($price) }}</p>
+                                @endif
                             </div>
                             <div class="flex flex-col gap-2">
                                 <a href="{{ route('customer.orders.create', ['product_id' => $product->id, 'branch_id' => $selectedBranch->id]) }}"

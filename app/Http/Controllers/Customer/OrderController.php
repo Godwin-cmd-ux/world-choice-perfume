@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -10,9 +11,12 @@ class OrderController extends Controller
 {
     private SupabaseService $supabase;
 
+    private ProductVarietyStockService $varieties;
+
     public function __construct(SupabaseService $supabase)
     {
         $this->supabase = $supabase;
+        $this->varieties = new ProductVarietyStockService($supabase);
     }
 
     public function create(Request $request)
@@ -51,7 +55,23 @@ class OrderController extends Controller
             ];
         });
 
-        return view('customer.orders.create', compact('branch', 'products'));
+        // Oil fragrance products are bottled in several sizes, each with its
+        // own price, so the form has to offer the options in stock at this
+        // branch and the customer has to pick one.
+        $productVarieties = $this->varieties->bucketsForProducts(
+            (int) $branchId,
+            $products->map(fn ($p) => (int) $p->product_id)->all()
+        );
+
+        // Coming from the details page the choice is already made, so keep it
+        // selected instead of making the customer choose it a second time.
+        $preselect = [
+            'product_id' => (int) ($request->product_id ?? 0),
+            'volume' => (int) ($request->volume ?? 0),
+            'variant' => (string) ($request->variant ?? ''),
+        ];
+
+        return view('customer.orders.create', compact('branch', 'products', 'productVarieties', 'preselect'));
     }
 
     public function store(Request $request)
@@ -65,6 +85,8 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.volume' => 'nullable|integer',
+            'items.*.variant' => 'nullable|string|max:32',
         ]);
 
         try {
@@ -88,12 +110,28 @@ class OrderController extends Controller
             // 2. Fetch ALL stock for this branch in ONE query (instead of N)
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$validated['branch_id']}",
-                'select' => 'product_id,quantity,selling_price',
+                'select' => 'product_id,quantity,selling_price,product:products(name)',
             ]));
             $stockMap = [];
             foreach ($allStock as $s) {
                 $stockMap[$s['product_id']] = $s;
             }
+
+            // Product categories and per-variety stock/prices for the ordered
+            // products, so an oil fragrance line can be priced and checked
+            // against the exact bottling the customer picked.
+            $itemProductIds = array_values(array_unique(array_map(fn ($i) => (int) ($i['product_id'] ?? 0), $validated['items'])));
+            $categoryMap = [];
+            if ($itemProductIds) {
+                foreach ($this->supabase->query('products', [
+                    'select' => 'id,category',
+                    'id' => 'in.(' . implode(',', $itemProductIds) . ')',
+                ]) as $p) {
+                    $categoryMap[(int) $p['id']] = $p['category'] ?? '';
+                }
+            }
+            $varietyStock = $this->varieties->stockForProducts((int) $validated['branch_id'], $itemProductIds, fresh: true);
+            $varietyPrices = $this->varieties->pricesForProducts((int) $validated['branch_id'], $itemProductIds);
 
             // 3. Validate stock and calculate totals (no HTTP calls)
             $total = 0;
@@ -106,14 +144,48 @@ class OrderController extends Controller
                     return back()->withErrors(['items' => 'Some products are no longer available in the requested quantity.'])->withInput();
                 }
 
-                $lineTotal = ($stock['selling_price'] ?? 0) * $item['quantity'];
+                $productId = (int) $item['product_id'];
+                $quantity = (int) $item['quantity'];
+                $volume = (int) ($item['volume'] ?? 0);
+                $variant = trim((string) ($item['variant'] ?? ''));
+
+                // A product bottled in several sizes has to say which one is
+                // being ordered, and enough of that exact bottling must exist.
+                // Products stocked in before variety tracking have no buckets
+                // and are ordered as plain product lines.
+                if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
+                    if ($volume <= 0 || $variant === '') {
+                        return back()->withErrors([
+                            'items' => 'Please choose the size and packaging for ' . ($stock['product']['name'] ?? 'this product') . '.',
+                        ])->withInput();
+                    }
+                    $available = (int) ($varietyStock[$productId][$volume][$variant] ?? 0);
+                    if ($available < $quantity) {
+                        return back()->withErrors([
+                            'items' => 'Only ' . $available . ' left of ' . $this->varieties->pickLabel($volume, $variant) . ' for ' . ($stock['product']['name'] ?? 'this product') . '.',
+                        ])->withInput();
+                    }
+                } else {
+                    $volume = 0;
+                    $variant = '';
+                }
+
+                // The picked bottling carries its own price (50ml != 30ml);
+                // the product's branch price is only the fallback.
+                $varietyPrice = ($volume > 0 && $variant !== '')
+                    ? (float) ($varietyPrices[$productId][$volume][$variant] ?? 0)
+                    : 0.0;
+                $unitPrice = $varietyPrice > 0 ? $varietyPrice : (float) ($stock['selling_price'] ?? 0);
+                $lineTotal = $unitPrice * $quantity;
                 $total += $lineTotal;
 
                 $orderItems[] = [
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $stock['selling_price'],
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
                     'total' => $lineTotal,
+                    'volume' => $volume,
+                    'variant' => $variant,
                 ];
             }
 
@@ -135,15 +207,27 @@ class OrderController extends Controller
             ]);
 
             // 6. Batch insert order items (1 HTTP call instead of N)
-            $itemsToInsert = array_map(fn($oi) => [
-                'order_id' => $order['id'],
-                'product_id' => $oi['product_id'],
-                'quantity' => $oi['quantity'],
-                'unit_price' => $oi['unit_price'],
-                'total' => $oi['total'],
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
-            ], $orderItems);
+            // The chosen bottling is written only when the columns exist —
+            // until database/supabase_order_item_varieties.sql has been run
+            // PostgREST rejects the insert outright.
+            $hasVarietyColumns = $this->supabase->tableHasColumn('order_items', 'volume')
+                && $this->supabase->tableHasColumn('order_items', 'variant');
+            $itemsToInsert = array_map(function ($oi) use ($order, $hasVarietyColumns) {
+                $row = [
+                    'order_id' => $order['id'],
+                    'product_id' => $oi['product_id'],
+                    'quantity' => $oi['quantity'],
+                    'unit_price' => $oi['unit_price'],
+                    'total' => $oi['total'],
+                    'created_at' => now()->toIso8601String(),
+                    'updated_at' => now()->toIso8601String(),
+                ];
+                if ($hasVarietyColumns) {
+                    $row['volume'] = $oi['volume'] > 0 ? $oi['volume'] : null;
+                    $row['variant'] = $oi['variant'] !== '' ? $oi['variant'] : null;
+                }
+                return $row;
+            }, $orderItems);
             $this->supabase->insertMany('order_items', $itemsToInsert);
 
             // 7. Confirm the order — payment is settled at the branch.
@@ -193,10 +277,16 @@ class OrderController extends Controller
 
         $orders = collect($rawOrders)->map(function ($o) use ($steps) {
             $o['items'] = collect($o['items'] ?? [])->map(function ($item) {
+                $volume = (int) ($item['volume'] ?? 0);
+                $variant = (string) ($item['variant'] ?? '');
+
                 return (object) [
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'total' => $item['total'],
+                    // The size and packaging that was ordered, so the customer
+                    // can see the same thing the branch is packing.
+                    'variety_label' => $volume > 0 && $variant !== '' ? $this->varieties->pickLabel($volume, $variant) : '',
                     'product' => (object) ($item['product'] ?? []),
                 ];
             });

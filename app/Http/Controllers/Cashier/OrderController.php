@@ -63,6 +63,12 @@ class OrderController extends Controller
             abort(404);
         }
 
+        // Name the bottling the customer chose so it is packed from the right
+        // size and packaging.
+        foreach ($order->items ?? [] as $item) {
+            $item->variety_label = $this->varietyLabel((int) ($item->volume ?? 0), (string) ($item->variant ?? ''));
+        }
+
         return view('cashier.orders.show', [
             'order' => $order,
             'transitions' => OrderWorkflowService::TRANSITIONS,
@@ -70,6 +76,15 @@ class OrderController extends Controller
             'nameRoute' => 'cashier.orders.personal-name',
             'canName' => $this->workflow->isOwnedBy((array) $order, $userId),
         ]);
+    }
+
+    /**
+     * Human label for the bottling a customer ordered, empty when the line is
+     * a plain product.
+     */
+    private function varietyLabel(int $volume, string $variant): string
+    {
+        return $volume > 0 && $variant !== '' ? $this->varieties->pickLabel($volume, $variant) : '';
     }
 
     private function noteFromRequest(Request $request): array
@@ -227,15 +242,23 @@ class OrderController extends Controller
                 }
             }
             $varietyStock = $this->varieties->stockForProducts((int) $order['branch_id'], $orderProductIds, fresh: true);
+            $saleItemsHaveVariety = $this->supabase->tableHasColumn('sale_items', 'volume')
+                && $this->supabase->tableHasColumn('sale_items', 'variant');
 
             foreach ($orderItems as $orderItem) {
                 $stock = $stockMap[$orderItem['product_id']] ?? null;
 
                 if ($stock && ($stock['quantity'] ?? 0) >= ($orderItem['quantity'] ?? 0)) {
                     $qty = (int) ($orderItem['quantity'] ?? 0);
-                    $isOil = ($categoryMap[(int) $orderItem['product_id']] ?? '') === 'Oil Fragrance';
+                    $productId = (int) $orderItem['product_id'];
+                    $isOil = ($categoryMap[$productId] ?? '') === 'Oil Fragrance';
 
-                    $saleItems[] = [
+                    // The customer's choice of bottling, when the order stated
+                    // one (see database/supabase_order_item_varieties.sql).
+                    $pickVolume = (int) ($orderItem['volume'] ?? 0);
+                    $pickVariant = (string) ($orderItem['variant'] ?? '');
+
+                    $saleItem = [
                         'sale_id' => $sale['id'],
                         'product_id' => $orderItem['product_id'],
                         'quantity' => $orderItem['quantity'],
@@ -244,6 +267,11 @@ class OrderController extends Controller
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
                     ];
+                    if ($saleItemsHaveVariety && $pickVolume > 0 && $pickVariant !== '') {
+                        $saleItem['volume'] = $pickVolume;
+                        $saleItem['variant'] = $pickVariant;
+                    }
+                    $saleItems[] = $saleItem;
 
                     $stockUpdates[] = [
                         'id' => $stock['id'],
@@ -264,11 +292,21 @@ class OrderController extends Controller
                         'updated_at' => now()->toIso8601String(),
                     ];
 
-                    // Deduct the sold units from the product's variety buckets —
-                    // largest bucket first until the quantity is consumed.
-                    if ($isOil && !empty($varietyStock[(int) $orderItem['product_id']])) {
+                    // Deduct the sold units from the product's variety buckets.
+                    // The bottling the customer ordered is used first; a line
+                    // that states none falls back to the largest buckets so the
+                    // variety counts still come out right.
+                    if ($isOil && !empty($varietyStock[$productId])) {
                         $remaining = $qty;
-                        foreach ($varietyStock[(int) $orderItem['product_id']] as $volume => $variants) {
+                        if ($pickVolume > 0 && $pickVariant !== '') {
+                            $take = min((int) ($varietyStock[$productId][$pickVolume][$pickVariant] ?? 0), $remaining);
+                            if ($take > 0) {
+                                $this->varieties->adjust((int) $order['branch_id'], $productId, $pickVolume, $pickVariant, -$take);
+                                $varietyStock[$productId][$pickVolume][$pickVariant] -= $take;
+                                $remaining -= $take;
+                            }
+                        }
+                        foreach ($varietyStock[$productId] as $volume => $variants) {
                             foreach ($variants as $variant => $available) {
                                 if ($remaining <= 0) {
                                     break 2;
@@ -277,8 +315,8 @@ class OrderController extends Controller
                                     continue;
                                 }
                                 $take = min($available, $remaining);
-                                $this->varieties->adjust((int) $order['branch_id'], (int) $orderItem['product_id'], (int) $volume, (string) $variant, -$take);
-                                $varietyStock[(int) $orderItem['product_id']][$volume][$variant] -= $take;
+                                $this->varieties->adjust((int) $order['branch_id'], $productId, (int) $volume, (string) $variant, -$take);
+                                $varietyStock[$productId][$volume][$variant] -= $take;
                                 $remaining -= $take;
                             }
                         }

@@ -253,6 +253,17 @@
                         <!-- Products Grid -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach($products as $stock)
+                                @php
+                                    // Bottlings the customer can pick on the details
+                                    // page. A product stocked as several sizes has
+                                    // no single price, so the card says so instead of
+                                    // quoting one that may not apply to their choice.
+                                    $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
+                                    $cardOptionCount = 0;
+                                    foreach ($cardVarieties as $volume) {
+                                        $cardOptionCount += count($volume['variants'] ?? []);
+                                    }
+                                @endphp
                                 <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $stock->branch_id]) }}"
                                    class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                     <!-- Product Image -->
@@ -295,10 +306,13 @@
 
                                         <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
                                             <div>
-                                                @if($stock->quantity > 0)
-                                                    <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
-                                                @else
+                                                @if($stock->quantity <= 0)
                                                     <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                                @elseif($cardOptionCount > 0)
+                                                    <p class="text-sm font-bold text-gold-400">Depends on variety</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                @else
+                                                    <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                                 @endif
                                             </div>
                                             <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
@@ -328,6 +342,15 @@
                     <!-- Products Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         @foreach($products as $stock)
+                            @php
+                                // Same as the "All branches" grid: quote a price only
+                                // when the product is sold in one bottling.
+                                $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
+                                $cardOptionCount = 0;
+                                foreach ($cardVarieties as $volume) {
+                                    $cardOptionCount += count($volume['variants'] ?? []);
+                                }
+                            @endphp
                             <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $selectedBranch->id]) }}"
                                class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                 <!-- Product Image -->
@@ -363,10 +386,13 @@
 
                                     <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
                                         <div>
-                                            @if($stock->quantity > 0)
-                                                <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
-                                            @else
+                                            @if($stock->quantity <= 0)
                                                 <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                            @elseif($cardOptionCount > 0)
+                                                <p class="text-sm font-bold text-gold-400">Depends on variety</p>
+                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                            @else
+                                                <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                             @endif
                                         </div>
                                         <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">

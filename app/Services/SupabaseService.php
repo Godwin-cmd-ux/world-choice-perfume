@@ -462,6 +462,9 @@ class SupabaseService
             ],
             'order_items' => [
                 'order_id','product_id','quantity','unit_price','total',
+                // Which bottling the customer ordered (Oil Fragrance lines) —
+                // see database/supabase_order_item_varieties.sql.
+                'volume','variant',
                 'created_at','updated_at',
             ],
             'order_notes' => [

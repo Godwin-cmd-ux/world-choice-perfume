@@ -27,7 +27,18 @@
             <thead><tr class="border-b"><th class="text-left py-1">Item</th><th class="text-center">Qty</th><th class="text-right">Price</th><th class="text-right">Total</th></tr></thead>
             <tbody>
                 @foreach($order->items as $item)
-                    <tr class="border-b"><td class="py-2">{{ $item->product->name }}</td><td class="text-center">{{ $item->quantity }}</td><td class="text-right">TZS {{ number_format($item->unit_price) }}</td><td class="text-right font-medium">TZS {{ number_format($item->total) }}</td></tr>
+                    <tr class="border-b">
+                        <td class="py-2">
+                            {{ $item->product->name }}
+                            @if(!empty($item->variety_label))
+                                {{-- The size and packaging the customer ordered. --}}
+                                <span class="block text-xs text-amber-700">{{ $item->variety_label }}</span>
+                            @endif
+                        </td>
+                        <td class="text-center">{{ $item->quantity }}</td>
+                        <td class="text-right">TZS {{ number_format($item->unit_price) }}</td>
+                        <td class="text-right font-medium">TZS {{ number_format($item->total) }}</td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>
