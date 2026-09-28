@@ -26,7 +26,8 @@ printf 'SESSION_SECURE_COOKIE=true\n' >> /var/www/html/.env
 printf 'SESSION_SAME_SITE=lax\n' >> /var/www/html/.env
 printf 'CACHE_STORE=file\n' >> /var/www/html/.env
 printf 'QUEUE_CONNECTION=sync\n' >> /var/www/html/.env
-printf 'MAIL_MAILER=log\n' >> /var/www/html/.env
+# MAIL_MAILER is not forced to "log" here: write_env() below passes through
+# whatever the Render environment says, so a real transport can be selected.
 printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> /var/www/html/.env
 printf 'SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY" >> /var/www/html/.env
 printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY" >> /var/www/html/.env
@@ -34,6 +35,43 @@ printf 'CLOUDINARY_CLOUD_NAME=%s\n' "$CLOUDINARY_CLOUD_NAME" >> /var/www/html/.e
 printf 'CLOUDINARY_API_KEY=%s\n' "$CLOUDINARY_API_KEY" >> /var/www/html/.env
 printf 'CLOUDINARY_API_SECRET=%s\n' "$CLOUDINARY_API_SECRET" >> /var/www/html/.env
 printf 'SUPER_ADMIN_SECRET=%s\n' "$SUPER_ADMIN_SECRET" >> /var/www/html/.env
+
+# --- info@worldchoiceperfume.com mailbox (Customer Care -> Mails) -------------
+# Only variables that are actually set are written, so a missing one stays
+# unset instead of becoming an empty string that Laravel reads as a value.
+write_env() {
+    if [ -n "${!1:-}" ]; then
+        printf '%s=%s\n' "$1" "${!1}" >> /var/www/html/.env
+        echo "  $1: set"
+    else
+        echo "  $1: (NOT SET)"
+    fi
+}
+
+echo "=== Writing optional env vars ==="
+write_env EMAIL_RECEIVING_WEBHOOK
+write_env INFO_MAIL_ADDRESS
+write_env INFO_MAIL_NAME
+write_env INFO_MAIL_INBOUND_URL
+write_env INFO_MAILS_PER_PAGE
+
+# Until a sending provider is configured, mail must be written to the log
+# rather than attempted over an unconfigured SMTP host.
+if [ -n "${MAIL_MAILER:-}" ]; then
+    write_env MAIL_MAILER
+else
+    printf 'MAIL_MAILER=log\n' >> /var/www/html/.env
+    echo "  MAIL_MAILER: defaulting to log (set MAIL_MAILER on Render to send)"
+fi
+
+write_env MAIL_HOST
+write_env MAIL_PORT
+write_env MAIL_USERNAME
+write_env MAIL_PASSWORD
+write_env MAIL_ENCRYPTION
+write_env MAIL_FROM_ADDRESS
+write_env MAIL_FROM_NAME
+write_env RESEND_API_KEY
 
 echo "=== ENV VAR CHECK ==="
 echo "SUPABASE_URL: ${SUPABASE_URL:-(NOT SET!)}"
