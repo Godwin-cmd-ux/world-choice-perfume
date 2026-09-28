@@ -26,7 +26,7 @@
         }
     </script>
     <style>
-        .hero-gradient { background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #42340e 100%); }
+        .page-gradient { background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #42340e 100%); background-attachment: fixed; }
         .gold-text { background: linear-gradient(135deg, #FFD040, #C8A02A, #FFE080); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .fade-in { animation: fadeIn 0.6s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -35,7 +35,7 @@
         ::-webkit-scrollbar-thumb { background: #C8A02A; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-dark-950 text-white font-sans min-h-screen">
+<body class="page-gradient text-white font-sans min-h-screen">
     <nav class="sticky top-0 z-50 border-b border-gold-500/20 bg-dark-950/90 backdrop-blur">
         <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-3">
             <a href="{{ route('home') }}" class="flex items-center gap-3">
@@ -63,7 +63,7 @@
         </div>
 
         @forelse($orders as $order)
-            <div class="hero-gradient rounded-2xl border border-gold-500/20 p-5 mb-5 fade-in">
+            <div class="bg-dark-950 rounded-2xl border border-gold-500/20 p-5 mb-5 fade-in">
                 <div class="flex justify-between items-start gap-4">
                     <div>
                         {{-- The official order number is always shown; it is never
@@ -127,9 +127,10 @@
         @endforelse
 
         <div class="text-center mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="https://wa.me/255616675940" target="_blank" rel="noopener"
+            <a href="https://wa.me/255710603637" target="_blank" rel="noopener"
                class="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition">
                 <i class="fab fa-whatsapp text-lg"></i> Chat with us
+                <span class="text-white/85 text-xs">+255 710 603 637</span>
             </a>
             <a href="{{ route('customer.orders.track') }}" class="inline-flex items-center gap-2 px-5 py-3 border border-gold-500/30 hover:bg-gold-500/10 text-gold-300 text-sm font-medium rounded-lg transition">
                 <i class="fas fa-arrow-left text-xs"></i> Track Another Order

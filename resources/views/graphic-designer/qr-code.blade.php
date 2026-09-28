@@ -1,12 +1,12 @@
-@extends('stock-manager.layouts.app')
+@extends('layouts.app')
 @section('title', 'QR Code Generator')
 @section('header', 'QR Code Generator')
 
 @section('content')
 <div class="max-w-lg mx-auto">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-        <div class="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-qrcode text-emerald-500 text-2xl"></i>
+        <div class="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-qrcode text-purple-500 text-2xl"></i>
         </div>
         <h3 class="font-semibold text-gray-800 text-lg mb-2">Website QR Code</h3>
         <p class="text-sm text-gray-500 mb-6">Scan this QR code to visit the World Choice Perfume website</p>

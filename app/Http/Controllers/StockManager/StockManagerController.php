@@ -1635,14 +1635,4 @@ class StockManagerController extends Controller
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
     }
-
-    // ========================
-    // QR CODE
-    // ========================
-
-    public function qrCode()
-    {
-        $url = 'https://world-choice-perfume.onrender.com/';
-        return view('stock-manager.qr-code', ['url' => $url]);
-    }
 }

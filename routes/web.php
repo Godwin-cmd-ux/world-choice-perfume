@@ -445,6 +445,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/brands/{brand}/edit', [$gbc, 'edit'])->name('brands.edit');
         Route::put('/brands/{brand}', [$gbc, 'update'])->name('brands.update');
         Route::delete('/brands/{brand}', [$gbc, 'destroy'])->name('brands.destroy');
+
+        // QR Code
+        Route::get('/qr-code', [App\Http\Controllers\GraphicDesigner\QrCodeController::class, 'qrCode'])->name('qr-code');
     });
 
     // ========================
@@ -523,9 +526,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/returned-stock', [$stc, 'returnedStockIndex'])->name('returned-stock.index');
         Route::get('/returned-stock/items/{item}/damage-report', [$stc, 'returnedStockReportForm'])->name('returned-stock.damage-report');
         Route::post('/returned-stock/items/{item}/damage-report', [$stc, 'returnedStockReportStore'])->name('returned-stock.damage-report.store');
-
-        // QR Code
-        Route::get('/qr-code', [$smc, 'qrCode'])->name('qr-code');
 
         // Product Management
         // Sales

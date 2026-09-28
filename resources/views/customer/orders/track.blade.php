@@ -26,7 +26,7 @@
         }
     </script>
     <style>
-        .hero-gradient { background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #42340e 100%); }
+        .page-gradient { background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 40%, #42340e 100%); background-attachment: fixed; }
         .gold-text { background: linear-gradient(135deg, #FFD040, #C8A02A, #FFE080); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .fade-in { animation: fadeIn 0.6s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -35,7 +35,7 @@
         ::-webkit-scrollbar-thumb { background: #C8A02A; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-dark-950 text-white font-sans min-h-screen flex flex-col">
+<body class="page-gradient text-white font-sans min-h-screen flex flex-col">
     <nav class="border-b border-gold-500/20 bg-dark-950/80 backdrop-blur">
         <div class="max-w-7xl mx-auto px-4 h-20 flex items-center gap-3">
             <img src="{{ asset('our_logo.jpeg') }}" alt="World Choice Perfume" class="w-12 h-12 rounded-full object-cover border-2 border-gold-500/30">
@@ -56,7 +56,7 @@
                 <p class="text-sm text-gray-400 mt-2">Enter the phone number you used when ordering</p>
             </div>
 
-            <div class="hero-gradient rounded-2xl border border-gold-500/20 p-8 shadow-2xl">
+            <div class="bg-dark-950 rounded-2xl border border-gold-500/20 p-8 shadow-2xl">
                 @if(session('error'))
                     <div class="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
                         <i class="fas fa-circle-exclamation mr-1"></i> {{ session('error') }}
@@ -67,7 +67,7 @@
                     @csrf
                     <label for="phone" class="block text-xs font-medium uppercase tracking-wider text-gold-400/80 mb-2">Phone Number</label>
                     <input type="text" id="phone" name="phone" value="{{ old('phone') }}" placeholder="e.g. 0754 000 000" required
-                           class="w-full px-4 py-3 rounded-lg bg-dark-950/60 border border-gold-500/25 text-white text-center text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500/60 transition">
+                           class="w-full px-4 py-3 rounded-lg bg-dark-900 border border-gold-500/25 text-white text-center text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500/60 transition">
                     <button type="submit" style="background-color:#C8A02A" class="mt-4 w-full hover:opacity-90 text-white font-semibold py-3 rounded-lg transition">
                         <i class="fas fa-search mr-1"></i> Track Order
                     </button>
@@ -85,7 +85,7 @@
             </div>
 
             <p class="text-center mt-6 text-xs text-gray-500">
-                Need help? <a href="https://wa.me/255616675940" target="_blank" rel="noopener" class="text-gold-400 hover:underline">Chat with us on WhatsApp</a>
+                Need help? <a href="https://wa.me/255710603637" target="_blank" rel="noopener" class="text-gold-400 hover:underline">Chat with us on WhatsApp</a>
             </p>
         </div>
     </main>
