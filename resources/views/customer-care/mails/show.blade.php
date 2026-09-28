@@ -36,11 +36,79 @@
             </div>
 
             @if($mail->has_attachments ?? false)
-                <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs text-gray-600">
-                    <i class="fas fa-paperclip mr-1 text-gray-400"></i>
-                    {{ count(array_filter(explode(', ', (string) $mail->attachment_names))) }} attachment(s) came with this mail:
-                    <span class="font-medium">{{ $mail->attachment_names }}</span>
-                    <span class="text-gray-400">(only the names are kept — the files themselves are not stored)</span>
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                        <i class="fas fa-paperclip mr-1 text-gray-400"></i>
+                        {{ count($attachments) ?: count(array_filter(explode(', ', (string) $mail->attachment_names))) }}
+                        attachment(s)
+                    </p>
+
+                    @if($attachments)
+                        <ul class="space-y-2">
+                            @foreach($attachments as $file)
+                                @php
+                                    $ext = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION));
+                                    $isImage = in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'], true);
+                                    $isPdf = $ext === 'pdf';
+                                    $url = route('customer-care.mails.attachment', [$mail->id, $file->id]);
+                                    $bytes = (int) $file->size_bytes;
+                                    $size = $bytes === 0
+                                        ? null
+                                        : ($bytes >= 1048576
+                                            ? number_format($bytes / 1048576, 1) . ' MB'
+                                            : number_format($bytes / 1024, 0) . ' KB');
+                                    $icon = $isImage ? 'fa-file-image' : ($isPdf ? 'fa-file-pdf' : 'fa-file');
+                                    $iconColor = $isImage ? 'text-green-600' : ($isPdf ? 'text-red-600' : 'text-blue-600');
+                                @endphp
+                                <li class="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
+                                    <i class="fas {{ $icon }} {{ $iconColor }} text-xl w-6 text-center"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <a href="{{ $url }}" target="_blank" rel="noopener"
+                                           class="text-sm font-medium text-gray-800 hover:text-blue-700 truncate block">
+                                            {{ $file->file_name }}
+                                        </a>
+                                        <p class="text-[11px] text-gray-400">{{ $file->mime_type }}{{ $size ? ' · ' . $size : '' }}</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 whitespace-nowrap">
+                                        <a href="{{ $url }}" target="_blank" rel="noopener"
+                                           class="px-2.5 py-1 rounded-lg border border-gray-300 text-xs text-gray-600 hover:bg-gray-50">
+                                            <i class="fas fa-eye mr-1"></i> View
+                                        </a>
+                                        <a href="{{ $url }}?download=1"
+                                           class="px-2.5 py-1 rounded-lg text-xs text-blue-700 border border-blue-200 hover:bg-blue-50">
+                                            <i class="fas fa-download mr-1"></i> Download
+                                        </a>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+
+                        {{-- Pictures get an inline preview so a screenshot of a
+                             question can be read without a download. --}}
+                        @if(collect($attachments)->contains(fn ($f) => in_array(strtolower(pathinfo($f->file_name, PATHINFO_EXTENSION)), ['png', 'jpg', 'jpeg', 'gif', 'webp'], true)))
+                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                @foreach($attachments as $file)
+                                    @continue(! in_array(strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION)), ['png', 'jpg', 'jpeg', 'gif', 'webp'], true))
+                                    <a href="{{ route('customer-care.mails.attachment', [$mail->id, $file->id]) }}"
+                                       target="_blank" rel="noopener" class="block border border-gray-200 rounded-lg overflow-hidden hover:border-blue-300">
+                                        <img src="{{ route('customer-care.mails.attachment', [$mail->id, $file->id]) }}"
+                                             alt="{{ $file->file_name }}"
+                                             class="w-full object-cover" style="max-height: 320px;">
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    @else
+                        @php $names = array_filter(explode(', ', (string) $mail->attachment_names)); @endphp
+                        <p class="text-xs text-gray-500">
+                            <span class="font-medium">{{ $mail->attachment_names }}</span>
+                            <span class="text-gray-400">
+                                — {{ count($names) === 1 ? 'this file was' : 'these files were' }} received before
+                                attachments were being kept, so only {{ count($names) === 1 ? 'its name is' : 'their names are' }}
+                                on record. Ask the customer to resend.
+                            </span>
+                        </p>
+                    @endif
                 </div>
             @endif
 

@@ -79,18 +79,23 @@
                             @php
                                 $when = $mail->received_at ?: ($mail->created_at ?? null);
                                 $preview = trim(preg_replace('/\s+/', ' ', (string) ($mail->body_text ?? '')) ?? '');
+                                $unread = ! ($mail->is_read ?? false);
                             @endphp
-                            <tr class="border-t hover:bg-gray-50 {{ ($mail->is_read ?? false) ? '' : 'bg-blue-50' }}">
+                            {{-- The whole row opens the mail. The link on the subject
+                                 carries an overlay that covers the row, so clicking
+                                 anywhere lands on it; the action buttons sit above
+                                 that overlay and keep their own clicks. --}}
+                            <tr class="relative border-t hover:bg-gray-50 {{ $unread ? 'bg-blue-50' : '' }}">
                                 <td class="px-4">
                                     @if($mail->is_starred ?? false)
                                         <i class="fas fa-star text-amber-500 text-xs"></i>
-                                    @elseif(! ($mail->is_read ?? false))
+                                    @elseif($unread)
                                         <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
                                     @endif
                                 </td>
                                 <td class="py-3 px-4 max-w-xs">
                                     <a href="{{ route('customer-care.mails.show', $mail->id) }}"
-                                       class="font-medium hover:text-blue-700 {{ ($mail->is_read ?? false) ? 'text-gray-700' : 'text-gray-900' }}">
+                                       class="font-medium hover:text-blue-700 after:content-[''] after:absolute after:inset-0 {{ $unread ? 'text-gray-900' : 'text-gray-700' }}">
                                         {{ $mail->subject ?: '(no subject)' }}
                                     </a>
                                     <p class="text-xs text-gray-400 truncate">{{ \Illuminate\Support\Str::limit($preview, 90) }}</p>
@@ -115,12 +120,12 @@
                                     {{ $when ? \Carbon\Carbon::parse($when)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}
                                 </td>
                                 <td class="px-4">
-                                    <div class="flex items-center gap-2 whitespace-nowrap">
+                                    <div class="flex items-center gap-2 whitespace-nowrap relative z-10">
                                         <form action="{{ route('customer-care.mails.read', $mail->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="text-blue-600 hover:underline text-xs font-medium">
-                                                <i class="fas {{ ($mail->is_read ?? false) ? 'fa-envelope' : 'fa-envelope-open' }} mr-1"></i>
-                                                {{ ($mail->is_read ?? false) ? 'Unread' : 'Read' }}
+                                                <i class="fas {{ $unread ? 'fa-envelope' : 'fa-envelope-open' }} mr-1"></i>
+                                                {{ $unread ? 'Unread' : 'Read' }}
                                             </button>
                                         </form>
                                         <form action="{{ route('customer-care.mails.star', $mail->id) }}" method="POST" class="inline">

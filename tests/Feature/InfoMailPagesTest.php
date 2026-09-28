@@ -90,6 +90,42 @@ class InfoMailPagesTest extends TestCase
             {
                 $this->calls[] = ['markRead', $id, $isRead];
             }
+
+            public function attachmentsFor(int $emailId): array
+            {
+                return [
+                    (object) [
+                        'id' => 3,
+                        'info_email_id' => 7,
+                        'file_name' => 'order.pdf',
+                        'mime_type' => 'application/pdf',
+                        'size_bytes' => 204800,
+                        'storage_path' => 'mail-7/0-order.pdf',
+                        'created_at' => '2026-09-28T09:14:22+03:00',
+                    ],
+                    (object) [
+                        'id' => 4,
+                        'info_email_id' => 7,
+                        'file_name' => 'photo.png',
+                        'mime_type' => 'image/png',
+                        'size_bytes' => 51200,
+                        'storage_path' => 'mail-7/1-photo.png',
+                        'created_at' => '2026-09-28T09:14:22+03:00',
+                    ],
+                ];
+            }
+
+            public function attachment(int $emailId, int $attachmentId): ?array
+            {
+                $all = $this->attachmentsFor(7);
+                foreach ($all as $file) {
+                    if ($file->id === $attachmentId) {
+                        return ['row' => (array) $file, 'contents' => 'bytes'];
+                    }
+                }
+
+                return null;
+            }
         };
 
         $this->app->instance(InfoMailService::class, $service);
@@ -158,5 +194,62 @@ class InfoMailPagesTest extends TestCase
         $this->loginAsHeadQuartersCustomerCare();
 
         $this->get('/customer-care/mails/9999')->assertNotFound();
+    }
+
+    public function test_the_mail_page_offers_each_attachment_to_open_and_download(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7');
+
+        $response->assertOk();
+        $response->assertSee('order.pdf');
+        $response->assertSee('photo.png');
+        $response->assertSee(route('customer-care.mails.attachment', [7, 3]), false);
+        $response->assertSee('View');
+        $response->assertSee('Download');
+        // A picture is previewed in place.
+        $response->assertSee('<img', false);
+    }
+
+    public function test_an_attachment_is_served_inline_for_viewable_types(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7/attachments/3');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $response->assertHeader('Content-Disposition', 'inline; filename="order.pdf"');
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    public function test_an_attachment_is_forced_to_download_when_asked(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7/attachments/3?download=1');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Disposition', 'attachment; filename="order.pdf"');
+    }
+
+    public function test_an_unknown_attachment_is_a_404(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $this->get('/customer-care/mails/7/attachments/999')->assertNotFound();
+    }
+
+    public function test_a_guest_cannot_reach_a_mail_or_its_attachments(): void
+    {
+        $this->bindService();
+
+        $this->get('/customer-care/mails/7')->assertRedirect();
+        $this->get('/customer-care/mails/7/attachments/3')->assertRedirect();
     }
 }

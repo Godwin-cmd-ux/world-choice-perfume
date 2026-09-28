@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Parser for a raw RFC 822 email.
  *
@@ -16,11 +18,17 @@ class RawEmailParser
     /** How deep to walk multipart/nested alternatives before giving up. */
     private const MAX_DEPTH = 6;
 
+    /** Per-file and total attachment ceilings, so one mail cannot fill storage. */
+    private const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+    private const MAX_ATTACHMENTS = 25;
+    private const MAX_TOTAL_ATTACHMENT_BYTES = 40 * 1024 * 1024;
+
     /**
      * @return array{headers: array<string, string>, message_id: ?string, in_reply_to: ?string,
      *               references: ?string, from_email: ?string, from_name: ?string,
      *               to_email: ?string, cc: ?string, bcc: ?string, reply_to: ?string,
      *               subject: ?string, date: ?string, body_text: ?string, body_html: ?string,
+     *               attachments: array<int, array{filename: string, mime: string, content: string}>,
      *               attachment_names: string[], spf_result: ?string, dkim_result: ?string}
      */
     public function parse(string $raw): array
@@ -55,7 +63,8 @@ class RawEmailParser
             'date' => $headers['date'] ?? null,
             'body_text' => $text,
             'body_html' => $html,
-            'attachment_names' => $attachments,
+            'attachments' => $attachments,
+            'attachment_names' => array_map(fn ($a) => $a['filename'], $attachments),
             'spf_result' => $this->authResult($headers['authentication-results'] ?? null, 'spf'),
             'dkim_result' => $this->authResult($headers['authentication-results'] ?? null, 'dkim')
                 ?? (isset($headers['dkim-signature']) ? 'signed' : null),
@@ -142,9 +151,9 @@ class RawEmailParser
 
         $filename = $this->filename($headers);
         if ($filename !== null) {
-            $attachments[] = $filename;
+            $this->collectAttachment($headers, $body, $filename, $type, $attachments);
 
-            return; // attachment content is not kept
+            return; // an attachment is never also the message body
         }
 
         $decoded = $this->decodeBody($body, $headers['content-transfer-encoding'] ?? '', $headers['content-type'] ?? '');
@@ -156,6 +165,102 @@ class RawEmailParser
         } elseif ($type === 'text/plain' || $type === '') {
             $text ??= $decoded;
         }
+    }
+
+    /**
+     * Keep one decoded attachment, skipping it if it breaks the size or count
+     * ceilings. A mail over the limit still arrives; only the big files are
+     * left out, and the reason is noted so it is visible rather than silent.
+     *
+     * @param  array<int, array{filename: string, mime: string, content: string}>  $attachments
+     */
+    private function collectAttachment(
+        array $headers,
+        string $body,
+        string $filename,
+        string $type,
+        array &$attachments
+    ): void {
+        if (count($attachments) >= self::MAX_ATTACHMENTS) {
+            Log::info("RawEmailParser: stopped at {$filename} — over the " . self::MAX_ATTACHMENTS . ' attachment limit');
+
+            return;
+        }
+
+        $content = $this->decodeBody($body, $headers['content-transfer-encoding'] ?? '', $headers['content-type'] ?? '');
+
+        if (strlen($content) > self::MAX_ATTACHMENT_BYTES) {
+            Log::info("RawEmailParser: skipped {$filename} — " . strlen($content) . ' bytes is over the per-file limit');
+
+            return;
+        }
+
+        $total = self::MAX_TOTAL_ATTACHMENT_BYTES;
+        foreach ($attachments as $existing) {
+            $total -= strlen($existing['content']);
+        }
+        if (strlen($content) > $total) {
+            Log::info("RawEmailParser: skipped {$filename} — it would pass the total attachment limit");
+
+            return;
+        }
+
+        $attachments[] = [
+            'filename' => $this->safeFilename($filename),
+            'mime' => $this->attachmentMime($type, $filename),
+            'content' => $content,
+        ];
+    }
+
+    /**
+     * A sender-supplied name ends up in a path and in a download header, so
+     * strip the directory parts, control characters and separators from it.
+     */
+    private function safeFilename(string $filename): string
+    {
+        $name = basename(str_replace('\\', '/', $filename));
+        $name = preg_replace('/[\x00-\x1F\x7F"\\/:*?<>|]+/u', '_', $name) ?? '';
+        $name = trim($name);
+
+        if ($name === '' || $name === '.' || $name === '..') {
+            $name = 'attachment';
+        }
+
+        return mb_substr($name, 0, 180);
+    }
+
+    /**
+     * The declared type, falling back to one guessed from the extension when
+     * the sender wrote no Content-Type or wrote a useless one.
+     */
+    private function attachmentMime(string $type, string $filename): string
+    {
+        $type = trim(explode(';', $type)[0]);
+
+        if ($type !== '' && $type !== 'application/octet-stream' && preg_match('#^[a-z0-9.+-]+/[a-z0-9.+-]+$#i', $type)) {
+            return strtolower($type);
+        }
+
+        return match (strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'zip' => 'application/zip',
+            'json' => 'application/json',
+            default => 'application/octet-stream',
+        };
     }
 
     /**

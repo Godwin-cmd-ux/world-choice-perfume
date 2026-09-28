@@ -59,9 +59,68 @@ class InfoMailController extends Controller
             'mail' => $mail,
             'thread' => collect($thread['mails']),
             'replies' => collect($thread['replies']),
+            'attachments' => $this->mails->attachmentsFor((int) $mail->id),
             'infoAddress' => config('info_mail.address'),
             'signature' => auth()->user()->name ?? 'Customer Care',
         ]);
+    }
+
+    /**
+     * Serve one attachment so it can be read in the browser.
+     *
+     * Only the browsers that can be trusted to render a file inline get to
+     * see it that way; anything else is sent as a download, because the bytes
+     * came from a stranger and the file name is theirs too.
+     */
+    public function attachment(Request $request, $mailId, $attachmentId)
+    {
+        $mail = $this->mails->find((int) $mailId);
+        if (! $mail) {
+            abort(404);
+        }
+
+        $found = $this->mails->attachment((int) $mail->id, (int) $attachmentId);
+        if (! $found) {
+            abort(404);
+        }
+
+        $row = $found['row'];
+        $name = (string) $row['file_name'];
+        $mime = (string) ($row['mime_type'] ?: 'application/octet-stream');
+        $wantsDownload = $request->boolean('download');
+        $inline = ! $wantsDownload && $this->canShowInline($mime, $name);
+
+        if (! $inline) {
+            $mime = 'application/octet-stream';
+        }
+
+        return response($found['contents'], 200, [
+            'Content-Type' => $mime,
+            'Content-Length' => (string) strlen($found['contents']),
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')
+                . '; filename="' . str_replace('"', '', $name) . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+            'Cache-Control' => 'private, max-age=0, no-store',
+        ]);
+    }
+
+    /**
+     * Types a browser can be left to render on its own. SVG and HTML are
+     * excluded on purpose: both can run script, so they are only ever
+     * downloaded.
+     */
+    private function canShowInline(string $mime, string $name): bool
+    {
+        $safe = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'application/pdf', 'text/plain'];
+
+        if (in_array(strtolower($mime), $safe, true)) {
+            return true;
+        }
+
+        $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'pdf', 'txt'], true);
     }
 
     public function reply(Request $request, $mailId)

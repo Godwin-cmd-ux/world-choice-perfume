@@ -21,6 +21,11 @@ class InfoMailService
 
     public const REPLIES_TABLE = 'info_email_replies';
 
+    public const ATTACHMENTS_TABLE = 'info_email_attachments';
+
+    /** Private bucket; files are only reachable through the mail page. */
+    public const BUCKET = 'info-mail-attachments';
+
     public function __construct(
         private SupabaseService $supabase,
         private RawEmailParser $parser,
@@ -77,7 +82,133 @@ class InfoMailService
             'updated_at' => now()->toIso8601String(),
         ];
 
-        return $this->supabase->insertOrFail(self::TABLE, $row);
+        $stored = $this->supabase->insertOrFail(self::TABLE, $row);
+
+        if ($stored !== [] && $parsed['attachments'] !== []) {
+            $this->storeAttachments((int) $stored['id'], $parsed['attachments']);
+        }
+
+        return $stored;
+    }
+
+    /**
+     * Put each attachment in the private bucket and record where it went, so
+     * the mail page can offer it for viewing and download. A file that will not
+     * upload is noted in the log and skipped; the mail itself is already saved
+     * and must not be lost because of one attachment.
+     *
+     * @param  array<int, array{filename: string, mime: string, content: string}>  $attachments
+     * @return int how many were stored
+     */
+    private function storeAttachments(int $emailId, array $attachments): int
+    {
+        if (! $this->supabase->ensureStorageBucket(self::BUCKET)) {
+            Log::error("InfoMailService: no storage bucket, skipped " . count($attachments) . " attachment(s) on mail {$emailId}");
+
+            return 0;
+        }
+
+        $records = [];
+        foreach ($attachments as $index => $attachment) {
+            $path = "mail-{$emailId}/{$index}-" . $this->storageSafeName($attachment['filename']);
+
+            if (! $this->supabase->storagePut(self::BUCKET, $path, $attachment['content'], $attachment['mime'])) {
+                Log::warning("InfoMailService: attachment {$attachment['filename']} on mail {$emailId} did not upload");
+
+                continue;
+            }
+
+            $records[] = [
+                'info_email_id' => $emailId,
+                'file_name' => $attachment['filename'],
+                'mime_type' => $attachment['mime'],
+                'size_bytes' => strlen($attachment['content']),
+                'storage_path' => $path,
+                'created_at' => now()->toIso8601String(),
+            ];
+        }
+
+        if ($records === []) {
+            return 0;
+        }
+
+        $inserted = $this->supabase->insertMany(self::ATTACHMENTS_TABLE, $records);
+
+        return is_array($inserted) ? count($inserted) : count($records);
+    }
+
+    /**
+     * A name that Supabase Storage will accept as an object key.
+     *
+     * The readable name is kept in the database for the page, but the key
+     * itself has to survive the trip: a '#' is rejected outright and anything
+     * after one is silently dropped, which would store the file under a
+     * different name than the record claims.
+     */
+    private function storageSafeName(string $filename): string
+    {
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $extension = preg_replace('/[^A-Za-z0-9]/', '', $extension) ?? '';
+        $extension = $extension === '' ? '' : '.' . substr($extension, 0, 12);
+
+        $stem = pathinfo($filename, PATHINFO_FILENAME);
+        $stem = preg_replace('/[^A-Za-z0-9._-]/', '_', $stem) ?? '';
+        $stem = trim($stem, '._-');
+        $stem = substr($stem === '' ? 'attachment' : $stem, 0, 80);
+
+        return $stem . $extension;
+    }
+
+    /**
+     * The files that came with a mail, oldest part first.
+     *
+     * @return array<int, object>
+     */
+    public function attachmentsFor(int $emailId): array
+    {
+        $rows = $this->supabase->query(self::ATTACHMENTS_TABLE, [
+            'select' => 'id,info_email_id,file_name,mime_type,size_bytes,storage_path,created_at',
+            'info_email_id' => "eq.{$emailId}",
+            'order' => 'id.asc',
+        ]);
+
+        return collect($rows)->map(fn ($r) => (object) $r)->all();
+    }
+
+    /**
+     * One attachment, read only if it really belongs to that mail. Without the
+     * second check a guessed id could read any file in the bucket.
+     */
+    public function attachment(int $emailId, int $attachmentId): ?array
+    {
+        $rows = $this->supabase->query(self::ATTACHMENTS_TABLE, [
+            'select' => 'id,info_email_id,file_name,mime_type,size_bytes,storage_path',
+            'id' => "eq.{$attachmentId}",
+            'info_email_id' => "eq.{$emailId}",
+            'limit' => 1,
+        ]);
+
+        $row = $rows[0] ?? null;
+        if (! $row) {
+            return null;
+        }
+
+        $contents = $this->supabase->storageGet(self::BUCKET, (string) $row['storage_path']);
+
+        return $contents === null ? null : ['row' => $row, 'contents' => $contents];
+    }
+
+    /**
+     * Remove a mail's files along with the mail. Storage has no join to the
+     * database, so the paths are read first and deleted afterwards.
+     */
+    private function deleteAttachmentsFor(int $emailId): void
+    {
+        foreach ($this->attachmentsFor($emailId) as $attachment) {
+            $this->supabase->storageDelete(self::BUCKET, (string) $attachment->storage_path);
+        }
+
+        $this->supabase->delete(self::ATTACHMENTS_TABLE, ['info_email_id' => "eq.{$emailId}"]);
     }
 
     public function findByMessageId(string $messageId): ?array
@@ -151,9 +282,11 @@ class InfoMailService
             ]))
             : collect();
 
+        $mails = $mails->map(fn ($m) => (object) $m);
+
         $hasCurrent = $mails->contains(fn ($m) => (int) $m->id === (int) $mail->id);
         if ($mails->isEmpty() || ! $hasCurrent) {
-            $mails = collect([(array) $mail]);
+            $mails = collect([$mail]);
         }
 
         $ids = $mails->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -167,13 +300,16 @@ class InfoMailService
         return ['mails' => $mails->values(), 'replies' => $replies->values()];
     }
 
+    /**
+     * @return array<int, object>
+     */
     public function repliesFor(int $emailId): array
     {
-        return $this->supabase->query(self::REPLIES_TABLE, [
+        return collect($this->supabase->query(self::REPLIES_TABLE, [
             'select' => '*',
             'info_email_id' => "eq.{$emailId}",
             'order' => 'created_at.asc',
-        ]);
+        ]))->map(fn ($r) => (object) $r)->values()->all();
     }
 
     public function markRead(int $id, bool $isRead = true): void
@@ -204,6 +340,10 @@ class InfoMailService
 
     public function delete(int $id): void
     {
+        // The files go first: once the row is gone there is nothing left that
+        // says which bucket keys belonged to this mail.
+        $this->deleteAttachmentsFor($id);
+
         $this->supabase->delete(self::TABLE, ['id' => $id]);
     }
 

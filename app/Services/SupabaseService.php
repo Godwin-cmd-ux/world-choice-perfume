@@ -374,11 +374,146 @@ class SupabaseService
     }
 
     /**
+     * Make sure a private bucket exists, and say whether it is there.
+     *
+     * Storage answers a missing bucket with an error rather than an empty
+     * success, and the HTTP client raises that error, so the create is tried
+     * first and the read is only the confirmation.
+     */
+    public function ensureStorageBucket(string $bucket): bool
+    {
+        $created = null;
+
+        try {
+            $created = $this->request()
+                ->withHeaders(['Prefer' => ''])
+                ->post("{$this->url}/storage/v1/bucket", [
+                    'id' => $bucket,
+                    'name' => $bucket,
+                    'public' => false,
+                    'file_size_limit' => 26214400,
+                ]);
+        } catch (\Exception $e) {
+            // Raised when the bucket is already there, which is fine.
+            Log::debug("Supabase storage create bucket {$bucket} raised: " . $e->getMessage());
+        }
+
+        if ($created !== null && $created->successful()) {
+            return true;
+        }
+
+        if ($created !== null && str_contains($created->body(), 'already exists')) {
+            return true;
+        }
+
+        // Confirm with a read, which answers 200 only when the bucket is real.
+        try {
+            $exists = $this->request()
+                ->withHeaders(['Prefer' => ''])
+                ->get("{$this->url}/storage/v1/bucket/{$bucket}");
+        } catch (\Exception $e) {
+            Log::error("Supabase storage bucket {$bucket} is unusable: " . $e->getMessage());
+
+            return false;
+        }
+
+        if ($exists->successful()) {
+            return true;
+        }
+
+        Log::warning("Could not create storage bucket {$bucket}: " . $exists->body());
+
+        return false;
+    }
+
+    /**
+     * Put raw bytes into a bucket. $path is the key inside the bucket.
+     */
+    public function storagePut(string $bucket, string $path, string $contents, string $contentType): bool
+    {
+        try {
+            // withBody, not the $data argument: the bytes are a file and must
+            // not be run through json_encode, which would mangle anything that
+            // is not valid UTF-8.
+            $response = $this->request()
+                ->withHeaders(['Prefer' => '', 'x-upsert' => 'false'])
+                ->withBody($contents, $contentType !== '' ? $contentType : 'application/octet-stream')
+                ->post("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
+        } catch (\Exception $e) {
+            Log::error("Supabase storage put failed for {$bucket}/{$path}: " . $e->getMessage());
+
+            return false;
+        }
+
+        if (! $response->successful()) {
+            Log::warning("Supabase storage put failed for {$bucket}/{$path}: " . $response->body());
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Read a stored object back. Returns null when it is missing.
+     */
+    public function storageGet(string $bucket, string $path): ?string
+    {
+        try {
+            $response = $this->request()
+                ->withHeaders(['Prefer' => '', 'Accept' => '*/*'])
+                ->get("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
+        } catch (\Exception $e) {
+            Log::error("Supabase storage get failed for {$bucket}/{$path}: " . $e->getMessage());
+
+            return null;
+        }
+
+        if ($response->failed()) {
+            Log::warning("Supabase storage get failed for {$bucket}/{$path}: " . $response->body());
+
+            return null;
+        }
+
+        return $response->body();
+    }
+
+    public function storageDelete(string $bucket, string $path): bool
+    {
+        try {
+            // No body on a DELETE, so the JSON content type the shared
+            // headers carry has to come off or storage rejects the call.
+            $response = $this->request()
+                ->withHeaders(['Prefer' => '', 'Content-Type' => 'application/json'])
+                ->withBody('', '')
+                ->delete("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
+        } catch (\Exception $e) {
+            Log::error("Supabase storage delete failed for {$bucket}/{$path}: " . $e->getMessage());
+
+            return false;
+        }
+
+        if (! $response->successful()) {
+            Log::warning("Supabase storage delete failed for {$bucket}/{$path}: " . $response->body());
+        }
+
+        return $response->successful();
+    }
+
+    /**
+     * Bucket keys are URL paths, so each segment has to be encoded. Slashes in
+     * $path stay as folder separators.
+     */
+    private function storagePath(string $path): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $path)));
+    }
+
+    /**
      * Remove keys from $data that don't exist as columns in $table.
      * Uses a lightweight allowlist per table to avoid PGRST204 errors from
      * PostgREST's stale schema cache.
-     */
-    private function stripUnknownColumns(string $table, array|object $data): array
+     */    private function stripUnknownColumns(string $table, array|object $data): array
     {
         $data = is_object($data) ? (array) $data : $data;            Log::debug("stripUnknownColumns({$table}): input keys=" . json_encode(array_keys($data)));
 
@@ -496,6 +631,9 @@ class SupabaseService
             'info_email_replies' => [
                 'info_email_id','from_email','to_email','subject','body','message_id',
                 'in_reply_to','status','error','sent_by','sent_by_name','sent_at','created_at',
+            ],
+            'info_email_attachments' => [
+                'info_email_id','file_name','mime_type','size_bytes','storage_path','created_at',
             ],
             'audit_logs' => [
                 'user_id','action','created_at','updated_at','auditable_type',
