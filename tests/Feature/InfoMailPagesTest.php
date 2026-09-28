@@ -91,6 +91,10 @@ class InfoMailPagesTest extends TestCase
                 $this->calls[] = ['markRead', $id, $isRead];
             }
 
+            /**
+             * The files on mail 7. Attachment 5 is deliberately named with no
+             * extension, the way a screen recording often arrives.
+             */
             public function attachmentsFor(int $emailId): array
             {
                 return [
@@ -112,19 +116,29 @@ class InfoMailPagesTest extends TestCase
                         'storage_path' => 'mail-7/1-photo.png',
                         'created_at' => '2026-09-28T09:14:22+03:00',
                     ],
+                    (object) [
+                        'id' => 5,
+                        'info_email_id' => 7,
+                        'file_name' => 'Chrome',
+                        'mime_type' => 'video/mp4',
+                        'size_bytes' => 18145671,
+                        'storage_path' => 'mail-7/2-Chrome.mp4',
+                        'created_at' => '2026-09-28T09:14:22+03:00',
+                    ],
                 ];
             }
 
             public function attachment(int $emailId, int $attachmentId): ?array
             {
-                $all = $this->attachmentsFor(7);
-                foreach ($all as $file) {
-                    if ($file->id === $attachmentId) {
-                        return ['row' => (array) $file, 'contents' => 'bytes'];
-                    }
+                $row = collect($this->attachmentsFor($emailId))->firstWhere('id', $attachmentId);
+                if (! $row) {
+                    return null;
                 }
 
-                return null;
+                $file = tempnam(sys_get_temp_dir(), 'mailtest');
+                file_put_contents($file, 'pretend file bytes');
+
+                return ['row' => (array) $row, 'file' => $file, 'size' => 18];
             }
         };
 
@@ -145,6 +159,37 @@ class InfoMailPagesTest extends TestCase
         ]);
 
         $this->be($user);
+    }
+
+    /** A bound service whose first attachment reports the given content type. */
+    private function serviceWithMime(string $mime): InfoMailService
+    {
+        $this->bindService();
+        $service = $this->app->make(InfoMailService::class);
+
+        return new class($service, $mime) extends InfoMailService {
+            public function __construct(private InfoMailService $inner, private string $mime)
+            {
+            }
+
+            public function find(int $id): ?object
+            {
+                return $this->inner->find($id);
+            }
+
+            public function attachment(int $emailId, int $attachmentId): ?array
+            {
+                $found = $this->inner->attachment($emailId, $attachmentId);
+                if ($found === null) {
+                    return null;
+                }
+
+                $found['row']['mime_type'] = $this->mime;
+                $found['row']['file_name'] = 'order.pdf';
+
+                return $found;
+            }
+        };
     }
 
     public function test_the_inbox_page_renders_the_mailbox(): void
@@ -243,6 +288,49 @@ class InfoMailPagesTest extends TestCase
         $this->loginAsHeadQuartersCustomerCare();
 
         $this->get('/customer-care/mails/7/attachments/999')->assertNotFound();
+    }
+
+    public function test_a_file_named_without_an_extension_is_offered_with_one(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        // A screen recording sent as "Chrome" with no extension used to come
+        // back as an unnamed blob the receiver could not open.
+        $response = $this->get('/customer-care/mails/7/attachments/5');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'video/mp4');
+        $response->assertHeader('Content-Disposition', 'inline; filename="Chrome.mp4"');
+    }
+
+    public function test_a_video_plays_on_the_page_instead_of_being_a_link(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7');
+
+        $response->assertOk();
+        $response->assertSee('<video', false);
+        $response->assertSee(route('customer-care.mails.attachment', [7, 5]), false);
+    }
+
+    public function test_a_type_that_could_run_script_is_only_ever_downloaded(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        // SVG and HTML can both execute; they must not be shown inline.
+        foreach (['image/svg+xml', 'text/html'] as $type) {
+            $this->app->instance(InfoMailService::class, $this->serviceWithMime($type));
+
+            $response = $this->get('/customer-care/mails/7/attachments/3');
+
+            $response->assertOk();
+            $this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+            $this->assertStringStartsWith('attachment;', (string) $response->headers->get('Content-Disposition'));
+        }
     }
 
     public function test_a_guest_cannot_reach_a_mail_or_its_attachments(): void

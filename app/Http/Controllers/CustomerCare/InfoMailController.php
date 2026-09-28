@@ -59,18 +59,19 @@ class InfoMailController extends Controller
             'mail' => $mail,
             'thread' => collect($thread['mails']),
             'replies' => collect($thread['replies']),
-            'attachments' => $this->mails->attachmentsFor((int) $mail->id),
+            'attachments' => collect($this->mails->attachmentsFor((int) $mail->id)),
             'infoAddress' => config('info_mail.address'),
             'signature' => auth()->user()->name ?? 'Customer Care',
         ]);
     }
 
     /**
-     * Serve one attachment so it can be read in the browser.
+     * Send one attachment so it can be read in the browser.
      *
-     * Only the browsers that can be trusted to render a file inline get to
-     * see it that way; anything else is sent as a download, because the bytes
-     * came from a stranger and the file name is theirs too.
+     * The file is streamed from disk rather than held in memory, and it is
+     * deleted afterwards. Only types a browser can be trusted to render are
+     * shown inline; anything else, including SVG and HTML, is sent as a
+     * download, because the bytes came from a stranger and so did the type.
      */
     public function attachment(Request $request, $mailId, $attachmentId)
     {
@@ -85,42 +86,93 @@ class InfoMailController extends Controller
         }
 
         $row = $found['row'];
-        $name = (string) $row['file_name'];
-        $mime = (string) ($row['mime_type'] ?: 'application/octet-stream');
-        $wantsDownload = $request->boolean('download');
-        $inline = ! $wantsDownload && $this->canShowInline($mime, $name);
+        $mime = strtolower(trim((string) ($row['mime_type'] ?: 'application/octet-stream')));
+        $name = $this->displayFileName((string) $row['file_name'], $mime);
+        $inline = ! $request->boolean('download') && $this->canShowInline($mime, (string) $row['file_name']);
 
-        if (! $inline) {
-            $mime = 'application/octet-stream';
-        }
-
-        return response($found['contents'], 200, [
-            'Content-Type' => $mime,
-            'Content-Length' => (string) strlen($found['contents']),
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment')
-                . '; filename="' . str_replace('"', '', $name) . '"',
-            'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
-            'Cache-Control' => 'private, max-age=0, no-store',
-        ]);
+        return response()
+            ->file($found['file'], [
+                'Content-Type' => $inline ? $mime : 'application/octet-stream',
+                'Content-Length' => (string) $found['size'],
+                'Content-Disposition' => ($inline ? 'inline' : 'attachment')
+                    . '; filename="' . str_replace('"', '', $name) . '"',
+                'X-Content-Type-Options' => 'nosniff',
+                // Even when the sender's type is trusted enough to show, the
+                // file gets no scripts, no plugins and no same-origin reach.
+                'Content-Security-Policy' => "default-src 'none'; img-src 'self'; media-src 'self'; "
+                    . "style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'",
+                'Cache-Control' => 'private, max-age=0, no-store',
+            ])
+            ->deleteFileAfterSend(true);
     }
 
     /**
-     * Types a browser can be left to render on its own. SVG and HTML are
-     * excluded on purpose: both can run script, so they are only ever
-     * downloaded.
+     * The name to offer the file under.
+     *
+     * A sender can name a file with no extension at all, which leaves a
+     * download the receiver cannot open. When the type is known, the matching
+     * extension is added so the file keeps the format it arrived in.
+     */
+    private function displayFileName(string $name, string $mime): string
+    {
+        if (pathinfo($name, PATHINFO_EXTENSION) !== '') {
+            return $name;
+        }
+
+        $extension = match ($mime) {
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/ogg' => 'ogv',
+            'video/quicktime' => 'mov',
+            'audio/mpeg' => 'mp3',
+            'audio/ogg' => 'ogg',
+            'audio/wav', 'audio/x-wav' => 'wav',
+            'audio/webm' => 'weba',
+            'image/jpeg' => 'jpg',
+            'image/svg+xml' => 'svg',
+            'text/plain' => 'txt',
+            'application/pdf' => 'pdf',
+            'application/zip' => 'zip',
+            default => '',
+        };
+
+        return $extension === '' ? $name : $name . '.' . $extension;
+    }
+
+    /**
+     * Whether the browser may be left to render this itself.
+     *
+     * Chosen from the declared type first, so a video sent without an
+     * extension still plays, and from the extension when the sender gave no
+     * usable type. SVG and HTML are absent on purpose: both can run script.
      */
     private function canShowInline(string $mime, string $name): bool
     {
-        $safe = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'application/pdf', 'text/plain'];
+        $safe = [
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp',
+            'application/pdf', 'text/plain',
+            'video/mp4', 'video/webm', 'video/ogg',
+            'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/mp4',
+        ];
 
-        if (in_array(strtolower($mime), $safe, true)) {
+        if (in_array($mime, $safe, true)) {
             return true;
+        }
+
+        // A declared type that is missing or a generic stand-in tells us
+        // nothing, so fall back to what the name suggests.
+        if ($mime !== '' && $mime !== 'application/octet-stream' && str_contains($mime, '/')) {
+            return false;
         }
 
         $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
-        return in_array($extension, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'pdf', 'txt'], true);
+        return in_array($extension, [
+            'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp',
+            'pdf', 'txt',
+            'mp4', 'webm', 'ogv', 'mov',
+            'mp3', 'ogg', 'oga', 'wav',
+        ], true);
     }
 
     public function reply(Request $request, $mailId)

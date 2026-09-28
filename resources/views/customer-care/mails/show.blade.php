@@ -46,55 +46,89 @@
                     @if($attachments)
                         <ul class="space-y-2">
                             @foreach($attachments as $file)
-                                @php
-                                    $ext = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION));
-                                    $isImage = in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'], true);
-                                    $isPdf = $ext === 'pdf';
-                                    $url = route('customer-care.mails.attachment', [$mail->id, $file->id]);
-                                    $bytes = (int) $file->size_bytes;
-                                    $size = $bytes === 0
-                                        ? null
-                                        : ($bytes >= 1048576
-                                            ? number_format($bytes / 1048576, 1) . ' MB'
-                                            : number_format($bytes / 1024, 0) . ' KB');
-                                    $icon = $isImage ? 'fa-file-image' : ($isPdf ? 'fa-file-pdf' : 'fa-file');
-                                    $iconColor = $isImage ? 'text-green-600' : ($isPdf ? 'text-red-600' : 'text-blue-600');
-                                @endphp
-                                <li class="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
-                                    <i class="fas {{ $icon }} {{ $iconColor }} text-xl w-6 text-center"></i>
-                                    <div class="flex-1 min-w-0">
-                                        <a href="{{ $url }}" target="_blank" rel="noopener"
-                                           class="text-sm font-medium text-gray-800 hover:text-blue-700 truncate block">
-                                            {{ $file->file_name }}
-                                        </a>
-                                        <p class="text-[11px] text-gray-400">{{ $file->mime_type }}{{ $size ? ' · ' . $size : '' }}</p>
-                                    </div>
-                                    <div class="flex items-center gap-2 whitespace-nowrap">
-                                        <a href="{{ $url }}" target="_blank" rel="noopener"
-                                           class="px-2.5 py-1 rounded-lg border border-gray-300 text-xs text-gray-600 hover:bg-gray-50">
-                                            <i class="fas fa-eye mr-1"></i> View
-                                        </a>
-                                        <a href="{{ $url }}?download=1"
+                            @php
+                                $ext = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION));
+                                $mime = strtolower((string) $file->mime_type);
+                                $isImage = in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'], true)
+                                    || (in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'], true));
+                                $isVideo = in_array($ext, ['mp4', 'webm', 'ogv', 'mov'], true)
+                                    || in_array($mime, ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'], true);
+                                $isPdf = $ext === 'pdf' || $mime === 'application/pdf';
+                                $url = route('customer-care.mails.attachment', [$mail->id, $file->id]);
+                                $bytes = (int) $file->size_bytes;
+                                $size = $bytes === 0
+                                    ? null
+                                    : ($bytes >= 1048576
+                                        ? number_format($bytes / 1048576, 1) . ' MB'
+                                        : number_format($bytes / 1024, 0) . ' KB');
+                                $icon = $isImage ? 'fa-file-image' : ($isVideo ? 'fa-file-video' : ($isPdf ? 'fa-file-pdf' : 'fa-file'));
+                                $iconColor = $isImage ? 'text-green-600' : ($isVideo ? 'text-purple-600' : ($isPdf ? 'text-red-600' : 'text-blue-600'));
+                            @endphp
+                            <li class="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
+                                <i class="fas {{ $icon }} {{ $iconColor }} text-xl w-6 text-center"></i>
+                                <div class="flex-1 min-w-0">
+                                    <a href="{{ $url }}" target="_blank" rel="noopener"
+                                       class="text-sm font-medium text-gray-800 hover:text-blue-700 truncate block">
+                                        {{ $file->file_name }}{{ $ext === '' && $size !== null ? ' (' . ($size) . ')' : '' }}
+                                    </a>
+                                    <p class="text-[11px] text-gray-400">{{ $file->mime_type }}{{ $size ? ' · ' . $size : '' }}</p>
+                                </div>
+                                <div class="flex items-center gap-2 whitespace-nowrap">
+                                    <a href="{{ $url }}" target="_blank" rel="noopener"
+                                       class="px-2.5 py-1 rounded-lg border border-gray-300 text-xs text-gray-600 hover:bg-gray-50">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </a>
+                                    <a href="{{ $url }}?download=1"
                                            class="px-2.5 py-1 rounded-lg text-xs text-blue-700 border border-blue-200 hover:bg-blue-50">
-                                            <i class="fas fa-download mr-1"></i> Download
-                                        </a>
-                                    </div>
-                                </li>
+                                        <i class="fas fa-download mr-1"></i> Download
+                                    </a>
+                                </div>
+                            </li>
                             @endforeach
                         </ul>
 
-                        {{-- Pictures get an inline preview so a screenshot of a
-                             question can be read without a download. --}}
-                        @if(collect($attachments)->contains(fn ($f) => in_array(strtolower(pathinfo($f->file_name, PATHINFO_EXTENSION)), ['png', 'jpg', 'jpeg', 'gif', 'webp'], true)))
-                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                @foreach($attachments as $file)
-                                    @continue(! in_array(strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION)), ['png', 'jpg', 'jpeg', 'gif', 'webp'], true))
-                                    <a href="{{ route('customer-care.mails.attachment', [$mail->id, $file->id]) }}"
-                                       target="_blank" rel="noopener" class="block border border-gray-200 rounded-lg overflow-hidden hover:border-blue-300">
-                                        <img src="{{ route('customer-care.mails.attachment', [$mail->id, $file->id]) }}"
-                                             alt="{{ $file->file_name }}"
-                                             class="w-full object-cover" style="max-height: 320px;">
-                                    </a>
+                        {{-- Pictures play and show here, so a screenshot of a
+                             question or a short recording can be read without
+                             a download. Everything else is opened from its
+                             row above. --}}
+                        @php
+                            $previewable = $attachments->filter(function ($f) {
+                                $extension = strtolower(pathinfo($f->file_name, PATHINFO_EXTENSION));
+                                $type = strtolower((string) $f->mime_type);
+
+                                return in_array($extension, ['png', 'jpg', 'jpeg', 'gif', 'webp'], true)
+                                    || in_array($type, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)
+                                    || in_array($extension, ['mp4', 'webm', 'ogv'], true)
+                                    || in_array($type, ['video/mp4', 'video/webm', 'video/ogg'], true);
+                            });
+                        @endphp
+
+                        @if($previewable->isNotEmpty())
+                            <div class="mt-3 space-y-3">
+                                @foreach($previewable as $file)
+                                    @php
+                                        $previewUrl = route('customer-care.mails.attachment', [$mail->id, $file->id]);
+                                        $extension = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION));
+                                        $type = strtolower((string) $file->mime_type);
+                                        $isVideo = in_array($extension, ['mp4', 'webm', 'ogv'], true)
+                                            || in_array($type, ['video/mp4', 'video/webm', 'video/ogg'], true);
+                                    @endphp
+
+                                    @if($isVideo)
+                                        {{-- controls, and no autoplay: these files can be
+                                             large and nobody wants sound from a mailbox. --}}
+                                        <video controls preload="none" class="w-full rounded-lg border border-gray-200 bg-black"
+                                               style="max-height: 420px;">
+                                            <source src="{{ $previewUrl }}">
+                                            Your browser cannot play this file. Use Download.
+                                        </video>
+                                    @else
+                                        <a href="{{ $previewUrl }}" target="_blank" rel="noopener"
+                                           class="block border border-gray-200 rounded-lg overflow-hidden hover:border-blue-300">
+                                            <img src="{{ $previewUrl }}" alt="{{ $file->file_name }}"
+                                                 class="w-full object-contain bg-white" style="max-height: 420px;">
+                                        </a>
+                                    @endif
                                 @endforeach
                             </div>
                         @endif

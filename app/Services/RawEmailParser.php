@@ -18,10 +18,14 @@ class RawEmailParser
     /** How deep to walk multipart/nested alternatives before giving up. */
     private const MAX_DEPTH = 6;
 
-    /** Per-file and total attachment ceilings, so one mail cannot fill storage. */
-    private const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+    /**
+     * Per-file and total attachment ceilings, so one mail cannot fill storage.
+     * The per-file figure matches the bucket's own file_size_limit, so a file
+     * that would be accepted by storage is never dropped here.
+     */
+    private const MAX_ATTACHMENT_BYTES = 24 * 1024 * 1024;
     private const MAX_ATTACHMENTS = 25;
-    private const MAX_TOTAL_ATTACHMENT_BYTES = 40 * 1024 * 1024;
+    private const MAX_TOTAL_ATTACHMENT_BYTES = 60 * 1024 * 1024;
 
     /**
      * @return array{headers: array<string, string>, message_id: ?string, in_reply_to: ?string,

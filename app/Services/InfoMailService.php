@@ -176,8 +176,14 @@ class InfoMailService
     }
 
     /**
-     * One attachment, read only if it really belongs to that mail. Without the
-     * second check a guessed id could read any file in the bucket.
+     * One attachment, downloaded to a temporary file so a large video never
+     * has to fit in memory. Returns null when it is missing or the download
+     * fails. The caller deletes the file once it has been sent.
+     *
+     * The read only succeeds if the row really belongs to that mail, so a
+     * guessed id cannot pull any file out of the bucket.
+     *
+     * @return array{row: array, file: string, size: int}|null
      */
     public function attachment(int $emailId, int $attachmentId): ?array
     {
@@ -193,9 +199,20 @@ class InfoMailService
             return null;
         }
 
-        $contents = $this->supabase->storageGet(self::BUCKET, (string) $row['storage_path']);
+        $destination = tempnam(sys_get_temp_dir(), 'mailfile');
+        if ($destination === false) {
+            Log::error('InfoMailService: no writable temporary directory for an attachment download');
 
-        return $contents === null ? null : ['row' => $row, 'contents' => $contents];
+            return null;
+        }
+
+        if (! $this->supabase->storageDownloadTo(self::BUCKET, (string) $row['storage_path'], $destination)) {
+            return null;
+        }
+
+        $size = filesize($destination);
+
+        return ['row' => $row, 'file' => $destination, 'size' => $size === false ? 0 : $size];
     }
 
     /**

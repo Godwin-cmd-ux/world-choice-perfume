@@ -91,6 +91,17 @@ class InfoMailServiceTest extends TestCase
                 return true;
             }
 
+            public function storageDownloadTo(string $bucket, string $path, string $destination): bool
+            {
+                if (! isset($this->storage[$path])) {
+                    return false;
+                }
+
+                file_put_contents($destination, $this->storage[$path]);
+
+                return true;
+            }
+
             public function storageGet(string $bucket, string $path): ?string
             {
                 return $this->storage[$path] ?? null;
@@ -225,7 +236,13 @@ class InfoMailServiceTest extends TestCase
 
         $found = $service->attachment((int) $stored['id'], 1);
         $this->assertNotNull($found, 'The bytes must be readable again.');
-        $this->assertSame('%PDF-1.4 pretend this is an invoice', $found['contents']);
+        $this->assertSame(
+            '%PDF-1.4 pretend this is an invoice',
+            file_get_contents($found['file']),
+            'The file that comes back has to be the file that went in.'
+        );
+        $this->assertSame(35, $found['size']);
+        unlink($found['file']);
     }
 
     public function test_an_attachment_from_another_mail_cannot_be_read(): void

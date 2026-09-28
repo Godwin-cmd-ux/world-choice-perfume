@@ -9,6 +9,12 @@ use Illuminate\Support\Collection;
 
 class SupabaseService
 {
+    /**
+     * Long enough for a large attachment to arrive. The normal 30s is not:
+     * an 18MB file over a slow link is still going when that expires.
+     */
+    private const STORAGE_DOWNLOAD_TIMEOUT = 300;
+
     private string $url;
     private string $anonKey;
     private string $serviceRoleKey;
@@ -455,7 +461,11 @@ class SupabaseService
     }
 
     /**
-     * Read a stored object back. Returns null when it is missing.
+     * Read a stored object back into memory.
+     *
+     * Only for small files: a big attachment will run into the request
+     * timeout, so anything a person may open goes through
+     * storageDownloadTo() instead.
      */
     public function storageGet(string $bucket, string $path): ?string
     {
@@ -476,6 +486,39 @@ class SupabaseService
         }
 
         return $response->body();
+    }
+
+    /**
+     * Download a stored object straight to a local file.
+     *
+     * A 20MB video does not fit the normal request timeout when it is read
+     * into memory, and buffering it would use the same amount of RAM, so the
+     * bytes are written to disk as they arrive and the response is allowed
+     * much longer.
+     */
+    public function storageDownloadTo(string $bucket, string $path, string $destination): bool
+    {
+        try {
+            $response = $this->request()
+                ->withOptions(['sink' => $destination])
+                ->withHeaders(['Prefer' => '', 'Accept' => '*/*'])
+                ->timeout(self::STORAGE_DOWNLOAD_TIMEOUT)
+                ->get("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
+        } catch (\Exception $e) {
+            Log::error("Supabase storage download failed for {$bucket}/{$path}: " . $e->getMessage());
+            @unlink($destination);
+
+            return false;
+        }
+
+        if ($response->failed()) {
+            Log::warning("Supabase storage download failed for {$bucket}/{$path}: " . $response->body());
+            @unlink($destination);
+
+            return false;
+        }
+
+        return true;
     }
 
     public function storageDelete(string $bucket, string $path): bool
