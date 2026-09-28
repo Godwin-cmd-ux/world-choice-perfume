@@ -1,9 +1,40 @@
 @extends('layouts.app')
-@section('title', 'Orders')
-@section('header', 'Orders')
+@section('title', 'Branch Orders')
+@section('header', 'Branch Orders')
 
 @section('content')
-@include('partials.order-tabs', ['tabRoute' => $tabRoute])
+{{-- Branch Admin supervises the branch, so these tabs carry the branch's own
+     labels rather than the shared "My ..." wording, and they list every order
+     placed here, not only the ones this admin picked. --}}
+@include('partials.order-tabs', ['tabRoute' => $tabRoute, 'tabLabels' => $tabLabels])
+
+@php
+    $watch = $pendingWatch ?? ['count' => 0, 'longest_minutes' => null, 'longest_label' => '—', 'late_count' => 0];
+@endphp
+
+{{-- How the branch queue is doing right now, on any tab. --}}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <div class="bg-white rounded-xl shadow p-4">
+        <p class="text-xs text-gray-500">Waiting to be picked</p>
+        <p class="text-2xl font-bold text-yellow-600">{{ $watch['count'] }}</p>
+        <p class="text-xs text-gray-500 mt-1">Unclaimed orders at this branch</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <p class="text-xs text-gray-500">Longest wait</p>
+        <p class="text-2xl font-bold {{ ($watch['longest_minutes'] ?? 0) >= \App\Services\OrderWorkflowService::WAIT_LATE_MINUTES ? 'text-red-600' : 'text-amber-600' }}">{{ $watch['longest_label'] }}</p>
+        <p class="text-xs text-gray-500 mt-1">{{ $watch['late_count'] }} waiting over {{ \App\Services\OrderWorkflowService::WAIT_LATE_MINUTES }}m</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <p class="text-xs text-gray-500">On progress</p>
+        <p class="text-2xl font-bold text-blue-600">{{ $counts['progress'] ?? 0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Picked, not yet served</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <p class="text-xs text-gray-500">Completed</p>
+        <p class="text-2xl font-bold text-emerald-600">{{ $counts['completed'] ?? 0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Served at this branch</p>
+    </div>
+</div>
 
 <form method="GET" action="{{ route($tabRoute) }}" class="mb-4 flex justify-end">
     <input type="hidden" name="tab" value="{{ $tab }}">
@@ -24,6 +55,7 @@
                 <th class="text-right px-4">Total</th>
                 <th class="text-center px-4">Status</th>
                 <th class="text-left px-4">Picked By</th>
+                <th class="text-left px-4">Waiting</th>
                 <th class="text-center px-4">Actions</th>
             </tr></thead>
             <tbody>
@@ -36,6 +68,11 @@
                             || (string) ($order->cashier_id ?? '') === $me;
                         $canName = $isMine && in_array($order->status, ['picked', 'served'], true);
                         $next = $order->status === 'pending' ? 'picked' : ($order->status === 'picked' && $isMine ? 'served' : null);
+                        $waitingFrom = match ($order->status) {
+                            'served' => 'since served',
+                            'picked' => 'since picked',
+                            default => 'since placed',
+                        };
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
@@ -53,6 +90,15 @@
                         <td class="px-4 text-gray-600">
                             {{ $order->assigned_to ? ($pickers[(string) $order->assigned_to] ?? 'Staff') : '—' }}
                         </td>
+                        {{-- How long this order has been in its current state, so a
+                             supervisor can see at a glance what is going stale. --}}
+                        <td class="px-4 whitespace-nowrap">
+                            <span @if(!empty($order->waiting_since)) title="{{ $order->waiting_since->copy()->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}" @endif
+                                  class="font-medium {{ match($order->waiting_tone ?? 'unknown') { 'late' => 'text-red-600', 'warn' => 'text-amber-600', 'ok' => 'text-gray-500', default => 'text-gray-400' } }}">
+                                {{ $order->waiting_label ?? '—' }}
+                            </span>
+                            <span class="block text-[10px] text-gray-400">{{ $waitingFrom }}</span>
+                        </td>
                         <td class="px-4 text-center">
                             <a href="{{ route('branch-admin.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
                             @if($next)
@@ -69,17 +115,51 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-8 text-center text-gray-400">
+                        <td colspan="8" class="py-8 text-center text-gray-400">
                             @if(request('q'))
                                 No orders match "{{ request('q') }}".
                             @elseif($tab === 'pending')
-                                No orders waiting to be picked.
+                                No orders are waiting to be picked at this branch.
                             @elseif($tab === 'progress')
-                                You have no orders in progress.
+                                No orders are currently on progress at this branch.
                             @else
-                                You have not completed any orders yet.
+                                No orders have been completed at this branch yet.
                             @endif
                         </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{-- Who is carrying the open work, so one slow order is traceable to a name. --}}
+<div class="bg-white rounded-xl shadow overflow-hidden mt-5">
+    <div class="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold text-gray-800"><i class="fas fa-users text-amber-600 mr-1"></i>Who is picking</h3>
+        <p class="text-xs text-gray-500">Open = picked and not yet served</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50"><tr>
+                <th class="text-left py-2.5 px-4">Staff</th>
+                <th class="text-center px-4">Open</th>
+                <th class="text-left px-4">Holding longest</th>
+                <th class="text-center px-4">Served</th>
+            </tr></thead>
+            <tbody>
+                @forelse($team as $member)
+                    <tr class="border-t hover:bg-gray-50">
+                        <td class="py-2.5 px-4 font-medium">{{ $member->name }}</td>
+                        <td class="px-4 text-center">{{ $member->open }}</td>
+                        <td class="px-4 {{ ($member->longest_open_tone ?? 'ok') === 'late' ? 'text-red-600 font-semibold' : (($member->longest_open_tone ?? 'ok') === 'warn' ? 'text-amber-600' : 'text-gray-500') }}">
+                            {{ $member->longest_open_label }}
+                        </td>
+                        <td class="px-4 text-center text-gray-600">{{ $member->served }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" class="py-6 text-center text-gray-400">Nobody has picked an order at this branch yet.</td>
                     </tr>
                 @endforelse
             </tbody>

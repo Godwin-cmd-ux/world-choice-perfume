@@ -22,24 +22,41 @@ class OrderController extends Controller
     /**
      * The three tabs.
      *
-     * Branch Admin used to get a single branch-wide list of every order. It is
-     * now isolated like every other staff role: the pending queue is shared,
-     * but picked and served orders only appear for the admin who picked them.
-     * Super Admin is the role that keeps the whole-branch view.
+     * Branch Admin supervises the branch, so these tabs are not isolated the
+     * way the other staff roles are: every order placed at this branch is
+     * listed, whichever staff member picked it, together with who that was and
+     * how long the order has been waiting. The extra visibility is read-only
+     * though. Picking and serving still belong to the staff member who claimed
+     * the order, and the service refuses both on someone else's order, so a
+     * supervisor watching the queue cannot take a colleague's work over.
      */
+    private const TAB_LABELS = [
+        'pending' => 'Pending Orders',
+        'progress' => 'Orders On Progress',
+        'completed' => 'Completed Orders',
+    ];
+
     public function index(Request $request)
     {
         $branchId = (int) auth()->user()->branch_id;
         $userId = auth()->user()->supabase_id ?? auth()->id();
 
         $tab = $this->workflow->resolveTab($request->query('tab'));
-        $orders = $this->workflow->tabRows($branchId, $tab, $userId, true, $request->query('q'));
+        $orders = $this->workflow->tabRows($branchId, $tab, $userId, false, $request->query('q'));
+
+        // The queue is worked oldest first, so that is the order it is read in.
+        if ($tab === 'pending') {
+            $orders = $orders->sortBy('created_at')->values();
+        }
 
         return view('branch-admin.orders.index', [
-            'orders' => $orders,
-            'counts' => $this->workflow->counts($branchId, $userId),
+            'orders' => $this->workflow->decorateWaitingTimes($orders),
+            'counts' => $this->workflow->counts($branchId, $userId, false),
+            'pendingWatch' => $this->workflow->pendingWatch($branchId),
+            'team' => $this->workflow->teamActivity($branchId),
             'pickers' => $this->workflow->pickerNames($orders),
             'tab' => $tab,
+            'tabLabels' => self::TAB_LABELS,
             'tabRoute' => 'branch-admin.orders.index',
             'nameRoute' => 'branch-admin.orders.personal-name',
             'transitions' => OrderWorkflowService::TRANSITIONS,
@@ -50,11 +67,13 @@ class OrderController extends Controller
     public function show($orderId)
     {
         $userId = auth()->user()->supabase_id ?? auth()->id();
-        $order = $this->workflow->findForShow((int) $orderId, (int) auth()->user()->branch_id, $userId);
+        $order = $this->workflow->findForShow((int) $orderId, (int) auth()->user()->branch_id, $userId, false);
 
         if (!$order) {
             abort(404);
         }
+
+        $order = $this->workflow->decorateWaitingTimes(collect([$order]))->first();
 
         return view('branch-admin.orders.show', [
             'order' => $order,

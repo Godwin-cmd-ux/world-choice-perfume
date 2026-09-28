@@ -8,7 +8,7 @@
         <div class="flex justify-between items-start mb-4">
             <div>
                 <h2 class="text-xl font-bold">{{ $order->order_number }}</h2>
-                <p class="text-sm text-gray-500">{{ $order->branch->name }}</p>
+                <p class="text-sm text-gray-500">{{ $order->branch?->name ?? 'This branch' }}</p>
             </div>
             <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
                 {{ ucfirst($order->status) }}
@@ -21,8 +21,15 @@
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">
             <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}</span></div>
             <div class="flex justify-between"><span>Phone:</span><span>{{ $order->customer?->phone ?? 'N/A' }}</span></div>
-            <div class="flex justify-between"><span>Cashier:</span><span>{{ $order->cashier?->name ?? 'Not assigned' }}</span></div>
+            <div class="flex justify-between"><span>Picked by:</span><span>{{ $order->cashier?->name ?? 'Nobody yet' }}</span></div>
             <div class="flex justify-between"><span>Placed:</span><span>{{ \Carbon\Carbon::parse($order->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</span></div>
+            <div class="flex justify-between">
+                <span>Waiting:</span>
+                <span class="font-medium {{ match($order->waiting_tone ?? 'unknown') { 'late' => 'text-red-600', 'warn' => 'text-amber-600', default => 'text-gray-700' } }}">
+                    {{ $order->waiting_label ?? '—' }}
+                    <span class="text-xs font-normal text-gray-400">since {{ $order->status === 'served' ? 'served' : ($order->status === 'picked' ? 'picked' : 'placed') }}</span>
+                </span>
+            </div>
             @if($order->delivery_notes)<div class="flex justify-between"><span>Notes:</span><span>{{ $order->delivery_notes }}</span></div>@endif
         </div>
         <table class="w-full text-sm mb-4">

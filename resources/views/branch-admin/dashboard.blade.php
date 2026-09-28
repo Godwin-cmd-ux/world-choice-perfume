@@ -28,7 +28,7 @@
            class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow transition">
             <i class="fas fa-plus"></i> New Sale
         </a>
-        <a href="{{ route('branch-admin.orders.index', ['status' => 'pending']) }}"
+        <a href="{{ route('branch-admin.orders.index', ['tab' => 'pending']) }}"
            class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition">
             <i class="fas fa-clipboard-list"></i> Orders
         </a>
@@ -36,7 +36,7 @@
 </div>
 
 @if(($pendingOrders ?? 0) > 0)
-    <a href="{{ route('branch-admin.orders.index', ['status' => 'pending']) }}"
+    <a href="{{ route('branch-admin.orders.index', ['tab' => 'pending']) }}"
        class="block mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl px-5 py-4 hover:from-amber-100 hover:to-orange-100 transition flex items-center justify-between gap-3 shadow-sm">
         <span class="flex items-center gap-3">
             <span class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center shadow"><i class="fas fa-clock"></i></span>

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
+
 /**
  * The staff order workflow shared by every role that owns an Orders page.
  *
@@ -50,6 +52,12 @@ class OrderWorkflowService
 
     /** Longest personal label we will store. */
     public const LABEL_MAX = 120;
+
+    /** An order waiting less than this is still fresh, not yet a problem. */
+    public const WAIT_WARN_MINUTES = 10;
+
+    /** An order waiting this long is called out as late on a monitor view. */
+    public const WAIT_LATE_MINUTES = 30;
 
     public function __construct(private SupabaseService $supabase)
     {
@@ -195,6 +203,19 @@ class OrderWorkflowService
             }
         }
 
+        return $this->staffNames(array_keys($ids));
+    }
+
+    /**
+     * Display names for the given staff ids, keyed by id.
+     */
+    public function staffNames(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map(fn($id) => (string) $id, $ids),
+            fn($id) => $id !== ''
+        )));
+
         if ($ids === []) {
             return [];
         }
@@ -202,13 +223,191 @@ class OrderWorkflowService
         $names = [];
         foreach ($this->supabase->query('users', [
             'select' => 'id,name',
-            'id' => 'in.(' . implode(',', array_keys($ids)) . ')',
+            'id' => 'in.(' . implode(',', $ids) . ')',
             'limit' => count($ids),
         ]) as $user) {
             $names[(string) $user['id']] = $user['name'] ?? 'Staff';
         }
 
         return $names;
+    }
+
+    /**
+     * When the order entered the state it is in right now.
+     *
+     * A pending order is measured from created_at, a picked one from the moment
+     * it was claimed and a served one from when it was handed over. Measuring
+     * everything from created_at would make a well-run order look slow purely
+     * because it took a while to serve.
+     */
+    public function waitingSince($order): ?Carbon
+    {
+        $row = (array) $order;
+
+        $column = match ($row['status'] ?? 'pending') {
+            'served' => 'served_at',
+            'picked' => 'assigned_at',
+            default => 'created_at',
+        };
+
+        // A row written before a timestamp existed is still measured from when
+        // it arrived rather than showing nothing at all.
+        return $this->toCarbon($row[$column] ?? null) ?? $this->toCarbon($row['created_at'] ?? null);
+    }
+
+    /**
+     * Add the waiting fields a monitor view needs to each order:
+     * waiting_since, waiting_minutes, waiting_label and waiting_tone.
+     */
+    public function decorateWaitingTimes($orders)
+    {
+        return $orders->map(function ($order) {
+            $since = $this->waitingSince($order);
+            $minutes = $since === null ? null : (int) abs($since->diffInMinutes(now()));
+
+            $order->waiting_since = $since;
+            $order->waiting_minutes = $minutes;
+            $order->waiting_label = $this->humanDuration($minutes);
+            $order->waiting_tone = $this->waitTone($minutes);
+
+            return $order;
+        });
+    }
+
+    /**
+     * A wait written the way it is said out loud: 45m, 2h 10m, 1d 4h.
+     */
+    public function humanDuration(?int $minutes): string
+    {
+        if ($minutes === null) {
+            return '—';
+        }
+
+        if ($minutes < 1) {
+            return 'just now';
+        }
+
+        if ($minutes < 60) {
+            return $minutes . 'm';
+        }
+
+        if ($minutes < 1440) {
+            return intdiv($minutes, 60) . 'h ' . ($minutes % 60) . 'm';
+        }
+
+        return intdiv($minutes, 1440) . 'd ' . intdiv($minutes % 1440, 60) . 'h';
+    }
+
+    /**
+     * How the unclaimed queue at this branch is doing.
+     *
+     * Loaded apart from the active tab so the queue can be watched from any
+     * tab, including while looking at orders that are already completed.
+     */
+    public function pendingWatch(?int $branchId): array
+    {
+        $params = [
+            'select' => 'created_at',
+            'status' => 'eq.pending',
+            'order' => 'created_at.asc',
+            'limit' => 500,
+        ];
+        if ($branchId !== null) {
+            $params['branch_id'] = "eq.{$branchId}";
+        }
+
+        $rows = $this->supabase->query('orders', $params);
+
+        $waits = [];
+        foreach ($rows as $row) {
+            $minutes = $this->minutesSince($row['created_at'] ?? null);
+            if ($minutes !== null) {
+                $waits[] = $minutes;
+            }
+        }
+
+        $longest = $waits === [] ? null : max($waits);
+
+        return [
+            'count' => count($rows),
+            'longest_minutes' => $longest,
+            'longest_label' => $this->humanDuration($longest),
+            'late_count' => count(array_filter($waits, fn($m) => $m >= self::WAIT_LATE_MINUTES)),
+        ];
+    }
+
+    /**
+     * Who is carrying the open work at this branch.
+     *
+     * One pass over the branch grouped by whoever picked each order, so a
+     * supervisor can see who has picked what and who has been holding on to an
+     * order the longest. Pending orders are left out on purpose: they belong to
+     * nobody until somebody claims them, so counting them here would blame the
+     * queue on a staff member.
+     */
+    public function teamActivity(?int $branchId)
+    {
+        $params = [
+            'select' => 'status,assigned_to,cashier_id,created_at,assigned_at',
+            'limit' => 1000,
+        ];
+        if ($branchId !== null) {
+            $params['branch_id'] = "eq.{$branchId}";
+        }
+
+        $team = [];
+        $ids = [];
+
+        foreach ($this->supabase->query('orders', $params) as $row) {
+            $status = $row['status'] ?? 'pending';
+
+            if ($status === 'pending') {
+                continue;
+            }
+
+            $staffId = $row['assigned_to'] ?? ($row['cashier_id'] ?? null);
+
+            if (empty($staffId)) {
+                continue;
+            }
+
+            $key = (string) $staffId;
+            $ids[$key] = true;
+
+            $team[$key] ??= [
+                'id' => $key,
+                'name' => 'Staff',
+                'open' => 0,
+                'served' => 0,
+                'longest_open_minutes' => null,
+            ];
+
+            if ($status === 'served') {
+                $team[$key]['served']++;
+                continue;
+            }
+
+            $team[$key]['open']++;
+
+            $held = $this->minutesSince($row['assigned_at'] ?? $row['created_at'] ?? null);
+
+            if ($held !== null && ($team[$key]['longest_open_minutes'] === null || $held > $team[$key]['longest_open_minutes'])) {
+                $team[$key]['longest_open_minutes'] = $held;
+            }
+        }
+
+        $names = $this->staffNames(array_keys($ids));
+
+        return collect($team)
+            ->map(function ($member) use ($names) {
+                $member['name'] = $names[$member['id']] ?? 'Staff';
+                $member['longest_open_label'] = $this->humanDuration($member['longest_open_minutes']);
+                $member['longest_open_tone'] = $this->waitTone($member['longest_open_minutes']);
+
+                return (object) $member;
+            })
+            ->sortByDesc(fn($member) => [$member->open, $member->longest_open_minutes ?? -1])
+            ->values();
     }
 
     /**
@@ -361,6 +560,46 @@ class OrderWorkflowService
             'ok' => true,
             'message' => $name === null ? 'Personal name cleared.' : 'Personal name saved.',
         ];
+    }
+
+    /**
+     * Fresh, attention or late. Served work is never late: it is finished.
+     */
+    private function waitTone(?int $minutes): string
+    {
+        if ($minutes === null) {
+            return 'unknown';
+        }
+
+        if ($minutes >= self::WAIT_LATE_MINUTES) {
+            return 'late';
+        }
+
+        return $minutes >= self::WAIT_WARN_MINUTES ? 'warn' : 'ok';
+    }
+
+    /**
+     * Whole minutes between a stored timestamp and now, or null when the
+     * timestamp is missing or unreadable.
+     */
+    private function minutesSince($value): ?int
+    {
+        $moment = $this->toCarbon($value);
+
+        return $moment === null ? null : (int) abs($moment->diffInMinutes(now()));
+    }
+
+    private function toCarbon($value): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return $value instanceof Carbon ? $value : Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
