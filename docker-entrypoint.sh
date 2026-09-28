@@ -44,12 +44,23 @@ printf 'SUPER_ADMIN_SECRET=%s\n' "$SUPER_ADMIN_SECRET" >> /var/www/html/.env
 # bash feature, and this script is run with `sh`, so using it killed the deploy
 # with "Bad substitution". Referencing "$2" works in every shell.
 write_env() {
-    if [ -n "$2" ]; then
-        printf '%s=%s\n' "$1" "$2" >> /var/www/html/.env
-        echo "  $1: set"
-    else
+    if [ -z "$2" ]; then
         echo "  $1: (NOT SET)"
+        return
     fi
+
+    # Render hands over whatever was typed, so INFO_MAIL_NAME arrives as
+    # World Choice Perfumes with spaces and no quotes. Written out raw that is
+    # not a valid dotenv line, and every artisan command then dies with
+    # "Failed to parse dotenv file" — which is what broke the deploy.
+    # Surrounding quotes are stripped, then the value is always re-quoted.
+    # Escaping is done in a single pass so a backslash is never doubled twice;
+    # the /g flag matters because a value may hold several of either.
+    value=$(printf '%s' "$2" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^[[:space:]]*'\(.*\)'[[:space:]]*\$/\1/")
+    value=$(printf '%s' "$value" | sed -e 's/[\\"]/\\&/g' | tr -d '\n\r')
+
+    printf '%s="%s"\n' "$1" "$value" >> /var/www/html/.env
+    echo "  $1: set"
 }
 
 echo "=== Writing optional env vars ==="
