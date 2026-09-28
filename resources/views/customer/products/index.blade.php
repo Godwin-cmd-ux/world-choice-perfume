@@ -263,6 +263,11 @@
                                     foreach ($cardVarieties as $volume) {
                                         $cardOptionCount += count($volume['variants'] ?? []);
                                     }
+                                    // This grid mixes branches, and a perfume that is
+                                    // stocked at more than one branch is priced per
+                                    // branch, so it gets no single number either.
+                                    $cardBranchCount = $branchCounts[(int) $stock->product_id] ?? 0;
+                                    $cardDependsOnBranch = $cardBranchCount > 1;
                                 @endphp
                                 <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $stock->branch_id]) }}"
                                    class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
@@ -308,9 +313,17 @@
                                             <div>
                                                 @if($stock->quantity <= 0)
                                                     <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                                @elseif($cardOptionCount > 0 && $cardDependsOnBranch)
+                                                    {{-- Priced per branch and per bottling: the
+                                                         details page lists both. --}}
+                                                    <p class="text-sm font-bold text-gold-400">Depends on branch and variety</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} options · {{ $cardBranchCount }} branches</p>
                                                 @elseif($cardOptionCount > 0)
                                                     <p class="text-sm font-bold text-gold-400">Depends on variety</p>
                                                     <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                @elseif($cardDependsOnBranch)
+                                                    <p class="text-sm font-bold text-gold-400">Depends on branch</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardBranchCount }} branches</p>
                                                 @else
                                                     <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                                 @endif
@@ -343,8 +356,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         @foreach($products as $stock)
                             @php
-                                // Same as the "All branches" grid: quote a price only
-                                // when the product is sold in one bottling.
+                                // One branch only, so the card can quote that
+                                // branch's price unless the perfume is bottled
+                                // in several sizes there.
                                 $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
                                 $cardOptionCount = 0;
                                 foreach ($cardVarieties as $volume) {

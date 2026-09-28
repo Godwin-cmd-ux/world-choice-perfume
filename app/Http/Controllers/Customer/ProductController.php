@@ -53,6 +53,7 @@ class ProductController extends Controller
         $products = collect();
         $selectedBranch = null;
         $showAllBranches = false;
+        $branchCounts = [];
 
         if ($request->branch_id) {
             // Get the selected branch
@@ -99,6 +100,10 @@ class ProductController extends Controller
 
             $stockCollection = collect($rawStock);
 
+            // The same perfume is stocked at more than one branch, so
+            // "All branches" cannot quote a single price for it.
+            $branchCounts = $this->inStockBranchCounts($rawStock);
+
             // Merge in catalogue products that have no stock row anywhere
             $stockedIds = $stockCollection->pluck('product_id')->map(fn ($id) => (int) $id)->all();
             $missing = collect($allProducts)
@@ -128,7 +133,32 @@ class ProductController extends Controller
             // In-stock bottlings per branch so an Oil Fragrance card that is
             // sold in several varieties does not advertise a single price.
             'varietiesByBranch' => $this->varietiesByBranch($products),
+            // A perfume stocked at more than one branch is listed per branch
+            // instead of being given one number for the whole country.
+            'branchCounts' => $branchCounts,
         ]);
+    }
+
+    /**
+     * How many branches actually stock each product: [product_id => count].
+     * Out-of-stock rows are left out — a branch with nothing on the shelf is
+     * not one of the prices a customer can choose from.
+     *
+     * @return array<int, int>
+     */
+    private function inStockBranchCounts(array $rawStock): array
+    {
+        $counts = [];
+        foreach ($rawStock as $row) {
+            $productId = (int) ($row['product_id'] ?? 0);
+            $branchId = (int) ($row['branch_id'] ?? 0);
+            if ($productId <= 0 || $branchId <= 0 || (int) ($row['quantity'] ?? 0) <= 0) {
+                continue;
+            }
+            $counts[$productId] = ($counts[$productId] ?? 0) + 1;
+        }
+
+        return $counts;
     }
 
     /**
@@ -233,10 +263,16 @@ class ProductController extends Controller
             $product->images = collect($product->images)->map(fn ($img) => (object) $img);
         }
 
+        // Which branches actually stock it. With no branch picked the page
+        // lists each of them with its own price; with one picked the page
+        // belongs to that branch alone.
+        $inStockBranches = $branchStocks->filter(fn ($s) => $s->quantity > 0);
+
         return view('customer.products.show', [
             ...compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'),
             'varietiesByBranch' => $varietiesByBranch,
             'varieties' => $selectedBranch ? ($varietiesByBranch[(int) $selectedBranch->id] ?? []) : [],
+            'inStockBranchCount' => $inStockBranches->count(),
         ]);
     }
 
