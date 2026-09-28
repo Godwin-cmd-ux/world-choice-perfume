@@ -39,9 +39,13 @@ printf 'SUPER_ADMIN_SECRET=%s\n' "$SUPER_ADMIN_SECRET" >> /var/www/html/.env
 # --- info@worldchoiceperfume.com mailbox (Customer Care -> Mails) -------------
 # Only variables that are actually set are written, so a missing one stays
 # unset instead of becoming an empty string that Laravel reads as a value.
+#
+# The name and the value are both passed in: `${!1}` (indirect expansion) is a
+# bash feature, and this script is run with `sh`, so using it killed the deploy
+# with "Bad substitution". Referencing "$2" works in every shell.
 write_env() {
-    if [ -n "${!1:-}" ]; then
-        printf '%s=%s\n' "$1" "${!1}" >> /var/www/html/.env
+    if [ -n "$2" ]; then
+        printf '%s=%s\n' "$1" "$2" >> /var/www/html/.env
         echo "  $1: set"
     else
         echo "  $1: (NOT SET)"
@@ -49,29 +53,29 @@ write_env() {
 }
 
 echo "=== Writing optional env vars ==="
-write_env EMAIL_RECEIVING_WEBHOOK
-write_env INFO_MAIL_ADDRESS
-write_env INFO_MAIL_NAME
-write_env INFO_MAIL_INBOUND_URL
-write_env INFO_MAILS_PER_PAGE
+write_env EMAIL_RECEIVING_WEBHOOK "${EMAIL_RECEIVING_WEBHOOK:-}"
+write_env INFO_MAIL_ADDRESS "${INFO_MAIL_ADDRESS:-}"
+write_env INFO_MAIL_NAME "${INFO_MAIL_NAME:-}"
+write_env INFO_MAIL_INBOUND_URL "${INFO_MAIL_INBOUND_URL:-}"
+write_env INFO_MAILS_PER_PAGE "${INFO_MAILS_PER_PAGE:-}"
 
 # Until a sending provider is configured, mail must be written to the log
 # rather than attempted over an unconfigured SMTP host.
 if [ -n "${MAIL_MAILER:-}" ]; then
-    write_env MAIL_MAILER
+    write_env MAIL_MAILER "$MAIL_MAILER"
 else
     printf 'MAIL_MAILER=log\n' >> /var/www/html/.env
     echo "  MAIL_MAILER: defaulting to log (set MAIL_MAILER on Render to send)"
 fi
 
-write_env MAIL_HOST
-write_env MAIL_PORT
-write_env MAIL_USERNAME
-write_env MAIL_PASSWORD
-write_env MAIL_ENCRYPTION
-write_env MAIL_FROM_ADDRESS
-write_env MAIL_FROM_NAME
-write_env RESEND_API_KEY
+write_env MAIL_HOST "${MAIL_HOST:-}"
+write_env MAIL_PORT "${MAIL_PORT:-}"
+write_env MAIL_USERNAME "${MAIL_USERNAME:-}"
+write_env MAIL_PASSWORD "${MAIL_PASSWORD:-}"
+write_env MAIL_ENCRYPTION "${MAIL_ENCRYPTION:-}"
+write_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS:-}"
+write_env MAIL_FROM_NAME "${MAIL_FROM_NAME:-}"
+write_env RESEND_API_KEY "${RESEND_API_KEY:-}"
 
 echo "=== ENV VAR CHECK ==="
 echo "SUPABASE_URL: ${SUPABASE_URL:-(NOT SET!)}"
