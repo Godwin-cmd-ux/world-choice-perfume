@@ -84,7 +84,6 @@ class InfoMailController extends Controller
             'attachments' => collect($this->mails->attachmentsFor((int) $mail->id)),
             'infoAddress' => config('info_mail.address'),
             'signature' => auth()->user()->name ?? 'Customer Care',
-            'transport' => $this->transportStatus(),
             'replyLimits' => [
                 'files' => self::MAX_REPLY_FILES,
                 'fileMb' => (int) (self::MAX_REPLY_FILE_KILOBYTES / 1024),
@@ -97,49 +96,6 @@ class InfoMailController extends Controller
     private static function replyLimitMb(): int
     {
         return (int) (self::MAX_REPLY_TOTAL_BYTES / 1048576);
-    }
-
-    /**
-     * Describe how this server would actually send, so a reply that fails
-     * can be read against the configuration instead of guessed at.
-     *
-     * Only the mailer name, host and whether credentials exist are shown.
-     * No key, password or token is ever passed to the view.
-     */
-    private function transportStatus(): array
-    {
-        $mailer = (string) config('mail.default');
-        $label = $mailer;
-
-        if ($mailer === 'smtp') {
-            $host = (string) config('mail.mailers.smtp.host');
-            $port = config('mail.mailers.smtp.port');
-            $label = $host.':'.$port;
-        }
-
-        $credentialsPresent = $mailer === 'log' || (bool) match ($mailer) {
-            'resend' => config('mail.mailers.resend.key'),
-            'smtp' => config('mail.mailers.smtp.password'),
-            default => false,
-        };
-
-        // Resend's SMTP host on 465 is not reachable from the app server:
-        // the container times out before authenticating. Sending has to go
-        // through the HTTPS API instead, so this pairing is called out.
-        $smtpToResend = $mailer === 'smtp'
-            && str_contains((string) config('mail.mailers.smtp.host'), 'resend');
-
-        return [
-            'mailer' => $mailer,
-            'label' => $label,
-            'credentialsPresent' => $credentialsPresent,
-            'warning' => match (true) {
-                $mailer === 'log' => 'Mail is set to log, so nothing is actually sent.',
-                $smtpToResend => 'SMTP to Resend times out on this server. Set MAIL_MAILER=resend and RESEND_API_KEY.',
-                ! $credentialsPresent => 'This mailer has no credentials, so sending will fail.',
-                default => null,
-            },
-        ];
     }
 
     /**

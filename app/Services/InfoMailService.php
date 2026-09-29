@@ -538,7 +538,7 @@ class InfoMailService
 
         return [
             'ok' => true,
-            'message' => 'Reply sent to '.$to.' as '.$fromAddress.'.',
+            'message' => 'Reply sent to '.$to.'.',
             'reply' => $reply ? (object) $reply : null,
         ];
     }

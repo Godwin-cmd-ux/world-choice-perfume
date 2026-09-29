@@ -13,22 +13,6 @@
         : '—';
 @endphp
 
-{{-- What this server will use to send, so a failed reply can be read against
-     the configuration instead of guessed at. Credentials are never shown. --}}
-<div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs
-     {{ $transport['warning'] ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900' }}">
-    <span class="font-semibold uppercase tracking-wide opacity-70">Sending</span>
-    <span class="font-mono">{{ $transport['label'] }}</span>
-    @if ($transport['credentialsPresent'])
-        <span class="opacity-70">· credentials present</span>
-    @else
-        <span class="opacity-70">· no credentials</span>
-    @endif
-    @if ($transport['warning'])
-        <span class="w-full sm:w-auto sm:ml-2 font-medium">{{ $transport['warning'] }}</span>
-    @endif
-</div>
-
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     {{-- The conversation --}}
     <div class="lg:col-span-2 space-y-4">
@@ -162,40 +146,12 @@
                 </div>
             @endif
 
-            {{-- Body. HTML mails are shown in a sandboxed frame with scripts
-                 and same-origin access switched off, because the sender
-                 controls that markup. --}}
+            {{-- Body. Only the plain text is shown. The sender controls the HTML,
+                 and a formatted rendering gets in the way of reading a message
+                 rather than helping it. An HTML-only mail is converted to text
+                 when it arrives, so nothing is lost by dropping the rich view. --}}
             <div class="px-5 py-4">
-                @if($mail->body_html)
-                    <div class="flex items-center gap-2 mb-3">
-                        <button type="button" data-mail-tab="html"
-                                class="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white">Rich view</button>
-                        <button type="button" data-mail-tab="text"
-                                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 text-gray-600">Plain text</button>
-                    </div>
-
-                    <div data-mail-panel="html">
-                        <iframe id="mailFrame" title="Message content" sandbox
-                                class="w-full border border-gray-200 rounded-lg bg-white"
-                                style="height: 520px;"></iframe>
-                        <script>
-                            (function () {
-                                var frame = document.getElementById('mailFrame');
-                                if (!frame) return;
-                                // base64 so the sender's markup can never break
-                                // out of the attribute it is written into.
-                                var html = atob(@json(base64_encode((string) $mail->body_html)));
-                                frame.srcdoc = html;
-                            })();
-                        </script>
-                    </div>
-
-                    <div data-mail-panel="text" class="hidden">
-                        <pre class="whitespace-pre-wrap font-sans text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-4">{{ $mail->body_text }}</pre>
-                    </div>
-                @else
-                    <div class="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{{ $mail->body_text ?: 'This mail has no readable body.' }}</div>
-                @endif
+                <div class="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{{ $mail->body_text ?: 'This mail has no readable body.' }}</div>
             </div>
         </div>
 
@@ -392,21 +348,6 @@
 
 @push('scripts')
 <script>
-    // Rich / plain toggle for the message body.
-    document.querySelectorAll('[data-mail-tab]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            var wanted = button.getAttribute('data-mail-tab');
-            document.querySelectorAll('[data-mail-tab]').forEach(function (other) {
-                other.className = other.getAttribute('data-mail-tab') === wanted
-                    ? 'px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white'
-                    : 'px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 text-gray-600';
-            });
-            document.querySelectorAll('[data-mail-panel]').forEach(function (panel) {
-                panel.classList.toggle('hidden', panel.getAttribute('data-mail-panel') !== wanted);
-            });
-        });
-    });
-
     // Picked attachments. The list is a convenience, not a gate: the server
     // applies the same limits and is the one that actually decides. The total
     // is checked here too because exceeding post_max_size does not produce a

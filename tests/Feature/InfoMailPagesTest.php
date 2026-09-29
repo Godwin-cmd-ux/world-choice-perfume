@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Services\InfoMailService;
 use Tests\TestCase;
 
@@ -44,12 +45,11 @@ class InfoMailPagesTest extends TestCase
 
     private function bindService(): void
     {
-        $service = new class($this->fakeMail()) extends InfoMailService {
+        $service = new class($this->fakeMail()) extends InfoMailService
+        {
             public array $calls = [];
 
-            public function __construct(private object $fixture)
-            {
-            }
+            public function __construct(private object $fixture) {}
 
             public function inbox(array $filters = [], int $page = 1): array
             {
@@ -147,7 +147,7 @@ class InfoMailPagesTest extends TestCase
 
     private function loginAsHeadQuartersCustomerCare(): void
     {
-        $user = new \App\Models\User();
+        $user = new User;
         $user->forceFill([
             'id' => 14,
             'supabase_id' => 31,
@@ -167,10 +167,9 @@ class InfoMailPagesTest extends TestCase
         $this->bindService();
         $service = $this->app->make(InfoMailService::class);
 
-        return new class($service, $mime) extends InfoMailService {
-            public function __construct(private InfoMailService $inner, private string $mime)
-            {
-            }
+        return new class($service, $mime) extends InfoMailService
+        {
+            public function __construct(private InfoMailService $inner, private string $mime) {}
 
             public function find(int $id): ?object
             {
@@ -211,6 +210,39 @@ class InfoMailPagesTest extends TestCase
         $this->loginAsHeadQuartersCustomerCare();
 
         $this->get('/customer-care/mails?box=not-a-box')->assertOk();
+    }
+
+    /**
+     * The body is shown as plain text only. The rich view and its switch are
+     * gone, so the sender's markup is never rendered on the page.
+     */
+    public function test_the_mail_body_is_shown_as_plain_text_without_a_rich_view(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7');
+
+        $response->assertOk();
+        // The plain text body, which is the only body shown now.
+        $response->assertSee('How much is Reef 33 50ml?');
+        $response->assertSee('Asante, Amina');
+        $response->assertDontSee('Rich view');
+        $response->assertDontSee('Plain text');
+        $response->assertDontSee('mailFrame', false);
+        // The sender's own markup is not put on the page at all.
+        $response->assertDontSee('&lt;b&gt;Reef 33 50ml&lt;/b&gt;', false);
+    }
+
+    public function test_the_page_does_not_advertise_how_the_server_sends(): void
+    {
+        $this->bindService();
+        $this->loginAsHeadQuartersCustomerCare();
+
+        $response = $this->get('/customer-care/mails/7');
+
+        $response->assertDontSee('credentials present');
+        $response->assertDontSee('Sending<', false);
     }
 
     public function test_a_mail_page_renders_the_body_thread_and_reply_box(): void

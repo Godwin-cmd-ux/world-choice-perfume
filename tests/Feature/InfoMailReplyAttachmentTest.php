@@ -128,6 +128,20 @@ class InfoMailReplyAttachmentTest extends TestCase
         $this->assertNull($this->recordedReply()['attachment_names']);
     }
 
+    /**
+     * What the member reads back after answering: who it went to, and nothing
+     * about how it was sent.
+     */
+    public function test_a_successful_reply_reports_only_where_it_went(): void
+    {
+        Mail::fake();
+
+        $result = $this->service()->reply($this->mail(), 'Jambo Amina, it is in stock.', $this->staff());
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('Reply sent to amina@example.co.tz.', $result['message']);
+    }
+
     public function test_a_failed_send_still_records_what_was_attached(): void
     {
         // The record has to say the file went with the answer, otherwise a

@@ -485,6 +485,16 @@
                     </div>
                     <div class="flex items-center gap-4">
                         <div class="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                            <i class="fas fa-envelope text-gold-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Email us</p>
+                            <a href="mailto:{{ config('info_mail.address') }}"
+                               class="text-white font-medium hover:text-gold-400 transition-colors">{{ config('info_mail.address') }}</a>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
                             <i class="fas fa-headset text-gold-400"></i>
                         </div>
                         <div>
