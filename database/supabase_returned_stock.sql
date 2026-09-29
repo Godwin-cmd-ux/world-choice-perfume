@@ -61,3 +61,4 @@ CREATE INDEX IF NOT EXISTS idx_stock_transfer_items_damage
     ON public.stock_transfer_items (return_status, damage_type);
 
 NOTIFY pgrst, 'reload schema';
+ 
