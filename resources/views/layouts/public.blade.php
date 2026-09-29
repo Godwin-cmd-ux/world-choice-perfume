@@ -177,7 +177,7 @@
                 <div>
                     <h3 class="font-display text-sm font-semibold uppercase tracking-wider text-gold-400 mb-6">Contact Us</h3>
                     <ul class="space-y-3 text-sm text-gray-400">
-                        <li class="flex items-center gap-2"><i class="fas fa-phone text-gold-500/60"></i> +255 710 603 637</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-phone text-gold-500/60"></i> <a href="tel:{{ config('contact.dial') }}" class="hover:text-gold-400 transition-colors">{{ config('contact.phone') }}</a></li>
                         <li class="flex items-center gap-2"><i class="fab fa-whatsapp text-gold-500/60"></i> +255 710 603 637</li>
                         <li class="flex items-center gap-2"><i class="fas fa-clock text-gold-500/60"></i> Mon – Sat: 9AM – 8PM</li>
                     </ul>

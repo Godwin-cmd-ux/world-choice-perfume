@@ -465,15 +465,15 @@
                 </p>
 
                 <div class="space-y-4 sm:space-y-5">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                    <a href="tel:{{ config('contact.dial') }}" class="flex items-center gap-4 group w-fit">
+                        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center group-hover:bg-gold-500/20 group-hover:border-gold-500/40 transition-colors">
                             <i class="fas fa-phone text-gold-400"></i>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Call us</p>
-                            <p class="text-white font-medium">+255 710 603 637</p>
+                            <p class="text-white font-medium group-hover:text-gold-400 transition-colors">{{ config('contact.phone') }}</p>
                         </div>
-                    </div>
+                    </a>
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
                             <i class="fas fa-clock text-gold-400"></i>
