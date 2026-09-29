@@ -30,7 +30,15 @@
                     <i class="fab fa-whatsapp text-gray-400 mt-0.5"></i>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">WhatsApp</p>
-                        <p class="font-medium">{{ $customer->whatsapp ?? '—' }}</p>
+                        @if($whatsappLink)
+                            <a href="{{ $whatsappLink }}" target="_blank" rel="noopener noreferrer"
+                               class="font-medium text-green-600 hover:text-green-700 hover:underline inline-flex items-center gap-1.5">
+                                {{ $customer->whatsapp }}
+                                <i class="fab fa-whatsapp text-xs"></i>
+                            </a>
+                        @else
+                            <p class="font-medium">{{ $customer->whatsapp ?? '—' }}</p>
+                        @endif
                     </div>
                 </div>
                 <div class="flex items-start gap-3">

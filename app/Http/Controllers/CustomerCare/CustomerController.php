@@ -4,6 +4,7 @@ namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -19,9 +20,12 @@ class CustomerController extends Controller
 
     private SupabaseService $supabase;
 
+    private WhatsAppService $whatsapp;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->whatsapp = new WhatsAppService();
     }
 
     /**
@@ -315,6 +319,7 @@ class CustomerController extends Controller
 
         return view('customer-care.customers.show', [
             'customer' => (object) $customer,
+            'whatsappLink' => $this->whatsapp->chatLink($customer['whatsapp'] ?? null),
             'branchTabs' => $branchTabs,
             'selected' => $selected,
             'selectedName' => $selectedName,
