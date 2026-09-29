@@ -13,6 +13,22 @@
         : '—';
 @endphp
 
+{{-- What this server will use to send, so a failed reply can be read against
+     the configuration instead of guessed at. Credentials are never shown. --}}
+<div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs
+     {{ $transport['warning'] ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900' }}">
+    <span class="font-semibold uppercase tracking-wide opacity-70">Sending</span>
+    <span class="font-mono">{{ $transport['label'] }}</span>
+    @if ($transport['credentialsPresent'])
+        <span class="opacity-70">· credentials present</span>
+    @else
+        <span class="opacity-70">· no credentials</span>
+    @endif
+    @if ($transport['warning'])
+        <span class="w-full sm:w-auto sm:ml-2 font-medium">{{ $transport['warning'] }}</span>
+    @endif
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     {{-- The conversation --}}
     <div class="lg:col-span-2 space-y-4">

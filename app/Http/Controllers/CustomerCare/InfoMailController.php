@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
  */
 class InfoMailController extends Controller
 {
-    public function __construct(private InfoMailService $mails)
-    {
-    }
+    public function __construct(private InfoMailService $mails) {}
 
     public function index(Request $request)
     {
@@ -62,7 +60,51 @@ class InfoMailController extends Controller
             'attachments' => collect($this->mails->attachmentsFor((int) $mail->id)),
             'infoAddress' => config('info_mail.address'),
             'signature' => auth()->user()->name ?? 'Customer Care',
+            'transport' => $this->transportStatus(),
         ]);
+    }
+
+    /**
+     * Describe how this server would actually send, so a reply that fails
+     * can be read against the configuration instead of guessed at.
+     *
+     * Only the mailer name, host and whether credentials exist are shown.
+     * No key, password or token is ever passed to the view.
+     */
+    private function transportStatus(): array
+    {
+        $mailer = (string) config('mail.default');
+        $label = $mailer;
+
+        if ($mailer === 'smtp') {
+            $host = (string) config('mail.mailers.smtp.host');
+            $port = config('mail.mailers.smtp.port');
+            $label = $host.':'.$port;
+        }
+
+        $credentialsPresent = $mailer === 'log' || (bool) match ($mailer) {
+            'resend' => config('mail.mailers.resend.key'),
+            'smtp' => config('mail.mailers.smtp.password'),
+            default => false,
+        };
+
+        // Resend's SMTP host on 465 is not reachable from the app server:
+        // the container times out before authenticating. Sending has to go
+        // through the HTTPS API instead, so this pairing is called out.
+        $smtpToResend = $mailer === 'smtp'
+            && str_contains((string) config('mail.mailers.smtp.host'), 'resend');
+
+        return [
+            'mailer' => $mailer,
+            'label' => $label,
+            'credentialsPresent' => $credentialsPresent,
+            'warning' => match (true) {
+                $mailer === 'log' => 'Mail is set to log, so nothing is actually sent.',
+                $smtpToResend => 'SMTP to Resend times out on this server. Set MAIL_MAILER=resend and RESEND_API_KEY.',
+                ! $credentialsPresent => 'This mailer has no credentials, so sending will fail.',
+                default => null,
+            },
+        ];
     }
 
     /**
@@ -95,12 +137,12 @@ class InfoMailController extends Controller
                 'Content-Type' => $inline ? $mime : 'application/octet-stream',
                 'Content-Length' => (string) $found['size'],
                 'Content-Disposition' => ($inline ? 'inline' : 'attachment')
-                    . '; filename="' . str_replace('"', '', $name) . '"',
+                    .'; filename="'.str_replace('"', '', $name).'"',
                 'X-Content-Type-Options' => 'nosniff',
                 // Even when the sender's type is trusted enough to show, the
                 // file gets no scripts, no plugins and no same-origin reach.
                 'Content-Security-Policy' => "default-src 'none'; img-src 'self'; media-src 'self'; "
-                    . "style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'",
+                    ."style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'",
                 'Cache-Control' => 'private, max-age=0, no-store',
             ])
             ->deleteFileAfterSend(true);
@@ -136,7 +178,7 @@ class InfoMailController extends Controller
             default => '',
         };
 
-        return $extension === '' ? $name : $name . '.' . $extension;
+        return $extension === '' ? $name : $name.'.'.$extension;
     }
 
     /**
@@ -237,7 +279,7 @@ class InfoMailController extends Controller
 
         $this->mails->setStatus((int) $mail->id, $validated['status']);
 
-        return back()->with('success', 'Mail moved to ' . $validated['status'] . '.');
+        return back()->with('success', 'Mail moved to '.$validated['status'].'.');
     }
 
     public function destroy($mailId)
