@@ -320,6 +320,7 @@ class CustomerController extends Controller
         return view('customer-care.customers.show', [
             'customer' => (object) $customer,
             'whatsappLink' => $this->whatsapp->chatLink($customer['whatsapp'] ?? null),
+            'emailLink' => $this->mailtoFor($customer['email'] ?? null),
             'branchTabs' => $branchTabs,
             'selected' => $selected,
             'selectedName' => $selectedName,
@@ -327,6 +328,23 @@ class CustomerController extends Controller
             'itemSummary' => $itemSummary,
             'totalSpent' => $transactions->sum('total'),
         ]);
+    }
+
+    /**
+     * A mailto: link for the client, when what is stored is an address.
+     *
+     * Answering a client is the point of the record, and reading an address
+     * off the screen to retype it into a new message is the step the link is
+     * here to remove. The column is checked first: rows written before the
+     * form validated it can hold anything, and a mailto: built from something
+     * that is not an address opens a compose window aimed at nothing, which
+     * looks worse on a screen than the address simply sitting there.
+     */
+    private function mailtoFor(?string $email): ?string
+    {
+        $email = trim((string) $email);
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? 'mailto:'.$email : null;
     }
 
     /**

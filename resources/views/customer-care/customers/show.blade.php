@@ -45,7 +45,11 @@
                     <i class="fas fa-envelope text-gray-400 mt-0.5"></i>
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
-                        <p class="font-medium">{{ $customer->email ?? '—' }}</p>
+                        @if($emailLink)
+                            <a href="{{ $emailLink }}" class="font-medium text-amber-700 hover:text-amber-800 hover:underline break-all">{{ $customer->email }}</a>
+                        @else
+                            <p class="font-medium">{{ $customer->email ?? '—' }}</p>
+                        @endif
                     </div>
                 </div>
                 <div class="flex items-start gap-3">
