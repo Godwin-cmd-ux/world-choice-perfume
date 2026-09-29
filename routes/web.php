@@ -423,8 +423,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             $mcon = App\Http\Controllers\CustomerCare\InfoMailController::class;
             Route::get('/mails', [$mcon, 'index'])->name('mails.index');
             Route::get('/mails/{mail}', [$mcon, 'show'])->name('mails.show');
-Route::get('/mails/{mail}/attachments/{attachment}', [$mcon, 'attachment'])
-    ->name('mails.attachment');
+            Route::get('/mails/{mail}/attachments/{attachment}', [$mcon, 'attachment'])
+                ->name('mails.attachment');
             Route::post('/mails/{mail}/reply', [$mcon, 'reply'])->name('mails.reply');
             Route::post('/mails/{mail}/read', [$mcon, 'toggleRead'])->name('mails.read');
             Route::post('/mails/{mail}/star', [$mcon, 'star'])->name('mails.star');

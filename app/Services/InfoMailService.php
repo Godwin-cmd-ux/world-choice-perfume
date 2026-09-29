@@ -27,6 +27,9 @@ class InfoMailService
     /** Private bucket; files are only reachable through the mail page. */
     public const BUCKET = 'info-mail-attachments';
 
+    /** The shop's own time, so a "today" matches the day the staff are on. */
+    private const TIMEZONE = 'Africa/Dar_es_Salaam';
+
     public function __construct(
         private SupabaseService $supabase,
         private RawEmailParser $parser,
@@ -404,6 +407,195 @@ class InfoMailService
             return $this->supabase->count(self::TABLE, ['is_read' => 'eq.false']);
         } catch (\Throwable $e) {
             return 0;
+        }
+    }
+
+    /**
+     * The figures behind the Customer Care dashboard's mailbox panel.
+     *
+     * The headline count is every mail ever received. Everything else is
+     * counted over the last 30 days, because that is the window a person
+     * looking at a dashboard is actually asking about, and the panel says so
+     * rather than passing a month-old number off as a running total.
+     *
+     * Reading the mailbox must never be able to take the dashboard down, so
+     * anything unexpected here returns zeroes and leaves the rest of the page
+     * standing.
+     *
+     * @return array<string, mixed>
+     */
+    public function dashboardStatistics(): array
+    {
+        $now = Carbon::now(self::TIMEZONE);
+        $windowStart = $now->copy()->subDays(30)->startOfDay();
+
+        $stats = [
+            'totalReceived' => 0,
+            'received' => 0,
+            'awaiting' => 0,
+            'answered' => 0,
+            'withAttachments' => 0,
+            'repliesSent' => 0,
+            'repliesFailed' => 0,
+            'firstReplyMinutes' => null,
+            'firstReplyLabel' => null,
+            'answeredForTiming' => 0,
+            'daily' => $this->emptyDaily($now),
+        ];
+
+        try {
+            $stats['totalReceived'] = $this->supabase->count(self::TABLE);
+
+            // One read of the window answers every mail-side figure and the
+            // daily bars, instead of a count request per breakdown.
+            // Supabase hands rows back as arrays, so they are cast before any
+            // property is read off them.
+            $mails = collect($this->supabase->query(self::TABLE, [
+                'select' => 'id,received_at,status,has_attachments',
+                'received_at' => 'gte.'.$windowStart->toIso8601String(),
+                'order' => 'received_at.asc',
+            ]))->map(fn ($row) => (object) $row);
+
+            $receivedAtById = [];
+            $daily = $this->emptyDaily($now);
+
+            foreach ($mails as $mail) {
+                $receivedAt = $this->asCarbon($mail->received_at ?? null);
+                if (! $receivedAt) {
+                    continue;
+                }
+
+                $receivedAtById[(int) $mail->id] = $receivedAt;
+                $stats['received']++;
+
+                // Kept in plain branches on a local: an inline `??` in the
+                // elseif would bind looser than `===` and quietly count a
+                // closed mail as an answered one.
+                $status = (string) ($mail->status ?? 'new');
+                if ($status === 'new') {
+                    $stats['awaiting']++;
+                } elseif ($status === 'replied') {
+                    $stats['answered']++;
+                }
+
+                if ($mail->has_attachments ?? false) {
+                    $stats['withAttachments']++;
+                }
+
+                $day = $receivedAt->format('Y-m-d');
+                if (isset($daily[$day])) {
+                    $daily[$day]++;
+                }
+            }
+
+            $stats['daily'] = $daily;
+
+            // The first answer sent for a mail, which is what a waiting
+            // customer experiences. Follow-ups inside a thread are not counted
+            // again: they were never a new question.
+            $replies = collect($this->supabase->query(self::REPLIES_TABLE, [
+                'select' => 'info_email_id,sent_at,created_at,status',
+                'created_at' => 'gte.'.$windowStart->toIso8601String(),
+                'order' => 'created_at.asc',
+            ]))->map(fn ($row) => (object) $row);
+
+            $firstSentByMail = [];
+            foreach ($replies as $reply) {
+                if (($reply->status ?? 'sent') === 'failed') {
+                    $stats['repliesFailed']++;
+
+                    continue;
+                }
+
+                $stats['repliesSent']++;
+
+                $mailId = (int) ($reply->info_email_id ?? 0);
+                $sentAt = $this->asCarbon($reply->sent_at ?? $reply->created_at ?? null);
+                if ($mailId && $sentAt && ! isset($firstSentByMail[$mailId])) {
+                    $firstSentByMail[$mailId] = $sentAt;
+                }
+            }
+
+            // Only a mail that was actually answered can be timed, and a
+            // provider clock that runs ahead of ours would otherwise drag the
+            // average down with a negative wait.
+            $waitedMinutes = [];
+            foreach ($firstSentByMail as $mailId => $sentAt) {
+                $receivedAt = $receivedAtById[$mailId] ?? null;
+                if (! $receivedAt) {
+                    continue;
+                }
+
+                $minutes = $receivedAt->diffInMinutes($sentAt, false);
+                if ($minutes >= 0) {
+                    $waitedMinutes[] = $minutes;
+                }
+            }
+
+            if ($waitedMinutes !== []) {
+                $stats['answeredForTiming'] = count($waitedMinutes);
+                $stats['firstReplyMinutes'] = (int) round(array_sum($waitedMinutes) / count($waitedMinutes));
+            }
+
+            $stats['firstReplyLabel'] = $this->waitLabel($stats['firstReplyMinutes']);
+        } catch (\Throwable $e) {
+            Log::warning('InfoMail dashboard statistics unavailable: '.$e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /** One slot per day for the last week, oldest first, so the bars read left to right. */
+    private function emptyDaily(Carbon $now): array
+    {
+        $daily = [];
+
+        for ($back = 6; $back >= 0; $back--) {
+            $daily[$now->copy()->subDays($back)->format('Y-m-d')] = 0;
+        }
+
+        return $daily;
+    }
+
+    /**
+     * A wait written the way a person would say it. Anything under a minute is
+     * still a real answer, so it is not rounded away to nothing, and a wait is
+     * never truncated: 90 minutes reads as an hour and a half, not an hour.
+     */
+    private function waitLabel(?int $minutes): ?string
+    {
+        if ($minutes === null) {
+            return null;
+        }
+
+        if ($minutes < 60) {
+            return $minutes.' min';
+        }
+
+        $hours = intdiv($minutes, 60);
+
+        if ($hours < 24) {
+            $left = $minutes % 60;
+
+            return $hours.' hour'.($hours > 1 ? 's' : '').($left ? ' '.$left.' min' : '');
+        }
+
+        $days = intdiv($hours, 24);
+        $hoursLeft = $hours % 24;
+
+        return $days.' day'.($days > 1 ? 's' : '').($hoursLeft ? ' '.$hoursLeft.'h' : '');
+    }
+
+    private function asCarbon($value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->setTimezone(self::TIMEZONE);
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Customer Care Dashboard')
 @section('header', 'Customer Care Dashboard')
-@section('subtitle', 'Sales • Orders • Clients')
+@section('subtitle', 'Sales • Orders • Clients'.($isHq ? ' • Inquiries • Mails' : ''))
 @section('content')
 
 @if(($pendingOrders ?? 0) > 0)
@@ -74,6 +74,24 @@
     </div>
 
     @if($isHq)
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-envelope-open-text text-sky-700 text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Mails Received</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ $mailStats['totalReceived'] ?? 0 }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-gray-400">Unread</p>
+                <p class="text-lg font-semibold text-red-600">{{ $unreadMails }}</p>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -292,6 +310,71 @@
         </div>
     </div>
 
+    {{-- Mailbox statistics (HQ only) — the info@ inbox figures --}}
+    @if($isHq)
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-3">
+            <h3 class="font-semibold"><i class="fas fa-chart-simple text-sky-700 mr-2"></i>Email Statistics</h3>
+            <a href="{{ route('customer-care.mails.index') }}" class="text-sm text-sky-700 hover:underline">Open Mails</a>
+        </div>
+
+        <div class="p-6">
+            <p class="text-xs uppercase tracking-wide text-gray-400 mb-3">Last 30 days</p>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach([
+                    ['Received', $mailStats['received'] ?? 0, 'text-gray-800'],
+                    ['Awaiting Answer', $mailStats['awaiting'] ?? 0, ($mailStats['awaiting'] ?? 0) > 0 ? 'text-amber-600' : 'text-gray-800'],
+                    ['Answered', $mailStats['answered'] ?? 0, 'text-emerald-600'],
+                    ['With Attachments', $mailStats['withAttachments'] ?? 0, 'text-gray-800'],
+                ] as [$label, $value, $colour])
+                    <div class="rounded-lg bg-gray-50 px-4 py-3">
+                        <p class="text-sm text-gray-500">{{ $label }}</p>
+                        <p class="text-xl font-bold {{ $colour }}">{{ $value }}</p>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                <div class="rounded-lg bg-gray-50 px-4 py-3">
+                    <p class="text-sm text-gray-500">Replies Sent</p>
+                    <p class="text-xl font-bold text-gray-800">{{ $mailStats['repliesSent'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-gray-50 px-4 py-3">
+                    <p class="text-sm text-gray-500">Replies Failed</p>
+                    <p class="text-xl font-bold {{ ($mailStats['repliesFailed'] ?? 0) > 0 ? 'text-red-600' : 'text-gray-800' }}">{{ $mailStats['repliesFailed'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-gray-50 px-4 py-3">
+                    <p class="text-sm text-gray-500">Average First Reply</p>
+                    <p class="text-xl font-bold text-gray-800">{{ $mailStats['firstReplyLabel'] ?? 'No answers yet' }}</p>
+                    @if(!empty($mailStats['answeredForTiming']))
+                        <p class="text-xs text-gray-400 mt-0.5">across {{ $mailStats['answeredForTiming'] }} answered mail(s)</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- A week of arrivals. Without any mail the bars are all zero and
+                 the peak is 1 so the row still reads as a chart rather than a
+                 division by zero. --}}
+            @php
+                $daily = $mailStats['daily'] ?? [];
+                $peak = max(1, max($daily ?: [1]));
+            @endphp
+            <p class="text-xs uppercase tracking-wide text-gray-400 mt-6 mb-3">Last 7 days received</p>
+            <div class="flex items-end gap-2 h-24">
+                @foreach($daily as $day => $count)
+                    <div class="flex-1 flex flex-col items-center gap-1 group">
+                        <span class="text-xs font-semibold text-gray-600">{{ $count }}</span>
+                        <div class="w-full bg-sky-500 rounded-t"
+                             style="height: {{ $count > 0 ? max(4, (int) round(($count / $peak) * 64)) : 2 }}px; opacity: {{ $count > 0 ? 1 : 0.25 }};"
+                             title="{{ \Carbon\Carbon::parse($day)->format('D d M') }}: {{ $count }}"></div>
+                        <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($day)->format('D') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Inquiries (HQ only) --}}
     @if($isHq)
     <div class="bg-white rounded-xl shadow overflow-hidden">
@@ -327,6 +410,59 @@
                         </tr>
                     @empty
                         <tr><td colspan="4" class="py-8 text-center text-gray-400">No inquiries yet</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Latest mail to land in info@ (HQ only) --}}
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-3">
+            <h3 class="font-semibold"><i class="fas fa-envelope-open-text text-sky-700 mr-2"></i>Recent Mails</h3>
+            <a href="{{ route('customer-care.mails.index') }}" class="text-sm text-sky-700 hover:underline">View All Mails</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left py-3 px-4">Subject</th>
+                        <th class="text-left px-4">From</th>
+                        <th class="text-center px-4">Status</th>
+                        <th class="text-left px-4">Received</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentMails as $mail)
+                        <tr class="border-t hover:bg-gray-50 {{ $mail->is_read ? '' : 'bg-red-50/40' }}">
+                            <td class="py-3 px-4">
+                                <a href="{{ route('customer-care.mails.show', $mail->id) }}" class="font-medium hover:text-sky-700">
+                                    {{ $mail->subject ?: '(no subject)' }}
+                                    @if($mail->has_attachments)
+                                        <i class="fas fa-paperclip text-gray-400 text-xs" title="Has attachments"></i>
+                                    @endif
+                                </a>
+                            </td>
+                            <td class="px-4 text-gray-500">{{ $mail->from_name ?: $mail->from_email }}</td>
+                            <td class="px-4 text-center">
+                                @php
+                                    $pill = match ($mail->status ?? 'new') {
+                                        'replied' => 'bg-green-100 text-green-800',
+                                        'closed' => 'bg-gray-100 text-gray-600',
+                                        default => 'bg-red-100 text-red-600',
+                                    };
+                                    $label = match ($mail->status ?? 'new') {
+                                        'replied' => 'Replied',
+                                        'closed' => 'Closed',
+                                        default => 'New',
+                                    };
+                                @endphp
+                                <span class="px-2 py-0.5 rounded-full text-xs {{ $pill }}">{{ $label }}</span>
+                            </td>
+                            <td class="px-4 text-xs text-gray-500">{{ $mail->received_at ? \Carbon\Carbon::parse($mail->received_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="py-8 text-center text-gray-400">No mail received yet</td></tr>
                     @endforelse
                 </tbody>
             </table>

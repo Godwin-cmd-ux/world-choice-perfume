@@ -5,29 +5,33 @@ namespace App\Http\Controllers\CustomerCare;
 use App\Http\Controllers\Controller;
 use App\Services\CustomerCareScope;
 use App\Services\FinancialService;
+use App\Services\InfoMailService;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    private SupabaseService $supabase;
     private FinancialService $financials;
 
-    public function __construct()
-    {
-        $this->supabase = new SupabaseService();
-        $this->financials = new FinancialService();
+    public function __construct(
+        private SupabaseService $supabase,
+        private InfoMailService $mails,
+    ) {
+        $this->financials = new FinancialService($this->supabase);
     }
 
     public function index()
     {
         $branchId = auth()->user()->branch_id;
-        $isHq = (new CustomerCareScope())->isHqCustomerCare();
+        $isHq = (new CustomerCareScope($this->supabase))->isHqCustomerCare();
 
         // Inquiries (HQ only)
         $inquiriesCount = 0;
         $unreadInquiries = 0;
         $recentInquiries = collect();
+        $mailStats = null;
+        $unreadMails = 0;
+        $recentMails = collect();
 
         if ($isHq) {
             $inquiriesCount = $this->supabase->count('inquiries', [
@@ -48,10 +52,10 @@ class DashboardController extends Controller
 
             $userIds = $recentInquiries->pluck('user_id')->filter()->unique()->values()->toArray();
             $users = [];
-            if (!empty($userIds)) {
+            if (! empty($userIds)) {
                 $usersList = $this->supabase->query('users', [
                     'select' => 'id,name',
-                    'id' => 'in.(' . implode(',', $userIds) . ')',
+                    'id' => 'in.('.implode(',', $userIds).')',
                 ]);
                 foreach ($usersList as $u) {
                     $users[$u['id']] = $u['name'];
@@ -61,8 +65,16 @@ class DashboardController extends Controller
             $recentInquiries = $recentInquiries->map(function ($i) use ($users) {
                 $i['user'] = isset($i['user_id']) && isset($users[$i['user_id']])
                     ? (object) ['id' => $i['user_id'], 'name' => $users[$i['user_id']]] : null;
+
                 return (object) $i;
             });
+
+            // The info@ mailbox. Only Head Quarters reads it, so its figures
+            // belong on this dashboard only for them, the same as inquiries.
+            $mailStats = $this->mails->dashboardStatistics();
+            $unreadMails = $this->mails->unreadCount();
+            [$recentMails] = $this->mails->inbox();
+            $recentMails = $recentMails->take(5);
         }
 
         // Sales — branch scoped
@@ -78,30 +90,30 @@ class DashboardController extends Controller
         $saleBranchIds = $sales->pluck('branch_id')->filter()->unique()->values()->toArray();
 
         $branches = [];
-        if (!empty($saleBranchIds)) {
+        if (! empty($saleBranchIds)) {
             foreach ($this->supabase->query('branches', [
                 'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $saleBranchIds) . ')',
+                'id' => 'in.('.implode(',', $saleBranchIds).')',
             ]) as $b) {
                 $branches[$b['id']] = $b['name'];
             }
         }
 
         $customers = [];
-        if (!empty($saleCustomerIds)) {
+        if (! empty($saleCustomerIds)) {
             foreach ($this->supabase->query('customers', [
                 'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $saleCustomerIds) . ')',
+                'id' => 'in.('.implode(',', $saleCustomerIds).')',
             ]) as $c) {
                 $customers[$c['id']] = $c['name'];
             }
         }
 
         $cashiers = [];
-        if (!empty($saleCashierIds)) {
+        if (! empty($saleCashierIds)) {
             foreach ($this->supabase->query('users', [
                 'select' => 'id,name',
-                'id' => 'in.(' . implode(',', $saleCashierIds) . ')',
+                'id' => 'in.('.implode(',', $saleCashierIds).')',
             ]) as $u) {
                 $cashiers[$u['id']] = $u['name'];
             }
@@ -114,6 +126,7 @@ class DashboardController extends Controller
                     if (isset($item['product']) && is_array($item['product'])) {
                         $item['product'] = (object) $item['product'];
                     }
+
                     return (object) $item;
                 });
             }
@@ -126,13 +139,14 @@ class DashboardController extends Controller
             $s['cashier'] = isset($s['cashier_id']) && isset($cashiers[$s['cashier_id']])
                 ? (object) ['id' => $s['cashier_id'], 'name' => $cashiers[$s['cashier_id']]]
                 : null;
+
             return (object) $s;
         });
 
         $totalRevenue = $sales->sum('total');
         $totalSalesCount = $sales->count();
         $todayStart = Carbon::now('Africa/Dar_es_Salaam')->startOfDay()->toIso8601String();
-        $todaySales = $sales->filter(fn($s) => ($s->created_at ?? '') >= $todayStart);
+        $todaySales = $sales->filter(fn ($s) => ($s->created_at ?? '') >= $todayStart);
         $todayRevenue = $todaySales->sum('total');
 
         // Branch daily financials (sales, expenses, actual = sales - expenses)
@@ -156,9 +170,11 @@ class DashboardController extends Controller
                     if (isset($item['product']) && is_array($item['product'])) {
                         $item['product'] = (object) $item['product'];
                     }
+
                     return (object) $item;
                 });
             }
+
             return (object) $o;
         });
 
@@ -176,16 +192,19 @@ class DashboardController extends Controller
             'select' => '*',
             'order' => 'created_at.desc',
             'limit' => 100,
-        ]))->map(fn($c) => (object) $c);
+        ]))->map(fn ($c) => (object) $c);
 
         $clientsTotal = $clients->count();
-        $clientsWithPhone = $clients->filter(fn($c) => !empty($c->phone))->count();
+        $clientsWithPhone = $clients->filter(fn ($c) => ! empty($c->phone))->count();
 
         return view('customer-care.dashboard', compact(
             'inquiriesCount',
             'unreadInquiries',
             'recentInquiries',
             'isHq',
+            'mailStats',
+            'unreadMails',
+            'recentMails',
             'sales',
             'totalRevenue',
             'totalSalesCount',

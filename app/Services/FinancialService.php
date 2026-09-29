@@ -8,9 +8,9 @@ class FinancialService
 {
     private SupabaseService $supabase;
 
-    public function __construct()
+    public function __construct(?SupabaseService $supabase = null)
     {
-        $this->supabase = new SupabaseService();
+        $this->supabase = $supabase ?? new SupabaseService();
     }
 
     public function getBranchFinancials(int $branchId, Carbon $startDate, Carbon $endDate): array
