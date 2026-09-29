@@ -54,7 +54,7 @@
 
 <section class="py-12 bg-dark-950 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col lg:flex-row gap-8">
+                <div class="flex flex-col lg:flex-row gap-6 sm:gap-8">
 
             <!-- Sidebar Filters -->
             <aside class="w-full lg:w-72 flex-shrink-0">
@@ -251,7 +251,7 @@
                         </div>
                     @else
                         <!-- Products Grid -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                             @foreach($products as $stock)
                                 @php
                                     // Bottlings the customer can pick on the details
@@ -272,7 +272,7 @@
                                 <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $stock->branch_id]) }}"
                                    class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                     <!-- Product Image -->
-                                    <div class="relative h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
+                                    <div class="relative aspect-[4/5] sm:aspect-auto sm:h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
                                         @if($stock->product->images->count())
                                             <img src="{{ $stock->product->images->first()->image_url }}" alt="{{ $stock->product->name }}"
                                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
@@ -284,17 +284,17 @@
                                         @endif
                                         <!-- Availability -->
                                         @if($stock->quantity <= 0)
-                                            <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
+                                            <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                                 Out of Stock
                                             </span>
                                         @endif
                                         <!-- Category Badges: product type + sex category -->
-                                        <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
-                                            <span class="px-2.5 py-1 backdrop-blur-sm text-[10px] font-bold rounded-full border {{ $stock->product->category === 'Oil Fragrance' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-gold-500/15 text-gold-400 border-gold-500/40' }}">
+                                        <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col items-start gap-1.5">
+                                            <span class="px-2 py-0.5 sm:px-2.5 sm:py-1 backdrop-blur-sm text-[9px] sm:text-[10px] font-bold rounded-full border {{ $stock->product->category === 'Oil Fragrance' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-gold-500/15 text-gold-400 border-gold-500/40' }}">
                                                 {{ $stock->product->category }}
                                             </span>
                                             @if($stock->product->sex_category)
-                                                <span class="px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
+                                                <span class="hidden sm:inline-flex px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gray-300 text-[10px] font-semibold rounded-full border border-dark-600">
                                                     {{ ucwords($stock->product->sex_category) }}
                                                 </span>
                                             @endif
@@ -302,14 +302,14 @@
                                     </div>
 
                                     <!-- Product Info -->
-                                    <div class="p-5">
-                                        <p class="text-[10px] font-semibold text-gold-400/60 uppercase tracking-wider mb-1">{{ $stock->product->brand }}</p>
-                                        <h3 class="font-display text-lg font-bold text-white group-hover:text-gold-400 transition line-clamp-1">
+                                    <div class="p-3 sm:p-5">
+                                        <p class="text-[10px] font-semibold text-gold-400/60 uppercase tracking-wider mb-1 truncate">{{ $stock->product->brand }}</p>
+                                        <h3 class="font-display text-sm sm:text-lg font-bold text-white group-hover:text-gold-400 transition line-clamp-1">
                                             {{ $stock->product->name }}
                                         </h3>
-                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $stock->product->description }}</p>
+                                        <p class="hidden sm:block text-xs text-gray-500 mt-1 line-clamp-2">{{ $stock->product->description }}</p>
 
-                                        <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
+                                        <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                             <div>
                                                 @if($stock->quantity <= 0)
                                                     <p class="text-sm font-medium text-gray-500">Check availability</p>
@@ -325,10 +325,10 @@
                                                     <p class="text-sm font-bold text-gold-400">Depends on branch</p>
                                                     <p class="text-[10px] text-gray-500 mt-1">{{ $cardBranchCount }} branches</p>
                                                 @else
-                                                    <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                                    <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                                 @endif
                                             </div>
-                                            <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
+                                            <span class="hidden sm:inline-flex px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
                                                 View Details
                                             </span>
                                         </div>
@@ -353,7 +353,7 @@
                     </div>
                 @else
                     <!-- Products Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                         @foreach($products as $stock)
                             @php
                                 // One branch only, so the card can quote that
@@ -368,7 +368,7 @@
                             <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $selectedBranch->id]) }}"
                                class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                 <!-- Product Image -->
-                                <div class="relative h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
+                                <div class="relative aspect-[4/5] sm:aspect-auto sm:h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
                                     @if($stock->product->images->count())
                                         <img src="{{ $stock->product->images->first()->image_url }}" alt="{{ $stock->product->name }}"
                                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
@@ -380,25 +380,25 @@
                                     @endif
                                     <!-- Availability -->
                                     @if($stock->quantity <= 0)
-                                        <span class="absolute top-3 right-3 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
+                                        <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                             Out of Stock
                                         </span>
                                     @endif
                                     <!-- Category Badge -->
-                                    <span class="absolute top-3 left-3 px-2.5 py-1 bg-dark-900/80 backdrop-blur-sm text-gold-400 text-[10px] font-semibold rounded-full border border-dark-600">
+                                        <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-dark-900/80 backdrop-blur-sm text-gold-400 text-[9px] sm:text-[10px] font-semibold rounded-full border border-dark-600">
                                         {{ $stock->product->sex_category ? ucwords($stock->product->sex_category) : ($stock->product->category ?? '') }}
                                     </span>
                                 </div>
 
                                 <!-- Product Info -->
-                                <div class="p-5">
-                                    <p class="text-[10px] font-semibold text-gold-400/60 uppercase tracking-wider mb-1">{{ $stock->product->brand }}</p>
-                                    <h3 class="font-display text-lg font-bold text-white group-hover:text-gold-400 transition line-clamp-1">
+                                <div class="p-3 sm:p-5">
+                                    <p class="text-[10px] font-semibold text-gold-400/60 uppercase tracking-wider mb-1 truncate">{{ $stock->product->brand }}</p>
+                                    <h3 class="font-display text-sm sm:text-lg font-bold text-white group-hover:text-gold-400 transition line-clamp-1">
                                         {{ $stock->product->name }}
                                     </h3>
-                                    <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $stock->product->description }}</p>
+                                    <p class="hidden sm:block text-xs text-gray-500 mt-1 line-clamp-2">{{ $stock->product->description }}</p>
 
-                                    <div class="flex items-end justify-between mt-4 pt-4 border-t border-dark-600">
+                                    <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                         <div>
                                             @if($stock->quantity <= 0)
                                                 <p class="text-sm font-medium text-gray-500">Check availability</p>
@@ -406,10 +406,10 @@
                                                 <p class="text-sm font-bold text-gold-400">Depends on variety</p>
                                                 <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
                                             @else
-                                                <p class="text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
+                                                <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                             @endif
                                         </div>
-                                        <span class="px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
+                                        <span class="hidden sm:inline-flex px-3 py-1.5 bg-gold-500/10 text-gold-400 text-xs font-medium rounded-lg border border-gold-500/20 group-hover:bg-gold-500/20 transition">
                                             View Details
                                         </span>
                                     </div>
