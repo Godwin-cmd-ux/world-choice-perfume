@@ -14,6 +14,30 @@ use Illuminate\Http\Request;
  */
 class InfoMailController extends Controller
 {
+    /** Files on a single answer. Enough for photos and a document. */
+    private const MAX_REPLY_FILES = 5;
+
+    /** Per file, in kilobytes, as the validator wants it. */
+    private const MAX_REPLY_FILE_KILOBYTES = 20480;
+
+    /**
+     * Per answer, in bytes. Deliberately under the 40M post_max_size in the
+     * Dockerfile: over that, PHP discards the POST and the CSRF token with it.
+     */
+    private const MAX_REPLY_TOTAL_BYTES = 31457280;
+
+    /**
+     * What a member is allowed to attach to an answer.
+     *
+     * Read as extensions, but matched against the type the file really is.
+     * Anything that can run or that renders as a document in a browser is left
+     * out on purpose: html, svg, js and executables have no place in an email
+     * sent to a customer.
+     */
+    private const REPLY_MIME_EXTENSIONS = 'jpg,jpeg,png,gif,webp,bmp,tif,tiff,'
+        .'pdf,doc,docx,xls,xlsx,ppt,pptx,csv,txt,rtf,odt,ods,'
+        .'zip,mp4,mov,avi,mkv,webm,mp3,wav,m4a,ogg';
+
     public function __construct(private InfoMailService $mails) {}
 
     public function index(Request $request)
@@ -61,7 +85,18 @@ class InfoMailController extends Controller
             'infoAddress' => config('info_mail.address'),
             'signature' => auth()->user()->name ?? 'Customer Care',
             'transport' => $this->transportStatus(),
+            'replyLimits' => [
+                'files' => self::MAX_REPLY_FILES,
+                'fileMb' => (int) (self::MAX_REPLY_FILE_KILOBYTES / 1024),
+                'totalMb' => self::replyLimitMb(),
+            ],
         ]);
+    }
+
+    /** The per answer total, as shown to the member typing the answer. */
+    private static function replyLimitMb(): int
+    {
+        return (int) (self::MAX_REPLY_TOTAL_BYTES / 1048576);
     }
 
     /**
@@ -226,13 +261,40 @@ class InfoMailController extends Controller
 
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:20000'],
+            'attachments' => ['nullable', 'array', 'max:'.self::MAX_REPLY_FILES],
+            // Judged on what the file actually is, not on the name it was
+            // uploaded under, so a renamed executable is still refused.
+            'attachments.*' => [
+                'file',
+                'max:'.self::MAX_REPLY_FILE_KILOBYTES,
+                'mimes:'.self::REPLY_MIME_EXTENSIONS,
+            ],
         ]);
+
+        $files = $request->file('attachments', []);
+        $files = is_array($files) ? array_values(array_filter($files)) : [];
+
+        // The total has to stay under the 40M post_max_size set in the
+        // Dockerfile. Going over it does not produce a validation error, it
+        // makes PHP drop the whole POST including the CSRF token, which
+        // surfaces as a bare 419 with no clue what went wrong.
+        $total = array_sum(array_map(fn ($f) => $f->getSize(), $files));
+        if ($total > self::MAX_REPLY_TOTAL_BYTES) {
+            return redirect()
+                ->route('customer-care.mails.show', $mail->id)
+                ->withInput()
+                ->with(
+                    'error',
+                    'Those files add up to more than the '.self::replyLimitMb().' MB limit for one answer.'
+                );
+        }
 
         $result = $this->mails->reply(
             $mail,
             $validated['body'],
             auth()->user(),
             auth()->user()->name ?? 'Customer Care',
+            $files,
         );
 
         return redirect()

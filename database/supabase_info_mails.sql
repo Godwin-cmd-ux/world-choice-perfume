@@ -93,9 +93,19 @@ CREATE TABLE IF NOT EXISTS public.info_email_replies (
     error TEXT,
     sent_by BIGINT,
     sent_by_name TEXT,
+    -- What the staff member attached to the answer, as a comma separated list,
+    -- so the record of what went out survives after the upload is gone. The
+    -- files themselves are not copied here: the sent mail is the archive, and
+    -- duplicating every outgoing file would only grow the bucket.
+    attachment_names TEXT,
     sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Added after the first release of the mailbox, so the column has to be added
+-- to tables that already exist rather than only to the CREATE above.
+ALTER TABLE public.info_email_replies
+    ADD COLUMN IF NOT EXISTS attachment_names TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_info_email_replies_email
     ON public.info_email_replies (info_email_id);

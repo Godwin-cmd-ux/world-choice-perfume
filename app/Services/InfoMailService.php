@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\InfoMailReply;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -103,14 +104,14 @@ class InfoMailService
     private function storeAttachments(int $emailId, array $attachments): int
     {
         if (! $this->supabase->ensureStorageBucket(self::BUCKET)) {
-            Log::error("InfoMailService: no storage bucket, skipped " . count($attachments) . " attachment(s) on mail {$emailId}");
+            Log::error('InfoMailService: no storage bucket, skipped '.count($attachments)." attachment(s) on mail {$emailId}");
 
             return 0;
         }
 
         $records = [];
         foreach ($attachments as $index => $attachment) {
-            $path = "mail-{$emailId}/{$index}-" . $this->storageSafeName($attachment['filename']);
+            $path = "mail-{$emailId}/{$index}-".$this->storageSafeName($attachment['filename']);
 
             if (! $this->supabase->storagePut(self::BUCKET, $path, $attachment['content'], $attachment['mime'])) {
                 Log::warning("InfoMailService: attachment {$attachment['filename']} on mail {$emailId} did not upload");
@@ -149,14 +150,47 @@ class InfoMailService
     {
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
         $extension = preg_replace('/[^A-Za-z0-9]/', '', $extension) ?? '';
-        $extension = $extension === '' ? '' : '.' . substr($extension, 0, 12);
+        $extension = $extension === '' ? '' : '.'.substr($extension, 0, 12);
 
         $stem = pathinfo($filename, PATHINFO_FILENAME);
         $stem = preg_replace('/[^A-Za-z0-9._-]/', '_', $stem) ?? '';
         $stem = trim($stem, '._-');
         $stem = substr($stem === '' ? 'attachment' : $stem, 0, 80);
 
-        return $stem . $extension;
+        return $stem.$extension;
+    }
+
+    /**
+     * The name a file is offered to the customer under.
+     *
+     * A browser can be made to send any name at all, including one holding a
+     * path, a null byte or a quote that would break the mail header it ends up
+     * in. The extension is kept because it is what makes the file openable on
+     * the other side, and the extension itself is limited to letters and digits
+     * so a crafted name cannot smuggle a second one in.
+     */
+    private function safeAttachmentName(string $filename): string
+    {
+        $name = basename(str_replace('\\', '/', $filename));
+        $name = str_replace(["\0", "\r", "\n", '"'], '', $name);
+        $name = trim($name);
+
+        if ($name === '' || $name === '.' || $name === '..') {
+            return '';
+        }
+
+        $extension = preg_replace('/[^A-Za-z0-9]/', '', (string) pathinfo($name, PATHINFO_EXTENSION)) ?? '';
+        $stem = pathinfo($name, PATHINFO_FILENAME);
+        $stem = preg_replace('/[^A-Za-z0-9._ -]/', '_', $stem) ?? '';
+        $stem = trim($stem, '._- ');
+
+        if ($stem === '') {
+            return '';
+        }
+
+        $stem = substr($stem, 0, 80);
+
+        return $extension === '' ? $stem : $stem.'.'.substr($extension, 0, 12);
     }
 
     /**
@@ -266,7 +300,7 @@ class InfoMailService
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
-            $params['or'] = '(from_email.ilike.*' . $this->clean($search) . '*,from_name.ilike.*' . $this->clean($search) . '*,subject.ilike.*' . $this->clean($search) . '*,body_text.ilike.*' . $this->clean($search) . '*)';
+            $params['or'] = '(from_email.ilike.*'.$this->clean($search).'*,from_name.ilike.*'.$this->clean($search).'*,subject.ilike.*'.$this->clean($search).'*,body_text.ilike.*'.$this->clean($search).'*)';
         }
 
         $mails = collect($this->supabase->query(self::TABLE, $params))->map(fn ($m) => (object) $m);
@@ -310,7 +344,7 @@ class InfoMailService
 
         $replies = $ids === [] ? [] : collect($this->supabase->query(self::REPLIES_TABLE, [
             'select' => '*',
-            'info_email_id' => 'in.(' . implode(',', $ids) . ')',
+            'info_email_id' => 'in.('.implode(',', $ids).')',
             'order' => 'created_at.asc',
         ]))->map(fn ($r) => (object) $r);
 
@@ -376,9 +410,14 @@ class InfoMailService
     /**
      * Send an answer as info@worldchoiceperfume.com and record it.
      *
+     * $files is a list of UploadedFile. They ride along on the outgoing mail
+     * only: the sent mail is the archive, and what was attached is kept as a
+     * name on the reply record rather than as a second copy in the bucket.
+     * Anything that is not a valid upload is skipped instead of sent.
+     *
      * @return array{ok: bool, message: string, reply: ?object}
      */
-    public function reply(object $mail, string $body, ?object $staff = null, string $staffName = 'Customer Care'): array
+    public function reply(object $mail, string $body, ?object $staff = null, string $staffName = 'Customer Care', array $files = []): array
     {
         // The customer's Reply-To wins over the From address when it is set,
         // which is what every other mail client does when you press reply.
@@ -392,12 +431,33 @@ class InfoMailService
         $fromName = (string) config('info_mail.name');
         $quoted = mb_substr(trim((string) ($mail->body_text ?? '')), 0, 2000);
 
+        // A browser sends the file name the user typed, which can carry a path
+        // or a made-up extension. Only the base name is reused, and the name
+        // that reaches the customer is the one recorded here.
+        $attachments = [];
+        foreach ($files as $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                continue;
+            }
+
+            $safe = $this->safeAttachmentName($file->getClientOriginalName());
+            if ($safe === '') {
+                continue;
+            }
+
+            $attachments[] = ['file' => $file, 'name' => $safe];
+        }
+
+        $names = array_column($attachments, 'name');
+        $namesForRecord = $names ? implode(', ', $names) : null;
+
         try {
             $mailable = (new InfoMailReply(
                 replyToName: ($mail->from_name ?? null) ?: $to,
                 mailSubject: $subject,
                 bodyHtml: $body,
                 originalText: $quoted,
+                attachmentNames: $names,
             ))
                 ->from($fromAddress, $fromName)
                 ->to($to, $mail->from_name ?: null)
@@ -417,9 +477,16 @@ class InfoMailService
                     }
                 });
 
+            foreach ($attachments as $attachment) {
+                $mailable->attach(
+                    $attachment['file']->getRealPath(),
+                    ['as' => $attachment['name'], 'mime' => $attachment['file']->getMimeType() ?: 'application/octet-stream'],
+                );
+            }
+
             $sent = Mail::send($mailable);
         } catch (\Throwable $e) {
-            Log::error('info@ reply failed: ' . $e->getMessage());
+            Log::error('info@ reply failed: '.$e->getMessage());
 
             $this->supabase->insert(self::REPLIES_TABLE, [
                 'info_email_id' => (int) $mail->id,
@@ -427,6 +494,7 @@ class InfoMailService
                 'to_email' => $to,
                 'subject' => $subject,
                 'body' => $body,
+                'attachment_names' => $namesForRecord,
                 'in_reply_to' => $mail->message_id ?? null,
                 'status' => 'failed',
                 'error' => mb_substr($e->getMessage(), 0, 1000),
@@ -437,7 +505,7 @@ class InfoMailService
 
             return [
                 'ok' => false,
-                'message' => 'The mail provider refused the reply: ' . $e->getMessage(),
+                'message' => 'The mail provider refused the reply: '.$e->getMessage(),
                 'reply' => null,
             ];
         }
@@ -450,6 +518,7 @@ class InfoMailService
             'to_email' => $to,
             'subject' => $subject,
             'body' => $body,
+            'attachment_names' => $namesForRecord,
             'message_id' => $messageId,
             'in_reply_to' => $mail->message_id ?? null,
             'status' => 'sent',
@@ -469,7 +538,7 @@ class InfoMailService
 
         return [
             'ok' => true,
-            'message' => 'Reply sent to ' . $to . ' as ' . $fromAddress . '.',
+            'message' => 'Reply sent to '.$to.' as '.$fromAddress.'.',
             'reply' => $reply ? (object) $reply : null,
         ];
     }
@@ -482,7 +551,7 @@ class InfoMailService
         $subject = trim($subject);
         $subject = preg_replace('/^(re:\s*)+/i', '', $subject) ?? $subject;
 
-        return 'Re: ' . ($subject !== '' ? $subject : 'Your message');
+        return 'Re: '.($subject !== '' ? $subject : 'Your message');
     }
 
     /**
@@ -585,7 +654,7 @@ class InfoMailService
             return $raw;
         }
 
-        return substr($raw, 0, $limit) . "\n\n[truncated by the app at " . strlen($raw) . " bytes]";
+        return substr($raw, 0, $limit)."\n\n[truncated by the app at ".strlen($raw).' bytes]';
     }
 
     /**

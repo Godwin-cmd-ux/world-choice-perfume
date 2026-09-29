@@ -23,6 +23,7 @@ class InfoMailReply extends Mailable
         public string $mailSubject,
         public string $bodyHtml,
         public string $originalText,
+        public array $attachmentNames = [],
     ) {}
 
     public function envelope(): Envelope
@@ -50,31 +51,39 @@ class InfoMailReply extends Mailable
         $text = e(trim($this->bodyHtml));
         $original = e(trim($this->originalText));
 
+        if ($this->attachmentNames) {
+            $text .= "\n\nAttached:";
+            foreach ($this->attachmentNames as $name) {
+                $text .= "\n- ".e((string) $name);
+            }
+        }
+
         if ($original === '') {
-            return $text . "\n\n--\nWorld Choice Perfume - info@worldchoiceperfume.com";
+            return $text."\n\n--\nWorld Choice Perfume - info@worldchoiceperfume.com";
         }
 
         $quoted = '';
         foreach (explode("\n", $original) as $line) {
-            $quoted .= '> ' . $line . "\n";
+            $quoted .= '> '.$line."\n";
         }
 
-        return $text . "\n\nOn " . $this->replyToName . " wrote:\n" . $quoted
-            . "\n--\nWorld Choice Perfume - info@worldchoiceperfume.com";
+        return $text."\n\nOn ".$this->replyToName." wrote:\n".$quoted
+            ."\n--\nWorld Choice Perfume - info@worldchoiceperfume.com";
     }
 
     private function buildHtml(): string
     {
         $body = nl2br(e(trim($this->bodyHtml)));
         $original = trim($this->originalText);
+        $files = $this->attachmentNames ? $this->buildAttachmentList() : '';
 
         // The customer's own words underneath, so whoever answers a forwarded
         // or printed thread can see what they are replying to.
         $quoted = $original === '' ? '' : '<tr><td style="padding:0 26px 26px 26px;">'
-            . '<div style="margin:0;padding:14px 16px;border-left:3px solid #d4a853;background:#faf7f0;color:#666;font-size:12px;line-height:1.6;">'
-            . '<p style="margin:0 0 6px 0;color:#b08d3f;text-transform:uppercase;letter-spacing:1px;font-size:10px;">On ' . e($this->replyToName) . ' wrote</p>'
-            . '<div style="margin:0;">' . nl2br(e($original)) . '</div>'
-            . '</div></td></tr>';
+            .'<div style="margin:0;padding:14px 16px;border-left:3px solid #d4a853;background:#faf7f0;color:#666;font-size:12px;line-height:1.6;">'
+            .'<p style="margin:0 0 6px 0;color:#b08d3f;text-transform:uppercase;letter-spacing:1px;font-size:10px;">On '.e($this->replyToName).' wrote</p>'
+            .'<div style="margin:0;">'.nl2br(e($original)).'</div>'
+            .'</div></td></tr>';
 
         return <<<HTML
 <!DOCTYPE html>
@@ -99,6 +108,7 @@ class InfoMailReply extends Mailable
                             {$body}
                         </td>
                     </tr>
+                    {$files}
                     {$quoted}
                     <tr>
                         <td style="padding:18px 26px;border-top:1px solid #eee;color:#999;font-size:11px;">
@@ -113,5 +123,25 @@ class InfoMailReply extends Mailable
 </body>
 </html>
 HTML;
+    }
+
+    /**
+     * A plain list of what is attached, so a client that hides the attachment
+     * panel still tells the customer a file is waiting.
+     */
+    private function buildAttachmentList(): string
+    {
+        $items = '';
+        foreach ($this->attachmentNames as $name) {
+            $items .= '<li style="margin:0 0 4px 0;color:#666;font-size:12px;">'
+                .e((string) $name).'</li>';
+        }
+
+        return '<tr><td style="padding:0 26px 26px 26px;">'
+            .'<div style="padding:12px 16px;border:1px solid #eee;border-radius:8px;background:#fbfbfb;">'
+            .'<p style="margin:0 0 8px 0;color:#b08d3f;text-transform:uppercase;letter-spacing:1px;font-size:10px;">'
+            .'Attached ('.count($this->attachmentNames).')</p>'
+            .'<ul style="margin:0;padding-left:18px;">'.$items.'</ul>'
+            .'</div></td></tr>';
     }
 }

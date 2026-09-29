@@ -215,6 +215,14 @@
                                 @endif
                             </p>
                             <p class="text-sm text-gray-700 mt-1 whitespace-pre-line">{{ $reply->body }}</p>
+                            @if(! empty($reply->attachment_names))
+                                <p class="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-500">
+                                    <i class="fas fa-paperclip text-gray-400"></i>
+                                    @foreach(array_filter(array_map('trim', explode(',', (string) $reply->attachment_names))) as $name)
+                                        <span class="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{{ $name }}</span>
+                                    @endforeach
+                                </p>
+                            @endif
                             @if(! empty($reply->error))
                                 <p class="text-xs text-red-600 mt-1">{{ $reply->error }}</p>
                             @endif
@@ -254,11 +262,35 @@
                 <span class="font-medium">{{ $mail->from_email }}</span>, subject
                 <span class="font-medium">Re: {{ preg_replace('/^(re:\s*)+/i', '', (string) ($mail->subject ?? '')) ?: 'Your message' }}</span>.
             </p>
-            <form method="POST" action="{{ route('customer-care.mails.reply', $mail->id) }}">
+            <form method="POST" action="{{ route('customer-care.mails.reply', $mail->id) }}" enctype="multipart/form-data">
                 @csrf
                 <textarea name="body" rows="6" required
                           placeholder="Type your answer as {{ $signature }}…"
                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 mb-3">{{ old('body') }}</textarea>
+
+                {{-- Attachments travel as multipart, so the form cannot be a
+                     plain POST any more. The names are listed on the client
+                     because the picked files never reach the page again if the
+                     send is refused. --}}
+                <div class="mb-3">
+                    <label for="reply-attachments" class="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                        <i class="fas fa-paperclip text-gray-400"></i>
+                        Attach files, up to {{ $replyLimits['files'] }} and {{ $replyLimits['totalMb'] }} MB in total
+                        ({{ $replyLimits['fileMb'] }} MB each)
+                    </label>
+                    <input id="reply-attachments" name="attachments[]" type="file" multiple
+                           class="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg
+                                  file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200
+                                  focus:ring-2 focus:ring-blue-500"
+                           data-max-files="{{ $replyLimits['files'] }}"
+                           data-max-total="{{ $replyLimits['totalMb'] * 1048576 }}">
+                    <ul id="reply-attachment-list" class="mt-1 hidden space-y-1"></ul>
+                    <p class="mt-1 text-xs text-red-600 hidden" id="reply-attachment-error"></p>
+                    <p class="mt-1 text-xs text-gray-400">
+                        Photos, documents, archives and video. A single file over {{ $replyLimits['fileMb'] }} MB is refused.
+                    </p>
+                </div>
+
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2 rounded-lg text-sm font-medium">
                         <i class="fas fa-paper-plane mr-1"></i> Send Reply
@@ -374,6 +406,58 @@
             });
         });
     });
+
+    // Picked attachments. The list is a convenience, not a gate: the server
+    // applies the same limits and is the one that actually decides. The total
+    // is checked here too because exceeding post_max_size does not produce a
+    // validation error, it produces a bare 419 with no explanation.
+    (function () {
+        var input = document.getElementById('reply-attachments');
+        var list = document.getElementById('reply-attachment-list');
+        var error = document.getElementById('reply-attachment-error');
+        if (!input || !list || !error) {
+            return;
+        }
+
+        var maxFiles = parseInt(input.getAttribute('data-max-files'), 10) || 5;
+        var maxTotal = parseInt(input.getAttribute('data-max-total'), 10) || 0;
+
+        function megabytes(bytes) {
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        input.addEventListener('change', function () {
+            var files = Array.prototype.slice.call(input.files || []);
+            var total = files.reduce(function (sum, file) { return sum + file.size; }, 0);
+            var problem = '';
+
+            if (files.length > maxFiles) {
+                problem = 'Only ' + maxFiles + ' files can go on one answer.';
+            } else if (maxTotal && total > maxTotal) {
+                problem = 'Those files add up to ' + megabytes(total)
+                    + ', which is over the ' + megabytes(maxTotal) + ' limit.';
+            }
+
+            error.textContent = problem;
+            error.classList.toggle('hidden', !problem);
+
+            list.innerHTML = '';
+            list.classList.toggle('hidden', files.length === 0);
+            files.forEach(function (file) {
+                var item = document.createElement('li');
+                item.className = 'flex items-center justify-between gap-2 rounded border border-gray-200 px-2 py-1 text-xs text-gray-700';
+                var name = document.createElement('span');
+                name.className = 'truncate';
+                name.textContent = file.name;
+                var size = document.createElement('span');
+                size.className = 'text-gray-400 shrink-0';
+                size.textContent = megabytes(file.size);
+                item.appendChild(name);
+                item.appendChild(size);
+                list.appendChild(item);
+            });
+        });
+    })();
 </script>
 @endpush
 @endsection
