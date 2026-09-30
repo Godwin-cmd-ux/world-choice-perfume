@@ -5,6 +5,7 @@ namespace App\Http\Controllers\BranchAdmin;
 use App\Http\Controllers\Controller;
 use App\Services\FinancialService;
 use App\Services\SupabaseService;
+use App\Support\BusinessDay;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -35,15 +36,15 @@ class DashboardController extends Controller
             ]);
         }
 
-        $today = Carbon::today()->toDateString();
         $monthStart = Carbon::now()->startOfMonth()->toIso8601String();
         $now = Carbon::now()->toIso8601String();
 
-        // Batch 1: Today's sales — filter by date in the query, not PHP
+        // Batch 1: Today's sales — filter by date in the query, not PHP.
+        // "Today" is the shop's business day, matching the daily summary below.
         $todaySalesData = $this->supabase->query('sales', [
             'branch_id' => "eq.{$branchId}",
             'payment_status' => 'eq.paid',
-            'created_at' => "gte.{$today}T00:00:00",
+            'created_at' => BusinessDay::dayFilter(),
             'select' => 'id,total',
         ]);
         $todaySales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySalesData));

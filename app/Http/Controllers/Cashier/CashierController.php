@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Cashier;
 use App\Http\Controllers\Controller;
 use App\Services\CashierScope;
 use App\Services\SupabaseService;
-use Carbon\Carbon;
+use App\Support\BusinessDay;
 
 class CashierController extends Controller
 {
@@ -27,10 +27,13 @@ class CashierController extends Controller
      * daily sales, expenses and actual sales across all branches, each
      * branch's percentage contribution to company sales, and every staff
      * member's percentage contribution within their branch.
+     *
+     * "Today" is the shop's business day, so every figure here drops to zero
+     * at midnight Dar es Salaam time.
      */
     public function dailySalesOverview()
     {
-        $todayStart = Carbon::today()->startOfDay()->toIso8601String();
+        $today = BusinessDay::dayFilter();
 
         // All active branches
         $branches = $this->supabase->query('branches', [
@@ -42,13 +45,13 @@ class CashierController extends Controller
         // One query for today's paid sales across all branches
         $sales = $this->supabase->query('sales', [
             'payment_status' => 'eq.paid',
-            'created_at' => "gte.{$todayStart}",
+            'created_at' => $today,
             'select' => 'id,branch_id,cashier_id,total',
         ]);
 
         // One query for today's expenses across all branches
         $expenses = $this->supabase->query('expenses', [
-            'created_at' => "gte.{$todayStart}",
+            'created_at' => $today,
             'select' => 'branch_id,user_id,amount',
         ]);
 
@@ -156,11 +159,11 @@ class CashierController extends Controller
             ->map(function ($b) {
                 $id = (int) $b['id'];
 
-                // Today's sales summary
-                $todayStart = Carbon::now()->startOfDay()->toIso8601String();
+                // Today's sales summary (shop business day)
+                $today = BusinessDay::dayFilter();
                 $todaySales = $this->supabase->query('sales', [
                     'branch_id' => "eq.{$id}",
-                    'created_at' => "gte.{$todayStart}",
+                    'created_at' => $today,
                     'select' => 'id,total,payment_status',
                 ]);
 

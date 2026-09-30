@@ -7,7 +7,7 @@ use App\Services\CustomerCareScope;
 use App\Services\FinancialService;
 use App\Services\InfoMailService;
 use App\Services\SupabaseService;
-use Carbon\Carbon;
+use App\Support\BusinessDay;
 
 class DashboardController extends Controller
 {
@@ -145,8 +145,7 @@ class DashboardController extends Controller
 
         $totalRevenue = $sales->sum('total');
         $totalSalesCount = $sales->count();
-        $todayStart = Carbon::now('Africa/Dar_es_Salaam')->startOfDay()->toIso8601String();
-        $todaySales = $sales->filter(fn ($s) => ($s->created_at ?? '') >= $todayStart);
+        $todaySales = $sales->filter(fn ($s) => BusinessDay::withinDay($s->created_at ?? null));
         $todayRevenue = $todaySales->sum('total');
 
         // Branch daily financials (sales, expenses, actual = sales - expenses)

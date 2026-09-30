@@ -4,6 +4,7 @@ namespace App\Http\Controllers\BranchAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
+use App\Support\BusinessDay;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
@@ -17,42 +18,47 @@ class ExpenseController extends Controller
 
     /**
      * Branch admin views expenses committed by cashiers in their branch.
+     *
+     * The total is a running figure for the current business day: with no date
+     * filter applied the window is today only, so it starts at zero after
+     * midnight and climbs as expenses are recorded. Picking a date range
+     * replaces the window with that range.
      */
     public function index(Request $request)
     {
         $branchId = auth()->user()->branch_id;
 
+        $window = BusinessDay::localRangeFilter($request->date_from, $request->date_to);
+
         $params = [
-            'select' => '*, user:users(id,name)',
             'branch_id' => "eq.{$branchId}",
-            'order' => 'created_at.desc',
-            'limit' => 50,
+            'created_at' => $window,
         ];
 
         if ($request->category) {
             $params['category'] = "eq.{$request->category}";
         }
 
-        $expenses = $this->supabase->query('expenses', $params);
+        // Total over every expense in the window — not just the page of rows
+        // below it, which is capped for display.
+        $windowTotal = $this->supabase->query('expenses', $params + ['select' => 'amount']);
+        $totalExpenses = array_sum(array_map(fn ($e) => (float) ($e['amount'] ?? 0), $windowTotal));
 
-        if ($request->date_from) {
-            $from = $request->date_from;
-            $expenses = array_filter($expenses, fn($e) => substr($e['created_at'] ?? '', 0, 10) >= $from);
-        }
-        if ($request->date_to) {
-            $to = $request->date_to;
-            $expenses = array_filter($expenses, fn($e) => substr($e['created_at'] ?? '', 0, 10) <= $to);
-        }
+        $listParams = $params + [
+            'select' => '*, user:users(id,name)',
+            'order' => 'created_at.desc',
+            'limit' => 50,
+        ];
 
-        $expenses = array_values($expenses);
-        $totalExpenses = array_sum(array_map(fn($e) => $e['amount'] ?? 0, $expenses));
+        $expenses = collect($this->supabase->query('expenses', $listParams))
+            ->map(function ($e) {
+                if (isset($e['user']) && is_array($e['user'])) $e['user'] = (object) $e['user'];
+                return (object) $e;
+            });
 
-        $expenses = collect($expenses)->map(function ($e) {
-            if (isset($e['user']) && is_array($e['user'])) $e['user'] = (object) $e['user'];
-            return (object) $e;
-        });
-
-        return view('branch-admin.expenses.index', compact('expenses', 'totalExpenses'));
+        return view('branch-admin.expenses.index', compact('expenses', 'totalExpenses') + [
+            'rangeLabel' => BusinessDay::localRangeLabel($request->date_from, $request->date_to),
+        ]);
     }
 
     /**

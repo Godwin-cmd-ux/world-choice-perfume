@@ -16,8 +16,11 @@
         <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
-<div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between">
-    <p class="text-sm text-gray-500">Total: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
+<div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between flex-wrap gap-2">
+    <div>
+        <p class="text-sm text-gray-500">Total <span class="text-xs text-gray-400">({{ $rangeLabel }})</span>: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
+        <p class="text-xs text-gray-400 mt-1">Resets to zero every day at midnight.</p>
+    </div>
     <p class="text-xs text-gray-400 ml-4">Expenses are recorded by cashiers. This page shows what they have committed.</p>
 </div>
 <div class="bg-white rounded-xl shadow overflow-hidden">
@@ -42,7 +45,7 @@
                         <td class="px-4 text-center"><a href="{{ route('branch-admin.expenses.show', $expense->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No expenses found</td></tr>
+                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No expenses found for {{ strtolower($rangeLabel) }}</td></tr>
                 @endforelse
             </tbody>
         </table>

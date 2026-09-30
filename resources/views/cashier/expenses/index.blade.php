@@ -6,7 +6,8 @@
 @section('content')
 @include('cashier.partials.cross-branch-banner')
 <div class="bg-white rounded-xl shadow p-4 mb-6">
-    <p class="text-sm text-gray-500">Total Expenses: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
+    <p class="text-sm text-gray-500">Total Expenses <span class="text-xs text-gray-400">({{ $rangeLabel }})</span>: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
+    <p class="text-xs text-gray-400 mt-1">Resets to zero every day at midnight.</p>
 </div>
 
 <div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
@@ -53,7 +54,7 @@
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No expenses recorded</td></tr>
+                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No expenses recorded for {{ strtolower($rangeLabel) }}</td></tr>
                 @endforelse
             </tbody>
         </table>

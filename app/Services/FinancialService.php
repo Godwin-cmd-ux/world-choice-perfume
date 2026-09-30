@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\BusinessDay;
 use Carbon\Carbon;
 
 class FinancialService
@@ -15,8 +16,8 @@ class FinancialService
 
     public function getBranchFinancials(int $branchId, Carbon $startDate, Carbon $endDate): array
     {
-        $start = $startDate->toIso8601String();
-        $end = $endDate->toIso8601String();
+        $start = BusinessDay::stamp($startDate);
+        $end = BusinessDay::stamp($endDate);
 
         // Revenue - paid sales
         $sales = $this->supabase->query('sales', [
@@ -70,8 +71,8 @@ class FinancialService
 
     public function getCompanyFinancials(Carbon $startDate, Carbon $endDate): array
     {
-        $start = $startDate->toIso8601String();
-        $end = $endDate->toIso8601String();
+        $start = BusinessDay::stamp($startDate);
+        $end = BusinessDay::stamp($endDate);
 
         // Batch fetch ALL data in just 5 API calls instead of N per branch
         $branches = $this->supabase->query('branches', [
@@ -172,15 +173,19 @@ class FinancialService
      * Today's summary for one branch: daily sales (paid), daily expenses and
      * actual sales (sales minus expenses). Optionally scoped to a single staff
      * member (used for per-staff contribution breakdowns).
+     *
+     * The window is the shop's business day — 00:00 to 23:59:59 Dar es Salaam
+     * — so the figures drop to zero the moment the clock passes midnight
+     * instead of trailing into 03:00.
      */
     public function getDailySummary(int $branchId, ?int $staffId = null): array
     {
-        $todayStart = Carbon::today()->startOfDay()->toIso8601String();
+        $today = BusinessDay::dayFilter();
 
         $salesParams = [
             'branch_id' => "eq.{$branchId}",
             'payment_status' => 'eq.paid',
-            'created_at' => "gte.{$todayStart}",
+            'created_at' => $today,
             'select' => 'id,total,cashier_id',
         ];
         if ($staffId !== null) {
@@ -191,7 +196,7 @@ class FinancialService
 
         $expensesParams = [
             'branch_id' => "eq.{$branchId}",
-            'created_at' => "gte.{$todayStart}",
+            'created_at' => $today,
             'select' => 'id,amount,user_id',
         ];
         if ($staffId !== null) {
@@ -213,8 +218,8 @@ class FinancialService
 
     public function getExpensesByCategory(int $branchId, Carbon $startDate, Carbon $endDate): array
     {
-        $start = $startDate->toIso8601String();
-        $end = $endDate->toIso8601String();
+        $start = BusinessDay::stamp($startDate);
+        $end = BusinessDay::stamp($endDate);
 
         $expenses = $this->supabase->query('expenses', [
             'branch_id' => "eq.{$branchId}",

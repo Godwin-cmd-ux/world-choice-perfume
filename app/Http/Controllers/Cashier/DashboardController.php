@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\CashierScope;
 use App\Services\FinancialService;
 use App\Services\SupabaseService;
-use Carbon\Carbon;
+use App\Support\BusinessDay;
 
 class DashboardController extends Controller
 {
@@ -30,7 +30,7 @@ class DashboardController extends Controller
         $activeBranchId = $this->scope->activeBranchId();
         $activeBranchName = $this->scope->activeBranchName();
 
-        $today = Carbon::today()->toDateString();
+        $today = BusinessDay::dayFilter();
 
         $financialScopeBranchId = $inCrossBranch ? (int) $activeBranchId : (int) $branchId;
 
@@ -38,7 +38,7 @@ class DashboardController extends Controller
             // Cross-branch: show all sales for the monitored branch today
             $todaySalesData = $this->supabase->query('sales', [
                 'branch_id' => "eq.{$activeBranchId}",
-                'created_at' => "gte.{$today}T00:00:00",
+                'created_at' => $today,
                 'select' => 'id,total',
             ]);
             $pendingOrders = $this->supabase->count('orders', [
@@ -59,7 +59,7 @@ class DashboardController extends Controller
             // Normal mode: show only this cashier's data
             $todaySalesData = $this->supabase->query('sales', [
                 'cashier_id' => "eq.{$supabaseUserId}",
-                'created_at' => "gte.{$today}T00:00:00",
+                'created_at' => $today,
                 'select' => 'id,total',
             ]);
             $pendingOrders = $this->supabase->count('orders', [

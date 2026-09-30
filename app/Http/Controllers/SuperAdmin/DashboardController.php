@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Services\FinancialService;
 use App\Services\SupabaseService;
+use App\Support\BusinessDay;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -18,14 +19,17 @@ class DashboardController extends Controller
 
     public function index()
     {
-        $today = Carbon::today()->toDateString();
-        $now = Carbon::now()->toIso8601String();
-        $todayStart = Carbon::today()->toIso8601String();
+        $today = BusinessDay::now()->toDateString();
+
+        // "Today" is the shop's business day, so the tiles below fall to zero
+        // at midnight Dar es Salaam rather than at midnight UTC.
+        $todayStart = BusinessDay::start();
+        $todayEnd = BusinessDay::end();
 
         // 1. Today's sales — fetch all and sum by branch
         $todaySalesRaw = $this->supabase->query('sales', [
             'select' => 'branch_id,total',
-            'created_at' => "gte.{$todayStart}",
+            'created_at' => BusinessDay::dayFilter(),
         ]);
         $todaySalesByBranch = [];
         $todayTotalRevenue = 0;
@@ -133,9 +137,10 @@ class DashboardController extends Controller
             return (object) $branch;
         });
 
-        // Financials
+        // Financials for the business day, closed off at 23:59:59 so nothing
+        // from the next day can leak in.
         $todayFinancials = $this->financialService->getCompanyFinancials(
-            Carbon::today(), Carbon::now()
+            $todayStart, $todayEnd
         );
         $todayFinancials['actual_sales'] = (float) $todayFinancials['revenue'] - (float) $todayFinancials['expenses'];
 

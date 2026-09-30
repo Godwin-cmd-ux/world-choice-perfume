@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Services\FinancialService;
 use App\Services\SupabaseService;
+use App\Support\BusinessDay;
 use Illuminate\Http\Request;
 
 class SellerController extends Controller
@@ -34,9 +35,8 @@ class SellerController extends Controller
         $totalSales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $mySales));
         $totalTransactions = count($mySales);
 
-        // Today's sales
-        $todayStart = now()->startOfDay()->toIso8601String();
-        $todaySales = array_filter($mySales, fn($s) => ($s['created_at'] ?? '') >= $todayStart);
+        // Today's sales (shop business day, so it clears at midnight)
+        $todaySales = array_filter($mySales, fn($s) => BusinessDay::withinDay($s['created_at'] ?? null));
         $todayTotal = array_sum(array_map(fn($s) => $s['total'] ?? 0, $todaySales));
 
         // Branch daily financials (sales, expenses, actual = sales - expenses)
