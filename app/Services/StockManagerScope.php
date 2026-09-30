@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Support\BranchAccess;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 
 class StockManagerScope
 {
-    public const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
-    public const KINONDONI_BRANCH_NAME = 'Kinondoni branch';
+    // The exceptions live in BranchAccess; these stay as named constants
+    // because the rest of the app reads them.
+    public const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
+    public const KINONDONI_BRANCH_NAME = BranchAccess::KINONDONI;
 
     private SupabaseService $supabase;
 

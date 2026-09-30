@@ -39,15 +39,14 @@ Route::get('/', function () {
     }
     try {
         $supabase = new SupabaseService;
+        // Every active branch is shown. A branch used to be hidden here unless
+        // its name contained kinondoni, mikocheni or dodoma, which meant a new
+        // branch stayed invisible on the site until that list was edited.
         $branches = collect($supabase->query('branches', [
             'select' => 'id,name,address,latitude,longitude,is_active,profile_picture',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
-            $name = mb_strtolower($b->name ?? '');
-
-            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
-        })->values();
+        ]))->map(fn ($b) => (object) $b)->values();
 
         $remarks = collect($supabase->query('inquiries', [
             'select' => 'email,subject,message,created_at',

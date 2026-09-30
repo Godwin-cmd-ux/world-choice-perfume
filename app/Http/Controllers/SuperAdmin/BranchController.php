@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
@@ -60,7 +61,19 @@ class BranchController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                // Access is keyed on the branch name, so a branch created with
+                // one of the two exception names would silently inherit
+                // privileges no one meant to give it.
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (BranchAccess::isExceptionName($value)) {
+                        $fail(BranchAccess::rejectionMessage((string) $value));
+                    }
+                },
+            ],
             'address' => 'nullable|string',
             'admin_id' => 'nullable|numeric',
             'latitude' => 'nullable|numeric',
@@ -131,6 +144,28 @@ class BranchController extends Controller
             'profile_picture' => 'nullable|image|max:51200',
         ]);
 
+        $branch = $this->supabase->find('branches', $branchId);
+        if (! $branch) {
+            abort(404);
+        }
+
+        // Access is keyed on the branch name, so no branch may be moved ONTO an
+        // exception name. The branch that already holds one keeps it: its edit
+        // form resubmits that name on every save, so refusing it here would make
+        // Kinondoni and Head Quarters impossible to edit at all. Renaming either
+        // of them away is still allowed — that gives up privileges rather than
+        // granting them.
+        $attempted = (string) $validated['name'];
+        $currentName = (string) ($branch['name'] ?? '');
+
+        if (BranchAccess::isExceptionName($attempted)
+            && ! (BranchAccess::isExceptionName($currentName)
+                && BranchAccess::normalise($attempted) === BranchAccess::normalise($currentName))) {
+            return back()->withInput()->withErrors([
+                'name' => BranchAccess::rejectionMessage($attempted),
+            ]);
+        }
+
         if ($request->hasFile('profile_picture')) {
             $cloudinaryService = new CloudinaryService;
             $validated['profile_picture'] = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
@@ -142,11 +177,10 @@ class BranchController extends Controller
         // Update in Supabase
         $this->supabase->update('branches', $validated, ['id' => $branchId]);
 
-        // Also update in SQLite by matching name
-        $branch = $this->supabase->find('branches', $branchId);
-        if ($branch) {
-            Branch::where('name', $branch['name'])->update($validated);
-        }
+        // Also update in SQLite, matched on the name the row still has. This
+        // used to re-read the branch after the Supabase write and match on the
+        // name it had just been given, so a rename updated nothing.
+        Branch::where('name', $currentName)->update($validated);
 
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch updated successfully.');
     }

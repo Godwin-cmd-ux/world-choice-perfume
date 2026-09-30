@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,7 @@ class NewsController extends Controller
         return $this->supabase->tableHasColumn('news_posts', 'status');
     }
 
-    private const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
+    private const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
 
     private function hqBranchId(): ?int
     {

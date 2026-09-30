@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Support\BranchAccess;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 
 class CashierScope
 {
-    public const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
+    public const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
 
     private SupabaseService $supabase;
 

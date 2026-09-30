@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Illuminate\Http\Request;
 
 class InquiryController extends Controller
 {
-    private const HQ_BRANCH_NAME = 'Head Quarters-Mikocheni';
+    private const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
 
     private SupabaseService $supabase;
 

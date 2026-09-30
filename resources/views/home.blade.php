@@ -294,7 +294,7 @@
                         Every bottle we carry is sourced directly from authorized distributors and manufacturers, ensuring you receive only genuine products.
                     </p>
                     <p>
-                        With three branches in Kinondoni, Mikocheni, and Dodoma, we're always close to you. Our expert consultants are trained to help you find your perfect signature scent.
+                        With {{ $branches->count() }} branch{{ $branches->count() !== 1 ? 'es' : '' }} across Tanzania, we're always close to you. Our expert consultants are trained to help you find your perfect signature scent.
                     </p>
                 </div>
 

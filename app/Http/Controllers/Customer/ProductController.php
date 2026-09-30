@@ -22,16 +22,13 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        // Fetch the three branches shown on the site: Kinondoni, Mikocheni, Dodoma
+        // Every active branch is offered, so a branch added later appears here
+        // as soon as it is created.
         $branches = collect($this->supabase->query('branches', [
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
-            $name = mb_strtolower($b->name ?? '');
-
-            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
-        })->values();
+        ]))->map(fn ($b) => (object) $b)->values();
 
         // Full active product catalogue (independent of stock) — so out-of-stock
         // products still appear on the shop.
@@ -200,16 +197,12 @@ class ProductController extends Controller
             abort(404);
         }
 
-        // Fetch the three branches shown on the site: Kinondoni, Mikocheni, Dodoma
+        // Every active branch is offered, matching the shop listing.
         $branches = collect($this->supabase->query('branches', [
             'select' => '*',
             'is_active' => 'eq.true',
             'order' => 'name.asc',
-        ]))->map(fn ($b) => (object) $b)->filter(function ($b) {
-            $name = mb_strtolower($b->name ?? '');
-
-            return str_contains($name, 'kinondoni') || str_contains($name, 'mikocheni') || str_contains($name, 'dodoma');
-        })->values();
+        ]))->map(fn ($b) => (object) $b)->values();
 
         // Fetch branch stock for this product
         $rawStock = $this->supabase->query('branch_stock', [
