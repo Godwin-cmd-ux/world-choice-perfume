@@ -663,10 +663,15 @@ class OrderWorkflowService
      * run, and is simply absent before that, so the same select works either
      * way. Naming the column explicitly would make PostgREST reject the whole
      * query on an installation that has not run the migration yet.
+     *
+     * The branch embed is what fills the Branch column on the super admin
+     * monitor, which shows orders for every branch at once and so has nothing
+     * else to tell the origins apart by. Roles scoped to a single branch
+     * simply ignore it.
      */
     private function listSelect(): string
     {
-        return '*, customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand))';
+        return '*, customer:customers(id,name,phone), items:order_items(*, product:products(id,name,brand)), branch:branches(id,name)';
     }
 
     private function showSelect(): string
