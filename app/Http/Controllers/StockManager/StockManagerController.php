@@ -304,7 +304,6 @@ class StockManagerController extends Controller
             $name = (string) ($product->name ?? '');
             $brand = (string) ($product->brand ?? '');
             $category = $stock->category ?? ($product->category ?? '');
-            $buyingCost = (float) ($stock->buying_cost ?? 0);
             $buckets = $bucketsByProduct[(int) ($stock->product_id ?? 0)] ?? [];
 
             if (!empty($buckets)) {
@@ -316,7 +315,6 @@ class StockManagerController extends Controller
                         'product' => $product,
                         'stock_id' => $stock->id ?? null,
                         'quantity' => $bucket['quantity'],
-                        'buying_cost' => $buyingCost,
                         // 50ml can be priced differently from 30ml; fall back
                         // to the product price when the bucket has none.
                         'selling_price' => $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0),
@@ -335,7 +333,6 @@ class StockManagerController extends Controller
                 'product' => $product,
                 'stock_id' => $stock->id ?? null,
                 'quantity' => (int) ($stock->quantity ?? 0),
-                'buying_cost' => $buyingCost,
                 'selling_price' => (float) ($stock->selling_price ?? 0),
                 'category' => $category,
                 'date_received' => $stock->date_received ?? null,
