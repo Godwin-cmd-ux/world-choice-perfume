@@ -1,0 +1,371 @@
+# WORLD CHOICE PERFUMES — PROJECT MODIFICATION PROMPT
+
+## General Instructions
+
+You are working on the existing **World Choice Perfumes** project. Your task is to implement the six modifications described in this document.
+
+Before making changes, inspect the existing codebase, routes, controllers, Blade templates, database structure, authorization policies, and relevant services. Pay particular attention to the Customer Care module at Headquarters, Mkocheni branch, because its existing email functionality will be reused in the Super Admin module.
+
+### Development Rules
+
+1. Inspect the existing implementation before modifying any files.
+2. Follow the current project architecture, coding conventions, database relationships, UI design, and authorization rules.
+3. Reuse existing components, controllers, services, and infrastructure wherever possible.
+4. Do not create duplicate systems when existing functionality can be extended.
+5. Preserve all existing working features unrelated to these modifications.
+6. Do not invent database fields, routes, relationships, business contact details, or configuration values. Verify them from the actual codebase.
+7. Avoid unnecessary database migrations. If a migration is genuinely required, explain its purpose and impact.
+8. Keep the interface professional, responsive, and consistent with the existing application.
+9. Protect sensitive information, credentials, and internal technical metadata.
+10. Implement and test each section separately, then perform an integration check across all six modifications.
+
+---
+
+## SECTION 1: Make WhatsApp and Email Contact Information Clickable
+
+### Objective
+
+Make the WhatsApp number and business email address displayed in the homepage's Contact Us section functional links that allow visitors to contact World Choice Perfumes directly.
+
+### Instructions
+
+1. Locate the Contact Us section on the public homepage.
+
+2. Make the displayed WhatsApp number clickable.
+
+3. When a visitor clicks the WhatsApp number, open a direct conversation with the correct World Choice Perfumes WhatsApp account.
+
+4. Use the official WhatsApp click-to-chat URL format:
+
+   `https://wa.me/PHONE_NUMBER`
+
+   Replace `PHONE_NUMBER` with the actual business WhatsApp number already configured in the project. Use the international format with digits only, without a plus sign, spaces, brackets, or hyphens.
+
+5. Make the displayed business email address clickable using a `mailto:` link.
+
+6. Clicking the email address should open the user's configured email application with the correct business email address populated as the recipient.
+
+7. Where appropriate, allow WhatsApp links to open the WhatsApp application on mobile devices or WhatsApp Web on desktop devices.
+
+8. Preserve the existing homepage layout, contact icons, typography, colors, spacing, and responsive design.
+
+9. Do not invent or replace the existing business contact details.
+
+10. Inspect shared contact components and other relevant public-facing pages to determine whether the same improvement should be applied consistently elsewhere.
+
+### Acceptance Criteria
+
+* Clicking the WhatsApp number opens a direct chat with the correct business account.
+* Clicking the email address opens an email composition window addressed to the correct business email.
+* Both links work appropriately on desktop and mobile devices.
+* Existing contact information and styling remain intact.
+
+---
+
+## SECTION 2: Standardize Business Working Hours Across the Project
+
+### Objective
+
+Ensure that all applicable displays of World Choice Perfumes business working hours consistently show **9:00 AM to 9:00 PM**.
+
+### Instructions
+
+1. Update the working hours displayed on the homepage to:
+
+   **9:00 AM – 9:00 PM**
+
+2. Search the entire relevant project for other displays of business working hours, including:
+
+   * Homepage and public-facing pages.
+   * Contact Us and About sections.
+   * Shared layouts, headers, and footers.
+   * Customer-facing pages.
+   * Customer Care interfaces.
+   * Headquarters and branch pages.
+   * Super Admin interfaces.
+   * Other relevant Blade templates and reusable components.
+
+3. Update all applicable business working-hour displays to **9:00 AM – 9:00 PM**.
+
+4. Inspect whether the working hours are stored in centralized configuration, a database field, or a shared component. If so, update the appropriate source rather than introducing inconsistent hardcoded values.
+
+5. If different pages display the same business hours in different formats, standardize their displayed values while preserving the existing design.
+
+6. Do not modify unrelated operational timestamps, order creation times, email timestamps, login times, or other time-related functionality.
+
+7. Do not change genuinely separate operational schedules without first verifying their purpose and relationship to the business working hours.
+
+8. Verify that no outdated business working-hour displays remain in the relevant application pages.
+
+### Acceptance Criteria
+
+* The homepage displays working hours of 9:00 AM – 9:00 PM.
+* All other applicable pages display the same working hours.
+* Existing date, time, order, and email functionality remains unaffected.
+
+---
+
+## SECTION 3: Remove Unnecessary Technical Email Details From the Customer Care Email Detail Page
+
+### Objective
+
+Simplify the Customer Care email detail interface by removing unnecessary technical email metadata from the normal user-facing view.
+
+### Instructions
+
+1. Locate the email management module used by Customer Care at Headquarters, Mkocheni branch.
+
+2. Inspect the individual email detail page, particularly the information displayed on the right-hand side.
+
+3. Identify technical information that ordinary Customer Care users do not need to see, including:
+
+   * SPF authentication results.
+   * DKIM authentication results.
+   * DMARC authentication results.
+   * Raw email headers.
+   * Email routing and transport information.
+   * MIME metadata and other technical diagnostic information.
+
+4. Remove these technical details from the normal user-facing email detail interface.
+
+5. Preserve all information needed for ordinary email management, including:
+
+   * Sender's name and email address.
+   * Recipient information where relevant.
+   * Email subject.
+   * Date and time received.
+   * Email message body.
+   * Attachments, where supported.
+   * Reply functionality.
+   * Relevant conversation information and existing email actions.
+
+6. Preserve technical metadata in internal storage when necessary for security, troubleshooting, auditing, or email processing.
+
+7. If administrators genuinely require access to technical diagnostics, make them available only through an appropriately restricted administrative or diagnostic interface.
+
+8. Review both the frontend and backend response structure. Do not merely hide sensitive information visually if it is unnecessarily exposed to unauthorized users through API responses or page data.
+
+9. Ensure that removing the technical details does not interfere with receiving emails, reading email content, sending replies, email threading, attachment handling, or existing security checks.
+
+### Acceptance Criteria
+
+* Ordinary Customer Care users see a clean, readable email detail page.
+* SPF, DKIM, DMARC, raw headers, and similar technical details are not displayed in the normal email detail interface.
+* Email reading, replying, attachments, and existing functionality continue working.
+* Necessary technical information remains available only where legitimately required and appropriately authorized.
+
+---
+
+## SECTION 4: Add a Delete Action to the Customer Care Inquiry Section
+
+### Objective
+
+Allow authorized Customer Care users to delete inquiries that were created by mistake or are no longer needed.
+
+### Instructions
+
+1. Locate the Inquiry section in the Customer Care module.
+2. Inspect the existing inquiry listing, detail page, database model, routes, controllers, services, and authorization rules.
+3. Add a clearly visible **Delete** action to the appropriate inquiry interface.
+4. Allow authorized users to delete an inquiry that was mistakenly created, incorrectly classified as an inquiry instead of a comment, or otherwise needs removal.
+5. Implement deletion through the backend using the existing project architecture. Do not implement deletion as a frontend-only operation.
+6. Follow the project's existing deletion conventions. If the system uses soft deletion, use that approach unless there is a documented reason to do otherwise.
+7. Require user confirmation before deletion. For example, display a confirmation dialog asking whether the user wants to delete the selected inquiry.
+8. Enforce authorization on the backend so that unauthorized users cannot delete inquiries by manipulating URLs, record IDs, or HTTP requests.
+9. Handle missing records, validation failures, and server errors gracefully.
+10. After successful deletion, update the inquiry list and display an appropriate success message.
+11. If deletion fails, show a useful error message without falsely indicating success.
+12. Inspect related replies, comments, attachments, audit records, and other relationships before selecting the deletion method. Avoid accidentally deleting unrelated records.
+13. Do not automatically delete an inquiry because it was incorrectly classified. The authorized user must explicitly initiate the deletion.
+
+### Acceptance Criteria
+
+* Authorized Customer Care users can delete inquiries through the interface.
+* A confirmation dialog appears before deletion.
+* Successfully deleted inquiries no longer appear in the active inquiry list.
+* Backend authorization prevents unauthorized deletion.
+* Unrelated records and associated information are not accidentally deleted.
+
+---
+
+## SECTION 5: Replace “Cashier” With “Served By” on the Headquarters Customer Care Order Page
+
+### Objective
+
+Correct the terminology displayed in the Customer Care order page for Headquarters, Mkocheni branch, so that the interface identifies the staff member who served the customer rather than labeling the information as “Cashier.”
+
+### Instructions
+
+1. Locate the order page in the Customer Care module for Headquarters, Mkocheni branch.
+2. Inspect the order listing, order detail page, table columns, labels, badges, and related interface elements.
+3. Identify every relevant occurrence of the label **“Cashier”** where it refers to the staff member who served the customer for that order.
+4. Replace that label with **“Served By.”**
+5. Verify that the displayed value identifies the actual staff member who served the customer, using the existing database fields and relationships.
+6. Inspect the backend logic and data source before making changes. Do not simply rename the label if the underlying staff member is incorrect.
+7. If the system already records the relevant employee under a different field, determine how that field relates to the person who served the customer and use the correct existing relationship.
+8. Preserve the actual staff member's name and historical order records.
+9. Apply the terminology consistently to relevant order listings and order detail views within the intended scope.
+10. Do not rename the actual cashier role throughout the entire application. The change applies to the relevant order display where the label is intended to identify the person who served the customer.
+11. Do not modify authentication, staff permissions, payment processing, inventory operations, or unrelated business logic.
+12. If the existing database does not contain enough information to identify the staff member who served a customer, report the limitation before introducing unnecessary schema changes.
+
+### Acceptance Criteria
+
+* The relevant Headquarters Customer Care order page displays **“Served By”** instead of “Cashier.”
+* The displayed name corresponds to the correct staff member according to the available system records.
+* Existing order records and staff accountability remain intact.
+* The change does not interfere with cashier roles, payments, inventory, or unrelated functionality.
+
+---
+
+## SECTION 6: Add Email Viewing and Reply Functionality to the Super Admin Module
+
+### Objective
+
+Allow authorized Super Admin users to view incoming emails addressed to **[info@worldchoiceperfume.com](mailto:info@worldchoiceperfume.com)** and reply to those emails.
+
+The existing email management functionality in Customer Care at Headquarters, Mkocheni branch, must be inspected and reused wherever possible.
+
+**The goal is to extend the existing email system, not create a separate email infrastructure.**
+
+### A. Inspect the Existing Customer Care Email Implementation
+
+Before modifying the Super Admin module, inspect how the Headquarters Customer Care email system works.
+
+Identify the existing implementation for:
+
+1. Receiving and retrieving incoming emails.
+2. Listing emails and displaying individual email details.
+3. Storing and retrieving email message content.
+4. Sending outgoing replies.
+5. Handling email conversations and threading.
+6. Identifying senders and recipients.
+7. Handling attachments, where supported.
+8. Tracking email status and delivery errors.
+9. Using database tables, models, relationships, routes, controllers, services, and authorization policies.
+10. Integrating with the existing email provider and inbound email processing infrastructure.
+
+Verify how incoming messages addressed to `info@worldchoiceperfume.com` are currently stored and retrieved.
+
+Identify which existing components can be reused directly by Super Admin without duplicating functionality.
+
+### B. Add an Email Management Section to Super Admin
+
+1. Add an appropriately positioned **Emails** or **Email Management** section to the Super Admin interface.
+
+2. Follow the existing Super Admin navigation, styling, layout, and responsive design.
+
+3. Display incoming emails addressed to `info@worldchoiceperfume.com`.
+
+4. Reuse the existing Customer Care email listing and detail components wherever appropriate.
+
+5. Allow authorized Super Admin users to open and read individual emails.
+
+6. Display the information required for normal email management, including:
+
+   * Sender's name and email address.
+   * Email subject.
+   * Date and time received.
+   * Email body.
+   * Recipient information where relevant.
+   * Attachments, if supported.
+   * Relevant conversation information.
+
+7. Keep unnecessary technical email metadata out of the ordinary user-facing interface, consistent with Section 3.
+
+8. Ensure that emails are retrieved from the existing email storage and processing system rather than creating duplicate copies specifically for Super Admin.
+
+### C. Implement Reply Functionality
+
+1. Allow authorized Super Admin users to reply directly to incoming emails.
+2. Reuse the existing Customer Care reply interface, email service, provider integration, and sending logic wherever possible.
+3. Automatically populate the appropriate original sender as the reply recipient, subject to existing reply-address validation and security rules.
+4. Preserve email conversation threading using the appropriate message identifiers and reply headers where supported.
+5. Use `info@worldchoiceperfume.com` as the sending identity, provided the existing provider and verified domain configuration support it.
+6. Reuse the existing outbound email infrastructure rather than creating a separate email provider integration.
+7. Validate the message content and recipient before sending.
+8. Provide clear feedback when an email is sent successfully or when sending fails.
+9. Prevent accidental duplicate sending caused by repeated submissions where appropriate.
+10. Handle delivery errors gracefully and log useful diagnostic information without exposing credentials or sensitive technical details to the user.
+11. Ensure that the reply is sent to the intended recipient and is associated with the original conversation where supported.
+12. Verify that the existing provider configuration and sending identity are correctly configured rather than assuming that adding the Super Admin interface automatically enables email sending.
+
+### D. Authorization and Data Integrity
+
+1. Restrict the new email management section to authorized Super Admin users.
+2. Enforce authorization on the backend, not merely by hiding navigation links.
+3. Reuse existing email records and conversation data when appropriate.
+4. Do not create duplicate email records unnecessarily.
+5. Do not interfere with existing Headquarters Customer Care email functionality.
+6. Keep API keys, provider credentials, webhook secrets, and other sensitive configuration in secure environment configuration.
+7. Never expose email provider credentials or sensitive internal headers in the browser.
+8. Preserve the existing inbound email processing, webhook handling, and outbound email delivery mechanisms.
+9. Avoid unnecessary changes to the existing email database schema or provider configuration.
+
+### E. Testing Requirements
+
+Verify the following scenarios:
+
+1. An authorized Super Admin can access the Emails section.
+2. Incoming emails addressed to `info@worldchoiceperfume.com` appear correctly.
+3. Super Admin can open and read individual email messages.
+4. The email detail page displays the required information without unnecessary technical metadata.
+5. Super Admin can compose and send a reply.
+6. The reply is addressed to the correct recipient.
+7. The correct business sending identity is used.
+8. Conversation threading works where supported by the existing infrastructure.
+9. Sending failures produce useful error messages.
+10. Unauthorized users cannot access the email management routes.
+11. Existing Headquarters Customer Care email functionality continues to work.
+12. Existing inbound email processing and outbound email delivery are not disrupted.
+
+### Acceptance Criteria
+
+Super Admin can view and reply to incoming emails addressed to `info@worldchoiceperfume.com` through the existing email infrastructure, using a reusable implementation based on the Headquarters Customer Care module.
+
+The implementation must preserve existing Customer Care email functionality, security, and data integrity.
+
+---
+
+## FINAL IMPLEMENTATION, TESTING, AND REPORTING INSTRUCTIONS
+
+Implement the six sections in the order presented.
+
+After completing the modifications, provide a clear report containing the following.
+
+### 1. Implementation Summary
+
+Report the work completed under each section:
+
+* Section 1: WhatsApp and email contact links.
+* Section 2: Standardized business working hours.
+* Section 3: Removal of unnecessary technical email details.
+* Section 4: Inquiry deletion functionality.
+* Section 5: “Cashier” changed to “Served By” in the relevant order interface.
+* Section 6: Super Admin email viewing and reply functionality.
+
+### 2. Files Changed
+
+List the modified and newly created files, explaining briefly what each change accomplishes.
+
+### 3. Database and Configuration Changes
+
+Identify any database migrations, schema modifications, environment variables, or configuration changes.
+
+Explain why each change was necessary. If no database or configuration changes were required, explicitly state that.
+
+### 4. Testing Results
+
+Report the tests actually performed and their results. Include relevant automated tests, route checks, authorization tests, and functional tests where available.
+
+For email sending, distinguish between testing the application logic and verifying actual email delivery.
+
+### 5. Outstanding Issues
+
+List anything that remains incomplete, any blockers, and any functionality that still requires manual verification.
+
+### 6. Preservation of Existing Functionality
+
+Confirm, based on actual testing, whether the existing Customer Care email system, order processing, staff accountability, inquiry management, and other relevant features continue working.
+
+**Final rule:** Do not claim that a modification is complete or working unless you have verified it. Do not perform unrelated refactoring, redesign the application, or introduce unnecessary database changes. Preserve the existing architecture and make only the changes required by these six sections.
