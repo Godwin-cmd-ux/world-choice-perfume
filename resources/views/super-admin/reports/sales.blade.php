@@ -3,10 +3,15 @@
 @section('header', 'Daily Sales Report')
 
 @section('header-actions')
-    <button onclick="window.print()" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition"><i class="fas fa-print mr-1"></i> Print</button>
+    <button onclick="window.print()" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition"><i class="fas fa-print mr-1"></i> Print View</button>
+    <a href="{{ route('super-admin.reports.print-sales-report', ['date' => $date->toDateString()] + request()->only('branch_id')) }}"
+       target="_blank" rel="noopener"
+       style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition">
+        <i class="fas fa-print mr-1"></i> Print PDF
+    </a>
     <a href="{{ route('super-admin.reports.generate-sales-report', ['date' => $date->toDateString()] + request()->only('branch_id')) }}"
        style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm hover:opacity-90 transition">
-        <i class="fas fa-file-pdf mr-1"></i> Generate Report
+        <i class="fas fa-file-pdf mr-1"></i> Download PDF
     </a>
 @endsection
 

@@ -98,6 +98,43 @@ class ReportController extends Controller
 
     public function generateSalesReport(Request $request)
     {
+        [$pdf, $filename] = $this->buildSalesReportPdf($request);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Open a page that loads the generated sales PDF and pops the browser's
+     * print dialog straight away. Pairs with generateSalesReport(), which
+     * downloads the same file.
+     */
+    public function printSalesReport(Request $request)
+    {
+        return view('super-admin.reports.sales-print', [
+            'pdfUrl' => route('super-admin.reports.stream-sales-report', $request->only(['date', 'branch_id'])),
+            'title' => 'Print Sales Report',
+        ]);
+    }
+
+    /**
+     * Serve the generated sales PDF inline so the print page's embedded frame
+     * can display and print it. Loaded by the browser, not linked in the UI.
+     */
+    public function streamSalesReport(Request $request)
+    {
+        [$pdf, $filename] = $this->buildSalesReportPdf($request);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Build the sales report PDF and its filename for the given date / branch
+     * filters. Shared by the download and print actions.
+     *
+     * @return array{0: \Barryvdh\DomPDF\PDF, 1: string}
+     */
+    private function buildSalesReportPdf(Request $request): array
+    {
         $date = $request->date ? Carbon::parse($request->date) : Carbon::now()->setTimezone('Africa/Dar_es_Salaam');
 
         $dayStart = $date->copy()->startOfDay();
@@ -172,7 +209,7 @@ class ReportController extends Controller
 
         $filename = 'sales-report-' . $date->timezone('Africa/Dar_es_Salaam')->format('Y-m-d') . '.pdf';
 
-        return $pdf->download($filename);
+        return [$pdf, $filename];
     }
 
     public function expenses(Request $request)
