@@ -249,11 +249,24 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/orders/{order}', [App\Http\Controllers\SuperAdmin\OrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/personal-name', [App\Http\Controllers\SuperAdmin\OrderController::class, 'personalName'])->name('orders.personal-name');
 
+        // Emails — the info@ mailbox, the same one Customer Care reads. The
+        // controller is the Customer Care one with a different route prefix.
+        Route::get('/emails', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'index'])->name('emails.index');
+        Route::get('/emails/{mail}', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'show'])->name('emails.show');
+        Route::post('/emails/{mail}/reply', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'reply'])->name('emails.reply');
+        Route::post('/emails/{mail}/read', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'toggleRead'])->name('emails.read');
+        Route::post('/emails/{mail}/star', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'star'])->name('emails.star');
+        Route::post('/emails/{mail}/status', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'status'])->name('emails.status');
+        Route::get('/emails/{mail}/attachments/{attachment}', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'attachment'])->name('emails.attachment');
+        Route::delete('/emails/{mail}', [App\Http\Controllers\SuperAdmin\InfoMailController::class, 'destroy'])->name('emails.destroy');
+
         // Reports
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('/', [ReportController::class, 'index'])->name('index');
             Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
             Route::get('/sales/generate', [ReportController::class, 'generateSalesReport'])->name('generate-sales-report');
+            Route::get('/sales/print', [ReportController::class, 'printSalesReport'])->name('print-sales-report');
+            Route::get('/sales/print/pdf', [ReportController::class, 'streamSalesReport'])->name('stream-sales-report');
             Route::get('/expenses', [ReportController::class, 'expenses'])->name('expenses');
             Route::get('/stock', [ReportController::class, 'stock'])->name('stock');
             Route::get('/staff-performance', [ReportController::class, 'staffPerformance'])->name('staff-performance');
@@ -406,6 +419,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::post('/inquiries/{inquiry}/reply', [App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
             Route::post('/inquiries/{inquiry}/read', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
             Route::post('/inquiries/{inquiry}/comment', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
+            Route::delete('/inquiries/{inquiry}', [App\Http\Controllers\CustomerCare\InquiryController::class, 'destroy'])->name('inquiries.destroy');
 
             // News moderation — Head Quarters-Mikocheni customer care only
             $ccon = App\Http\Controllers\CustomerCare\NewsController::class;

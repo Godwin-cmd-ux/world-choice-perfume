@@ -18,7 +18,7 @@
             @endphp
             <nav class="space-y-1">
                 @foreach($boxes as $key => [$label, $icon, $count])
-                    <a href="{{ route('customer-care.mails.index', array_filter(['box' => $key !== 'all' ? $key : null, 'search' => $search])) }}"
+                    <a href="{{ route($mailRoute.'.index', array_filter(['box' => $key !== 'all' ? $key : null, 'search' => $search])) }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition {{ $box === $key ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
                         <i class="fas {{ $icon }} w-4 text-center"></i>
                         <span class="flex-1">{{ $label }}</span>
@@ -55,7 +55,7 @@
                     <i class="fas fa-search mr-1"></i> Search
                 </button>
                 @if($search !== '')
-                    <a href="{{ route('customer-care.mails.index', array_filter(['box' => $box !== 'all' ? $box : null])) }}"
+                    <a href="{{ route($mailRoute.'.index', array_filter(['box' => $box !== 'all' ? $box : null])) }}"
                        class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Clear</a>
                 @endif
             </form>
@@ -94,7 +94,7 @@
                                     @endif
                                 </td>
                                 <td class="py-3 px-4 max-w-xs">
-                                    <a href="{{ route('customer-care.mails.show', $mail->id) }}"
+                                    <a href="{{ route($mailRoute.'.show', $mail->id) }}"
                                        class="font-medium hover:text-blue-700 after:content-[''] after:absolute after:inset-0 {{ $unread ? 'text-gray-900' : 'text-gray-700' }}">
                                         {{ $mail->subject ?: '(no subject)' }}
                                     </a>
@@ -121,14 +121,14 @@
                                 </td>
                                 <td class="px-4">
                                     <div class="flex items-center gap-2 whitespace-nowrap relative z-10">
-                                        <form action="{{ route('customer-care.mails.read', $mail->id) }}" method="POST" class="inline">
+                                        <form action="{{ route($mailRoute.'.read', $mail->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="text-blue-600 hover:underline text-xs font-medium">
                                                 <i class="fas {{ $unread ? 'fa-envelope' : 'fa-envelope-open' }} mr-1"></i>
                                                 {{ $unread ? 'Unread' : 'Read' }}
                                             </button>
                                         </form>
-                                        <form action="{{ route('customer-care.mails.star', $mail->id) }}" method="POST" class="inline">
+                                        <form action="{{ route($mailRoute.'.star', $mail->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="text-amber-600 hover:underline text-xs font-medium">
                                                 <i class="fas fa-star mr-1"></i>{{ ($mail->is_starred ?? false) ? 'Unstar' : 'Star' }}
@@ -156,12 +156,12 @@
 
         @if($shown >= (int) config('info_mail.per_page', 30))
             <div class="flex items-center justify-between mt-4 text-sm">
-                <a href="{{ route('customer-care.mails.index', array_filter(['box' => $box !== 'all' ? $box : null, 'search' => $search, 'page' => $page > 1 ? $page - 1 : null])) }}"
+                <a href="{{ route($mailRoute.'.index', array_filter(['box' => $box !== 'all' ? $box : null, 'search' => $search, 'page' => $page > 1 ? $page - 1 : null])) }}"
                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 {{ $page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-white' }}">
                     <i class="fas fa-chevron-left mr-1"></i> Newer
                 </a>
                 <span class="text-gray-500">Page {{ $page }}</span>
-                <a href="{{ route('customer-care.mails.index', array_filter(['box' => $box !== 'all' ? $box : null, 'search' => $search, 'page' => $page + 1])) }}"
+                <a href="{{ route($mailRoute.'.index', array_filter(['box' => $box !== 'all' ? $box : null, 'search' => $search, 'page' => $page + 1])) }}"
                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-white">
                     Older <i class="fas fa-chevron-right ml-1"></i>
                 </a>

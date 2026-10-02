@@ -133,7 +133,7 @@
         @endforelse
 
         <div class="text-center mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="https://wa.me/255710603637" target="_blank" rel="noopener"
+            <a href="{{ config('contact.whatsapp_link') }}" target="_blank" rel="noopener"
                class="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition">
                 <i class="fab fa-whatsapp text-lg"></i> Chat with us
                 <span class="text-white/85 text-xs">+255 710 603 637</span>

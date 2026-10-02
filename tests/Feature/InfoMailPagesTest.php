@@ -259,10 +259,13 @@ class InfoMailPagesTest extends TestCase
         $response->assertSee(route('customer-care.mails.reply', 7), false);
         $response->assertSee('Re: Reef 33 price');
         $response->assertSee('info@worldchoiceperfume.com');
-        // Auth verdicts from Cloudflare.
-        $response->assertSee('SPF');
-        $response->assertSee('DKIM');
-        $response->assertSee('pass');
+        // The technical side of the mail — the SPF/DKIM verdicts, the
+        // Message-ID and the raw source — is kept for diagnostics but is not
+        // put in front of an ordinary customer care member.
+        $response->assertDontSee('SPF');
+        $response->assertDontSee('DKIM');
+        $response->assertDontSee('Message-ID');
+        $response->assertDontSee('From: Amina');
     }
 
     public function test_an_unknown_mail_is_a_404(): void

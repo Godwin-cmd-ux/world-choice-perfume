@@ -20,10 +20,31 @@
 
 $phone = (string) env('CONTACT_PHONE', '+255 710 603 637');
 
+// Same number is used for calls and WhatsApp unless a separate one is set.
+$whatsapp = (string) env('CONTACT_WHATSAPP', $phone);
+
+// `wa.me` is addressed by country code and digits only. Spaces, a leading
+// plus and brackets all stop it resolving, so the link is derived from the
+// value that is printed rather than written out a second time.
+$whatsappDigits = preg_replace('/\D+/', '', $whatsapp);
+
+if ($whatsappDigits !== '' && str_starts_with($whatsappDigits, '0')) {
+    $whatsappDigits = '255'.ltrim($whatsappDigits, '0');
+}
+
 return [
 
     'phone' => $phone,
 
     'dial' => preg_replace('/[^\d+]/', '', $phone),
+
+    'whatsapp' => $whatsapp,
+
+    'whatsapp_link' => $whatsappDigits !== '' ? 'https://wa.me/'.$whatsappDigits : null,
+
+    // Business working hours as printed on the public pages. Kept beside the
+    // contact details so the homepage and the footer cannot show two
+    // different sets of hours.
+    'hours' => (string) env('CONTACT_HOURS', 'Mon – Sat: 9:00 AM – 9:00 PM'),
 
 ];

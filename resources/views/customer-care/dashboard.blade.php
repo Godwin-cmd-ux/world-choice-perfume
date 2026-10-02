@@ -222,7 +222,7 @@
                     <tr>
                         <th class="text-left py-3 px-4">Order</th>
                         <th class="text-left px-4">Customer</th>
-                        <th class="text-left px-4">Cashier</th>
+                        <th class="text-left px-4">Served By</th>
                         <th class="text-right px-4">Total</th>
                         <th class="text-center px-4">Status</th>
                         <th class="text-left px-4">Items</th>

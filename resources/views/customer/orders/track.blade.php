@@ -85,7 +85,7 @@
             </div>
 
             <p class="text-center mt-6 text-xs text-gray-500">
-                Need help? <a href="https://wa.me/255710603637" target="_blank" rel="noopener" class="text-gold-400 hover:underline">Chat with us on WhatsApp</a>
+                Need help? <a href="{{ config('contact.whatsapp_link') }}" target="_blank" rel="noopener" class="text-gold-400 hover:underline">Chat with us on WhatsApp</a>
             </p>
         </div>
     </main>

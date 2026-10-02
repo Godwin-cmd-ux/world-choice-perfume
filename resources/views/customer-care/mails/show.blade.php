@@ -54,7 +54,7 @@
                                 $isVideo = in_array($ext, ['mp4', 'webm', 'ogv', 'mov'], true)
                                     || in_array($mime, ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'], true);
                                 $isPdf = $ext === 'pdf' || $mime === 'application/pdf';
-                                $url = route('customer-care.mails.attachment', [$mail->id, $file->id]);
+                                $url = route($mailRoute.'.attachment', [$mail->id, $file->id]);
                                 $bytes = (int) $file->size_bytes;
                                 $size = $bytes === 0
                                     ? null
@@ -107,7 +107,7 @@
                             <div class="mt-3 space-y-3">
                                 @foreach($previewable as $file)
                                     @php
-                                        $previewUrl = route('customer-care.mails.attachment', [$mail->id, $file->id]);
+                                        $previewUrl = route($mailRoute.'.attachment', [$mail->id, $file->id]);
                                         $extension = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION));
                                         $type = strtolower((string) $file->mime_type);
                                         $isVideo = in_array($extension, ['mp4', 'webm', 'ogv'], true)
@@ -200,7 +200,7 @@
                                 From <span class="font-medium text-gray-700">{{ $item->from_name ?: $item->from_email }}</span>
                                 · {{ $stamp($item->received_at ?: ($item->created_at ?? null)) }}
                             </p>
-                            <a href="{{ route('customer-care.mails.show', $item->id) }}" class="text-sm text-blue-600 hover:underline">
+                            <a href="{{ route($mailRoute.'.show', $item->id) }}" class="text-sm text-blue-600 hover:underline">
                                 {{ $item->subject ?: '(no subject)' }}
                             </a>
                             <p class="text-xs text-gray-500 mt-1">{{ \Illuminate\Support\Str::limit((string) ($item->body_text ?? ''), 160) }}</p>
@@ -218,7 +218,7 @@
                 <span class="font-medium">{{ $mail->from_email }}</span>, subject
                 <span class="font-medium">Re: {{ preg_replace('/^(re:\s*)+/i', '', (string) ($mail->subject ?? '')) ?: 'Your message' }}</span>.
             </p>
-            <form method="POST" action="{{ route('customer-care.mails.reply', $mail->id) }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route($mailRoute.'.reply', $mail->id) }}" enctype="multipart/form-data">
                 @csrf
                 <textarea name="body" rows="6" required
                           placeholder="Type your answer as {{ $signature }}…"
@@ -262,14 +262,14 @@
         <div class="bg-white rounded-xl shadow p-6">
             <h3 class="font-semibold mb-3">Actions</h3>
             <div class="flex flex-col gap-2">
-                <form action="{{ route('customer-care.mails.read', $mail->id) }}" method="POST">
+                <form action="{{ route($mailRoute.'.read', $mail->id) }}" method="POST">
                     @csrf
                     <button type="submit" class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         <i class="fas {{ ($mail->is_read ?? false) ? 'fa-envelope' : 'fa-envelope-open' }} mr-1"></i>
                         Mark as {{ ($mail->is_read ?? false) ? 'unread' : 'read' }}
                     </button>
                 </form>
-                <form action="{{ route('customer-care.mails.star', $mail->id) }}" method="POST">
+                <form action="{{ route($mailRoute.'.star', $mail->id) }}" method="POST">
                     @csrf
                     <button type="submit" class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         <i class="fas fa-star mr-1 text-amber-500"></i>
@@ -278,7 +278,7 @@
                 </form>
 
                 @if(($mail->status ?? 'new') !== 'closed')
-                    <form action="{{ route('customer-care.mails.status', $mail->id) }}" method="POST">
+                    <form action="{{ route($mailRoute.'.status', $mail->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="status" value="closed">
                         <button type="submit" class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -286,7 +286,7 @@
                         </button>
                     </form>
                 @else
-                    <form action="{{ route('customer-care.mails.status', $mail->id) }}" method="POST">
+                    <form action="{{ route($mailRoute.'.status', $mail->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="status" value="new">
                         <button type="submit" class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -295,7 +295,7 @@
                     </form>
                 @endif
 
-                <form action="{{ route('customer-care.mails.destroy', $mail->id) }}" method="POST"
+                <form action="{{ route($mailRoute.'.destroy', $mail->id) }}" method="POST"
                       onsubmit="return confirm('Delete this mail from the mailbox? This cannot be undone.');">
                     @csrf
                     @method('DELETE')
@@ -314,34 +314,16 @@
                 @if(! empty($mail->cc))<div><span class="text-gray-500">Cc:</span> {{ $mail->cc }}</div>@endif
                 <div><span class="text-gray-500">Received:</span> {{ $stamp($when) }}</div>
                 <div><span class="text-gray-500">Status:</span> {{ ucfirst((string) ($mail->status ?? 'new')) }}</div>
-                @if(! empty($mail->spf_result))
-                    <div>
-                        <span class="text-gray-500">SPF:</span>
-                        <span class="{{ $mail->spf_result === 'pass' ? 'text-green-600' : 'text-amber-600' }}">{{ $mail->spf_result }}</span>
-                    </div>
-                @endif
-                @if(! empty($mail->dkim_result))
-                    <div>
-                        <span class="text-gray-500">DKIM:</span>
-                        <span class="{{ $mail->dkim_result === 'pass' ? 'text-green-600' : 'text-amber-600' }}">{{ $mail->dkim_result }}</span>
-                    </div>
-                @endif
-                @if(! empty($mail->message_id))
-                    <div><span class="text-gray-500">Message-ID:</span> <span class="text-xs text-gray-400">{{ $mail->message_id }}</span></div>
-                @endif
             </div>
-            @if(($mail->spf_result ?? '') !== 'pass' && ! empty($mail->spf_result))
-                <p class="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-                    SPF is <strong>{{ $mail->spf_result }}</strong>, so the sending server is not listed for
-                    {{ $mail->from_email }}. Treat anything asking for money or passwords with care.
-                </p>
-            @endif
+            {{-- SPF/DKIM verdicts, the Message-ID and the raw headers are kept
+                 in storage for diagnostics but are not part of an ordinary
+                 member's view of the mail. --}}
         </div>
     </div>
 </div>
 
 <div class="mt-6">
-    <a href="{{ route('customer-care.mails.index') }}" class="text-blue-600 hover:underline text-sm">
+    <a href="{{ route($mailRoute.'.index') }}" class="text-blue-600 hover:underline text-sm">
         <i class="fas fa-arrow-left mr-1"></i> Back to Mails
     </a>
 </div>

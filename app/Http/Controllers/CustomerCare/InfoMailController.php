@@ -40,6 +40,19 @@ class InfoMailController extends Controller
 
     public function __construct(private InfoMailService $mails) {}
 
+    /**
+     * The route names the shared mail views post back to.
+     *
+     * Super Admin reads the same info@ mailbox from the same service and the
+     * same templates, so only the prefix differs between the two sections.
+     * Overriding this in the Super Admin controller is the whole of the
+     * reuse — no second mailbox, no second set of views.
+     */
+    protected function routePrefix(): string
+    {
+        return 'customer-care.mails';
+    }
+
     public function index(Request $request)
     {
         $box = (string) $request->query('box', 'all');
@@ -60,6 +73,7 @@ class InfoMailController extends Controller
             'page' => $page,
             'shown' => $shown,
             'unreadCount' => $this->mails->unreadCount(),
+            'mailRoute' => $this->routePrefix(),
         ]);
     }
 
@@ -89,6 +103,7 @@ class InfoMailController extends Controller
                 'fileMb' => (int) (self::MAX_REPLY_FILE_KILOBYTES / 1024),
                 'totalMb' => self::replyLimitMb(),
             ],
+            'mailRoute' => $this->routePrefix(),
         ]);
     }
 
@@ -237,7 +252,7 @@ class InfoMailController extends Controller
         $total = array_sum(array_map(fn ($f) => $f->getSize(), $files));
         if ($total > self::MAX_REPLY_TOTAL_BYTES) {
             return redirect()
-                ->route('customer-care.mails.show', $mail->id)
+                ->route($this->routePrefix().'.show', $mail->id)
                 ->withInput()
                 ->with(
                     'error',
@@ -254,7 +269,7 @@ class InfoMailController extends Controller
         );
 
         return redirect()
-            ->route('customer-care.mails.show', $mail->id)
+            ->route($this->routePrefix().'.show', $mail->id)
             ->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
@@ -310,7 +325,7 @@ class InfoMailController extends Controller
         $this->mails->delete((int) $mail->id);
 
         return redirect()
-            ->route('customer-care.mails.index')
+            ->route($this->routePrefix().'.index')
             ->with('success', 'Mail deleted.');
     }
 }

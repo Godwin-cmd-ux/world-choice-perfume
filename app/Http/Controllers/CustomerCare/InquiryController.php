@@ -138,4 +138,26 @@ class InquiryController extends Controller
 
         return back()->with('success', 'Inquiry added as a homepage remark.');
     }
+
+    /**
+     * Remove an inquiry that was filed by mistake and is no longer wanted in
+     * the active list. The reply and the message live on this same row, so
+     * deleting it takes nothing else with it. Only an inquiry belonging to
+     * the signed-in member's branch can be removed.
+     */
+    public function destroy($inquiryId)
+    {
+        $inquiry = $this->supabase->find('inquiries', $inquiryId);
+        if (!$inquiry || $inquiry['branch_id'] != auth()->user()->branch_id) {
+            abort(404);
+        }
+
+        if (! $this->supabase->delete('inquiries', ['id' => $inquiryId])) {
+            return back()->with('error', 'The inquiry could not be deleted. Please try again.');
+        }
+
+        return redirect()
+            ->route('customer-care.inquiries.index')
+            ->with('success', 'Inquiry deleted.');
+    }
 }

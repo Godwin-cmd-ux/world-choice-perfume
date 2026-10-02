@@ -474,13 +474,24 @@
                             <p class="text-white font-medium group-hover:text-gold-400 transition-colors">{{ config('contact.phone') }}</p>
                         </div>
                     </a>
+                    @if(config('contact.whatsapp_link'))
+                    <a href="{{ config('contact.whatsapp_link') }}" target="_blank" rel="noopener" class="flex items-center gap-4 group w-fit">
+                        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center group-hover:bg-gold-500/20 group-hover:border-gold-500/40 transition-colors">
+                            <i class="fab fa-whatsapp text-gold-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">WhatsApp</p>
+                            <p class="text-white font-medium group-hover:text-gold-400 transition-colors">{{ config('contact.whatsapp') }}</p>
+                        </div>
+                    </a>
+                    @endif
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
                             <i class="fas fa-clock text-gold-400"></i>
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Working hours</p>
-                            <p class="text-white font-medium">Mon – Sat: 9AM – 8PM</p>
+                            <p class="text-white font-medium">{{ config('contact.hours') }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">

@@ -311,9 +311,20 @@ class InfoMailService
         return [$mails->values(), $mails->count()];
     }
 
+    /**
+     * One mail by row id, for the Customer Care reader.
+     *
+     * Technical metadata — the raw source, the header block and the SPF/DKIM
+     * verdicts — is kept in storage for diagnostics, but is deliberately not
+     * selected here: the detail page is read by ordinary customer care
+     * members and should not carry it, not even as unused page data.
+     */
     public function find(int $id): ?object
     {
-        $row = $this->supabase->find(self::TABLE, $id);
+        $row = $this->supabase->find(self::TABLE, $id, 'id,message_id,in_reply_to,reference_ids,'
+            .'from_email,from_name,to_email,cc,bcc,reply_to,subject,body_text,'
+            .'attachment_names,has_attachments,is_read,is_starred,status,thread_key,parent_id,'
+            .'received_at,read_at,replied_at,created_at,updated_at');
 
         return $row ? (object) $row : null;
     }

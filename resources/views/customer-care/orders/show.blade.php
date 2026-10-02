@@ -21,7 +21,7 @@
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">
             <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}</span></div>
             <div class="flex justify-between"><span>Phone:</span><span>{{ $order->customer?->phone ?? 'N/A' }}</span></div>
-            @if($order->cashier?->name)<div class="flex justify-between"><span>Cashier:</span><span>{{ $order->cashier->name }}</span></div>@endif
+            @if($order->cashier?->name)<div class="flex justify-between"><span>Served By:</span><span>{{ $order->cashier->name }}</span></div>@endif
             @if($order->delivery_notes)<div class="flex justify-between"><span>Notes:</span><span>{{ $order->delivery_notes }}</span></div>@endif
         </div>
         <table class="w-full text-sm mb-4">

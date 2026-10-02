@@ -66,6 +66,12 @@
                                 @else
                                     <span class="text-xs text-amber-600 font-medium"><i class="fas fa-star mr-1"></i>Featured</span>
                                 @endif
+                                <form action="{{ route('customer-care.inquiries.destroy', $i->id) }}" method="POST" class="inline"
+                                      onsubmit="return confirm('Delete this inquiry? This cannot be undone.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:underline text-xs font-medium"><i class="fas fa-trash mr-1"></i>Delete</button>
+                                </form>
                             </div>
                         </td>
                     </tr>
