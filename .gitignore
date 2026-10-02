@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# AnyDesk installer leftovers that landed in the public web root
+/public/AnyDesk.exe
+/public/gcapi.dll
+/public/service.conf.lock
+/public/system.conf.lock
