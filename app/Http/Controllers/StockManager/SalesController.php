@@ -35,7 +35,14 @@ class SalesController extends Controller
             'limit' => 50,
         ]);
 
-        if ($request->cashier_id) {
+        // A stock manager's sales page is their own record: the sales they
+        // committed themselves, not the whole branch's takings. A Super Admin
+        // browsing here is overseeing rather than selling, so their view keeps
+        // the branch-wide listing and the optional cashier filter.
+        $ownId = $this->ownCashierId();
+        if ($ownId !== null) {
+            $params['cashier_id'] = "eq.{$ownId}";
+        } elseif ($request->cashier_id) {
             $params['cashier_id'] = "eq.{$request->cashier_id}";
         }
 
@@ -71,6 +78,22 @@ class SalesController extends Controller
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
+    }
+
+    /**
+     * The id this user's own sales carry, or null when the page should not be
+     * narrowed to one person.
+     *
+     * Matches how the sale is stamped on the way in (supabase_id, falling back
+     * to the local id), so nothing this manager sold can fall outside the list.
+     */
+    private function ownCashierId(): int|string|null
+    {
+        if ((auth()->user()->role ?? null) !== 'stock_manager') {
+            return null;
+        }
+
+        return auth()->user()->supabase_id ?? auth()->id();
     }
 
     public function create()

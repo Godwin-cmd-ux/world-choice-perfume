@@ -13,8 +13,10 @@
                 <select name="category" id="category-select" onchange="onCategoryChange()"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                     <option value="">Select Category First</option>
-                    <option value="Oil Fragrance" {{ old('category') == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
-                    <option value="Brand Perfume" {{ old('category') == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
+                    {{-- The category is preselected when arriving from the low-stock
+                         list, so the product below resolves without a second choice. --}}
+                    <option value="Oil Fragrance" {{ old('category', $preselectCategory ?? null) == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
+                    <option value="Brand Perfume" {{ old('category', $preselectCategory ?? null) == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
                 </select>
                 <p class="text-[11px] text-gray-400 mt-1">
                     <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products will be listed below.
@@ -28,11 +30,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
                 <select name="product_id" id="product_id" required onchange="onProductChange()"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    @if(old('category'))
+                    @if(old('category', $preselectCategory ?? null))
                         <option value="">Select Product</option>
                         @foreach($products as $product)
-                            @if($product->category === old('category'))
-                                <option value="{{ $product->id }}" data-category="{{ $product->category }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
+                            @if($product->category === old('category', $preselectCategory ?? null))
+                                <option value="{{ $product->id }}" data-category="{{ $product->category }}" {{ old('product_id', $preselectProductId ?? null) == $product->id ? 'selected' : '' }}>
                                     {{ $product->name }} — {{ $product->brand }}
                                 </option>
                             @endif
@@ -247,7 +249,7 @@ document.getElementById('bottle_volume').addEventListener('change', refreshVaria
 (function init () {
     filterProducts();
 
-    const productId = @json(old('product_id')) || '';
+    const productId = @json(old('product_id', $preselectProductId ?? null)) || '';
     if (productId) {
         document.getElementById('product_id').value = productId;
     }

@@ -11,6 +11,14 @@ use Illuminate\Http\Request;
 
 class StockManagerController extends Controller
 {
+    /**
+     * At or below this many units a product counts as low stock.
+     *
+     * One definition, so the dashboard card and the low-stock page it opens
+     * can never disagree about how many products need attention.
+     */
+    private const LOW_STOCK_THRESHOLD = 5;
+
     private SupabaseService $supabase;
     private BottleStockService $bottles;
     private StockManagerScope $scope;
@@ -33,6 +41,18 @@ class StockManagerController extends Controller
         return $ownBranchId;
     }
 
+    /**
+     * The id a sale carries as cashier_id when this user commits it.
+     *
+     * Sales are stamped with the Supabase id, falling back to the local one,
+     * which is the same pair the sale form writes — so "my sales" here and the
+     * rows this manager created line up exactly.
+     */
+    private function ownSaleUserId(): int|string
+    {
+        return auth()->user()->supabase_id ?? auth()->id();
+    }
+
     // ========================
     // DASHBOARD
     // ========================
@@ -40,7 +60,7 @@ class StockManagerController extends Controller
     public function dashboard()
     {
         $branchId = $this->scope->activeBranchId();
-        $isHQ = $this->scope->isHQStockManager();
+        $isProductsOnly = $this->scope->isProductsOnlyStockManager();
         $inCrossBranch = $this->scope->inCrossBranchMode();
         $activeBranchName = $this->scope->activeBranchName();
 
@@ -48,25 +68,37 @@ class StockManagerController extends Controller
         $productStock = $this->supabase->query('branch_stock', $this->scope->branchParams([
             'select' => 'quantity,selling_price',
         ]));
+        // Units, not product types: a branch holding one product with 30 items
+        // shows 30. The type count is kept as well so both figures sit on the
+        // card and neither can be mistaken for the other.
         $totalProductItems = array_sum(array_map(fn($s) => $s['quantity'] ?? 0, $productStock));
-        $lowStockProducts = count(array_filter($productStock, fn($s) => ($s['quantity'] ?? 0) <= 5));
+        $totalProductTypes = count($productStock);
+        $lowStockProducts = count(array_filter($productStock, fn($s) => ($s['quantity'] ?? 0) <= self::LOW_STOCK_THRESHOLD));
 
         // Bottle stock stats
-        $bottleStock = $isHQ ? [] : $this->supabase->query('bottle_stock', $this->scope->branchParams([
+        $bottleStock = $isProductsOnly ? [] : $this->supabase->query('bottle_stock', $this->scope->branchParams([
             'select' => '*',
         ]));
         $totalBottles = array_sum(array_map(fn($b) => $b['quantity'] ?? 0, $bottleStock));
 
         // Oil fragrance stats
-        $oilStock = $isHQ ? [] : $this->supabase->query('oil_fragrance_stock', $this->scope->branchParams([
+        $oilStock = $isProductsOnly ? [] : $this->supabase->query('oil_fragrance_stock', $this->scope->branchParams([
             'select' => '*',
         ]));
         $totalOilFragrances = array_sum(array_map(fn($o) => $o['quantity'] ?? 0, $oilStock));
 
-        // Sales figures are intentionally NOT fetched here — the stock
-        // manager dashboard must not expose sales details (totals, expenses,
-        // transaction counts or links to sales records).
+        // The branch's takings stay out of this dashboard, as before. What is
+        // shown is the manager's OWN day: the sales they committed themselves,
+        // so the figure reflects their work rather than the branch's.
         $todayStart = now()->startOfDay()->toIso8601String();
+        $mySalesToday = $this->supabase->query('sales', [
+            'branch_id' => "eq.{$branchId}",
+            'cashier_id' => 'eq.' . $this->ownSaleUserId(),
+            'created_at' => "gte.{$todayStart}",
+            'select' => 'total',
+        ]);
+        $mySalesTodayCount = count($mySalesToday);
+        $mySalesTodayTotal = array_sum(array_map(fn($s) => $s['total'] ?? 0, $mySalesToday));
 
         // Orders summary
         $pendingOrders = $this->supabase->count('orders', [
@@ -83,14 +115,15 @@ class StockManagerController extends Controller
         ]);
 
         // Recent movements
-        $recentBottleMovements = $isHQ ? [] : $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 5);
-        $recentOilMovements = $isHQ ? [] : $this->loadMovementsWithUser('oil_fragrance_movements', $branchId, 5);
+        $recentBottleMovements = $isProductsOnly ? [] : $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 5);
+        $recentOilMovements = $isProductsOnly ? [] : $this->loadMovementsWithUser('oil_fragrance_movements', $branchId, 5);
 
         return view('stock-manager.dashboard', compact(
-            'totalProductItems', 'lowStockProducts',
+            'totalProductItems', 'totalProductTypes', 'lowStockProducts',
+            'mySalesTodayCount', 'mySalesTodayTotal',
             'totalBottles', 'bottleStock', 'totalOilFragrances', 'oilStock',
             'recentBottleMovements', 'recentOilMovements',
-            'isHQ', 'inCrossBranch', 'activeBranchName',
+            'isProductsOnly', 'inCrossBranch', 'activeBranchName',
             'pendingOrders', 'openOrders', 'ordersToday'
         ));
     }
@@ -355,13 +388,65 @@ class StockManagerController extends Controller
         ]);
     }
 
-    public function productStockEntry()
+    /**
+     * The products needing restocking, each with a way in to top it up.
+     *
+     * Opened from the low-stock line on the dashboard. The threshold and the
+     * filter are the same as the one the dashboard counts with, so the number
+     * on the card is the number of rows here.
+     */
+    public function lowStockProducts()
+    {
+        $stocks = $this->supabase->query('branch_stock', $this->scope->branchParams([
+            'select' => 'id,product_id,quantity,selling_price,category,date_received,product:products(id,name,brand,category)',
+            // Filtered at the source rather than in PHP, so a branch with a
+            // large catalogue does not pull every row over the wire.
+            'quantity' => 'lte.' . self::LOW_STOCK_THRESHOLD,
+            'order' => 'quantity.asc',
+        ]));
+
+        $rows = collect($stocks)->map(function ($stock) {
+            $product = is_array($stock['product'] ?? null) ? (object) $stock['product'] : null;
+
+            return [
+                'product' => $product,
+                'product_id' => $stock['product_id'] ?? null,
+                'name' => $product->name ?? 'Unknown product',
+                'brand' => $product->brand ?? null,
+                'category' => $stock['category'] ?? ($product->category ?? null),
+                'quantity' => (int) ($stock['quantity'] ?? 0),
+                'selling_price' => (float) ($stock['selling_price'] ?? 0),
+            ];
+        })->filter(fn ($row) => $row['product_id'] !== null)->values()->all();
+
+        return view('stock-manager.product-stock-low', [
+            'rows' => $rows,
+            'threshold' => self::LOW_STOCK_THRESHOLD,
+            'activeBranchName' => $this->scope->activeBranchName(),
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+        ]);
+    }
+
+    public function productStockEntry(Request $request)
     {
         $products = $this->supabase->query('products', [
             'is_active' => 'eq.true',
             'select' => 'id,name,brand,category',
             'order' => 'name.asc',
         ]);
+
+        // Arriving from the low-stock list, which already knows what it wants
+        // topped up. The category has to be chosen too, because the product
+        // list below is filtered by it.
+        $preselect = null;
+        if ($request->product_id) {
+            foreach ($products as $product) {
+                if ((string) ($product['id'] ?? '') === (string) $request->product_id) {
+                    $preselect = ['id' => $product['id'], 'category' => $product['category'] ?? null];
+                    break;
+                }
+            }
+        }
 
         // Oil fragrance entries consume empty bottles from the manager's own
         // branch. Head Quarters bottles with its own bottle stock, so the
@@ -370,6 +455,8 @@ class StockManagerController extends Controller
 
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
+            'preselectProductId' => $preselect['id'] ?? null,
+            'preselectCategory' => $preselect['category'] ?? null,
             'bottleVariants' => $this->bottles->variantStock($bottleBranchId),
             'bottleVariantsBranchName' => $this->scope->branchName($bottleBranchId),
         ]);

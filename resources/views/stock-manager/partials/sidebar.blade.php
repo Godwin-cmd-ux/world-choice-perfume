@@ -1,7 +1,7 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
     @php
         $smScope = new \App\Services\StockManagerScope();
-        $stockManagerIsHQ = $smScope->isHQStockManager();
+        $stockManagerIsProductsOnly = $smScope->isProductsOnlyStockManager();
         $stockManagerIsKinondoni = $smScope->isKinondoniStockManager();
         $stockManagerIsCrossBranchMonitor = $smScope->isCrossBranchMonitor();
         $stockManagerInCrossBranch = $smScope->inCrossBranchMode();
@@ -21,9 +21,10 @@
                 'to_branch_id' => 'eq.' . $smScope->activeBranchId(),
                 'status' => 'eq.in_transit',
             ];
-            // HQ only receives Product Stock — mirror the incoming-page filter
-            // so the badge never counts bottle transfers HQ cannot see.
-            if ($stockManagerIsHQ) {
+            // A products-only branch only receives Product Stock — mirror the
+            // incoming-page filter so the badge never counts bottle transfers it
+            // cannot see.
+            if ($stockManagerIsProductsOnly) {
                 $incomingQuery['stock_type'] = 'eq.product';
             }
             $sbPendingIncoming = (new \App\Services\SupabaseService())->count('stock_transfers', $incomingQuery);
@@ -125,7 +126,7 @@
             </a>
         @endif
 
-        @unless($stockManagerIsHQ)
+        @unless($stockManagerIsProductsOnly)
         <a href="{{ route('stock-manager.bottle-stock') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.bottle-stock*', 'stock-manager.bottle-movements', 'stock-manager.bottle-broken') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-wine-bottle w-5 text-center"></i>

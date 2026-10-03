@@ -15,29 +15,31 @@
         <span class="flex items-center gap-2 text-amber-700 font-bold">{{ $pendingOrders }} <i class="fas fa-arrow-right"></i></span>
     </a>
 @endif
-{{-- Stats Cards --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+{{-- Stats Cards --}}    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     {{-- Product Stock --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-500">Total Products</p>
+                {{-- Units, not product types: one product holding 30 items reads 30. --}}
+                <p class="text-sm font-medium text-gray-500">Total Product Units</p>
                 <p class="text-2xl font-bold text-gray-800 mt-1">{{ number_format($totalProductItems) }}</p>
-                <p class="text-xs text-gray-400 mt-1">Total in stock</p>
+                <p class="text-xs text-gray-400 mt-1">Across {{ number_format($totalProductTypes) }} product(s)</p>
             </div>
             <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
                 <i class="fas fa-box text-blue-500 text-xl"></i>
             </div>
         </div>
-        @if($lowStockProducts > 0)
-            <div class="mt-3 flex items-center gap-2 text-xs text-red-500">
-                <i class="fas fa-exclamation-triangle"></i>
-                {{ $lowStockProducts }} product(s) low stock
-            </div>
-        @endif
+        {{-- Always a link: with none low it opens an empty list, which still
+             answers the question the card asks. --}}
+        <a href="{{ route('stock-manager.product-stock.low-stock') }}"
+           class="mt-3 flex items-center gap-2 text-xs {{ $lowStockProducts > 0 ? 'text-red-500 font-medium hover:text-red-700' : 'text-gray-400 hover:text-gray-600' }}">
+            <i class="fas fa-exclamation-triangle"></i>
+            {{ $lowStockProducts }} product(s) low stock
+            <i class="fas fa-arrow-right ml-auto"></i>
+        </a>
     </div>
 
-    @unless($isHQ ?? false)
+    @unless($isProductsOnly ?? false)
     {{-- Bottle Stock --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between">
@@ -67,6 +69,27 @@
     </div>
     @endunless
 
+    {{-- My Sales Today: this manager's own sales, never the branch's takings.
+         Hidden while monitoring another branch, where sales are read-only. --}}
+    @unless($inCrossBranch ?? false)
+    <a href="{{ route('stock-manager.sales.index') }}" class="block bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">My Sales Today</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ number_format($mySalesTodayCount) }}</p>
+                <p class="text-xs text-gray-400 mt-1">TZS {{ number_format($mySalesTodayTotal) }}</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <i class="fas fa-receipt text-emerald-500 text-xl"></i>
+            </div>
+        </div>
+        <p class="mt-3 flex items-center gap-2 text-xs text-gray-400">
+            Sales you committed today
+            <i class="fas fa-arrow-right ml-auto"></i>
+        </p>
+    </a>
+    @endunless
+
     {{-- Quick Actions --}}
     <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-sm p-6 text-white">
         <p class="text-sm font-medium text-emerald-100">Quick Actions</p>
@@ -77,7 +100,7 @@
             <a href="{{ route('stock-manager.product-stock.entry') }}" class="block text-sm text-white hover:text-emerald-100">
                 <i class="fas fa-plus mr-2"></i> Add Product Stock
             </a>
-            @unless($isHQ ?? false)
+            @unless($isProductsOnly ?? false)
             <a href="{{ route('stock-manager.bottle-stock-in') }}" class="block text-sm text-white hover:text-emerald-100">
                 <i class="fas fa-plus mr-2"></i> Add Bottle Stock
             </a>
@@ -117,7 +140,7 @@
 </div>
 
 {{-- Bottle Stock Breakdown --}}
-@unless($isHQ ?? false)
+@unless($isProductsOnly ?? false)
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
@@ -165,7 +188,7 @@
 @endunless
 
 {{-- Recent Movements --}}
-@unless($isHQ ?? false)
+@unless($isProductsOnly ?? false)
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
         <i class="fas fa-history text-gray-400 mr-2"></i> Recent Bottle Movements
