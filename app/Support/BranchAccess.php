@@ -60,6 +60,24 @@ class BranchAccess
         return false;
     }
 
+    /**
+     * The explanation shown to an operator who tries to delete one of the two
+     * branches that carry a privilege.
+     *
+     * These two cannot be deleted, only renamed away from. The privilege is
+     * keyed on the name, so deleting the branch would remove a company-wide
+     * capability — cross-branch stock monitoring, or the company mailbox — and
+     * leave nothing to reassign it to. A rename gives it up deliberately.
+     */
+    public static function deletionMessage(string $name): string
+    {
+        return "\"{$name}\" cannot be deleted. Branch names decide access, and this "
+            . 'one carries a privilege the whole company depends on — either '
+            . self::KINONDONI . '\'s cross-branch stock monitoring, or '
+            . self::HEAD_QUARTERS . '\'s mailbox with news and inquiries moderation. '
+            . 'Rename it to give that privilege up, and it can be deleted afterwards.';
+    }
+
     /** The name to show an operator who has just tried to use an exception name. */
     public static function rejectionMessage(string $attempted): string
     {

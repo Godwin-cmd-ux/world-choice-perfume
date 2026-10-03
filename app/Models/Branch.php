@@ -12,7 +12,7 @@ class Branch extends Model
     use HasFactory;
 
     protected $fillable = [
-        'id', 'name', 'address', 'latitude', 'longitude', 'profile_picture', 'is_active',
+        'id', 'name', 'address', 'latitude', 'longitude', 'profile_picture', 'is_active', 'category',
     ];
 
     protected function casts(): array

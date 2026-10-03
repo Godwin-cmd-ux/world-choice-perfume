@@ -24,6 +24,20 @@
                        placeholder="e.g. Posta Road, Dar es Salaam">
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Branch Category <span class="text-red-500">*</span></label>
+                <select name="category"
+                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition @error('category') border-red-500 @enderror">
+                    <option value="{{ \App\Support\BranchCategory::AUTONOMOUS }}" {{ old('category', \App\Support\BranchCategory::AUTONOMOUS) === \App\Support\BranchCategory::AUTONOMOUS ? 'selected' : '' }}>Autonomous branch — full branch</option>
+                    <option value="{{ \App\Support\BranchCategory::PRODUCTS_BASED }}" {{ old('category') === \App\Support\BranchCategory::PRODUCTS_BASED ? 'selected' : '' }}>Products-based branch — product stock only</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1.5">
+                    <strong>Autonomous</strong> works like Dodoma: product stock, bottles, oil fragrance and bottle accessories.
+                    <strong>Products-based</strong> works like Head Quarters-Mikocheni: its stock manager sees product stock only.
+                </p>
+                @error('category') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Latitude</label>

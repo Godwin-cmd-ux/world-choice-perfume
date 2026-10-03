@@ -18,6 +18,7 @@
                 <tr class="bg-gray-50 border-b border-gray-100">
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
                     <th class="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Address</th>
+                    <th class="text-center py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
                     <th class="text-center py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cashiers</th>
                     <th class="text-center py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="text-center py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -39,6 +40,13 @@
                             </div>
                         </td>
                         <td class="py-3.5 px-6 text-gray-500">{{ $branch->address ?? '—' }}</td>
+                        <td class="py-3.5 px-6 text-center">
+                            @if(($branch->category ?? null) === \App\Support\BranchCategory::PRODUCTS_BASED)
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700" title="Product stock only — like Head Quarters-Mikocheni">Products-only</span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700" title="Full branch — like Dodoma">Autonomous</span>
+                            @endif
+                        </td>
                         <td class="py-3.5 px-6 text-center">
                             <span class="inline-flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full text-xs font-semibold text-gray-700">{{ $branch->cashiers_count }}</span>
                         </td>
@@ -65,13 +73,36 @@
                                             <i class="fas fa-ban text-xs"></i>
                                         </button>
                                     </form>
+                                @elseif(\App\Support\BranchAccess::isExceptionName($branch->name))
+                                    {{-- The two branches that carry a privilege the whole company uses.
+                                         The server refuses this outright; not offering the action
+                                         here just means the operator is never shown something that
+                                         cannot work. Renaming is the way to give the privilege up. --}}
+                                    <button type="button" disabled
+                                            class="p-2 text-gray-300 rounded-lg cursor-not-allowed"
+                                            title="{{ \App\Support\BranchAccess::deletionMessage($branch->name) }}">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                @else
+                                    @php
+                                        // Deleting is only offered once the branch is inactive, and
+                                        // the warning names what actually disappears so the operator
+                                        // cannot click through it by reflex.
+                                        $purgeConfirm = 'Permanently delete ' . $branch->name . '? This removes ALL of its data — sales, orders, stock, expenses, inquiries and its staff accounts. This cannot be undone.';
+                                    @endphp
+                                    <form action="{{ route('super-admin.branches.purge', $branch->id) }}" method="POST" class="inline" data-confirm="{{ $purgeConfirm }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete permanently">
+                                            <i class="fas fa-trash text-xs"></i>
+                                        </button>
+                                    </form>
                                 @endif
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="py-12 text-center">
+                        <td colspan="6" class="py-12 text-center">
                             <div class="flex flex-col items-center">
                                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                     <i class="fas fa-store text-gray-400"></i>

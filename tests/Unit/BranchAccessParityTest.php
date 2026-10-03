@@ -7,20 +7,26 @@ use App\Services\CashierScope;
 use App\Services\CustomerCareScope;
 use App\Services\StockManagerScope;
 use App\Services\SupabaseService;
+use App\Support\BranchCategory;
 use Tests\TestCase;
 
 /**
  * Branch access parity.
  *
- * Every capability gate in the app is a positive allowlist keyed on the branch
- * NAME, and every one of them names only two branches: Kinondoni and Head
- * Quarters-Mikocheni. Dodoma is named by none of them, which makes it the
- * baseline — so a branch created tomorrow inherits Dodoma's access simply by
- * existing, with nothing to configure.
+ * The remaining capability gates are a positive allowlist keyed on the branch
+ * NAME, and every one of them names only two branches: Kinondoni (cross-branch
+ * stock monitoring) and Head Quarters-Mikocheni (cross-branch cashier
+ * monitoring and the company mailbox). Dodoma is named by none of them, which
+ * makes it the baseline.
  *
- * That is a load-bearing assumption spread over a handful of string literals,
- * so it is pinned here. If someone later keys a new gate on a branch name, or
- * adds a third named exception, the parity assertion below is what notices.
+ * The products-only stock rule is NOT in that list any more. It is decided by
+ * the branch's stored CATEGORY, because a branch created as products-based must
+ * behave like Head Quarters-Mikocheni without being called that — see
+ * BranchCategoryTest for that side of it.
+ *
+ * Both are load-bearing assumptions, so both are pinned here. If someone later
+ * keys a new gate on a branch name, or adds a third named exception, the parity
+ * assertion below is what notices.
  */
 class BranchAccessParityTest extends TestCase
 {
@@ -35,6 +41,14 @@ class BranchAccessParityTest extends TestCase
         self::DODOMA => 'Dodoma branch',
         self::HEAD_QUARTERS => 'Head Quarters-Mikocheni',
         self::FUTURE_BRANCH => 'Arusha branch',
+    ];
+
+    /** Only Head Quarters-Mikocheni is products-based; the rest are baseline. */
+    private const CATEGORIES = [
+        self::KINONDONI => BranchCategory::AUTONOMOUS,
+        self::DODOMA => BranchCategory::AUTONOMOUS,
+        self::HEAD_QUARTERS => BranchCategory::PRODUCTS_BASED,
+        self::FUTURE_BRANCH => BranchCategory::AUTONOMOUS,
     ];
 
     public function test_a_new_branch_gets_the_same_access_as_dodoma_for_a_stock_manager(): void
@@ -73,12 +87,36 @@ class BranchAccessParityTest extends TestCase
         $this->assertFalse($this->flag(self::FUTURE_BRANCH, 'stock_manager', 'isCrossBranchMonitor'));
     }
 
-    public function test_head_quarters_stock_manager_is_the_only_one_without_bottles(): void
+    public function test_only_the_products_based_branch_is_without_bottles(): void
     {
-        $this->assertTrue($this->flag(self::HEAD_QUARTERS, 'stock_manager', 'isHQStockManager'));
-        $this->assertFalse($this->flag(self::KINONDONI, 'stock_manager', 'isHQStockManager'));
-        $this->assertFalse($this->flag(self::DODOMA, 'stock_manager', 'isHQStockManager'));
-        $this->assertFalse($this->flag(self::FUTURE_BRANCH, 'stock_manager', 'isHQStockManager'));
+        $method = 'isProductsOnlyStockManager';
+
+        $this->assertTrue($this->flag(self::HEAD_QUARTERS, 'stock_manager', $method));
+        $this->assertFalse($this->flag(self::KINONDONI, 'stock_manager', $method));
+        $this->assertFalse($this->flag(self::DODOMA, 'stock_manager', $method));
+        $this->assertFalse($this->flag(self::FUTURE_BRANCH, 'stock_manager', $method));
+
+        // And an autonomous branch is never products-only, whatever it is named.
+        $this->assertFalse($this->flagAtCategory(self::FUTURE_BRANCH, 'stock_manager', $method, BranchCategory::AUTONOMOUS));
+    }
+
+    /**
+     * The category, not the name, decides the products-only rule. A branch
+     * called anything at all must get it once it is marked products-based.
+     */
+    public function test_a_branch_is_products_only_by_category_not_by_name(): void
+    {
+        $method = 'isProductsOnlyStockManager';
+
+        $this->assertTrue(
+            $this->flagAtCategory(self::FUTURE_BRANCH, 'stock_manager', $method, BranchCategory::PRODUCTS_BASED),
+            'A products-based branch must behave like Head Quarters-Mikocheni.'
+        );
+
+        $this->assertFalse(
+            $this->flagAtCategory(self::HEAD_QUARTERS, 'stock_manager', $method, BranchCategory::AUTONOMOUS),
+            'Head Quarters-Mikocheni must lose the rule when its category changes.'
+        );
     }
 
     public function test_head_quarters_cashier_is_the_only_one_who_monitors_other_branches(): void
@@ -134,7 +172,7 @@ class BranchAccessParityTest extends TestCase
 
         return [
             'kinondoni_stock_manager' => $scope->isKinondoniStockManager(),
-            'hq_stock_manager' => $scope->isHQStockManager(),
+            'products_only_stock_manager' => $scope->isProductsOnlyStockManager(),
             'cross_branch_monitor' => $scope->isCrossBranchMonitor(),
         ];
     }
@@ -176,6 +214,27 @@ class BranchAccessParityTest extends TestCase
         return (bool) $scope->{$method}();
     }
 
+    /**
+     * The same read, but with one branch carrying a chosen category.
+     *
+     * This is what pins the products-only rule to the category rather than to
+     * the name: the branch is Arusha, a name that has never carried anything.
+     */
+    private function flagAtCategory(int $branchId, string $role, string $method, string $category): bool
+    {
+        $scopes = [
+            'stock_manager' => StockManagerScope::class,
+            'cashier' => CashierScope::class,
+            'customer_care' => CustomerCareScope::class,
+        ];
+
+        $scope = new $scopes[$role]($this->fakeBranches([$branchId => $category]));
+
+        $this->loginAs($role, $branchId);
+
+        return (bool) $scope->{$method}();
+    }
+
     private function loginAs(string $role, int $branchId): void
     {
         $user = new User;
@@ -192,12 +251,28 @@ class BranchAccessParityTest extends TestCase
         $this->be($user);
     }
 
-    /** Serves the branch lookup the scopes make, honouring the eq. filter. */
-    private function fakeBranches(): SupabaseService
+    /**
+     * Serves the branch lookup the scopes make, honouring the eq. filter.
+     *
+     * @param array<int, string> $categoryOverrides branch id => category
+     */
+    private function fakeBranches(array $categoryOverrides = []): SupabaseService
     {
-        return new class extends SupabaseService
+        $branches = [];
+        foreach (self::BRANCHES as $id => $name) {
+            $branches[] = [
+                'id' => $id,
+                'name' => $name,
+                'category' => $categoryOverrides[$id] ?? self::CATEGORIES[$id],
+            ];
+        }
+
+        return new class($branches) extends SupabaseService
         {
-            public function __construct() {}
+            /** @param array<int, array<string, mixed>> $branches */
+            public function __construct(private array $branches)
+            {
+            }
 
             public function query(string $table, array $params = []): array
             {
@@ -210,18 +285,11 @@ class BranchAccessParityTest extends TestCase
                     ? (int) substr($filter, 3)
                     : null;
 
-                $branches = [
-                    ['id' => 8, 'name' => 'Kinondoni branch'],
-                    ['id' => 9, 'name' => 'Dodoma branch'],
-                    ['id' => 10, 'name' => 'Head Quarters-Mikocheni'],
-                    ['id' => 11, 'name' => 'Arusha branch'],
-                ];
-
                 if ($wanted === null) {
-                    return $branches;
+                    return $this->branches;
                 }
 
-                return array_values(array_filter($branches, fn ($b) => (int) $b['id'] === $wanted));
+                return array_values(array_filter($this->branches, fn ($b) => (int) $b['id'] === $wanted));
             }
         };
     }

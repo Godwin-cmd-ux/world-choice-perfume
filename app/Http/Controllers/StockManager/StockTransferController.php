@@ -54,14 +54,14 @@ class StockTransferController extends Controller
     }
 
     /**
-     * Head Quarters-Mikocheni only receives Product Stock, and its stock
-     * manager has no access to bottle / oil fragrance / bottle accessories
-     * management — so it may not create or receive those transfer types.
+     * A products-only branch only receives Product Stock, and its stock manager
+     * has no access to bottle / oil fragrance / bottle accessories management —
+     * so it may not create or receive those transfer types.
      */
     private function assertBottleAccess(string $type, bool $receiving = false): void
     {
-        if ($this->isBottleType($type) && $this->scope->isHQStockManager()) {
-            abort(403, 'Head Quarters-Mikocheni only receives and manages Product Stock transfers.');
+        if ($this->isBottleType($type) && $this->scope->isProductsOnlyStockManager()) {
+            abort(403, 'Products-only branches only receive and manage Product Stock transfers.');
         }
     }
 

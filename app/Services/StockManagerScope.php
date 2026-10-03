@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\BranchAccess;
+use App\Support\BranchCategory;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 
@@ -104,18 +105,46 @@ class StockManagerScope
     }
 
     /**
-     * Head Quarters-Mikocheni stock manager no longer handles bottles, oil
-     * fragrance or bottle accessories.
+     * The branch's category, read from the branches row.
+     *
+     * A missing value means the column has not been added to the database yet,
+     * and a branch with no category is the baseline.
      */
-    public function isHQStockManager(): bool
+    public function branchCategory(?int $branchId): ?string
+    {
+        if (!$branchId) {
+            return null;
+        }
+
+        $rows = $this->supabase->query('branches', [
+            // select=* rather than an explicit column list: until the
+            // category column exists, naming it here would fail the whole
+            // query and take the stock screens down with it.
+            'select' => '*',
+            'id' => "eq.{$branchId}",
+            'limit' => 1,
+        ]);
+
+        return $rows[0]['category'] ?? null;
+    }
+
+    /**
+     * A products-only branch works with product stock alone — bottles, oil
+     * fragrance and bottle accessories are closed to its stock manager.
+     *
+     * This is the branch's CATEGORY, not its name. It used to be the name, which
+     * meant only Head Quarters-Mikocheni could ever have it; now a branch
+     * created as products-based behaves the same way without being called that.
+     */
+    public function isProductsOnlyStockManager(): bool
     {
         if (!$this->isStockManager()) {
             return false;
         }
 
-        $name = $this->branchName((int) $this->user()->branch_id);
+        $category = $this->branchCategory((int) $this->user()->branch_id);
 
-        return $name !== null && $this->matches($name, self::HQ_BRANCH_NAME);
+        return BranchCategory::from($category) === BranchCategory::PRODUCTS_BASED;
     }
 
     /**

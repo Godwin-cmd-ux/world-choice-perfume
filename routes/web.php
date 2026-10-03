@@ -237,6 +237,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/branches/{branch}/edit', [BranchController::class, 'edit'])->name('branches.edit');
         Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
         Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
+        // Permanent delete, offered only once a branch is inactive.
+        Route::delete('/branches/{branch}/purge', [BranchController::class, 'purge'])->name('branches.purge');
 
         // Cashier Approval
         Route::get('/cashiers', [CashierApprovalController::class, 'index'])->name('cashiers.index');
@@ -500,6 +502,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::patch('/product-stock/{stock}', [$smc, 'updateProductStock'])->name('product-stock.update');
         Route::delete('/product-stock/{stock}', [$smc, 'destroyProductStock'])->name('product-stock.destroy');
         Route::get('/product-stock/movements', [$smc, 'productStockMovements'])->name('product-stock-movements');
+        // Opened from the low-stock line on the dashboard.
+        Route::get('/product-stock/low-stock', [$smc, 'lowStockProducts'])->name('product-stock.low-stock');
 
         // Bottle Stock
         Route::middleware('stock-manager.bottle-access')->group(function () use ($smc) {

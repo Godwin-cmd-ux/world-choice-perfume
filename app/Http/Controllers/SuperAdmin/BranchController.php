@@ -9,7 +9,9 @@ use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use App\Support\BranchAccess;
+use App\Support\BranchCategory;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BranchController extends Controller
 {
@@ -78,6 +80,7 @@ class BranchController extends Controller
             'admin_id' => 'nullable|numeric',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'category' => ['nullable', 'string', Rule::in(BranchCategory::all())],
             'profile_picture' => 'nullable|image|max:51200',
         ]);
 
@@ -87,12 +90,17 @@ class BranchController extends Controller
             $profilePicture = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
         }
 
+        // A branch with no category chosen is the baseline: an autonomous
+        // branch, which is what Dodoma is.
+        $category = BranchCategory::from($validated['category'] ?? null);
+
         // Create branch in Supabase
         $branch = $this->supabase->insert('branches', [
             'name' => $validated['name'],
             'address' => $validated['address'] ?? null,
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
+            'category' => $category,
             'profile_picture' => $profilePicture,
             'is_active' => true,
             'created_at' => now()->toIso8601String(),
@@ -105,6 +113,7 @@ class BranchController extends Controller
             'address' => $validated['address'] ?? null,
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
+            'category' => $category,
             'profile_picture' => $profilePicture,
             'is_active' => true,
         ]);
@@ -141,6 +150,7 @@ class BranchController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'is_active' => 'boolean',
+            'category' => ['nullable', 'string', Rule::in(BranchCategory::all())],
             'profile_picture' => 'nullable|image|max:51200',
         ]);
 
@@ -173,6 +183,14 @@ class BranchController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
         $validated['updated_at'] = now()->toIso8601String();
+
+        // A form that does not carry a category leaves the stored one alone,
+        // so a partial submit cannot quietly reset the branch to the baseline.
+        if (! empty($validated['category'])) {
+            $validated['category'] = BranchCategory::from($validated['category']);
+        } else {
+            unset($validated['category']);
+        }
 
         // Update in Supabase
         $this->supabase->update('branches', $validated, ['id' => $branchId]);
@@ -207,5 +225,99 @@ class BranchController extends Controller
         );
 
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch deactivated.');
+    }
+
+    /**
+     * Delete a branch permanently, along with everything that belongs to it.
+     *
+     * This is irreversible. It is offered only for a branch that has already
+     * been deactivated, and that is re-checked here so a direct request cannot
+     * skip the deactivate step and jump straight to the delete.
+     */
+    public function purge($branchId)
+    {
+        $branch = $this->supabase->find('branches', $branchId);
+        if (! $branch) {
+            abort(404);
+        }
+
+        if (! empty($branch['is_active'])) {
+            return redirect()->route('super-admin.branches.index')
+                ->with('error', 'Deactivate this branch before deleting it permanently.');
+        }
+
+        // Kinondoni carries cross-branch stock monitoring and Head
+        // Quarters-Mikocheni carries the company mailbox with news and
+        // inquiries moderation. Both are keyed on the branch NAME, so deleting
+        // either would remove a company-wide capability outright and leave
+        // nothing to reassign it to. Renaming is the way to give one up.
+        if (BranchAccess::isExceptionName($branch['name'] ?? null)) {
+            return redirect()->route('super-admin.branches.index')
+                ->with('error', BranchAccess::deletionMessage((string) $branch['name']));
+        }
+
+        // Read the staff accounts BEFORE the branch row goes. users.branch_id
+        // is ON DELETE SET NULL, so once the branch is gone there is nothing
+        // left tying these people to it and they could never be found again.
+        $staffIds = array_map(
+            fn ($u) => $u['id'],
+            $this->supabase->query('users', [
+                'select' => 'id',
+                'branch_id' => "eq.{$branchId}",
+            ])
+        );
+
+        // Stock transfers reference the branch ON DELETE RESTRICT, so deleting
+        // the branch row while any exist would be rejected outright. Their
+        // items cascade from the transfer itself.
+        $this->supabase->delete('stock_transfers', ['from_branch_id' => "eq.{$branchId}"]);
+        $this->supabase->delete('stock_transfers', ['to_branch_id' => "eq.{$branchId}"]);
+
+        // Neither of these is declared anywhere in the project's SQL, so their
+        // cascade behaviour cannot be known from here. Clear them explicitly
+        // rather than risk rows left pointing at a branch that no longer exists.
+        $this->supabase->delete('inquiries', ['branch_id' => "eq.{$branchId}"]);
+        $this->supabase->delete('news_posts', ['branch_id' => "eq.{$branchId}"]);
+
+        // Everything else — branch_stock, stock_movements, bottle and oil
+        // stock, branch_stock_varieties, customers, sales, orders, expenses,
+        // cashier accounts and discrepancies — cascades from this one row.
+        if (! $this->supabase->delete('branches', ['id' => $branchId])) {
+            return redirect()->route('super-admin.branches.index')
+                ->with('error', 'The branch could not be deleted, so nothing was removed.');
+        }
+
+        $stuckStaff = [];
+        foreach ($staffIds as $staffId) {
+            if (! $this->supabase->delete('users', ['id' => $staffId])) {
+                $stuckStaff[] = $staffId;
+            }
+        }
+
+        // The local mirror, matched on the name the row still has.
+        Branch::where('name', $branch['name'])->delete();
+
+        (new AuditService)->recordCriticalAction(
+            'branch_deleted',
+            'branch_deleted',
+            'Branch Deleted',
+            "Branch {$branch['name']} was deleted permanently, with all of its data.",
+            ['branch_id' => $branchId, 'branch_name' => $branch['name'] ?? null],
+            'branches',
+            (string) $branchId,
+            ['name' => $branch['name'] ?? null, 'is_active' => false],
+            []
+        );
+
+        if ($stuckStaff !== []) {
+            return redirect()->route('super-admin.branches.index')->with(
+                'error',
+                'The branch and its records were deleted, but '.count($stuckStaff)
+                .' staff account(s) could not be removed. They are now unassigned — delete them from Staff.'
+            );
+        }
+
+        return redirect()->route('super-admin.branches.index')
+            ->with('success', "Branch {$branch['name']} and all of its data were deleted permanently.");
     }
 }
