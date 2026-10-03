@@ -29,7 +29,10 @@
                     <th class="text-left py-3 px-4">#</th>
                     <th class="text-left px-4">Product</th>
                     <th class="text-right px-4">Units Sold</th>
+                    <th class="text-right px-4">In Stock</th>
+                    <th class="text-right px-4">% Sold</th>
                     <th class="text-right px-4">Revenue (TZS)</th>
+                    <th class="text-right px-4">% of Total Sales</th>
                 </tr>
             </thead>
             <tbody>
@@ -38,13 +41,30 @@
                         <td class="py-3 px-4 text-gray-400">{{ $idx + 1 }}</td>
                         <td class="px-4 font-medium">{{ $item['name'] }}</td>
                         <td class="px-4 text-right">{{ number_format($item['total_sold']) }}</td>
+                        <td class="px-4 text-right text-gray-500">{{ number_format($item['remaining']) }}</td>
+                        <td class="px-4 text-right">
+                            <span class="{{ $item['sell_through'] >= 50 ? 'text-green-700 font-semibold' : ($item['sell_through'] >= 20 ? 'text-amber-600' : 'text-red-600') }}">{{ number_format($item['sell_through'], 1) }}%</span>
+                        </td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($item['total_revenue']) }}</td>
+                        <td class="px-4 text-right font-semibold">{{ number_format($item['contribution'], 1) }}%</td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="py-8 text-center text-gray-400">No product performance data</td></tr>
+                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No product performance data</td></tr>
                 @endforelse
             </tbody>
+            @if(count($report))
+                <tfoot class="bg-gray-50 border-t font-semibold">
+                    <tr>
+                        <td colspan="5" class="py-3 px-4 text-right">Total</td>
+                        <td class="px-4 text-right">TZS {{ number_format($totalRevenue) }}</td>
+                        <td class="px-4 text-right">100%</td>
+                    </tr>
+                </tfoot>
+            @endif
         </table>
+    </div>
+    <div class="px-4 py-3 text-xs text-gray-500 border-t no-print">
+        <strong>% Sold</strong> = units sold &divide; (units sold + units currently in stock) &times; 100 &mdash; how much of the available stock a product actually moved. <strong>% of Total Sales</strong> = this product's revenue &divide; revenue across all products &times; 100 &mdash; its weight in the business. Stock is a current snapshot, so it is not limited to the selected date range.
     </div>
 </div>
 @endsection

@@ -363,10 +363,50 @@ class ReportController extends Controller
             }
         }
 
+        // Units still on hand per product, so each product's sold quantity can
+        // be expressed as a share of everything that was available. Stock is a
+        // current snapshot, so it is not limited to the selected date range.
+        $stockParams = ['select' => 'product_id,quantity'];
+        if ($request->branch_id) {
+            $stockParams['branch_id'] = "eq.{$request->branch_id}";
+        }
+
+        $stockByProduct = [];
+        foreach ($this->supabase->query('branch_stock', $stockParams) as $row) {
+            $pid = $row['product_id'] ?? null;
+            if ($pid === null) {
+                continue;
+            }
+            $stockByProduct[$pid] = ($stockByProduct[$pid] ?? 0) + ($row['quantity'] ?? 0);
+        }
+
+        // Revenue across every product in scope, the denominator for the
+        // contribution share below.
+        $totalRevenue = array_sum(array_column($productStats, 'total_revenue'));
+
+        foreach ($productStats as &$stat) {
+            $remaining = $stockByProduct[$stat['id']] ?? 0;
+            $available = $stat['total_sold'] + $remaining;
+
+            $stat['remaining'] = $remaining;
+            $stat['available'] = $available;
+
+            // Sell-through: of every unit that was available, how many sold.
+            $stat['sell_through'] = $available > 0
+                ? round($stat['total_sold'] / $available * 100, 1)
+                : 0.0;
+
+            // Share of the overall revenue this product brought in.
+            $stat['contribution'] = $totalRevenue > 0
+                ? round($stat['total_revenue'] / $totalRevenue * 100, 1)
+                : 0.0;
+        }
+        unset($stat);
+
         usort($productStats, fn($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
 
         $branches = collect($this->supabase->query('branches', ['select' => 'id,name', 'order' => 'name.asc']))->map(fn($b) => (object) $b);
 
-        return view('super-admin.reports.product-performance', ['report' => $productStats, 'startDate' => $startDate, 'endDate' => $endDate, 'branches' => $branches]);
+        return view('super-admin.reports.product-performance', ['report' => $productStats, 'startDate' => $startDate, 'endDate' => $endDate, 'branches' => $branches, 'totalRevenue' => $totalRevenue]);
     }
 }
