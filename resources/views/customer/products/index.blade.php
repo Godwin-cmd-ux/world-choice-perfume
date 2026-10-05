@@ -4,8 +4,22 @@
 
 @section('content')
 <!-- Page Header -->
-<section class="pt-28 pb-12 bg-dark-900/50 border-b border-dark-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+{{-- The clip is 1920x1080 (16:9), and the header is sized to that shape so the
+     video lands at its natural proportions instead of being zoomed into a
+     short banner. 56.25vw is exactly 16:9 of the viewport width; min() with
+     85vh caps it on short/ultra-wide screens so the products stay reachable.
+     min-height (not a fixed height) lets the heading and search bar grow the
+     box on phones instead of clipping them. A fixed aspect-ratio + max-height
+     pair was avoided on purpose: Chrome then shrinks the width too, leaving a
+     gap to the right of the header. --}}
+<section class="relative overflow-hidden min-h-[min(56.25vw,85vh)] pt-28 pb-20 bg-dark-900/50 border-b border-dark-700">
+    <!-- Background video (reef 33) -->
+    <video class="absolute inset-0 w-full h-full object-cover object-center" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+        <source src="{{ asset('videos/reef-33.mp4') }}" type="video/mp4">
+    </video>
+    <!-- Readability overlay so the heading and search stay legible over the video -->
+    <div class="absolute inset-0 bg-gradient-to-r from-dark-950/95 via-dark-950/80 to-dark-950/55"></div>
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div>
                 <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
