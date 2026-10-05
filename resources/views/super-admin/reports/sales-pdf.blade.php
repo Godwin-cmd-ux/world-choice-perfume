@@ -63,7 +63,7 @@
                     <thead>
                         <tr>
                             <th>Sale #</th>
-                            <th>Cashier</th>
+                            <th>Served By</th>
                             <th class="text-center">Items</th>
                             <th class="text-right">Total</th>
                             <th>Time</th>

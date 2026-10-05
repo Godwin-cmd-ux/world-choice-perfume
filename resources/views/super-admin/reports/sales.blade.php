@@ -86,7 +86,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="text-left py-3 px-4">Sale #</th>
-                            <th class="text-left px-4">Cashier</th>
+                            <th class="text-left px-4">Served By</th>
                             <th class="text-right px-4">Items</th>
                             <th class="text-right px-4">Total</th>
                             <th class="text-left px-4">Time</th>
