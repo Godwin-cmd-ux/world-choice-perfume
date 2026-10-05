@@ -24,6 +24,12 @@ class AuthController extends Controller
 
     public function showLoginForm()
     {
+        // The login page itself is hidden behind the staff secret code. Until
+        // the code is verified we render only the code prompt, never the form.
+        if (! session('staff_access_verified')) {
+            return view('auth.staff-code');
+        }
+
         return view('auth.login');
     }
 
@@ -46,6 +52,12 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        // Guard against posting the login form without first entering the
+        // staff secret code on /login.
+        if (! session('staff_access_verified')) {
+            return view('auth.staff-code');
+        }
+
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
