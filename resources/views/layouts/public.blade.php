@@ -180,6 +180,7 @@
                         <li class="flex items-center gap-2"><i class="fas fa-phone text-gold-500/60"></i> <a href="tel:{{ config('contact.dial') }}" class="hover:text-gold-400 transition-colors">{{ config('contact.phone') }}</a></li>
                         <li class="flex items-center gap-2"><i class="fab fa-whatsapp text-gold-500/60"></i> <a href="{{ config('contact.whatsapp_link') }}" target="_blank" rel="noopener" class="hover:text-gold-400 transition-colors">{{ config('contact.whatsapp') }}</a></li>
                         <li class="flex items-center gap-2"><i class="fas fa-clock text-gold-500/60"></i> {{ config('contact.hours') }}</li>
+                        <li class="flex items-center gap-2"><i class="fas fa-envelope text-gold-500/60"></i> <a href="mailto:{{ config('info_mail.address') }}" class="hover:text-gold-400 transition-colors">{{ config('info_mail.address') }}</a></li>
                     </ul>
                     <div class="flex gap-4 mt-6">
                         <a href="https://www.instagram.com/world_choice_parfum" target="_blank" class="w-10 h-10 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-gray-400 hover:text-pink-400 hover:border-pink-500/50 transition"><i class="fab fa-instagram"></i></a>
