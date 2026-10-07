@@ -1,71 +1,70 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS, GOLD_SHADOW, RADIUS } from '../lib/theme';
 
-// Brand palette shared with the website (dark base + gold accent).
-const COLORS = {
-  bg: '#0B0B0D',
-  surface: '#16161A',
-  border: '#2A2A31',
-  gold: '#D4AF37',
-  goldSoft: 'rgba(212, 175, 55, 0.14)',
-  text: '#F5F5F7',
-  muted: '#9A9AA5',
-};
+/**
+ * World Choice Perfumes — main landing / menu page.
+ *
+ * Shown right after the splash screen: the official logo as a small brand
+ * header, then the five section buttons in their required order. Every button
+ * opens its own dedicated page; STAFF LOGIN opens the secret-code prompt
+ * (like the website's Staff Login modal) instead of going anywhere directly.
+ */
+const MENU = [
+  { key: 'home', label: 'HOME', icon: 'home-outline', href: '/home' },
+  { key: 'shopping', label: 'SHOPPING', icon: 'bag-handle-outline', href: '/shop' },
+  { key: 'track', label: 'TRACK ORDERS', icon: 'cube-outline', href: '/track' },
+  { key: 'branches', label: 'BRANCHES', icon: 'storefront-outline', href: '/branches' },
+  { key: 'staff', label: 'STAFF LOGIN', icon: 'lock-closed-outline', href: '/staff-access' },
+] as const;
 
-const FEATURES = [
-  { icon: 'sparkles-outline' as const, label: 'Authentic' },
-  { icon: 'diamond-outline' as const, label: 'Premium' },
-  { icon: 'car-outline' as const, label: 'Fast delivery' },
-];
-
-export default function WelcomeScreen() {
-  const comingSoon = (what: string) =>
-    Alert.alert('World Choice Perfume', `${what} is coming soon.`);
-
+export default function LandingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.brandMark}>
-          <Ionicons name="sparkles" size={34} color={COLORS.gold} />
+      {/* Faint gold halos — the website's hero ambience, no extra deps. */}
+      <View pointerEvents="none" style={styles.haloTop} />
+      <View pointerEvents="none" style={styles.haloBottom} />
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Brand header: official logo, small, centred, original aspect. */}
+        <View style={styles.brand}>
+          <View style={styles.logoRing}>
+            <Image
+              source={require('../assets/images/logo.jpeg')}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="World Choice Perfume logo"
+            />
+          </View>
+          <Text style={styles.title}>
+            World Choice <Text style={styles.titleGold}>Perfume</Text>
+          </Text>
+          <Text style={styles.tagline}>BE SMART, NUKIA KIJANJA</Text>
         </View>
 
-        <Text style={styles.eyebrow}>WORLD CHOICE</Text>
-        <Text style={styles.title}>
-          World Choice <Text style={styles.titleGold}>Perfume</Text>
-        </Text>
-        <Text style={styles.tagline}>
-          Authentic &amp; premium fragrances, delivered to your door.
-        </Text>
-
-        <View style={styles.features}>
-          {FEATURES.map((feature) => (
-            <View key={feature.label} style={styles.feature}>
-              <Ionicons name={feature.icon} size={18} color={COLORS.gold} />
-              <Text style={styles.featureLabel}>{feature.label}</Text>
-            </View>
+        {/* The five section buttons — full width minus comfortable margins. */}
+        <View style={styles.menu}>
+          {MENU.map((item) => (
+            <Pressable
+              key={item.key}
+              onPress={() => router.push(item.href)}
+              style={({ pressed }) => [styles.button, GOLD_SHADOW, pressed && styles.buttonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+            >
+              <Ionicons name={item.icon} size={19} color="#1A1400" />
+              <Text style={styles.buttonLabel}>{item.label}</Text>
+            </Pressable>
           ))}
         </View>
 
-        <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-            onPress={() => comingSoon('Shopping')}
-          >
-            <Ionicons name="bag-handle-outline" size={18} color="#1A1400" />
-            <Text style={styles.primaryButtonText}>Start Shopping</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            onPress={() => comingSoon('Sign in')}
-          >
-            <Text style={styles.secondaryButtonText}>Sign In</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.footer}>Fresh start — ready to build.</Text>
-      </View>
+        <Text style={styles.footer}>Tanzania’s #1 Fragrance Store</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -75,109 +74,96 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
-  container: {
-    flex: 1,
+  haloTop: {
+    position: 'absolute',
+    top: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: COLORS.goldHalo,
+  },
+  haloBottom: {
+    position: 'absolute',
+    bottom: -100,
+    left: -80,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(66, 52, 14, 0.18)',
+  },
+  content: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 26,
+    paddingVertical: 32,
   },
-  brandMark: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.goldSoft,
+  brand: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 26,
+    marginBottom: 38,
   },
-  eyebrow: {
-    color: COLORS.gold,
-    fontSize: 12,
-    letterSpacing: 4,
-    fontWeight: '700',
-    marginBottom: 10,
+  logoRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 1.5,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.surface,
+    padding: 3,
+    marginBottom: 18,
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 43,
   },
   title: {
     color: COLORS.text,
-    fontSize: 32,
+    fontSize: 27,
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 40,
+    letterSpacing: 0.4,
   },
   titleGold: {
     color: COLORS.gold,
   },
   tagline: {
-    color: COLORS.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginTop: 14,
-    maxWidth: 320,
+    color: 'rgba(255, 193, 7, 0.65)',
+    fontSize: 11,
+    letterSpacing: 3.5,
+    fontWeight: '600',
+    marginTop: 8,
   },
-  features: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 28,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  feature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  featureLabel: {
-    color: COLORS.text,
-    fontSize: 13,
-  },
-  actions: {
+  menu: {
     width: '100%',
-    maxWidth: 340,
-    marginTop: 40,
-    gap: 12,
+    maxWidth: 420,
+    gap: 14,
   },
-  primaryButton: {
+  button: {
+    minHeight: 56,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.gold,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.gold,
-    borderRadius: 14,
-    paddingVertical: 16,
+    gap: 10,
+    paddingHorizontal: 18,
   },
-  primaryButtonText: {
+  buttonPressed: {
+    backgroundColor: COLORS.goldDark,
+    opacity: 0.92,
+  },
+  buttonLabel: {
     color: '#1A1400',
     fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  secondaryButtonText: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.8,
+    fontWeight: '800',
+    letterSpacing: 1.6,
   },
   footer: {
-    color: COLORS.muted,
-    fontSize: 13,
-    marginTop: 26,
+    color: COLORS.textMuted,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    marginTop: 34,
   },
 });

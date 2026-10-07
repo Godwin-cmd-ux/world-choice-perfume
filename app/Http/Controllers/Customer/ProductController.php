@@ -125,6 +125,19 @@ class ProductController extends Controller
             $products = $this->applyFilters($stockCollection, $request);
         }
 
+        if ($request->expectsJson()) {
+            // Mobile app: same data the view receives, as JSON. The heavy
+            // variety buckets are left out of the listing — the detail
+            // endpoint serves them per product.
+            return response()->json([
+                'branches' => $branches,
+                'products' => $products,
+                'brands' => $availableBrands,
+                'branch_counts' => $branchCounts,
+                'selected_branch' => $selectedBranch,
+            ]);
+        }
+
         return view('customer.products.index', [
             ...compact('branches', 'products', 'selectedBranch', 'availableBrands'),
             // In-stock bottlings per branch so an Oil Fragrance card that is
@@ -260,6 +273,20 @@ class ProductController extends Controller
         // lists each of them with its own price; with one picked the page
         // belongs to that branch alone.
         $inStockBranches = $branchStocks->filter(fn ($s) => $s->quantity > 0);
+
+        if ($request->expectsJson()) {
+            // Mobile app: product detail as JSON, same computed values the
+            // view uses (per-branch stock, prices, varieties).
+            return response()->json([
+                'product' => $product,
+                'branches' => $branches,
+                'branch_stocks' => $branchStocks,
+                'selected_branch' => $selectedBranch,
+                'price' => $price,
+                'varieties' => $varietiesByBranch,
+                'in_stock_branch_count' => $inStockBranches->count(),
+            ]);
+        }
 
         return view('customer.products.show', [
             ...compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'),

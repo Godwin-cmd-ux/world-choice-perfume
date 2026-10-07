@@ -1,0 +1,213 @@
+WORLD CHOICE PERFUMES — WHAT THE WEBSITE CAN DO, BUT THE APP CANNOT
+====================================================================
+
+A plain-language list of things you can do on worldchoiceperfume.com that are
+not (yet) possible inside the mobile app. Nothing here is broken — these are
+just the places where the phone runs out of options and the website is still
+needed.
+
+
+1. FOR EVERYONE (the public website vs the app's home/shop)
+-----------------------------------------------------------
+
+- Send a message through the "Contact Us" form on the home page.
+  The app shows the phone number, WhatsApp and email as buttons you can tap,
+  but there is no message form to type into.
+
+- Read the News page (worldchoiceperfume.com/news).
+  The app can CREATE news (for designers), but there is no screen where a
+  customer browses published news posts.
+
+- Open the full Brands page (worldchoiceperfume.com/brands).
+  The app's home page shows the featured brands and the shop can filter by
+  brand, but there is no dedicated "all brands" listing screen.
+
+- Place a new order online (/orders/create).
+  The app can only TRACK an order by phone number. Creating an order still
+  has to be done on the website.
+
+- Use the website's built-in directions page (Twende Dukani).
+  The app's branch screen opens Google Maps (or another maps app) instead.
+  It gets you to the same place, but the website's own map page is not shown
+  inside the app.
+
+
+2. FOR STAFF WHO ARE NOT SUPER ADMIN OR DESIGNER
+------------------------------------------------
+
+- Reset a forgotten password.
+  On the app's login page, "Forgot Password?" opens the website in the
+  phone's browser — the reset screens themselves are not built into the app.
+
+
+3. SUPER ADMIN MODULE
+---------------------
+
+- Print any report.
+  The website has a "Print View" button on Sales, Expenses, Stock,
+  Staff Performance, Product Performance, Notifications Report and Returned
+  Stock. The app shows exactly the same numbers on screen, but you cannot
+  print them from the app.
+
+- Get the sales report as a PDF file.
+  The website offers "Print PDF" and "Download PDF" for the sales report.
+  The app only shows the report on screen — no file to save or send.
+
+- Open or save email attachments.
+  In the info@ mailbox, the website lets you open/download files that were
+  emailed to the company. The app only shows the attachment file names.
+
+- Attach a file when replying to an email.
+  The website's reply box accepts attachments; the app's reply box is
+  text-only.
+
+- Set a branch's location from your profile ("Twende Dukani — Branch
+  Location" button on the website's profile page).
+  The app's profile screen can change name, email, phone, photo and password,
+  but not the branch's map coordinates. (The website only allows this for
+  branch admins and super admins anyway.)
+
+
+4. GRAPHIC DESIGNER MODULE
+--------------------------
+
+- Download the QR code as a PNG file.
+  The website's QR page has a "Download QR Code" button that saves
+  world-choice-perfumes-qr.png to your computer/phone gallery.
+  The app shows the very same QR code on screen, but saving it as a file is
+  only possible on the website.
+
+- Print the QR code directly.
+  The website's QR page has a "Print" button. The app has no print button —
+  it gives you a button that opens the website's QR page in the browser so
+  you can print from there.
+
+- Change the cover image of a news post after it was created.
+  Both the website AND the app follow the same rule: the image is chosen
+  when the post is first written; afterwards only the title and text can be
+  edited. (This is the same on the website, so it is not a difference —
+  it is listed here only because people often ask.)
+
+
+5. STOCK MANAGER MODULE
+-----------------------
+
+- Add an "empty bottle" line when making a sale.
+  On the website's New Sale page (stock-manager/sales/create) there is an
+  "Add Empty Bottle Line" card in wholesale mode, where you can sell loose
+  bottles from the branch's bottle stock. The app's New Sale screen sells
+  products and picked bottlings (volume + variety) only — empty-bottle lines
+  still have to be added on the website.
+
+- Nothing else is missing: the Stock Manager website module has no print or
+  PDF buttons (unlike the Super Admin reports), and the app mirrors its
+  dashboard, stock screens, bottle/oil/accessories management, transfers,
+  returns, lost items, returned stock, orders, sales and product catalogue.
+
+- Cross-branch monitoring behaves the same in both places: while you are
+  monitoring another branch everything is read-only and sales/orders are
+  hidden until you exit the branch. (This is a shared rule, not a gap —
+  it is listed here because people often ask.)
+
+
+6. CUSTOMER CARE MODULE
+-----------------------
+
+- Open or download a file that was attached to an info@ email.
+  The app lists the attachment file names on the mail screen (the same as
+  the Super Admin mailbox), but opening or saving the file itself is only
+  possible on the website's mail page.
+
+- Attach files when answering an info@ email.
+  The website accepts up to 5 files (20 MB each, 30 MB total) on one
+  answer; the app's answer box is text-only.
+
+- Nothing else is missing: the customer care website module has no print
+  or PDF buttons, and the app mirrors its dashboard, clients (search,
+  branch tabs, record with transactions), sales checkout — including
+  wholesale empty-bottle lines — orders, and, at Head Quarters, inquiries,
+  news moderation and the whole info@ inbox (boxes, search, paging, reply,
+  star, read, status, delete).
+
+
+7. BRANCH ADMIN MODULE
+----------------------
+
+- Set your branch's map location from the profile page.
+  The website's profile page ("Twende Dukani — Branch Location") lets a
+  branch admin set the branch's map coordinates. The app's Account screen
+  can change name, email, phone, photo and password, but not the branch's
+  coordinates.
+
+- Nothing else is missing: the branch admin website module has no print or
+  PDF buttons, and the app mirrors its dashboard (today's sales, pending
+  queue, low stock, stock value, daily summary, month financials), sales
+  with the cashier and date filters, the full checkout (picked
+  bottlings, custom prices, wholesale empty-bottle lines, split payments),
+  the supervisory order queue (all three tabs, waiting times, pending
+  watch, team activity, personal names), the read-only expenses window
+  (business-day default, date range, category) and staff management
+  (create, role/status filters, per-member sales totals, approve/reject).
+
+- The order queue is supervised the same way in both places: the branch
+  admin sees every order at the branch, but picking and serving stays with
+  whoever claimed the order — the website refuses a takeover too. (This is
+  a shared rule, not a gap — it is listed here because people often ask.)
+
+
+8. SELLER MODULE
+----------------
+
+- Nothing is missing: the seller website module has no print or PDF
+  buttons, and its "Twende Dukani — Branch Location" profile form only
+  appears for branch admins, so the app mirrors the module completely —
+  the dashboard (the seller's own sales totals for today and overall,
+  recent sales, the branch daily summary, the pending-order count and the
+  products in stock), My Sales with the date range and window total, the
+  full checkout (picked bottlings, custom prices, wholesale
+  empty-bottle lines, split payments) and the order queue (all three
+  tabs, pick and serve, personal names).
+
+- The order queue works the same way in both places: pending is shared
+  with the branch, but picked and completed orders only ever belong to
+  the seller who claimed them, and an order can only move forward to
+  picked or served — never back to pending. (This is a shared rule, not
+  a gap — it is listed here because people often ask.)
+
+
+9. CASHIER MODULE
+-----------------
+
+- Nothing is missing: the cashier website module has no print or PDF
+  buttons, and the app mirrors the module completely — the dashboard
+  (today's takings, transactions, pending queue, recent sales, daily
+  summary), Sales with the date range and window total, the full checkout
+  (picked bottlings, custom prices, wholesale empty-bottle lines, split
+  payments), the order queue (all three tabs, personal names) and the
+  expenses window (business-day default, date range, category) with the
+  record form.
+
+- Picking and serving an order both require a note in both places, and
+  serving is the full handover: the sale is recorded and the stock is
+  deducted before the confirmation appears. (This is a shared rule, not a
+  gap — it is listed here because people often ask.)
+
+- Cross-Branch Monitoring and Daily Sales — All Branches appear only for
+  the HQ cashier (Head Quarters-Mikocheni) or the Super Admin, exactly
+  like the website's sidebar. On the website the branch you enter is
+  remembered in your browser session; in the app it is remembered for the
+  rest of the visit, and either way the server refuses every change while
+  you are watching another branch — you have to exit it first.
+
+
+WHY THESE DIFFER
+----------------
+
+Most of the gaps above are things a web page gets for free from the browser:
+printing, saving PDF files, downloading files, and showing other websites
+inside the page. A phone app has to build each of those by hand, so for now
+those buttons simply link out to the website instead.
+
+The rest (contact form, news reading, brand list, placing an order) are
+website screens that have not been copied into the app yet — they can be
+added later if you want them.

@@ -32,7 +32,16 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-splash-screen", "expo-router"],
+    "plugins": [
+      "expo-splash-screen",
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "World Choice Perfume uses your photos so you can add an optional profile picture when registering."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },

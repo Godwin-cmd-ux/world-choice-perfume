@@ -255,6 +255,13 @@ class OrderController extends Controller
         ]);
 
         if (!$customer) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'orders' => [],
+                    'message' => 'No orders found for this phone number.',
+                ]);
+            }
+
             return back()->with('error', 'No orders found for this phone number.');
         }
 
@@ -307,6 +314,10 @@ class OrderController extends Controller
 
             return (object) $o;
         });
+
+        if ($request->expectsJson()) {
+            return response()->json(['orders' => $orders]);
+        }
 
         return view('customer.orders.tracked', compact('orders'));
     }

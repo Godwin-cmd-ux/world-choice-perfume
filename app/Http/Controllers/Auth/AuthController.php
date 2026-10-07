@@ -11,6 +11,7 @@ use App\Services\OtpService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -41,8 +42,33 @@ class AuthController extends Controller
 
         $validCode = CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026');
 
+        if ($request->expectsJson()) {
+            // Mobile app (POST /api/verify-staff-access): same code, same
+            // source of truth, but a JSON answer instead of a redirect —
+            // the API route is stateless, so there is no session to flag.
+            if ($request->secret_code !== $validCode) {
+                return response()->json([
+                    'verified' => false,
+                    'message' => 'Invalid company secret code. Please contact your administrator.',
+                ], 422);
+            }
+
+            // Stateless stand-in for the website's `staff_access_verified`
+            // session flag: an encrypted, short-lived grant the mobile app
+            // presents as X-Staff-Access on staff login/registration API
+            // routes (see EnsureStaffAccessApi). The secret code itself is
+            // never echoed back or stored.
+            return response()->json([
+                'verified' => true,
+                'access_token' => Crypt::encryptString(json_encode([
+                    'scope' => 'staff_access',
+                    'iat' => time(),
+                ])),
+            ]);
+        }
+
         if ($request->secret_code !== $validCode) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
         session(['staff_access_verified' => true]);
@@ -177,13 +203,13 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         $hashedPassword = Hash::make($validated['password']);
@@ -217,6 +243,16 @@ class AuthController extends Controller
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
+
         return view('auth.verify-otp', [
             'email' => $validated['email'],
             'type' => 'registration',
@@ -248,19 +284,19 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('super_admin_secret', 'WCP-SUPER-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         // Verify branch exists
         $branch = $this->supabase->find('branches', $validated['branch_id']);
         if (! $branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+            return $this->formError($request, ['branch_id' => 'Selected branch does not exist.']);
         }
 
         $hashedPassword = Hash::make($validated['password']);
@@ -303,6 +339,16 @@ class AuthController extends Controller
 
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],
@@ -357,19 +403,19 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
         if (! $branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+            return $this->formError($request, ['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
@@ -397,7 +443,7 @@ class AuthController extends Controller
         ]);
 
         if (! $sbUser || ! isset($sbUser['id'])) {
-            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+            return $this->formError($request, ['email' => 'Failed to create account. Please contact support.']);
         }
 
         // Also create/update in SQLite for Auth::login()
@@ -417,6 +463,16 @@ class AuthController extends Controller
 
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],
@@ -449,19 +505,19 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
         if (! $branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+            return $this->formError($request, ['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
@@ -489,7 +545,7 @@ class AuthController extends Controller
         ]);
 
         if (! $sbUser || ! isset($sbUser['id'])) {
-            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+            return $this->formError($request, ['email' => 'Failed to create account. Please contact support.']);
         }
 
         // Also create/update in SQLite for Auth::login()
@@ -509,6 +565,16 @@ class AuthController extends Controller
 
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],
@@ -534,13 +600,13 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         $hashedPassword = Hash::make($validated['password']);
@@ -560,7 +626,7 @@ class AuthController extends Controller
         ]);
 
         if (! $sbUser || ! isset($sbUser['id'])) {
-            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+            return $this->formError($request, ['email' => 'Failed to create account. Please contact support.']);
         }
 
         // Also create/update in SQLite for Auth::login()
@@ -580,6 +646,16 @@ class AuthController extends Controller
 
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],
@@ -601,19 +677,19 @@ class AuthController extends Controller
         ]);
 
         if ($validated['secret_code'] !== CompanySettingService::get('staff_secret_code', 'WCP-STAFF-2026')) {
-            return back()->withErrors(['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
+            return $this->formError($request, ['secret_code' => 'Invalid company secret code. Please contact your administrator.']);
         }
 
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
         if (! $branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+            return $this->formError($request, ['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
@@ -641,7 +717,7 @@ class AuthController extends Controller
         ]);
 
         if (! $sbUser || ! isset($sbUser['id'])) {
-            return back()->withErrors(['email' => 'Failed to create account. Please contact support.']);
+            return $this->formError($request, ['email' => 'Failed to create account. Please contact support.']);
         }
 
         // Also create/update in SQLite for Auth::login()
@@ -661,6 +737,16 @@ class AuthController extends Controller
 
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $sbUser['id'], $validated['name']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
 
         return view('auth.verify-otp', [
             'email' => $validated['email'],
@@ -684,7 +770,7 @@ class AuthController extends Controller
         // Check if email already exists in Supabase
         $existing = $this->supabase->findOne('users', ['email' => $validated['email']]);
         if ($existing) {
-            return back()->withErrors(['email' => 'This email is already registered.']);
+            return $this->formError($request, ['email' => 'This email is already registered.']);
         }
 
         $profilePicture = null;
@@ -698,7 +784,7 @@ class AuthController extends Controller
         // Verify branch exists in Supabase
         $branch = $this->supabase->find('branches', $validated['branch_id']);
         if (! $branch) {
-            return back()->withErrors(['branch_id' => 'Selected branch does not exist.']);
+            return $this->formError($request, ['branch_id' => 'Selected branch does not exist.']);
         }
 
         // Sync branch to SQLite
@@ -742,6 +828,16 @@ class AuthController extends Controller
         $otpService = new OtpService;
         $otpService->generate($validated['email'], 'registration', $user->id, $validated['name']);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'otp_required' => true,
+                'email' => $validated['email'],
+                'type' => 'registration',
+                'user_id' => $user->id,
+                'message' => 'A verification code has been sent to your email.',
+            ]);
+        }
+
         return view('auth.verify-otp', [
             'email' => $validated['email'],
             'type' => 'registration',
@@ -773,13 +869,30 @@ class AuthController extends Controller
             $this->supabase->update('users', ['otp_verified' => true], ['email' => $validated['email']]);
 
             if ($user && $user->status === 'pending') {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'verified' => true,
+                        'pending' => true,
+                        'email' => $validated['email'],
+                        'message' => 'Your '.ucfirst(str_replace('_', ' ', $user->role ?? 'staff')).' account has been created successfully.',
+                    ]);
+                }
+
                 return view('auth.pending-approval', ['user' => $user]);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'verified' => true,
+                    'pending' => false,
+                    'message' => 'Email verified successfully! You can now log in.',
+                ]);
             }
 
             return redirect()->route('login')->with('success', 'Email verified successfully! You can now log in.');
         }
 
-        return back()->withErrors(['otp' => 'Invalid or expired OTP code.']);
+        return $this->formError($request, ['otp' => 'Invalid or expired OTP code.']);
     }
 
     public function resendOtp(Request $request)
@@ -793,6 +906,10 @@ class AuthController extends Controller
         $user = User::find($validated['user_id']);
         $otpService = new OtpService;
         $otpService->generate($validated['email'], $validated['type'], $validated['user_id'], $user->name ?? 'User');
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'A new verification code has been sent to your email.']);
+        }
 
         return back()->with('success', 'A new verification code has been sent to your email.');
     }
@@ -885,6 +1002,31 @@ class AuthController extends Controller
     // ========================
     // HELPERS
     // ========================
+
+    /**
+     * Validation-failure answer shared by the form controllers.
+     *
+     * Web requests keep the behaviour they always had — redirect back with
+     * errors — while JSON requests (the mobile app) get Laravel's standard
+     * 422 shape ({message, errors: {field: [...]}}) so each message can be
+     * shown next to the field it belongs to.
+     */
+    private function formError(Request $request, array $errors)
+    {
+        if ($request->expectsJson()) {
+            $payload = [];
+            foreach ($errors as $field => $message) {
+                $payload[$field] = [$message];
+            }
+
+            return response()->json([
+                'message' => collect($errors)->first(),
+                'errors' => $payload,
+            ], 422);
+        }
+
+        return back()->withErrors($errors);
+    }
 
     private function redirectByRole(array $sbUser)
     {
