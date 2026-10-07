@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { CartProvider } from '../lib/cart';
 import { COLORS } from '../lib/theme';
 
 // World Choice Perfume — root layout.
@@ -9,7 +10,7 @@ import { COLORS } from '../lib/theme';
 // expo-router picks them up automatically.
 export default function RootLayout() {
   return (
-    <>
+    <CartProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -24,6 +25,6 @@ export default function RootLayout() {
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>
-    </>
+    </CartProvider>
   );
 }

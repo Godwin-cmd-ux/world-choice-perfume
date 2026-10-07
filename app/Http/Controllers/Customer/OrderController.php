@@ -141,7 +141,7 @@ class OrderController extends Controller
                 $stock = $stockMap[$item['product_id']] ?? null;
 
                 if (!$stock || ($stock['quantity'] ?? 0) < $item['quantity']) {
-                    return back()->withErrors(['items' => 'Some products are no longer available in the requested quantity.'])->withInput();
+                    return $this->orderProblem($request, 'items', 'Some products are no longer available in the requested quantity.');
                 }
 
                 $productId = (int) $item['product_id'];
@@ -155,15 +155,19 @@ class OrderController extends Controller
                 // and are ordered as plain product lines.
                 if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
                     if ($volume <= 0 || $variant === '') {
-                        return back()->withErrors([
-                            'items' => 'Please choose the size and packaging for ' . ($stock['product']['name'] ?? 'this product') . '.',
-                        ])->withInput();
+                        return $this->orderProblem(
+                            $request,
+                            'items',
+                            'Please choose the size and packaging for ' . ($stock['product']['name'] ?? 'this product') . '.'
+                        );
                     }
                     $available = (int) ($varietyStock[$productId][$volume][$variant] ?? 0);
                     if ($available < $quantity) {
-                        return back()->withErrors([
-                            'items' => 'Only ' . $available . ' left of ' . $this->varieties->pickLabel($volume, $variant) . ' for ' . ($stock['product']['name'] ?? 'this product') . '.',
-                        ])->withInput();
+                        return $this->orderProblem(
+                            $request,
+                            'items',
+                            'Only ' . $available . ' left of ' . $this->varieties->pickLabel($volume, $variant) . ' for ' . ($stock['product']['name'] ?? 'this product') . '.'
+                        );
                     }
                 } else {
                     $volume = 0;
@@ -230,12 +234,42 @@ class OrderController extends Controller
             }, $orderItems);
             $this->supabase->insertMany('order_items', $itemsToInsert);
 
-            // 7. Confirm the order — payment is settled at the branch.
+            // 7. Confirm the order — payment is settled at the branch. The
+            // mobile app (Accept: application/json) gets the same confirmation
+            // as JSON so it can show the order number it just created.
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Order placed successfully. Payment will be settled at the branch.',
+                    'order' => [
+                        'id' => $order['id'] ?? null,
+                        'order_number' => $order['order_number'] ?? $orderNumber,
+                        'total' => $order['total'] ?? $total,
+                        'status' => $order['status'] ?? 'pending',
+                    ],
+                ], 201);
+            }
+
             return view('customer.orders.success', ['order' => (object) $order]);
 
         } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Order failed: ' . $e->getMessage()])->withInput();
+            return $this->orderProblem($request, 'error', 'Order failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * A rejected order. The website is redirected back with the errors
+     * flashed; the mobile app gets a 422 it can render field by field.
+     */
+    private function orderProblem(Request $request, string $field, string $message)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'errors' => [$field => [$message]],
+            ], 422);
+        }
+
+        return back()->withErrors([$field => $message])->withInput();
     }
 
     public function track(Request $request)

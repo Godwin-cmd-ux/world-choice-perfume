@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CartButton } from '../components/CartButton';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyView, ErrorView, LoadingView } from '../components/ui';
 import { errorMessage, fetchProducts, type ProductsPayload, type StockItem } from '../lib/api';
@@ -246,7 +247,7 @@ export default function ShopScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Shopping" subtitle="World Choice Perfume" />
+      <ScreenHeader title="Shopping" subtitle="World Choice Perfume" right={<CartButton />} />
 
       <View style={styles.filters}>
         <View style={styles.searchWrap}>

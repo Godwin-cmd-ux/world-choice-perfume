@@ -291,6 +291,32 @@ export interface ProductDetailPayload {
   in_stock_branch_count: number;
 }
 
+/** One line of POST /api/orders — a product and, for bottled sizes, the
+ * exact volume/variant the customer picked. */
+export interface PlaceOrderItem {
+  product_id: number | string;
+  quantity: number;
+  volume?: number;
+  variant?: string;
+}
+
+export interface PlaceOrderInput {
+  branch_id: number | string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  delivery_notes?: string;
+  items: PlaceOrderItem[];
+}
+
+/** Confirmation returned by POST /api/orders. */
+export interface PlacedOrder {
+  id?: number | string | null;
+  order_number: string;
+  total: number | string;
+  status?: string;
+}
+
 export interface TrackItem {
   quantity?: number;
   unit_price?: number | string;
@@ -382,6 +408,15 @@ export function fetchProducts(params: {
 /** GET /api/products/{id} — detail with per-branch stock and varieties. */
 export function fetchProduct(id: string, branchId?: string): Promise<ProductDetailPayload> {
   return apiGet<ProductDetailPayload>(`/products/${encodeURIComponent(id)}`, { branch_id: branchId });
+}
+
+/**
+ * POST /api/orders — place an order for a branch. The very same
+ * Customer\OrderController@store the website checkout posts to, so the
+ * order number, stock checks and variety pricing all come from the server.
+ */
+export function placeOrder(input: PlaceOrderInput): Promise<{ order: PlacedOrder; message: string }> {
+  return apiPost<{ order: PlacedOrder; message: string }>('/orders', input);
 }
 
 /** POST /api/orders/track — orders for a phone number. */

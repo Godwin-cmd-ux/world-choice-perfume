@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../lib/theme';
 
@@ -7,8 +8,19 @@ import { COLORS } from '../lib/theme';
  * Standard header for every dedicated page: a back button (normal stack
  * behaviour, returns to the landing page) and the page title in the brand
  * type treatment. Keeps navigation predictable across the whole app.
+ *
+ * `right` slots an action into the header — the shopping screens put the
+ * cart button there.
  */
-export function ScreenHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export function ScreenHeader({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: ReactNode;
+}) {
   return (
     <View style={styles.row}>
       <Pressable
@@ -30,6 +42,7 @@ export function ScreenHeader({ title, subtitle }: { title: string; subtitle?: st
           </Text>
         ) : null}
       </View>
+      {right}
     </View>
   );
 }

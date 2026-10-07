@@ -1,19 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CartButton } from '../components/CartButton';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { Card, ErrorView, LoadingView, OutlineButton } from '../components/ui';
+import { Card, ErrorView, GoldButton, LoadingView, OutlineButton } from '../components/ui';
 import { errorMessage, fetchProduct, type ProductDetailPayload } from '../lib/api';
+import { useCart } from '../lib/cart';
 import { formatMoney } from '../lib/format';
 import { COLORS, RADIUS } from '../lib/theme';
 
 /**
  * Product details — GET /api/products/{id} (Customer\ProductController@show):
  * description plus the real per-branch stock, prices and varieties the
- * website shows, so a customer knows where to find the fragrance.
+ * website shows, so a customer knows where to find the fragrance — and, at
+ * the bottom, the same "add to cart" choice the website's order form offers
+ * (branch, bottling, quantity) feeding the in-app cart.
  */
 const SEX_LABELS: Record<string, string> = {
   male: "Men's",
@@ -27,10 +31,16 @@ type Status = 'loading' | 'error' | 'ready';
 export default function ProductScreen() {
   const params = useLocalSearchParams<{ id?: string; branch_id?: string }>();
   const id = params.id ?? '';
+  const { addItem } = useCart();
 
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<ProductDetailPayload | null>(null);
   const [error, setError] = useState('');
+
+  // Ordering state: which branch, which bottling, how many.
+  const [branchId, setBranchId] = useState<string>(params.branch_id ?? '');
+  const [pick, setPick] = useState('');
+  const [quantity, setQuantity] = useState(1);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -48,6 +58,115 @@ export default function ProductScreen() {
     if (id) load();
   }, [load, id]);
 
+  // Branches that actually have this product on the shelf.
+  const stockedBranches = useMemo(
+    () => (data?.branch_stocks ?? []).filter((stock) => (stock.quantity ?? 0) > 0),
+    [data],
+  );
+
+  // Default to the branch the catalogue came from, else the first stocked one.
+  useEffect(() => {
+    if (stockedBranches.length === 0) return;
+    const ids = stockedBranches.map((stock) => String(stock.branch_id));
+    if (!ids.includes(branchId)) setBranchId(ids[0]);
+  }, [stockedBranches, branchId]);
+
+  const selectedStock =
+    stockedBranches.find((stock) => String(stock.branch_id) === branchId) ?? null;
+
+  // Bottlings in stock at the chosen branch (empty for plain products).
+  const buckets = useMemo(
+    () => data?.varieties?.[branchId]?.[String(id)] ?? [],
+    [data, branchId, id],
+  );
+
+  // Keep the bottling pick valid (defaults to the first one in stock).
+  useEffect(() => {
+    const keys = buckets.flatMap((volume) =>
+      volume.variants.map((variant) => `${volume.volume}|${variant.key}`),
+    );
+    if (keys.length === 0) {
+      if (pick) setPick('');
+      return;
+    }
+    if (!keys.includes(pick)) setPick(keys[0]);
+  }, [buckets, pick]);
+
+  const picked = useMemo(() => {
+    for (const volume of buckets) {
+      for (const variant of volume.variants) {
+        if (`${volume.volume}|${variant.key}` === pick) {
+          return {
+            volume: volume.volume,
+            variant: variant.key,
+            label: `${volume.label} ${variant.label}`,
+            price: variant.price,
+            available: variant.available,
+          };
+        }
+      }
+    }
+    return null;
+  }, [buckets, pick]);
+
+  const branchPrice = Number(selectedStock?.selling_price ?? 0);
+  const unitPrice = picked && picked.price > 0 ? picked.price : branchPrice;
+  const available = picked ? picked.available : (selectedStock?.quantity ?? 0);
+  const orderable = selectedStock != null && available > 0;
+  const productImage = (data?.product.images ?? []).map((img) => img?.image_url).find(Boolean) ?? null;
+
+  // Switching branch or bottling can lower what is available — never leave the
+  // stepper above it.
+  useEffect(() => {
+    if (available > 0 && quantity > available) setQuantity(available);
+  }, [available, quantity]);
+
+  const onAddToCart = () => {
+    const product = data?.product;
+    if (!orderable || !product || !selectedStock) return;
+
+    const item = {
+      key: `${branchId}-${id}-${picked ? `${picked.volume}|${picked.variant}` : 'plain'}`,
+      productId: id,
+      productName: product.name ?? 'Unnamed product',
+      brand: product.brand ?? null,
+      image: productImage,
+      branchId: selectedStock.branch_id ?? branchId,
+      branchName: selectedStock.branch?.name ?? 'Branch',
+      quantity,
+      unitPrice,
+      volume: picked?.volume,
+      variant: picked?.variant,
+      varietyLabel: picked?.label,
+      available,
+    };
+
+    const result = addItem(item);
+    if (result === 'branch-conflict') {
+      Alert.alert(
+        'Start a new cart?',
+        'Your cart already has items from another branch. An order can only be for one branch.',
+        [
+          { text: 'Keep my cart', style: 'cancel' },
+          {
+            text: 'Start new',
+            style: 'destructive',
+            onPress: () => {
+              addItem(item, { replace: true });
+              router.push('/cart');
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    Alert.alert('Added to cart', `${item.productName} is in your cart.`, [
+      { text: 'Keep shopping', style: 'cancel' },
+      { text: 'View cart', onPress: () => router.push('/cart') },
+    ]);
+  };
+
   const body = () => {
     if (status === 'loading') return <LoadingView label="Loading product…" />;
     if (status === 'error' || !data) return <ErrorView message={error} onRetry={() => load()} />;
@@ -56,9 +175,6 @@ export default function ProductScreen() {
     const images = (product.images ?? []).map((img) => img?.image_url).filter(Boolean);
     const image = images[0];
     const sexLabel = product.sex_category ? SEX_LABELS[product.sex_category] : null;
-
-    const stockedBranches = data.branch_stocks.filter((stock) => (stock.quantity ?? 0) > 0);
-    const hasPrice = data.price != null && data.price !== '';
 
     return (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -93,13 +209,15 @@ export default function ProductScreen() {
           ) : null}
         </View>
 
-        {hasPrice ? (
+        {orderable ? (
           <View style={styles.priceCard}>
             <View>
               <Text style={styles.priceLabel}>
-                {data.selected_branch ? `Price at ${data.selected_branch.name}` : 'Price'}
+                {selectedStock?.branch?.name ? `Price at ${selectedStock.branch.name}` : 'Price'}
               </Text>
-              <Text style={styles.price}>{formatMoney(data.price)}</Text>
+              <Text style={styles.price}>
+                {unitPrice > 0 ? formatMoney(unitPrice) : 'See options below'}
+              </Text>
             </View>
             <Ionicons name="pricetag-outline" size={22} color={COLORS.gold} />
           </View>
@@ -117,6 +235,117 @@ export default function ProductScreen() {
           </View>
         )}
 
+        {/* Order controls — the same choices the website's order form asks for. */}
+        <Card style={styles.block}>
+          <Text style={styles.blockTitle}>Order this item</Text>
+
+          {stockedBranches.length === 0 ? (
+            <Text style={styles.paragraph}>
+              No branch currently has this in stock. Please check back soon or find a branch below.
+            </Text>
+          ) : (
+            <>
+              {stockedBranches.length > 1 ? (
+                <>
+                  <Text style={styles.fieldLabel}>Branch</Text>
+                  <View style={styles.chipWrap}>
+                    {stockedBranches.map((stock, index) => {
+                      const value = String(stock.branch_id);
+                      const active = value === branchId;
+                      return (
+                        <Pressable
+                          key={String(stock.id ?? `${value}-${index}`)}
+                          onPress={() => setBranchId(value)}
+                          style={[styles.chip, active && styles.chipActive]}
+                          accessibilityRole="button"
+                        >
+                          <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                            {stock.branch?.name ?? 'Branch'}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.branchHint}>
+                  At {selectedStock?.branch?.name ?? 'this branch'} ·{' '}
+                  {selectedStock?.quantity ?? 0} in stock
+                </Text>
+              )}
+
+              {buckets.length > 0 ? (
+                <>
+                  <Text style={styles.fieldLabel}>Size &amp; packaging</Text>
+                  <View style={styles.chipWrap}>
+                    {buckets.flatMap((volume) =>
+                      volume.variants.map((variant) => {
+                        const key = `${volume.volume}|${variant.key}`;
+                        const active = key === pick;
+                        return (
+                          <Pressable
+                            key={key}
+                            onPress={() => setPick(key)}
+                            style={[styles.chip, styles.varietyChip, active && styles.chipActive]}
+                            accessibilityRole="button"
+                          >
+                            <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                              {volume.label} {variant.label}
+                            </Text>
+                            <Text style={[styles.chipSub, active && styles.chipTextActive]}>
+                              {variant.price > 0 ? formatMoney(variant.price) : 'Price at branch'} ·{' '}
+                              {variant.available} left
+                            </Text>
+                          </Pressable>
+                        );
+                      }),
+                    )}
+                  </View>
+                </>
+              ) : null}
+
+              <View style={styles.orderFoot}>
+                <View>
+                  <Text style={styles.fieldLabel}>Quantity</Text>
+                  <View style={styles.stepper}>
+                    <Pressable
+                      onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                      style={({ pressed }) => [
+                        styles.stepButton,
+                        quantity <= 1 && styles.stepDisabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Decrease quantity"
+                    >
+                      <Ionicons name="remove" size={18} color={COLORS.gold} />
+                    </Pressable>
+                    <Text style={styles.stepValue}>{quantity}</Text>
+                    <Pressable
+                      onPress={() => setQuantity((q) => Math.min(available, q + 1))}
+                      disabled={quantity >= available}
+                      style={({ pressed }) => [
+                        styles.stepButton,
+                        quantity >= available && styles.stepDisabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Increase quantity"
+                    >
+                      <Ionicons name="add" size={18} color={COLORS.gold} />
+                    </Pressable>
+                  </View>
+                </View>
+                <View style={styles.totalWrap}>
+                  <Text style={styles.fieldLabel}>Total</Text>
+                  <Text style={styles.total}>{formatMoney(unitPrice * quantity)}</Text>
+                </View>
+              </View>
+            </>
+          )}
+        </Card>
+
         {product.description ? (
           <Card style={styles.block}>
             <Text style={styles.blockTitle}>Description</Text>
@@ -131,8 +360,7 @@ export default function ProductScreen() {
             <Text style={styles.paragraph}>No branch currently has this in stock.</Text>
           ) : (
             stockedBranches.map((stock, index) => {
-              const varieties =
-                data.varieties?.[String(stock.branch_id)]?.[String(id)] ?? [];
+              const varieties = data.varieties?.[String(stock.branch_id)]?.[String(id)] ?? [];
               return (
                 <View
                   key={String(stock.id ?? `${String(stock.branch_id)}-${index}`)}
@@ -175,15 +403,24 @@ export default function ProductScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Product" subtitle="Shopping" />
+      <ScreenHeader title="Product" subtitle="Shopping" right={<CartButton />} />
       {body()}
       <View style={styles.footerBar}>
-        <OutlineButton
-          label="Find a Branch"
-          icon="navigate-outline"
-          onPress={() => router.push('/branches')}
-          style={styles.footerButton}
-        />
+        {orderable ? (
+          <GoldButton
+            label={quantity > 1 ? `Add ${quantity} to Cart` : 'Add to Cart'}
+            icon="cart-outline"
+            onPress={onAddToCart}
+            style={styles.footerButton}
+          />
+        ) : (
+          <OutlineButton
+            label="Find a Branch"
+            icon="navigate-outline"
+            onPress={() => router.push('/branches')}
+            style={styles.footerButton}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -282,6 +519,94 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 21,
   },
+  fieldLabel: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 6,
+  },
+  branchHint: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginTop: 4,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceHigh,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    maxWidth: '100%',
+  },
+  varietyChip: {
+    alignItems: 'flex-start',
+    borderRadius: RADIUS.md,
+  },
+  chipActive: {
+    backgroundColor: COLORS.goldSoft,
+    borderColor: COLORS.goldBorder,
+  },
+  chipText: {
+    color: COLORS.textSecondary,
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  chipSub: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  chipTextActive: {
+    color: COLORS.goldBright,
+  },
+  orderFoot: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 12,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  stepButton: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceHigh,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  stepDisabled: { opacity: 0.4 },
+  stepValue: {
+    minWidth: 34,
+    textAlign: 'center',
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  totalWrap: { alignItems: 'flex-end' },
+  total: {
+    color: COLORS.gold,
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  pressed: { opacity: 0.8 },
   branchBlock: {
     borderTopWidth: 1,
     borderTopColor: COLORS.border,

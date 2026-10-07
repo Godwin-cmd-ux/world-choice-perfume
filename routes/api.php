@@ -92,6 +92,11 @@ Route::get('/home', [HomeController::class, 'index']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
 
+// Place an order — twin of the customer website's POST /orders
+// (Customer\OrderController@store): the same validation, stock checks,
+// variety pricing and order creation. Answers JSON for the app.
+Route::post('/orders', [OrderController::class, 'store']);
+
 // Order tracking by phone — same lookup, timeline and status logic as
 // the customer website's POST /orders/track.
 Route::post('/orders/track', [OrderController::class, 'trackByPhone']);
