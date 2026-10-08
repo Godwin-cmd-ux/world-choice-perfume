@@ -28,9 +28,9 @@ import { COLORS, RADIUS } from '../lib/theme';
  * Password?, then "Don't have an account?" with the exact six signup links
  * the Blade page shows, and Back to Home.
  *
- * After a successful login the user lands in the authenticated staff area
- * with their real role (POST /api/staff/login — the same backend checks the
- * website's AuthController::login performs).
+ * After a successful login the user goes straight to their module's
+ * dashboard — there is no stop-over page in between (POST /api/staff/login —
+ * the same backend checks the website's AuthController::login performs).
  */
 const SIGNUP_TILES = [
   { label: 'Cashier Sign Up', icon: 'person-outline', href: '/signup/cashier' },
@@ -42,6 +42,20 @@ const SIGNUP_TILES = [
 ] as const;
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+/**
+ * Where each role lands after signing in: its own module's dashboard in the
+ * app. The website dashboard stays reachable from inside every module.
+ */
+const MODULE_HREF: Record<string, string> = {
+  super_admin: '/admin',
+  graphic_designer: '/gd',
+  stock_manager: '/sm',
+  customer_care: '/care',
+  branch_admin: '/ba',
+  seller: '/seller',
+  cashier: '/cashier',
+};
 
 interface BannerState {
   kind: 'error' | 'success' | 'connection';
@@ -70,8 +84,19 @@ export default function StaffScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!allowed) router.replace('/');
-  }, [allowed]);
+    if (!allowed) {
+      router.replace('/');
+      return;
+    }
+
+    // Login lands directly on the module dashboard: the old "Open X Module"
+    // stop-over page is gone. The card below is only reached by roles that
+    // have no module in the app (from which the website dashboard opens).
+    if (phase === 'signedIn' && identity) {
+      const href = MODULE_HREF[identity.role ?? ''];
+      if (href) router.replace(href);
+    }
+  }, [allowed, identity, phase]);
 
   if (!allowed) return null;
 
@@ -141,7 +166,9 @@ export default function StaffScreen() {
 
   const role = roleInfo(identity?.role);
 
-  // ---------------- Authenticated staff area ----------------
+  // ---------------- Signed in, but no module in the app ----------------
+  // Roles without a module still need a screen to launch the website
+  // dashboard (and to sign out) from — every module role skips this.
   if (phase === 'signedIn' && identity) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>

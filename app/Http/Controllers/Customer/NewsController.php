@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
+use Illuminate\Http\Request;
 
 class NewsController extends Controller
 {
@@ -14,7 +15,7 @@ class NewsController extends Controller
         $this->supabase = new SupabaseService();
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $posts = collect($this->supabase->query('news_posts', [
             'select' => '*',
@@ -42,6 +43,12 @@ class NewsController extends Controller
                 : null;
             return (object) $p;
         });
+
+        // The website renders the Blade page; the mobile app asks for the
+        // same posts as JSON (GET /api/news) without a second query path.
+        if ($request->expectsJson()) {
+            return response()->json(['posts' => $posts->values()]);
+        }
 
         return view('customer.news', ['posts' => $posts]);
     }

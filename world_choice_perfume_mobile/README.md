@@ -29,15 +29,16 @@ typographic rhythm.
 
 ```
 Splash (native, app.json)
-  → Landing page (app/index.tsx — logo + 5 menu buttons)
+  → Landing page (app/index.tsx — logo + 6 menu buttons)
       → HOME         → app/home.tsx        (homepage sections)
       → SHOPPING     → app/shop.tsx        (search, filters, grid)
                         → app/product.tsx  (product detail)
       → TRACK ORDERS → app/track.tsx       (phone lookup + timeline)
-      → BRANCHES     → app/branches.tsx    (branch list + maps)
+      → CONTACTS     → app/contacts.tsx   (Contact Us portal: details + message form)
+      → NEWS         → app/news.tsx       (published posts, pull to refresh)
       → STAFF LOGIN  → app/staff-access.tsx (secret-code prompt, modal)
                         → app/staff.tsx    (staff sign-in + six signup tiles)
-                            → LOGIN        → authenticated staff identity card
+                            → LOGIN        → straight to that module's dashboard
                             → SIGNUP       → app/signup/cashier.tsx           (photo, branch)
                               (×6)           app/signup/branch-admin.tsx      (super-admin code)
                                              app/signup/stock-manager.tsx
@@ -47,15 +48,15 @@ Splash (native, app.json)
                                    → app/otp.tsx (6-digit email code → pending approval)
                                    → Back to Login → app/staff.tsx
                             → Super Admin (role = super_admin only)
-                                → Open Super Admin Module → app/admin/
+                                → app/admin/  (right after LOGIN)
                                    (tabs) Dashboard · Orders · Approvals · More
                                    More → Monitor / Records / System launcher
                             → Graphic Designer (role = graphic_designer only)
-                                → Open Graphic Designer Module → app/gd/
+                                → app/gd/  (right after LOGIN)
                                    (tabs) Dashboard · News · Brands · More
                                    More → QR Code · Profile · Sign Out
                             → Stock Manager (role = stock_manager only)
-                                → Open Stock Manager Module → app/sm/
+                                → app/sm/  (right after LOGIN)
                                    (tabs) Dashboard · Stock · Transfers · More
                                    Dashboard → stock entry · movements · low stock
                                    Stock → product stock (search, edit, delete)
@@ -68,7 +69,7 @@ Splash (native, app.json)
                                    hides bottle/oil/accessories (products-only
                                    branches); `autonomous` branches see everything.
                             → Customer Care (role = customer_care only)
-                                → Open Customer Care Module → app/care/
+                                → app/care/  (right after LOGIN)
                                    (tabs) Dashboard · Customers · Orders · More
                                    More → HQ group (Inquiries · News · info@ Mails —
                                            Head Quarters-Mikocheni branch only) ·
@@ -77,7 +78,7 @@ Splash (native, app.json)
                                    the server re-checks the HQ gate (assertHq) on
                                    every call.
                             → Branch Admin (role = branch_admin only)
-                                → Open Branch Admin Module → app/ba/
+                                → app/ba/  (right after LOGIN)
                                    (tabs) Dashboard · Sales · Orders · More (amber tint)
                                    More → Branch ops (Staffs · Expenses) ·
                                           Selling (New Sale · Sales History) ·
@@ -89,7 +90,7 @@ Splash (native, app.json)
                                    a takeover). Expenses are view-only; cashiers
                                    commit them.
                             → Seller (role = seller only)
-                                → Open Seller Module → app/seller/
+                                → app/seller/  (right after LOGIN)
                                    (tabs) Dashboard · My Sales · Orders · Account
                                    (cyan tint) — sales are personal: the listing
                                    and receipts are the member's own (cashier_id),
@@ -97,7 +98,7 @@ Splash (native, app.json)
                                    shared with the branch, picked/completed only
                                    ever belong to the seller who claimed them.
                             → Cashier (role = cashier or super_admin)
-                                → Open Cashier Module → app/cashier/
+                                → app/cashier/  (right after LOGIN)
                                    (tabs) Dashboard · Sales · Orders · More
                                    (amber-600 tint) — sales are personal
                                    (cashier_id); Orders runs pick/serve with the
@@ -119,14 +120,16 @@ Splash (native, app.json)
 ```
 app/
   _layout.tsx        # Root stack (header hidden, staff-access as modal)
-  index.tsx          # Landing/menu page — logo + five section buttons
+  index.tsx          # Landing/menu page — logo + six section buttons
   home.tsx           # HOME
   shop.tsx           # SHOPPING (grid, search, branch/category/brand filters)
   product.tsx        # Product detail (per-branch stock, prices, varieties)
   track.tsx          # TRACK ORDERS (status, timeline, items)
-  branches.tsx       # BRANCHES (locations, Twende Dukani maps link)
+  contacts.tsx       # CONTACTS (the website's Contact Us section + message form)
+  news.tsx           # NEWS (the website's /news page)
+  branches.tsx       # Branch list + Twende Dukani maps link (HOME / product)
   staff-access.tsx   # STAFF LOGIN secret-code prompt (modal, stores X-Staff-Access grant)
-  staff.tsx          # Staff login (Welcome Back) + six signup tiles + identity card
+  staff.tsx          # Staff login (Welcome Back) + six signup tiles → module dashboard
   signup/            # Six dedicated signup pages (one small config each)
     cashier.tsx        branch-admin.tsx   stock-manager.tsx
     customer-care.tsx  seller.tsx         graphic-designer.tsx

@@ -8,15 +8,17 @@ import { COLORS, GOLD_SHADOW, RADIUS } from '../lib/theme';
  * World Choice Perfumes — main landing / menu page.
  *
  * Shown right after the splash screen: the official logo as a small brand
- * header, then the five section buttons in their required order. Every button
- * opens its own dedicated page; STAFF LOGIN opens the secret-code prompt
- * (like the website's Staff Login modal) instead of going anywhere directly.
+ * header, then the section buttons. Every button opens its own dedicated
+ * page — CONTACTS is the website's Contact Us portal and NEWS the website's
+ * /news page; STAFF LOGIN opens the secret-code prompt (like the website's
+ * Staff Login modal) instead of going anywhere directly.
  */
 const MENU = [
   { key: 'home', label: 'HOME', icon: 'home-outline', href: '/home' },
   { key: 'shopping', label: 'SHOPPING', icon: 'bag-handle-outline', href: '/shop' },
   { key: 'track', label: 'TRACK ORDERS', icon: 'cube-outline', href: '/track' },
-  { key: 'branches', label: 'BRANCHES', icon: 'storefront-outline', href: '/branches' },
+  { key: 'contacts', label: 'CONTACTS', icon: 'chatbubble-ellipses-outline', href: '/contacts' },
+  { key: 'news', label: 'NEWS', icon: 'newspaper-outline', href: '/news' },
   { key: 'staff', label: 'STAFF LOGIN', icon: 'lock-closed-outline', href: '/staff-access' },
 ] as const;
 
@@ -47,7 +49,7 @@ export default function LandingScreen() {
           <Text style={styles.tagline}>BE SMART, NUKIA KIJANJA</Text>
         </View>
 
-        {/* The five section buttons — full width minus comfortable margins. */}
+        {/* The section buttons — full width minus comfortable margins. */}
         <View style={styles.menu}>
           {MENU.map((item) => (
             <Pressable

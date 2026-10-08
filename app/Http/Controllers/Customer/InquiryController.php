@@ -33,7 +33,13 @@ class InquiryController extends Controller
 
         $hqId = $this->hqBranchId();
         if (!$hqId) {
-            return back()->withErrors(['email' => 'Our Head Quarters branch is not configured yet. Please try again later.'])->withInput();
+            $message = 'Our Head Quarters branch is not configured yet. Please try again later.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->withErrors(['email' => $message])->withInput();
         }
 
         $this->supabase->insert('inquiries', [
@@ -49,7 +55,15 @@ class InquiryController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        return back()->with('success', 'Thank you! Your message has been sent to our Head Quarters customer care team. We will get back to you soon.');
+        $success = 'Thank you! Your message has been sent to our Head Quarters customer care team. We will get back to you soon.';
+
+        // The website flashes and redirects; the app gets the same confirmation
+        // as JSON (POST /api/contact).
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $success], 201);
+        }
+
+        return back()->with('success', $success);
     }
 
     private function hqBranchId(): ?int

@@ -47,6 +47,8 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InfoMailWebhookController;
 use App\Http\Controllers\Api\StaffAuthController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Customer\InquiryController;
+use App\Http\Controllers\Customer\NewsController;
 use App\Http\Controllers\Customer\OrderController;
 use App\Http\Controllers\Customer\ProductController;
 use App\Http\Middleware\EnsureStaffAccessApi;
@@ -100,6 +102,15 @@ Route::post('/orders', [OrderController::class, 'store']);
 // Order tracking by phone — same lookup, timeline and status logic as
 // the customer website's POST /orders/track.
 Route::post('/orders/track', [OrderController::class, 'trackByPhone']);
+
+// Public news list — the very list the website's /news page renders
+// (Customer\NewsController@index), answered as JSON for the app.
+Route::get('/news', [NewsController::class, 'index']);
+
+// Public contact form — twin of the website's POST /contact
+// (Customer\InquiryController@store): same validation, same Head Quarters
+// routing, answered as JSON for the app.
+Route::post('/contact', [InquiryController::class, 'store']);
 
 // Staff flow mirrors the website: verify the secret code first…
 Route::post('/verify-staff-access', [AuthController::class, 'verifyStaffAccess']);

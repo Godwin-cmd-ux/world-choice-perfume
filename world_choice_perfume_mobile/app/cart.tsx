@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Card, EmptyView, GoldButton, LoadingView, OutlineButton } from '../components/ui';
-import { errorMessage, placeOrder, type PlacedOrder } from '../lib/api';
+import { errorMessage, fetchProduct, placeOrder, type PlacedOrder } from '../lib/api';
 import { useCart } from '../lib/cart';
 import { formatMoney } from '../lib/format';
 import { COLORS, RADIUS } from '../lib/theme';
@@ -40,6 +40,46 @@ export default function CartScreen() {
   const [error, setError] = useState('');
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
+  // A line saved without a bottling (added by an older build, before the
+  // picker rendered) is refused by the server for any product sold in
+  // varieties. Ask the product endpoint once per such line so the cart can
+  // offer the missing choice here instead of dead-ending at Place Order.
+  const [needsVariety, setNeedsVariety] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const unchecked = items.filter(
+      (item) => item.volume == null && needsVariety[item.key] === undefined,
+    );
+    if (unchecked.length === 0) return;
+
+    let active = true;
+    (async () => {
+      for (const item of unchecked) {
+        let needs = false;
+        try {
+          const detail = await fetchProduct(String(item.productId), String(item.branchId));
+          needs = (detail.varieties?.[String(item.branchId)] ?? []).length > 0;
+        } catch {
+          // Unknown from here — leave the line alone and let the server decide.
+        }
+        if (active) setNeedsVariety((map) => ({ ...map, [item.key]: needs }));
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [items, needsVariety]);
+
+  /** Drop the incomplete line and open the product so its size/packaging
+   *  picker can be used — the only place that choice can be made. */
+  const chooseVariety = (item: (typeof items)[number]) => {
+    removeItem(item.key);
+    router.push({
+      pathname: '/product',
+      params: { id: String(item.productId), branch_id: String(item.branchId) },
+    });
+  };
+
   const canSubmit = items.length > 0 && name.trim() !== '' && phone.trim() !== '' && !submitting;
 
   const submit = async () => {
@@ -55,6 +95,12 @@ export default function CartScreen() {
     }
     if (!trimmedPhone) {
       setError('Please enter your phone number.');
+      return;
+    }
+
+    const unpicked = items.find((item) => item.volume == null && needsVariety[item.key]);
+    if (unpicked) {
+      setError(`Choose the size and packaging for ${unpicked.productName} before placing your order.`);
       return;
     }
 
@@ -213,6 +259,17 @@ export default function CartScreen() {
                     <Text style={styles.itemMeta}>{item.varietyLabel}</Text>
                   ) : null}
                   <Text style={styles.itemPrice}>{formatMoney(item.unitPrice)}</Text>
+                  {item.volume == null && needsVariety[item.key] ? (
+                    <Pressable
+                      onPress={() => chooseVariety(item)}
+                      style={styles.fixVariety}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Choose size and packaging for ${item.productName}`}
+                    >
+                      <Ionicons name="options-outline" size={13} color={COLORS.goldBright} />
+                      <Text style={styles.fixVarietyText}>Choose size &amp; packaging</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
 
                 <View style={styles.itemRight}>
@@ -429,6 +486,24 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     padding: 2,
+  },
+  fixVariety: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: COLORS.goldSoft,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  fixVarietyText: {
+    color: COLORS.goldBright,
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   subtotalRow: {
     flexDirection: 'row',

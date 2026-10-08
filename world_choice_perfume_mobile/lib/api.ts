@@ -287,7 +287,12 @@ export interface ProductDetailPayload {
   branch_stocks: BranchStock[];
   selected_branch: Branch | null;
   price: number | string | null;
-  varieties: Record<string, Record<string, VarietyVolume[]>>;
+  /**
+   * `varieties[branchId]` = this product's volume buckets at that branch.
+   * The detail endpoint loads a single product, so the branch level is
+   * already the list of volumes — it is NOT nested again by product id.
+   */
+  varieties: Record<string, VarietyVolume[]>;
   in_stock_branch_count: number;
 }
 
@@ -422,6 +427,31 @@ export function placeOrder(input: PlaceOrderInput): Promise<{ order: PlacedOrder
 /** POST /api/orders/track — orders for a phone number. */
 export function trackOrders(phone: string): Promise<TrackPayload> {
   return apiPost<TrackPayload>('/orders/track', { phone });
+}
+
+/** One published news post — GET /api/news (Customer\NewsController). */
+export interface NewsPost {
+  id: number | string;
+  title: string;
+  content: string;
+  image_url?: string | null;
+  created_at?: string | null;
+  branch?: { id: number | string; name: string } | null;
+}
+
+/** GET /api/news — the posts the website's /news page lists. */
+export function fetchNews(): Promise<{ posts: NewsPost[] }> {
+  return apiGet<{ posts: NewsPost[] }>('/news');
+}
+
+/** POST /api/contact — the website's Contact Us form (POST /contact). */
+export function sendContact(input: {
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+}): Promise<{ message: string }> {
+  return apiPost<{ message: string }>('/contact', input);
 }
 
 /**

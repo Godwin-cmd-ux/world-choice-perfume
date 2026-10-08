@@ -75,10 +75,12 @@ export default function ProductScreen() {
     stockedBranches.find((stock) => String(stock.branch_id) === branchId) ?? null;
 
   // Bottlings in stock at the chosen branch (empty for plain products).
-  const buckets = useMemo(
-    () => data?.varieties?.[branchId]?.[String(id)] ?? [],
-    [data, branchId, id],
-  );
+  // GET /api/products/{id} answers `varieties[branchId]` with THIS product's
+  // own volume list — the endpoint loads one product at a time — so the
+  // branch level is already the bucket array. (It used to be read as
+  // varieties[branchId][productId], which always resolved to undefined: the
+  // picker never rendered and checkout then rejected the order.)
+  const buckets = useMemo(() => data?.varieties?.[branchId] ?? [], [data, branchId]);
 
   // Keep the bottling pick valid (defaults to the first one in stock).
   useEffect(() => {
@@ -360,7 +362,7 @@ export default function ProductScreen() {
             <Text style={styles.paragraph}>No branch currently has this in stock.</Text>
           ) : (
             stockedBranches.map((stock, index) => {
-              const varieties = data.varieties?.[String(stock.branch_id)]?.[String(id)] ?? [];
+              const varieties = data.varieties?.[String(stock.branch_id)] ?? [];
               return (
                 <View
                   key={String(stock.id ?? `${String(stock.branch_id)}-${index}`)}
