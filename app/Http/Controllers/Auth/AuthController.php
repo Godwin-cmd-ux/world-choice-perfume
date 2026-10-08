@@ -10,6 +10,7 @@ use App\Services\CloudinaryService;
 use App\Services\CompanySettingService;
 use App\Services\OtpService;
 use App\Services\SupabaseService;
+use App\Support\StaffDashboard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -1068,15 +1069,22 @@ class AuthController extends Controller
 
     private function redirectByRole(array $sbUser)
     {
-        return match ($sbUser['role'] ?? '') {
-            'super_admin' => redirect()->route('super-admin.dashboard'),
-            'branch_admin' => redirect()->route('branch-admin.dashboard'),
-            'cashier' => redirect()->route('cashier.dashboard'),
-            'stock_manager' => redirect()->route('stock-manager.dashboard'),
-            'customer_care' => redirect()->route('customer-care.dashboard'),
-            'seller' => redirect()->route('seller.dashboard'),
-            'graphic_designer' => redirect()->route('graphic-designer.news.index'),
-            default => redirect()->route('login'),
-        };
+        $role = (string) ($sbUser['role'] ?? '');
+
+        // The Supabase row decides the sign-in; the local row is what the
+        // `role:` middleware actually checks. When the remote value is
+        // missing or unrecognised, try the local one before giving up.
+        if (! StaffDashboard::routeName($role) && auth()->check()) {
+            $localRole = (string) (auth()->user()->role ?? '');
+            if (StaffDashboard::routeName($localRole)) {
+                $role = $localRole;
+            }
+        }
+
+        // Never `login`: the guest middleware used to bounce that to the
+        // landing page, so a member could sign in and end up at the front
+        // door instead of their own dashboard. Unknown roles open the
+        // profile page every signed-in role owns.
+        return redirect()->route(StaffDashboard::fallbackRoute($role));
     }
 }

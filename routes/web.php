@@ -177,10 +177,17 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::post('/verify-staff-access', [AuthController::class, 'verifyStaffAccess'])->name('verify-staff-access');
 
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+// The sign-in page is gated by the staff secret code inside
+// showLoginForm(), not by `guest`. Leaving /login in the guest group meant
+// an already-signed-in staff member who reached it was bounced to the
+// landing page, and a member who had just re-entered the code could be sent
+// away from the form they asked for. The flow the site promises — Staff
+// Login → company secret code → the sign-in form, ready to use — now always
+// completes.
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
 
+Route::middleware('guest')->group(function () {
     // Registration — protected by staff access secret code
     Route::middleware('staff.access')->group(function () {
         Route::get('/register/super-admin', [AuthController::class, 'showSuperAdminRegistration'])->name('register.super-admin');

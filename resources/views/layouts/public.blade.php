@@ -81,29 +81,16 @@
                 <!-- Auth Buttons -->
                 <div class="hidden md:flex items-center gap-4">
                     @auth
-                        @if(auth()->user()->role === 'super_admin')
-                            <a href="{{ route('super-admin.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
-                                <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                            </a>
-                        @elseif(auth()->user()->role === 'branch_admin')
-                            <a href="{{ route('branch-admin.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
-                                <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                            </a>
-                        @elseif(auth()->user()->role === 'cashier')
-                            <a href="{{ route('cashier.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
-                                <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                            </a>
-                        @elseif(auth()->user()->role === 'stock_manager')
-                            <a href="{{ route('stock-manager.dashboard') }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
-                                <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                            </a>
-                        @endif
+                        <a href="{{ route(\App\Support\StaffDashboard::fallbackRoute(auth()->user()->role)) }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
+                            <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
+                        </a>
                         <a href="{{ route('logout') }}" class="text-sm text-gray-400 hover:text-white transition">Logout</a>
-                    @else
-                        <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
-                            <i class="fas fa-user-lock"></i> Staff Login
-                        </button>
                     @endauth
+                    {{-- Always rendered: the staff sign-in entry point must not
+                         disappear just because a session happens to be alive. --}}
+                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
+                        <i class="fas fa-user-lock"></i> Staff Login
+                    </button>
                 </div>
 
                 <!-- Mobile Menu Toggle -->
@@ -122,19 +109,11 @@
                 <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
                 <div class="border-t border-dark-700 my-3"></div>
                 @auth
-                    @php
-                        $dashboardRoute = match(auth()->user()->role) {
-                            'super_admin' => 'super-admin.dashboard',
-                            'branch_admin' => 'branch-admin.dashboard',
-                            'cashier' => 'cashier.dashboard',
-                            'stock_manager' => 'stock-manager.dashboard',
-                            default => 'login',
-                        };
-                    @endphp
-                    <a href="{{ route($dashboardRoute) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
-                @else
-                    <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="block w-full text-left px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-sign-in-alt mr-2"></i> Staff Login</button>
+                    <a href="{{ route(\App\Support\StaffDashboard::fallbackRoute(auth()->user()->role)) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
                 @endauth
+                {{-- Always rendered — same rule as the desktop nav above.
+                     Tap → company secret code → the sign-in form. --}}
+                <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="block w-full text-left px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-sign-in-alt mr-2"></i> Staff Login</button>
             </div>
         </div>
     </nav>
