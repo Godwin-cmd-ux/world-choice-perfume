@@ -9,17 +9,19 @@ import { staffSession } from '../../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 
 /**
- * More — the creative answer to a seven-entry sidebar. The bottom bar only
- * ever holds four daily destinations; this hub folds everything else into
- * grouped tiles:
+ * More — the Head Quarters half of the sidebar. The bar itself carries the
+ * five sidebar entries every customer care member has (Dashboard, Clients,
+ * Sales, Orders, Profile), so this hub only exists to fold in what a
+ * Head Quarters-Mikocheni member gets on top of them:
  *
  *   HQ ONLY   Inquiries · News · info@ Mails   (Head Quarters member only,
  *                                               server enforces the same gate)
- *   SELLING   Sales · New Sale
+ *   SELLING   New Sale
  *   ACCOUNT   Profile · Sign Out
  *
- * Branch members simply never see the first group — their module is
- * intentionally smaller than Head Quarters', exactly like the website.
+ * The tab is hidden entirely (href: null in _layout) for branch members —
+ * their module is intentionally smaller than Head Quarters', exactly like
+ * the website's sidebar.
  */
 export default function CareMore() {
   const { data: scope, error, loading, sessionExpired, reload } = useAsyncData(() => fetchCcScope(), []);
@@ -63,7 +65,6 @@ export default function CareMore() {
 
       <GroupLabel>Selling</GroupLabel>
       <View style={styles.grid}>
-        <Tile icon="cart-outline" label="Sales" hint="Branch history" onPress={() => router.push('/care/sales')} />
         <Tile icon="cart-outline" label="New Sale" hint="Full checkout" onPress={() => router.push('/care/sale-new')} />
       </View>
 
@@ -73,6 +74,7 @@ export default function CareMore() {
         subtitle={[identity?.email, identity?.role].filter(Boolean).join(' · ')}
         onPress={() => router.push('/care/profile')}
       />
+      {/* Profile is a sidebar entry of its own now — the card above jumps to that tab. */}
       <Pressable
         onPress={() => setConfirmOut(true)}
         style={({ pressed }) => [styles.signOut, pressed && { opacity: 0.7 }]}

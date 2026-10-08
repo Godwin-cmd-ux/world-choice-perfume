@@ -70,13 +70,14 @@ Splash (native, app.json)
                                    branches); `autonomous` branches see everything.
                             → Customer Care (role = customer_care only)
                                 → app/care/  (right after LOGIN)
-                                   (tabs) Dashboard · Customers · Orders · More
-                                   More → HQ group (Inquiries · News · info@ Mails —
-                                           Head Quarters-Mikocheni branch only) ·
-                                          Selling (Sales · New Sale) · Account
-                                   Branch members get Clients/Sales/Orders only;
-                                   the server re-checks the HQ gate (assertHq) on
-                                   every call.
+                                   (tabs) Dashboard · Clients · Sales · Orders · Profile
+                                          — the website's customer-care sidebar, in its
+                                          own order; Profile carries the account and
+                                          password forms plus Sign Out
+                                   More (Head Quarters tab only) → Inquiries · News ·
+                                          info@ Mails · New Sale · Account
+                                   Branch members never see the More tab; the server
+                                   re-checks the HQ gate (assertHq) on every call.
                             → Branch Admin (role = branch_admin only)
                                 → app/ba/  (right after LOGIN)
                                    (tabs) Dashboard · Sales · Orders · More (amber tint)
@@ -161,12 +162,15 @@ app/
     returned-stock.tsx cross-branch.tsx profile.tsx
   care/                # Customer Care module (server-role-guarded screens)
     _layout.tsx        # Role guard + stack for every CC screen
-    (tabs)/            # Bottom tabs: Dashboard, Customers, Orders, More (sky tint)
+    (tabs)/            # Bottom tabs: Dashboard, Clients, Sales, Orders, Profile
+                       #              (+ More when Head Quarters; sky tint)
+    (tabs)/sales.tsx   # branch sales history — the sidebar's "Sales"
+    (tabs)/profile.tsx # account + password + Sign Out — the sidebar's "Profile"
+    (tabs)/more.tsx    # HQ only: Inquiries · News · info@ Mails · New Sale
     customer-new.tsx customer-detail.tsx
-    sales.tsx sale-new.tsx sale-detail.tsx   # checkout incl. empty-bottle lines
+    sale-new.tsx sale-detail.tsx             # checkout incl. empty-bottle lines
     inquiries.tsx news.tsx news-form.tsx     # Head Quarters only (assertHq)
     mails.tsx mail-detail.tsx                # info@ inbox — Head Quarters only
-    profile.tsx
   ba/                  # Branch Admin module (server-role-guarded screens)
     _layout.tsx        # Role guard + stack for every BA screen
     (tabs)/            # Bottom tabs: Dashboard, Sales, Orders, More (amber tint)

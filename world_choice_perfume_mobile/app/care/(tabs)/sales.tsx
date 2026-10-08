@@ -1,18 +1,20 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { Banner } from '../../components/authkit';
-import { AdminPage, BusyOverlay, DataCard, GroupLabel, useAsyncData } from '../../components/adminkit';
-import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
-import { fetchSales } from '../../lib/careApi';
-import { formatDateTime, formatMoney } from '../../lib/format';
-import { staffSession } from '../../lib/staffSession';
-import { CC_ACCENT } from '../../lib/theme';
+import { Banner } from '../../../components/authkit';
+import { AdminPage, BusyOverlay, DataCard, GroupLabel, useAsyncData } from '../../../components/adminkit';
+import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
+import { fetchSales } from '../../../lib/careApi';
+import { formatDateTime, formatMoney } from '../../../lib/format';
+import { staffSession } from '../../../lib/staffSession';
+import { CC_ACCENT } from '../../../lib/theme';
 
 /**
- * Sales — the website's customer-care/sales index: the branch's latest 50
- * sales with the customer, cashier and running total. Tap opens the
- * receipt; the header button starts a new sale.
+ * Sales — the website's customer-care/sales index, and the third entry of
+ * the website's customer-care sidebar (Dashboard · Clients · Sales ·
+ * Orders · Profile): the branch's latest 50 sales with the customer,
+ * cashier and running total. Tap opens the receipt; the header button
+ * starts a new sale.
  */
 export default function CareSales() {
   const { data, error, loading, sessionExpired, reload } = useAsyncData(() => fetchSales(), []);
@@ -29,7 +31,6 @@ export default function CareSales() {
       title="Sales"
       eyebrow="Customer Care"
       accent={CC_ACCENT.main}
-      onBack={() => router.back()}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -54,7 +55,7 @@ export default function CareSales() {
       ) : error && !data ? (
         <ErrorView message={error} onRetry={reload} />
       ) : !data || data.sales.length === 0 ? (
-        <EmptyView icon="cart-outline" title="No sales yet" hint="Ring up the first sale from More → New Sale." />
+        <EmptyView icon="cart-outline" title="No sales yet" hint="Ring up the first sale with the + New button above." />
       ) : (
         <>
           <GroupLabel>Latest first</GroupLabel>
