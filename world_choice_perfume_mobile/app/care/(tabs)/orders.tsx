@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, SearchInput, useAsyncData } from '../../../components/adminkit';
+import { careMenu } from '../../../components/caresidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchOrders, setOrderPersonalName, updateOrderStatus, type CcOrder } from '../../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
@@ -125,6 +126,7 @@ export default function CareOrders() {
   return (
     <AdminPage
       title="Orders"
+      onMenu={careMenu.open}
       eyebrow="Customer Care"
       accent={CC_ACCENT.main}
       refreshing={refreshing}

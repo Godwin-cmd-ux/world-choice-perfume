@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, ConfirmDialog, GroupLabel, KV, useAsyncData } from '../../../components/adminkit';
+import { careMenu } from '../../../components/caresidebar';
 import { GoldButton } from '../../../components/ui';
 import { changeCcPassword, fetchCcProfile, updateCcProfile } from '../../../lib/careApi';
 import { staffSession } from '../../../lib/staffSession';
@@ -106,7 +107,7 @@ export default function CareProfile() {
   };
 
   return (
-    <AdminPage title="Profile" eyebrow="Customer Care" accent={CC_ACCENT.main}>
+    <AdminPage title="Profile" eyebrow="Customer Care" accent={CC_ACCENT.main} onMenu={careMenu.open}>
       {ok ? <Banner kind="success" message={ok} /> : null}
       {err ? <Banner kind="error" message={err} /> : null}
 

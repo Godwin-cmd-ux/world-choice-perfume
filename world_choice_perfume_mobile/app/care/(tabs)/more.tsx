@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AdminPage, BusyOverlay, ConfirmDialog, DataCard, GroupLabel, useAsyncData } from '../../../components/adminkit';
+import { careMenu } from '../../../components/caresidebar';
 import { ErrorView, LoadingView } from '../../../components/ui';
 import { fetchCcScope } from '../../../lib/careApi';
 import { staffSession } from '../../../lib/staffSession';
@@ -40,6 +41,7 @@ export default function CareMore() {
   return (
     <AdminPage
       title="More"
+      onMenu={careMenu.open}
       eyebrow={isHq ? 'Head Quarters-Mikocheni' : scope?.branch_name ?? 'Customer Care'}
       accent={CC_ACCENT.main}
       refreshing={refreshing}

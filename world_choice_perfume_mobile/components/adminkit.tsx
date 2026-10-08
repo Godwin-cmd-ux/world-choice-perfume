@@ -34,6 +34,7 @@ export function AdminPage({
   eyebrow = 'Super Admin',
   accent,
   onBack,
+  onMenu,
   action,
   refreshing,
   onRefresh,
@@ -43,6 +44,8 @@ export function AdminPage({
   eyebrow?: string;
   accent?: string;
   onBack?: () => void;
+  /** Opens the module's sidebar navigation (hamburger, left of the title). */
+  onMenu?: () => void;
   action?: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
@@ -55,6 +58,11 @@ export function AdminPage({
         {onBack ? (
           <Pressable onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={22} color={accent ?? COLORS.gold} />
+          </Pressable>
+        ) : null}
+        {onMenu ? (
+          <Pressable onPress={onMenu} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Open navigation menu">
+            <Ionicons name="menu-outline" size={22} color={accent ?? COLORS.gold} />
           </Pressable>
         ) : null}
         <View style={styles.titleWrap}>

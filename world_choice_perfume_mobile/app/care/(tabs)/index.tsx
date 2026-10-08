@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, KV, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
+import { careMenu } from '../../../components/caresidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchCcDashboard, type CcSale } from '../../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
@@ -66,6 +67,7 @@ export default function CareDashboard() {
   return (
     <AdminPage
       title="Customer Care"
+      onMenu={careMenu.open}
       eyebrow={isHq ? 'Head Quarters-Mikocheni' : scope?.branch_name ?? 'Customer Care'}
       accent={CC_ACCENT.main}
       refreshing={refreshing}

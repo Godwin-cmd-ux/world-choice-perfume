@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, SearchInput, useAsyncData } from '../../../components/adminkit';
+import { careMenu } from '../../../components/caresidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchCustomers } from '../../../lib/careApi';
 import { formatDateTime } from '../../../lib/format';
@@ -41,6 +42,7 @@ export default function CareCustomers() {
   return (
     <AdminPage
       title="Clients"
+      onMenu={careMenu.open}
       eyebrow="Customer Care"
       accent={CC_ACCENT.main}
       refreshing={refreshing}

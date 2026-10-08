@@ -35,12 +35,32 @@ class CcSalesController extends CcBaseController
 
     public function index(Request $request)
     {
-        $sales = collect($this->supabase->query('sales', [
+        $sales = $this->supabase->query('sales', [
             'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name), cashier:users(id,name)',
             'branch_id' => 'eq.'.$this->ownBranchId($request),
             'order' => 'created_at.desc',
             'limit' => 50,
-        ]));
+        ]);
+
+        // The same filters the website's sales pages offer: a date range and
+        // the payment status. PostgREST cannot take duplicate keys, so the
+        // dates are applied in PHP — exactly what the branch-admin twin
+        // (BaSalesController@index) and the Blade controllers do.
+        $dateFrom = (string) $request->query('date_from', '');
+        $dateTo = (string) $request->query('date_to', '');
+        if ($dateFrom !== '') {
+            $sales = array_filter($sales, fn ($s) => substr($s['created_at'] ?? '', 0, 10) >= $dateFrom);
+        }
+        if ($dateTo !== '') {
+            $sales = array_filter($sales, fn ($s) => substr($s['created_at'] ?? '', 0, 10) <= $dateTo);
+        }
+
+        $status = (string) $request->query('status', '');
+        if ($status !== '') {
+            $sales = array_filter($sales, fn ($s) => ($s['payment_status'] ?? 'pending') === $status);
+        }
+
+        $sales = collect(array_values($sales));
 
         return response()->json([
             'sales' => $sales->values()->all(),

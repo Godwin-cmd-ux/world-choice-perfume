@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { CareSidebar } from '../../components/caresidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -29,24 +31,30 @@ export default function CareLayout() {
   useCustomerCareGuard();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: COLORS.bg },
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-      <Stack.Screen name="customer-new" />
-      <Stack.Screen name="customer-detail" />
-      <Stack.Screen name="order-detail" />
-      <Stack.Screen name="sale-new" />
-      <Stack.Screen name="sale-detail" />
-      <Stack.Screen name="inquiries" />
-      <Stack.Screen name="news" />
-      <Stack.Screen name="news-form" />
-      <Stack.Screen name="mails" />
-      <Stack.Screen name="mail-detail" />
-    </Stack>
+    // The sidebar is the module's navigation (it mirrors the website's
+    // customer-care sidebar), so it lives above the whole stack and every
+    // care screen can open it with the AdminPage menu button.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: COLORS.bg },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="customer-new" />
+        <Stack.Screen name="customer-detail" />
+        <Stack.Screen name="order-detail" />
+        <Stack.Screen name="sale-new" />
+        <Stack.Screen name="sale-detail" />
+        <Stack.Screen name="inquiries" />
+        <Stack.Screen name="news" />
+        <Stack.Screen name="news-form" />
+        <Stack.Screen name="mails" />
+        <Stack.Screen name="mail-detail" />
+      </Stack>
+      <CareSidebar />
+    </View>
   );
 }

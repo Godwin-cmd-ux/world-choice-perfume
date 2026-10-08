@@ -189,8 +189,10 @@ export function fetchCustomer(id: number | string, branch?: string): Promise<CcC
 
 /* ------------------------------- Sales ----------------------------- */
 
-export function fetchSales(): Promise<{ sales: CcSale[]; totalRevenue: number; scope: CcScope }> {
-  return apiGet('/care/sales');
+export function fetchSales(
+  params: { date_from?: string; date_to?: string; status?: string } = {},
+): Promise<{ sales: CcSale[]; totalRevenue: number; scope: CcScope }> {
+  return apiGet('/care/sales', params);
 }
 
 export interface CcSaleOptionProduct {
