@@ -16,6 +16,16 @@
 
         <!-- Secret Code Form -->
         <div class="bg-dark-800/50 border border-dark-600 rounded-2xl p-8">
+            {{-- Why the member is looking at this screen again: a credential
+                 POST whose staff verification had expired. Saying it here is
+                 the difference between "you were signed out" and "the site
+                 ate my login". --}}
+            @if(session('staff_access_notice'))
+                <div class="bg-gold-500/10 border border-gold-500/30 text-gold-400 px-4 py-3 rounded-xl mb-6 text-sm">
+                    <i class="fas fa-clock mr-1"></i> {{ session('staff_access_notice') }}
+                </div>
+            @endif
+
             @if($errors->has('secret_code'))
                 <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
                     <i class="fas fa-exclamation-circle mr-1"></i> {{ $errors->first('secret_code') }}
@@ -24,6 +34,11 @@
 
             <form method="POST" action="{{ route('verify-staff-access') }}">
                 @csrf
+                {{-- The address they had already typed, carried through this
+                     one step so it is waiting on the form after verifying. --}}
+                @if(old('email'))
+                    <input type="hidden" name="email" value="{{ old('email') }}">
+                @endif
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Company Secret Code</label>
                     <div class="relative">

@@ -16,6 +16,15 @@
 
         <!-- Login Form -->
         <div class="bg-dark-800/50 border border-dark-600 rounded-2xl p-8">
+            {{-- Flashed by the redirect guards (pending / rejected / blocked
+                 account, cross-branch refusal). Without this the member was
+                 sent back to this form in silence. --}}
+            @if(session('error'))
+                <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+                    <i class="fas fa-exclamation-circle mr-1"></i> {{ session('error') }}
+                </div>
+            @endif
+
             @if(session('success'))
                 <div class="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm">
                     <i class="fas fa-check-circle mr-1"></i> {{ session('success') }}

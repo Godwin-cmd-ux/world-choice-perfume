@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureStaffAccess;
 use App\Models\Branch;
 use App\Models\User;
 use App\Services\CloudinaryService;
@@ -11,6 +12,7 @@ use App\Services\OtpService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,13 +25,17 @@ class AuthController extends Controller
         $this->supabase = new SupabaseService;
     }
 
-    public function showLoginForm()
+    public function showLoginForm(Request $request)
     {
         // The login page itself is hidden behind the staff secret code. Until
         // the code is verified we render only the code prompt, never the form.
-        if (! session('staff_access_verified')) {
+        if (! EnsureStaffAccess::hasAccess($request)) {
             return view('auth.staff-code');
         }
+
+        // Keep the session flag in step with the grant cookie, so the page
+        // below (and the registration links on it) behave as they always did.
+        EnsureStaffAccess::rememberSessionFlag($request);
 
         return view('auth.login');
     }
@@ -73,16 +79,45 @@ class AuthController extends Controller
 
         session(['staff_access_verified' => true]);
 
-        return redirect()->route('login');
+        // …and hand the browser an encrypted grant cookie (never the code
+        // itself) so the verification survives a lost or expired session. The
+        // session alone used to be the only proof, which meant a login form
+        // left open past the session's lifetime silently bounced the member
+        // back to this code screen with no explanation.
+        Cookie::queue(Cookie::make(
+            EnsureStaffAccess::GRANT_COOKIE,
+            json_encode(['scope' => 'staff_access', 'iat' => time()]),
+            EnsureStaffAccess::GRANT_MINUTES,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Lax'
+        ));
+
+        // Carry an email the member already typed on the way here back to
+        // the form, so recovering from an expired verification costs one
+        // code entry instead of starting over.
+        return redirect()->route('login')->withInput(['email' => $request->input('email')]);
     }
 
     public function login(Request $request)
     {
         // Guard against posting the login form without first entering the
-        // staff secret code on /login.
-        if (! session('staff_access_verified')) {
-            return view('auth.staff-code');
+        // staff secret code on /login. A grant cookie issued when the code was
+        // verified also satisfies this, so a session that expired underneath
+        // an open form no longer dumps the member back on the code screen.
+        if (! EnsureStaffAccess::hasAccess($request)) {
+            // Never answer a credential POST with a bare code page: say why,
+            // and hand back the address they had already typed.
+            return redirect()
+                ->route('login')
+                ->with('staff_access_notice', 'Your staff access verification has expired. Please re-enter the company secret code, then sign in again.')
+                ->withInput(['email' => $request->input('email')]);
         }
+
+        EnsureStaffAccess::rememberSessionFlag($request);
 
         $credentials = $request->validate([
             'email' => 'required|email',
@@ -178,6 +213,9 @@ class AuthController extends Controller
     public function logout()
     {
         session()->forget('staff_access_verified');
+        // Signing out drops the grant too, so the next sign-in still starts
+        // at the secret code — exactly the behaviour the flag alone had.
+        Cookie::queue(Cookie::forget(EnsureStaffAccess::GRANT_COOKIE));
         Auth::logout();
 
         return redirect()->route('home');
