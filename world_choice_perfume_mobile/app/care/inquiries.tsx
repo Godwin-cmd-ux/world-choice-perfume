@@ -9,7 +9,7 @@ import { formatDateTime } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../lib/theme';
 
-type Filter = 'all' | 'unread';
+type Filter = 'all' | 'unread' | 'read';
 
 /**
  * Inquiries — HQ only (the website's `customer-care.hq` gate). The list
@@ -20,7 +20,7 @@ type Filter = 'all' | 'unread';
 export default function CareInquiries() {
   const [filter, setFilter] = useState<Filter>('all');
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
-    () => fetchInquiries(filter === 'unread' ? { status: 'unread' } : {}),
+    () => fetchInquiries(filter === 'unread' ? { status: 'unread' } : filter === 'read' ? { status: 'read' } : {}),
     [filter],
   );
 
@@ -68,6 +68,7 @@ export default function CareInquiries() {
         <ChipRow>
           <Chip label={`All (${data?.counts.all ?? 0})`} active={filter === 'all'} onPress={() => setFilter('all')} />
           <Chip label={`Unread (${data?.counts.unread ?? 0})`} active={filter === 'unread'} onPress={() => setFilter('unread')} />
+          <Chip label={`Read (${(data?.counts.all ?? 0) - (data?.counts.unread ?? 0)})`} active={filter === 'read'} onPress={() => setFilter('read')} />
         </ChipRow>
       ) : null}
 

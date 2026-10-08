@@ -67,8 +67,10 @@ export default function CareSaleDetail() {
             <View>
               <KV label="Date" value={formatDateTime(sale.created_at)} />
               <KV label="Customer" value={sale.customer?.name ?? 'Walk-in customer'} />
-              <KV label="Cashier" value={sale.cashier?.name ?? null} />
+              <KV label="Phone" value={sale.customer?.phone ?? null} />
+              <KV label="Served by" value={sale.cashier?.name ?? null} />
               <KV label="Branch" value={sale.branch?.name ?? null} />
+              <KV label="Payment" value={sale.payment_summary ?? null} />
               <KV label="Payment status" value={sale.payment_status ?? null} />
             </View>
           </DataCard>
@@ -91,6 +93,8 @@ export default function CareSaleDetail() {
               />
             ))
           )}
+
+          <DataCard title="Thank you for your purchase!" subtitle="World Choice Perfume" />
         </>
       ) : null}
 

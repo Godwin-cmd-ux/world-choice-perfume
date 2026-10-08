@@ -60,17 +60,32 @@ export default function CareSales() {
         <>
           <GroupLabel>Latest first</GroupLabel>
           <DataCard title="Total" subtitle={`${data.sales.length} sales`} badge={formatMoney(data.totalRevenue)} badgeTone="success" />
-          {data.sales.map((sale) => (
-            <DataCard
-              key={String(sale.id)}
-              title={sale.sale_number ?? `Sale #${sale.id}`}
-              subtitle={sale.customer?.name ?? 'Walk-in customer'}
-              badge={formatMoney(sale.total ?? 0)}
-              badgeTone="success"
-              lines={[formatDateTime(sale.created_at), sale.payment_summary ?? null].filter(Boolean) as string[]}
-              onPress={() => router.push({ pathname: '/care/sale-detail', params: { id: String(sale.id) } })}
-            />
-          ))}
+          {data.sales.map((sale) => {
+            const names = ((sale.items ?? []) as { product?: { name?: string } }[])
+              .map((it) => it.product?.name)
+              .filter((n): n is string => Boolean(n));
+            const extra = names.length - 3;
+            const itemsLine =
+              names.length === 0
+                ? '—'
+                : `${names.slice(0, 3).join(', ')}${extra > 0 ? ` +${extra} more` : ''}`;
+            const status = sale.payment_status ?? 'pending';
+            return (
+              <DataCard
+                key={String(sale.id)}
+                title={String(sale.sale_number ?? `Sale #${sale.id}`)}
+                subtitle={[sale.customer?.name ?? '—', sale.cashier?.name ?? '—'].join(' · ')}
+                badge={status}
+                badgeTone={status === 'paid' ? 'success' : status === 'cancelled' ? 'danger' : 'warning'}
+                lines={[
+                  itemsLine,
+                  `Branch: ${sale.branch?.name ?? data.scope.branch_name ?? '—'}`,
+                  `${formatDateTime(sale.created_at)}${sale.payment_summary ? ` · ${sale.payment_summary}` : ''}`,
+                ]}
+                onPress={() => router.push({ pathname: '/care/sale-detail', params: { id: String(sale.id) } })}
+              />
+            );
+          })}
         </>
       )}
 

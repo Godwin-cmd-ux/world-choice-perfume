@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, SearchInput, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -9,18 +9,25 @@ import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 
+/**
+ * The three tabs of the website's customer-care Orders page, with the very
+ * slugs and labels OrderWorkflowService defines (pending / progress /
+ * completed) — the server maps them to the pending, picked and served
+ * statuses, so any other slug would silently fall back to the pending
+ * queue. Pending is the shared branch queue anyone can claim; progress and
+ * completed only ever contain this member's own orders.
+ *
+ * Every status change carries a required note (the website's
+ * requireNote prompt), and the personal name is only offered on orders this
+ * member picked, exactly like $canName in the blade. Tapping a row opens
+ * the order record (customer-care/orders/{id}).
+ */
 const TABS = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'picked', label: 'Picked' },
-  { key: 'served', label: 'Served' },
+  { key: 'pending', label: 'Pending Orders' },
+  { key: 'progress', label: 'My Orders On Progress' },
+  { key: 'completed', label: 'My Completed Orders' },
 ] as const;
 
-/**
- * Orders — the website's three customer-care tabs: the pending queue
- * anyone claims, plus picked/served orders only the owner sees. Picking and
- * serving use the same OrderWorkflowService transitions the website does
- * (pending → picked → served, never backwards).
- */
 export default function CareOrders() {
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('pending');
   const [q, setQ] = useState('');
@@ -34,6 +41,9 @@ export default function CareOrders() {
 
   const [nameFor, setNameFor] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteNext, setNoteNext] = useState<'picked' | 'served' | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,11 +53,27 @@ export default function CareOrders() {
     return null;
   }
 
-  const move = async (order: CcOrder, next: 'picked' | 'served') => {
-    setBusyKey(String(order.id));
+  const askNote = (key: string, next: 'picked' | 'served') => {
+    setNameFor(null);
+    setNoteFor(key);
+    setNoteNext(next);
+    setNoteDraft('');
+    setActionError(null);
+  };
+
+  const confirmNote = async () => {
+    if (!noteFor || !noteNext) return;
+    const note = noteDraft.trim();
+    if (!note) {
+      setActionError('Enter a note about this order update (what point you have reached) before changing the status.');
+      return;
+    }
+    setBusyKey(noteFor);
     setActionError(null);
     try {
-      await updateOrderStatus(order.id, next);
+      await updateOrderStatus(noteFor, noteNext, note);
+      setNoteFor(null);
+      setNoteDraft('');
       await reload();
     } catch (e) {
       setActionError(String((e as { message?: string }).message ?? e));
@@ -81,6 +107,21 @@ export default function CareOrders() {
     }));
   };
 
+  /** assigned_to is the picker column; cashier_id is the legacy one. */
+  const isMine = (order: CcOrder) => {
+    if (!data) return false;
+    const who = String(order.assigned_to ?? order.cashier_id ?? '');
+    return who !== '' && who === String(data.userId);
+  };
+
+  const emptyHint = q.trim()
+    ? 'No orders match your search.'
+    : tab === 'pending'
+      ? 'No orders waiting to be picked.'
+      : tab === 'progress'
+        ? 'You have no orders in progress.'
+        : 'You have not completed any orders yet.';
+
   return (
     <AdminPage
       title="Orders"
@@ -107,31 +148,48 @@ export default function CareOrders() {
         ))}
       </ChipRow>
 
-      <SearchInput value={q} onChangeText={setQ} placeholder="Search customer or order…" />
+      <SearchInput value={q} onChangeText={setQ} placeholder="Search order number or personal name…" />
 
       {loading && !data ? (
         <LoadingView label="Loading orders…" />
       ) : error && !data ? (
         <ErrorView message={error} onRetry={reload} />
       ) : !data || data.orders.length === 0 ? (
-        <EmptyView icon="clipboard-outline" title="No orders here" hint="The pending queue fills up as customers order." />
+        <EmptyView icon="clipboard-outline" title="No orders here" hint={emptyHint} />
       ) : (
         data.orders.map((order) => {
           const key = String(order.id);
-          const mine = (order.picked_by ?? null) != null && String(order.picked_by) === String(data.userId);
+          const mine = isMine(order);
+          const status = String(order.status ?? 'pending');
           const label = (order.personal_order_name as string | null) ?? null;
+          // $canName in the blade: only the picker may name an order they
+          // have already picked (or served).
+          const canName = mine && (status === 'picked' || status === 'served');
+          const next: 'picked' | 'served' | null =
+            status === 'pending' ? 'picked' : status === 'picked' && mine ? 'served' : null;
+          const customer = order.customer?.name ?? (order.customer_name as string | null) ?? null;
+
           return (
-            <View key={key} style={styles.card}>
+            <Pressable
+              key={key}
+              onPress={() => router.push({ pathname: '/care/order-detail', params: { id: key } })}
+              style={({ pressed }) => [styles.card, pressed && { opacity: 0.78 }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Open order ${String(order.order_number ?? key)}`}
+            >
               <View style={styles.cardHead}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
-                  {label || (order.customer_name as string) || `Order #${order.id}`}
+                  {String(order.order_number ?? `Order #${key}`)}
                 </Text>
                 <Text style={styles.cardTotal}>{formatMoney((order.total as number) ?? 0)}</Text>
               </View>
               <Text style={styles.cardMeta}>
-                {formatDateTime(order.created_at as string | null)}
-                {order.status ? `  ·  ${String(order.status)}` : ''}
+                {label ?? customer ?? 'No customer'}
+                {`  ·  ${status}`}
                 {mine ? '  ·  yours' : ''}
+              </Text>
+              <Text style={styles.cardMeta}>
+                {formatDateTime(order.created_at as string | null)}
                 {data.pickers[key] ? `  ·  picked by ${data.pickers[key]}` : ''}
               </Text>
               {itemsOf(order).length > 0 ? (
@@ -141,30 +199,59 @@ export default function CareOrders() {
               ) : null}
 
               <View style={styles.actions}>
-                {tab === 'pending' ? (
+                {next ? (
                   <ActionBtn
-                    label={busyKey === key ? '…' : 'Mark Picked'}
-                    tone="primary"
+                    label={busyKey === key ? '…' : next === 'picked' ? 'Pick' : 'Serve'}
+                    tone={next === 'picked' ? 'primary' : 'success'}
                     disabled={busyKey === key}
-                    onPress={() => move(order, 'picked')}
-                  />
-                ) : tab === 'picked' && mine ? (
-                  <ActionBtn
-                    label={busyKey === key ? '…' : 'Mark Served'}
-                    tone="success"
-                    disabled={busyKey === key}
-                    onPress={() => move(order, 'served')}
+                    onPress={() => askNote(key, next)}
                   />
                 ) : null}
-                <ActionBtn
-                  label="Personal Name"
-                  tone="ghost"
-                  onPress={() => {
-                    setNameDraft(label ?? '');
-                    setNameFor(key);
-                  }}
-                />
+                {canName ? (
+                  <ActionBtn
+                    label="Personal Name"
+                    tone="ghost"
+                    onPress={() => {
+                      setNoteFor(null);
+                      setNameDraft(label ?? '');
+                      setNameFor(key);
+                    }}
+                  />
+                ) : null}
               </View>
+
+              {noteFor === key ? (
+                <View style={styles.noteWrap}>
+                  <Text style={styles.noteHint}>
+                    Enter what point you have reached for this order before changing the status.
+                  </Text>
+                  <TextInput
+                    value={noteDraft}
+                    onChangeText={setNoteDraft}
+                    placeholder="e.g. Order received and being packed…"
+                    placeholderTextColor={COLORS.textMuted}
+                    multiline
+                    style={styles.noteInput}
+                    autoCapitalize="sentences"
+                  />
+                  <View style={styles.actions}>
+                    <ActionBtn
+                      label={busyKey === key ? '…' : `Mark ${next === 'picked' ? 'Picked' : 'Served'}`}
+                      tone="primary"
+                      disabled={busyKey === key}
+                      onPress={confirmNote}
+                    />
+                    <ActionBtn
+                      label="Cancel"
+                      tone="ghost"
+                      onPress={() => {
+                        setNoteFor(null);
+                        setNoteDraft('');
+                      }}
+                    />
+                  </View>
+                </View>
+              ) : null}
 
               {nameFor === key ? (
                 <View style={styles.nameRow}>
@@ -182,7 +269,7 @@ export default function CareOrders() {
                   <ActionBtn label={busyKey === `name-${key}` ? '…' : 'Save'} tone="primary" disabled={busyKey === `name-${key}`} onPress={saveName} />
                 </View>
               ) : null}
-            </View>
+            </Pressable>
           );
         })
       )}
@@ -235,5 +322,18 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   action: { borderWidth: 1, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 8 },
   actionText: { fontWeight: '800', fontSize: 12 },
+  noteWrap: { marginTop: 10 },
+  noteHint: { color: COLORS.textMuted, fontSize: 11, marginBottom: 6 },
+  noteInput: {
+    minHeight: 74,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    color: COLORS.text,
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
   nameRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 6 },
 });

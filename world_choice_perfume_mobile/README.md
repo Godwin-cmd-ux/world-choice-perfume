@@ -168,6 +168,7 @@ app/
     (tabs)/profile.tsx # account + password + Sign Out — the sidebar's "Profile"
     (tabs)/more.tsx    # HQ only: Inquiries · News · info@ Mails · New Sale
     customer-new.tsx customer-detail.tsx
+    order-detail.tsx   # orders/{id}: items, update notes, required status note
     sale-new.tsx sale-detail.tsx             # checkout incl. empty-bottle lines
     inquiries.tsx news.tsx news-form.tsx     # Head Quarters only (assertHq)
     mails.tsx mail-detail.tsx                # info@ inbox — Head Quarters only

@@ -39,6 +39,7 @@ export default function CareLayout() {
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
       <Stack.Screen name="customer-new" />
       <Stack.Screen name="customer-detail" />
+      <Stack.Screen name="order-detail" />
       <Stack.Screen name="sale-new" />
       <Stack.Screen name="sale-detail" />
       <Stack.Screen name="inquiries" />

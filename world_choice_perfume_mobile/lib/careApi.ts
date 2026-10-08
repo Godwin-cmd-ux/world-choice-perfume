@@ -265,13 +265,22 @@ export function fetchSale(id: number | string): Promise<{ sale: CcSale }> {
 
 export interface CcOrder {
   id: number | string;
+  order_number?: string | null;
   status?: string | null;
   customer_name?: string | null;
   personal_order_name?: string | null;
   items?: unknown;
   total?: number | null;
   created_at?: string | null;
+  /** The current picker column (legacy orders only ever wrote cashier_id). */
+  assigned_to?: number | string | null;
+  cashier_id?: number | string | null;
   picked_by?: number | string | null;
+  delivery_notes?: string | null;
+  customer?: { name?: string | null; phone?: string | null } | null;
+  cashier?: { id?: number | string; name?: string | null } | null;
+  branch?: { id?: number | string; name?: string | null } | null;
+  notes?: { id?: number | string; note?: string | null; created_at?: string | null }[] | null;
   [key: string]: unknown;
 }
 
@@ -301,10 +310,11 @@ export function fetchOrder(id: number | string): Promise<{
   return apiGet(`/care/orders/${id}`);
 }
 
-export function updateOrderStatus(id: number | string, status: 'picked' | 'served', note?: string): Promise<{ message: string }> {
-  // The server's statusChangeRules() requires a note on every status
-  // change — default it so a quick tap still satisfies the website's rule.
-  return apiPost<{ message: string }>(`/care/orders/${id}/status`, { status, note: note ?? (status === 'picked' ? 'Picked up' : 'Served') });
+export function updateOrderStatus(id: number | string, status: 'picked' | 'served', note: string): Promise<{ message: string }> {
+  // The server's statusChangeRules() requires a note on every status change
+  // ("what point you have reached") — the screens collect it before calling,
+  // exactly like the website's requireNote()/attachOrderNote() prompts.
+  return apiPost<{ message: string }>(`/care/orders/${id}/status`, { status, note });
 }
 
 export function setOrderPersonalName(id: number | string, personal_order_name: string): Promise<{ message: string }> {
@@ -480,11 +490,42 @@ export function deleteMail(id: number | string): Promise<{ message: string }> {
 
 /* --------------------- Profile / password (shared) ----------------- */
 
-export function fetchCcProfile(): Promise<Record<string, unknown>> {
-  return apiGet<Record<string, unknown>>('/care/profile');
+export interface CcProfilePayload {
+  user: {
+    id?: number | string;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+    status?: string | null;
+    branch_id?: number | string | null;
+    profile_picture?: string | null;
+  };
+  branch?: { id?: number | string; name?: string | null } | null;
+  [key: string]: unknown;
 }
 
-export function updateCcProfile(fields: Record<string, string>): Promise<{ message?: string }> {
+export function fetchCcProfile(): Promise<CcProfilePayload> {
+  return apiGet<CcProfilePayload>('/care/profile');
+}
+
+/**
+ * Profile save — the same multipart PUT the website's profile form posts
+ * (POST + _method=PUT so PHP still populates $_FILES for the picture).
+ */
+export function updateCcProfile(
+  fields: Record<string, string>,
+  photo?: { uri: string; name: string; type: string },
+): Promise<{ message?: string }> {
+  if (photo) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) {
+      if (v !== undefined && v !== null && v !== '') form.append(k, String(v));
+    }
+    form.append('_method', 'PUT');
+    form.append('profile_picture', photo as unknown as Blob);
+    return apiPost<{ message?: string }>('/care/profile', form);
+  }
   return apiPut<{ message?: string }>('/care/profile', fields);
 }
 

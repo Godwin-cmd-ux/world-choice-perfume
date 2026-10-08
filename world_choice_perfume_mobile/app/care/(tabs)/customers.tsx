@@ -86,10 +86,15 @@ export default function CareCustomers() {
           <GroupLabel right={<Text style={styles.muted}>{data.tabName}</Text>}>
             {data.customers.length} shown
           </GroupLabel>
-          {data.truncated ? <Banner kind="connection" message="Older history is outside this scan — counts may exclude very old sales." /> : null}
-          {data.customers.map((c) => {
+          {data.truncated ? <Banner kind="connection" message="Older history is outside this scan — counts may exclude very old sales." /> : null}          {data.customers.map((c) => {
             const visit = data.visits[String(c.id)];
             const lastVisit = visit?.last_visit ?? null;
+            const visited = visit
+              ? Array.isArray(visit.branches)
+                ? visit.branches
+                : Object.keys(visit.branches ?? {}).map(Number)
+              : [];
+            const visitedNames = visited.map((bid) => data.branchNames[String(bid)] ?? `Branch #${bid}`);
             return (
               <View key={String(c.id)} style={styles.rowWrap}>
                 <Pressable
@@ -105,8 +110,11 @@ export default function CareCustomers() {
                       {c.name || 'Unnamed client'}
                     </Text>
                     <Text style={styles.rowMeta} numberOfLines={1}>
-                      {c.phone || 'No phone'}
+                      {[c.phone, c.whatsapp].filter(Boolean).join(' · ') || 'No phone'}
                       {lastVisit ? `  ·  last visit ${formatDateTime(lastVisit)}` : ''}
+                    </Text>
+                    <Text style={styles.rowBranches} numberOfLines={1}>
+                      {visitedNames.length > 0 ? `Visited: ${visitedNames.join(', ')}` : 'No visits yet'}
                     </Text>
                   </View>
                 </Pressable>
@@ -141,4 +149,5 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1 },
   rowName: { color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 },
   rowMeta: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  rowBranches: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
 });

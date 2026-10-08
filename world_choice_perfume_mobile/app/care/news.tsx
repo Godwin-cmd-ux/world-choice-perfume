@@ -77,7 +77,7 @@ export default function CareNews() {
         </ChipRow>
       ) : null}
       {tab === 'designer' && data ? (
-        <GroupLabel right={<Text style={styles.muted}>{data.counts.pending} pending · {data.counts.rejected} rejected</Text>}>Designer posts</GroupLabel>
+        <GroupLabel right={<Text style={styles.muted}>{data.counts.approved} approved · {data.counts.pending} pending · {data.counts.rejected} rejected</Text>}>Designer posts</GroupLabel>
       ) : null}
 
       {loading && !data ? (
