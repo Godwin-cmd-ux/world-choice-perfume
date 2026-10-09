@@ -6,8 +6,10 @@ import { COLORS } from '../lib/theme';
 // World Choice Perfume — root layout.
 // Minimal shell: a single stack with the header hidden. The native splash
 // (expo-splash-screen, configured in app.json) covers app launch; the stack
-// below it starts at the landing page (index). Add screens under `app/` and
-// expo-router picks them up automatically.
+// below it starts at the (tabs) group — the restyled home page with the
+// bottom tab bar that holds the six navigations the old landing menu had
+// as buttons. Add screens under `app/` and expo-router picks them up
+// automatically.
 export default function RootLayout() {
   return (
     <CartProvider>
@@ -19,11 +21,7 @@ export default function RootLayout() {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="index" options={{ animation: 'fade' }} />
-        <Stack.Screen
-          name="staff-access"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
       </Stack>
     </CartProvider>
   );

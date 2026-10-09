@@ -12,12 +12,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CartButton } from '../components/CartButton';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { EmptyView, ErrorView, LoadingView } from '../components/ui';
-import { errorMessage, fetchProducts, type ProductsPayload, type StockItem } from '../lib/api';
-import { formatMoney } from '../lib/format';
-import { COLORS, RADIUS } from '../lib/theme';
+import { CartButton } from '../../components/CartButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
+import { errorMessage, fetchProducts, type ProductsPayload, type StockItem } from '../../lib/api';
+import { formatMoney } from '../../lib/format';
+import { COLORS, RADIUS } from '../../lib/theme';
 
 /**
  * SHOPPING — the mobile shop, wired to the same GET /api/products endpoint

@@ -3,10 +3,10 @@ import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { EmptyView, ErrorView, LoadingView, SectionHeading } from '../components/ui';
-import { errorMessage, fetchNews, type NewsPost } from '../lib/api';
-import { COLORS, RADIUS } from '../lib/theme';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { EmptyView, ErrorView, LoadingView, SectionHeading } from '../../components/ui';
+import { errorMessage, fetchNews, type NewsPost } from '../../lib/api';
+import { COLORS, RADIUS } from '../../lib/theme';
 
 /**
  * NEWS — the website's /news page (customer/news.blade.php) as a dedicated

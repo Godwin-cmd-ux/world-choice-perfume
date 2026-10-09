@@ -11,10 +11,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GoldButton } from '../components/ui';
-import { errorMessage, isApiError, verifyStaffAccess } from '../lib/api';
-import { staffSession } from '../lib/staffSession';
-import { COLORS, RADIUS } from '../lib/theme';
+import { GoldButton } from '../../components/ui';
+import { errorMessage, isApiError, verifyStaffAccess } from '../../lib/api';
+import { staffSession } from '../../lib/staffSession';
+import { COLORS, RADIUS } from '../../lib/theme';
 
 /**
  * STAFF LOGIN — the secret-code prompt.

@@ -1,21 +1,29 @@
+/**
+ * HOME — the default tab, right after the native splash.
+ *
+ * This is the restyled landing page: the website's landing blade
+ * (resources/views/home.blade.php) section for section, in the blade's own
+ * order — hero, trust badges, shop-by-category, featured brands, our story
+ * + stats, our branches, customer reviews, call-to-action, contact us
+ * (details AND the message form) — replacing the old menu-button landing.
+ * The six navigations those buttons carried now live in the bottom tab bar
+ * (app/(tabs)/_layout.tsx).
+ *
+ * Dynamic content (branches, reviews, brands, category images, contact
+ * details) comes from GET /api/home, which serves the exact data the
+ * website homepage renders.
+ */
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { ErrorView, GoldButton, LoadingView, OutlineButton, SectionHeading } from '../components/ui';
-import { errorMessage, fetchHome, type HomePayload } from '../lib/api';
-import { COLORS, GOLD_SHADOW, RADIUS } from '../lib/theme';
+import { ContactForm } from '../../components/contactform';
+import { ErrorView, GoldButton, LoadingView, OutlineButton, SectionHeading } from '../../components/ui';
+import { errorMessage, fetchHome, type Branch, type HomePayload } from '../../lib/api';
+import { COLORS, RADIUS } from '../../lib/theme';
 
-/**
- * HOME — the mobile counterpart of the website homepage (home.blade.php):
- * hero, trust badges, shop-by-category, featured brands, our story + stats,
- * call-to-action and contact. Dynamic content (branches, brands, category
- * images, reviews, contact details) comes from GET /api/home, which serves
- * the exact data the website homepage renders.
- */
 const CATEGORIES = [
   { key: 'male', name: "Men's Fragrances", subtitle: 'Bold, powerful, unforgettable', icon: 'male-outline', tint: 'rgba(96, 165, 250, 0.16)' },
   { key: 'female', name: "Women's Fragrances", subtitle: 'Elegant, seductive, timeless', icon: 'female-outline', tint: 'rgba(244, 114, 182, 0.16)' },
@@ -28,6 +36,10 @@ const TRUST = [
   { icon: 'car-outline', title: 'Fast Delivery', subtitle: 'Across Tanzania' },
   { icon: 'shield-checkmark-outline', title: 'Secure Shopping', subtitle: 'Safe & reliable' },
 ] as const;
+
+const CONTACT_INTRO =
+  'Questions about an order, a fragrance, or anything else? Send us a message and our customer ' +
+  'care team will get back to you as soon as possible.';
 
 type Status = 'loading' | 'error' | 'ready';
 
@@ -67,14 +79,45 @@ export default function HomeScreen() {
     }
   };
 
+  const openBranch = (branch: Branch) => {
+    const lat = Number(branch.latitude);
+    const lng = Number(branch.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    // Same Twende Dukani target as the website: Google Maps in the device
+    // browser, geo: scheme as the offline fallback.
+    openUrl(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`).catch(() => {
+      openUrl(`geo:${lat},${lng}?q=${lat},${lng}(${branch.name})`);
+    });
+  };
+
   const scrollToStory = () => {
     scrollRef.current?.scrollTo({ y: Math.max(storyY.current - 12, 0), animated: true });
   };
 
+  /** The brand header — logo medallion + wordmark, in place of a back bar. */
+  const brandBar = (
+    <View style={styles.brandBar}>
+      <View style={styles.brandLogoRing}>
+        <Image
+          source={require('../../assets/images/logo.jpeg')}
+          style={styles.brandLogo}
+          contentFit="contain"
+          accessibilityLabel="World Choice Perfume logo"
+        />
+      </View>
+      <View style={styles.brandText}>
+        <Text style={styles.brandTitle}>
+          World Choice <Text style={styles.brandTitleGold}>Perfume</Text>
+        </Text>
+        <Text style={styles.brandTagline}>BE SMART, NUKIA KIJANJA</Text>
+      </View>
+    </View>
+  );
+
   if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Home" subtitle="World Choice Perfume" />
+        {brandBar}
         <LoadingView label="Loading the homepage…" />
       </SafeAreaView>
     );
@@ -83,7 +126,7 @@ export default function HomeScreen() {
   if (status === 'error' || !data) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Home" subtitle="World Choice Perfume" />
+        {brandBar}
         <ErrorView message={error} onRetry={() => load()} />
       </SafeAreaView>
     );
@@ -91,10 +134,11 @@ export default function HomeScreen() {
 
   const branchCount = data.branches.length;
   const contact = data.contact;
+  const reviews = data.reviews.filter((review) => (review.message ?? review.subject ?? '').trim().length > 0);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Home" subtitle="World Choice Perfume" />
+      {brandBar}
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
@@ -108,8 +152,12 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Hero */}
+        {/* Hero — the blade's hero section: ambience, badge, headline,
+            tagline quote, lead, Shop Now / Our Story actions. */}
         <View style={styles.hero}>
+          <View pointerEvents="none" style={styles.haloTop} />
+          <View pointerEvents="none" style={styles.haloBottom} />
+
           <View style={styles.badge}>
             <View style={styles.badgeDot} />
             <Text style={styles.badgeText}>TANZANIA’S #1 FRAGRANCE STORE</Text>
@@ -208,7 +256,7 @@ export default function HomeScreen() {
                   accessibilityLabel={brand.name}
                 >
                   {brand.logo_url ? (
-                    <Image source={{ uri: brand.logo_url }} style={styles.brandLogo} contentFit="cover" transition={200} />
+                    <Image source={{ uri: brand.logo_url }} style={styles.brandLogoImg} contentFit="cover" transition={200} />
                   ) : (
                     <View style={styles.brandInitial}>
                       <Text style={styles.brandInitialText}>
@@ -228,6 +276,14 @@ export default function HomeScreen() {
               <Text style={styles.brandEmptyText}>Brands are being added. Check back soon!</Text>
             </View>
           )}
+          <Pressable
+            onPress={() => router.push({ pathname: '/shop' })}
+            style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.viewAllText}>View All Brands</Text>
+            <Ionicons name="arrow-forward" size={13} color={COLORS.gold} />
+          </Pressable>
         </View>
 
         {/* Our story */}
@@ -272,6 +328,82 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Our branches */}
+        <View style={styles.section}>
+          <SectionHeading eyebrow="Visit Us" title="Our" accent="Branches" />
+          <Text style={styles.sectionLead}>
+            Find us across Tanzania. Walk into any of our branches and let our experts help you
+            find your perfect scent.
+          </Text>
+          {branchCount > 0 ? (
+            data.branches.map((branch) => (
+              <View key={String(branch.id)} style={styles.branchCard}>
+                {branch.profile_picture ? (
+                  <View style={styles.branchMedia}>
+                    <Image
+                      source={{ uri: branch.profile_picture }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                    <View style={styles.branchMediaShade} />
+                  </View>
+                ) : (
+                  <View style={styles.branchMediaEmpty}>
+                    <Ionicons name="storefront-outline" size={22} color={COLORS.gold} />
+                  </View>
+                )}
+                <View style={styles.branchBody}>
+                  <View style={styles.branchHead}>
+                    <Text style={styles.branchName} numberOfLines={1}>
+                      {branch.name}
+                    </Text>
+                    <View style={styles.branchDot} />
+                  </View>
+                  <View style={styles.branchAddressRow}>
+                    <Ionicons name="location-outline" size={14} color={COLORS.gold} />
+                    <Text style={styles.branchAddress} numberOfLines={2}>
+                      {branch.address ?? 'Location details coming soon'}
+                    </Text>
+                  </View>
+                  {branch.latitude != null && branch.longitude != null ? (
+                    <Pressable
+                      onPress={() => openBranch(branch)}
+                      style={({ pressed }) => [styles.twende, pressed && styles.pressed]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Twende Dukani — ${branch.name} on the map`}
+                    >
+                      <Ionicons name="walk-outline" size={13} color={COLORS.goldBright} />
+                      <Text style={styles.twendeText}>Twende Dukani</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.brandEmpty}>
+              <Ionicons name="storefront-outline" size={22} color={COLORS.textMuted} />
+              <Text style={styles.brandEmptyText}>Our branches are being set up. Stay tuned!</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Customer reviews */}
+        {reviews.length > 0 ? (
+          <View style={[styles.section, styles.sectionRaised]}>
+            <SectionHeading eyebrow="What Our Customers Say" title="Customer" accent="Reviews" />
+            {reviews.slice(0, 6).map((review, index) => (
+              <View key={`${review.email ?? 'review'}-${index}`} style={styles.reviewCard}>
+                <Text style={styles.stars}>★★★★★</Text>
+                <Text style={styles.reviewQuote}>
+                  “{(review.message ?? review.subject ?? '').trim()}”
+                </Text>
+                <Text style={styles.reviewAuthor}>{review.email ?? 'A happy customer'}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* Call to action */}
         <View style={[styles.section, styles.cta]}>
           <Text style={styles.ctaTitle}>
@@ -292,9 +424,10 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Contact */}
+        {/* Contact us — details and the blade's message form */}
         <View style={styles.section}>
           <SectionHeading eyebrow="We're Here to Help" title="Contact" accent="Us" />
+          <Text style={styles.sectionLead}>{CONTACT_INTRO}</Text>
           <View style={styles.contactCard}>
             {contact.dial ? (
               <Pressable
@@ -350,17 +483,18 @@ export default function HomeScreen() {
                 </View>
               </Pressable>
             ) : null}
+            <View style={styles.contactRow}>
+              <View style={styles.contactIcon}>
+                <Ionicons name="headset-outline" size={17} color={COLORS.gold} />
+              </View>
+              <View>
+                <Text style={styles.contactLabel}>Customer care</Text>
+                <Text style={styles.contactValue}>Use the form — replies go to your email</Text>
+              </View>
+            </View>
           </View>
 
-          <Pressable
-            onPress={() => router.push('/branches')}
-            style={({ pressed }) => [styles.branchCta, pressed && styles.pressed]}
-            accessibilityRole="button"
-          >
-            <Ionicons name="storefront-outline" size={17} color="#1A1400" />
-            <Text style={styles.branchCtaText}>Visit Our Branches</Text>
-            <Ionicons name="arrow-forward" size={14} color="#1A1400" />
-          </Pressable>
+          <ContactForm />
         </View>
 
         <Text style={styles.copyright}>
@@ -383,13 +517,77 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.85 },
 
+  /* Brand bar — the landing's logo header, kept above the scroll. */
+  brandBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.bg,
+  },
+  brandLogoRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.surface,
+    padding: 3,
+  },
+  brandLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 19,
+  },
+  brandText: { flex: 1 },
+  brandTitle: {
+    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  brandTitleGold: {
+    color: COLORS.gold,
+  },
+  brandTagline: {
+    color: COLORS.goldBright,
+    opacity: 0.75,
+    fontSize: 9.5,
+    letterSpacing: 2.6,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  /* Hero — badge, headline, quote, lead, actions, with gold halos. */
   hero: {
+    overflow: 'hidden',
     backgroundColor: COLORS.bgRaised,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.goldBorder,
     padding: 20,
     marginTop: 4,
+  },
+  haloTop: {
+    position: 'absolute',
+    top: -70,
+    right: -50,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: COLORS.goldHalo,
+  },
+  haloBottom: {
+    position: 'absolute',
+    bottom: -80,
+    left: -60,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(66, 52, 14, 0.20)',
   },
   badge: {
     flexDirection: 'row',
@@ -571,7 +769,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  brandLogo: {
+  brandLogoImg: {
     width: '100%',
     height: 54,
     borderRadius: 8,
@@ -604,6 +802,25 @@ const styles = StyleSheet.create({
   brandEmptyText: {
     color: COLORS.textMuted,
     fontSize: 13,
+  },
+  viewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldSoft,
+  },
+  viewAllText: {
+    color: COLORS.gold,
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   paragraph: {
@@ -660,6 +877,105 @@ const styles = StyleSheet.create({
   trustedText: {
     color: COLORS.textSecondary,
     fontSize: 12,
+  },
+
+  /* Branches */
+  branchCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  branchMedia: {
+    height: 92,
+    width: '100%',
+    backgroundColor: COLORS.surfaceHigh,
+  },
+  branchMediaShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(13, 13, 13, 0.25)',
+  },
+  branchMediaEmpty: {
+    height: 72,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bgRaised,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  branchBody: {
+    padding: 14,
+    gap: 7,
+  },
+  branchHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  branchName: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '800',
+    flexShrink: 1,
+  },
+  branchDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.success,
+  },
+  branchAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+  },
+  branchAddress: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+  twende: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    backgroundColor: COLORS.goldSoft,
+  },
+  twendeText: {
+    color: COLORS.goldBright,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  /* Reviews */
+  reviewCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    marginBottom: 8,
+    gap: 7,
+  },
+  reviewQuote: {
+    color: COLORS.textSecondary,
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  reviewAuthor: {
+    color: COLORS.gold,
+    fontSize: 12.5,
+    fontWeight: '700',
   },
 
   cta: {
@@ -722,23 +1038,6 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: '600',
     marginTop: 1,
-  },
-
-  branchCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.gold,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    ...GOLD_SHADOW,
-  },
-  branchCtaText: {
-    color: '#1A1400',
-    fontSize: 14.5,
-    fontWeight: '800',
-    letterSpacing: 0.4,
   },
 
   copyright: {
