@@ -6,6 +6,7 @@ import { Chip, ChipRow, DataCard, SearchInput, useAsyncData } from '../../../com
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchAdminOrders, type AdminOrdersPayload } from '../../../lib/adminApi';
 import { COLORS } from '../../../lib/theme';
+import { AdminMenuButton } from '../../../components/adminsidebar';
 
 /**
  * Orders monitor tab — the mobile twin of super-admin/orders/index.blade.php.
@@ -46,6 +47,7 @@ export default function AdminOrders() {
         keyboardShouldPersistTaps="handled"
       >
         <View>
+          <AdminMenuButton />
           <Text style={styles.eyebrow}>All branches</Text>
           <Text style={styles.h1}>Orders</Text>
         </View>

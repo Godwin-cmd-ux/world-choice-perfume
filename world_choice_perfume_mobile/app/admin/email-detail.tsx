@@ -14,6 +14,7 @@ import {
   toggleMailStar,
 } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Email detail — the mobile twin of super-admin/emails/show: the message +
@@ -58,7 +59,7 @@ export default function EmailDetail() {
   const mail = data?.mail;
 
   return (
-    <AdminPage title="Message" eyebrow="info@ mailbox" onBack={() => router.back()}>
+    <AdminPage title="Message" eyebrow="info@ mailbox" onBack={() => router.back()} onMenu={adminMenu.open}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
         {loading ? <LoadingView label="Loading message…" /> : null}
         {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}

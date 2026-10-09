@@ -6,6 +6,7 @@ import { DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../..
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchAdminDashboard, type AdminDashboardPayload } from '../../../lib/adminApi';
 import { COLORS, RADIUS } from '../../../lib/theme';
+import { AdminMenuButton } from '../../../components/adminsidebar';
 
 /**
  * Super Admin dashboard — the mobile twin of super-admin/dashboard.blade.php:
@@ -40,6 +41,7 @@ export default function AdminDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.gold} />}
       >
         <View>
+          <AdminMenuButton />
           <Text style={styles.eyebrow}>World Choice Perfumes</Text>
           <Text style={styles.h1}>Super Admin</Text>
         </View>

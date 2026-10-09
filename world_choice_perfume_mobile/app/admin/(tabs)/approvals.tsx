@@ -6,6 +6,7 @@ import { Chip, ChipRow, DataCard, GroupLabel, useAsyncData } from '../../../comp
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchApprovals, type ApprovalPayload } from '../../../lib/adminApi';
 import { COLORS } from '../../../lib/theme';
+import { AdminMenuButton } from '../../../components/adminsidebar';
 
 const ROLES = [
   { key: 'all', label: 'All roles' },
@@ -61,6 +62,7 @@ export default function AdminApprovals() {
         keyboardShouldPersistTaps="handled"
       >
         <View>
+          <AdminMenuButton />
           <Text style={styles.eyebrow}>Staff accounts</Text>
           <Text style={styles.h1}>Approvals</Text>
         </View>

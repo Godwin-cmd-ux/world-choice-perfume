@@ -7,6 +7,7 @@ import { ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { errorMessage, isApiError } from '../../lib/api';
 import { createStaff, fetchStaffOptions, type StaffFormFields } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 const ROLE_LABELS: Record<string, string> = {
   branch_admin: 'Branch Admin',
@@ -88,14 +89,14 @@ export default function StaffForm() {
 
   if (opts.loading || opts.error) {
     return (
-      <AdminPage title="New Staff Account" onBack={() => router.back()}>
+      <AdminPage title="New Staff Account" onBack={() => router.back()} onMenu={adminMenu.open}>
         {opts.loading ? <LoadingView label="Loading form…" /> : <ErrorView message={opts.error ?? 'Unable to load.'} onRetry={opts.reload} />}
       </AdminPage>
     );
   }
 
   return (
-    <AdminPage title="New Staff Account" onBack={() => router.back()}>
+    <AdminPage title="New Staff Account" onBack={() => router.back()} onMenu={adminMenu.open}>
       {success ? <Banner kind="success" message={success} /> : null}
       {formError ? <Banner kind="error" message={formError} /> : null}
 

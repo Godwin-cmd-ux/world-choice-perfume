@@ -8,6 +8,7 @@ import { ErrorView, GoldButton, LoadingView, OutlineButton } from '../../compone
 import { errorMessage, isApiError } from '../../lib/api';
 import { changeAdminPassword, fetchAdminProfile, saveAdminProfile } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Profile (the sidebar Account → Profile page): edit name / phone / email /
@@ -124,7 +125,7 @@ export default function AdminProfile() {
   const avatarUri = photo?.uri ?? data?.user.profile_picture ?? null;
 
   return (
-    <AdminPage title="My Profile" onBack={() => router.back()}>
+    <AdminPage title="My Profile" onBack={() => router.back()} onMenu={adminMenu.open}>
       {loading ? <LoadingView label="Loading profile…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

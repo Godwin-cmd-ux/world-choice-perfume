@@ -12,6 +12,7 @@ import {
   markNotificationRead,
 } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 const TYPES = [
   { key: '', label: 'All types' },
@@ -87,6 +88,7 @@ export default function Notifications() {
 
   return (
     <AdminPage
+      onMenu={adminMenu.open}
       title="Notifications"
       onBack={() => router.back()}
       refreshing={refreshing}

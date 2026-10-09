@@ -1,63 +1,35 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { COLORS } from '../../../lib/theme';
 
 /**
- * Mobile navigation for the Super Admin module (see the capability audit —
- * 13 sidebar sections, far too many for a bottom bar).
+ * The Super Admin screens live behind a Tabs navigator purely as routes.
+ * The module's navigation is the sidebar (components/adminsidebar.tsx), a
+ * slide-in copy of the website's super-admin sidebar, so the bottom tab bar
+ * is hidden: the hamburger on each screen opens the sidebar, and the
+ * sidebar's entries — Dashboard · Daily Sales Overview · Branches ·
+ * Cross-Branch Stock · Cross-Branch Sales · Approvals · Orders · Emails ·
+ * Returned Stock · Notifications · Reports · Staff · Settings, then
+ * Account → Profile · Logout — are the only navigation this module has.
  *
- * Strategy: only the four most-used destinations live in the bottom bar —
- * Dashboard, Orders, Approvals, More. "More" is a grouped launcher for every
- * remaining section (Monitor / Records / System), which keeps the bar
- * uncluttered while leaving the whole website sidebar one tap away.
+ * "More" used to be the grouped launcher for the sections that did not fit
+ * in the bar; the sidebar links straight to everything now, so it is
+ * unlinked (`href: null`).
  */
 export default function AdminTabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.bgRaised,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
+        tabBarStyle: { display: 'none' },
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         sceneStyle: { backgroundColor: COLORS.bg },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: 'Orders',
-          tabBarIcon: ({ color, size }) => <Ionicons name="bag-handle-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="approvals"
-        options={{
-          title: 'Approvals',
-          tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarIcon: ({ color, size }) => <Ionicons name="apps-outline" size={size} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
+      <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
+      <Tabs.Screen name="approvals" options={{ title: 'Approvals' }} />
+      <Tabs.Screen name="more" options={{ title: 'More', href: null }} />
     </Tabs>
   );
 }

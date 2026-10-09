@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, GroupLabel, useAsyncData } from '../../components/adminkit';
+import { adminMenu } from '../../components/adminsidebar';
 import { ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { errorMessage, isApiError } from '../../lib/api';
 import { fetchAdminSettings, saveAdminSettings } from '../../lib/adminApi';
@@ -64,7 +65,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <AdminPage title="Settings" onBack={() => router.back()}>
+    <AdminPage title="Settings" onBack={() => router.back()} onMenu={adminMenu.open}>
       {loading ? <LoadingView label="Loading settings…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

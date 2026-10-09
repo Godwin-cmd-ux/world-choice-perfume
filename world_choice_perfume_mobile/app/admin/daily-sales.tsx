@@ -6,6 +6,7 @@ import { AdminPage, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } fro
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchDailySales, type DailySalesPayload } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Daily Sales Overview — the mobile twin of the website's
@@ -21,7 +22,7 @@ export default function DailySales() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <AdminPage title="Daily Sales Overview" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Daily Sales Overview" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Loading today's sales…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

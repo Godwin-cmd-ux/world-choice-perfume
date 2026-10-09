@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, StatGrid, StatTile, use
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchStaffPerformanceReport, type StaffPerfPayload } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Staff performance report — the mobile twin of
@@ -28,7 +29,7 @@ export default function ReportStaff() {
   const totalSales = rows.reduce((sum, r) => sum + Number(r.total_sales ?? 0), 0);
 
   return (
-    <AdminPage title="Staff Performance" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Staff Performance" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Building report…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

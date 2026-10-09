@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, SearchInput, useAsyncDa
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchMails } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 const BOXES = [
   { key: 'all', label: 'All' },
@@ -37,7 +38,7 @@ export default function Emails() {
   const hasMore = mails.length >= 30;
 
   return (
-    <AdminPage title="Emails" eyebrow="info@ mailbox" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Emails" eyebrow="info@ mailbox" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Loading mailbox…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

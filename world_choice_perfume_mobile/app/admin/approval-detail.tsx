@@ -7,6 +7,7 @@ import { Card, ErrorView, LoadingView, OutlineButton } from '../../components/ui
 import { errorMessage } from '../../lib/api';
 import { approveUser, fetchApproval, rejectUser } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Approval detail — the mobile twin of super-admin/cashiers/show.blade.php:
@@ -46,7 +47,7 @@ export default function ApprovalDetail() {
   const user = data?.user;
 
   return (
-    <AdminPage title="Account Review" onBack={() => router.back()}>
+    <AdminPage title="Account Review" onBack={() => router.back()} onMenu={adminMenu.open}>
       {loading ? <LoadingView label="Loading account…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

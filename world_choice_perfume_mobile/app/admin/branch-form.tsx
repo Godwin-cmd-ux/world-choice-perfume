@@ -15,6 +15,7 @@ import {
   type BranchFormFields,
 } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Branch create/edit — the mobile twin of the branches create/edit Blade
@@ -119,14 +120,14 @@ export default function BranchForm() {
 
   if (!editingId && (opts.loading || opts.error)) {
     return (
-      <AdminPage title="New Branch" onBack={() => router.back()}>
+      <AdminPage title="New Branch" onBack={() => router.back()} onMenu={adminMenu.open}>
         {opts.loading ? <LoadingView label="Loading form…" /> : <ErrorView message={opts.error ?? 'Unable to load.'} onRetry={opts.reload} />}
       </AdminPage>
     );
   }
   if (editingId && (existing.loading || (existing.error && !existing.data))) {
     return (
-      <AdminPage title="Edit Branch" onBack={() => router.back()}>
+      <AdminPage title="Edit Branch" onBack={() => router.back()} onMenu={adminMenu.open}>
         {existing.loading ? (
           <LoadingView label="Loading branch…" />
         ) : (
@@ -137,7 +138,7 @@ export default function BranchForm() {
   }
 
   return (
-    <AdminPage title={editingId ? 'Edit Branch' : 'New Branch'} onBack={() => router.back()}>
+    <AdminPage title={editingId ? 'Edit Branch' : 'New Branch'} onBack={() => router.back()} onMenu={adminMenu.open}>
       {success ? <Banner kind="success" message={success} /> : null}
       {formError ? <Banner kind="error" message={formError} /> : null}
 

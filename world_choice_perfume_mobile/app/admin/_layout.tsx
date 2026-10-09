@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { AdminSidebar } from '../../components/adminsidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -27,6 +29,10 @@ export default function AdminLayout() {
   useSuperAdminGuard();
 
   return (
+    // The sidebar is the module's navigation (it mirrors the website's
+    // super-admin sidebar), so it lives above the whole stack and every
+    // screen can open it — the AdminPage menu button or AdminMenuButton.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -58,5 +64,7 @@ export default function AdminLayout() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="profile" />
     </Stack>
+      <AdminSidebar />
+    </View>
   );
 }

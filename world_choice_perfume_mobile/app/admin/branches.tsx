@@ -20,6 +20,7 @@ import {
 } from '../../lib/adminApi';
 import { errorMessage } from '../../lib/api';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Branches — the mobile twin of super-admin/branches/index.blade.php.
@@ -58,6 +59,7 @@ export default function Branches() {
 
   return (
     <AdminPage
+      onMenu={adminMenu.open}
       title="Branches"
       onBack={() => router.back()}
       refreshing={refreshing}

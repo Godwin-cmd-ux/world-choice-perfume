@@ -7,6 +7,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, SearchInput, useAsyncDa
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchStaff, type AdminUserRow } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 const ROLES = [
   { key: '', label: 'All roles' },
@@ -49,6 +50,7 @@ export default function Staff() {
 
   return (
     <AdminPage
+      onMenu={adminMenu.open}
       title="Staff"
       onBack={() => router.back()}
       refreshing={refreshing}

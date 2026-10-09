@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, StatGrid, StatTile, use
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchProductPerformanceReport, type ProductPerfPayload } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Product performance report — the mobile twin of
@@ -27,7 +28,7 @@ export default function ReportProducts() {
   const rows = data?.report ?? [];
 
   return (
-    <AdminPage title="Product Performance" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Product Performance" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Building report…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

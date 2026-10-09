@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Banner } from '../../components/authkit';
 import { AdminPage, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../components/adminkit';
+import { adminMenu } from '../../components/adminsidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchCrossBranchStock } from '../../lib/adminApi';
 
@@ -25,7 +26,7 @@ export default function CrossBranchStock() {
   );
 
   return (
-    <AdminPage title="Cross-Branch Stock" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Cross-Branch Stock" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Loading stock…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

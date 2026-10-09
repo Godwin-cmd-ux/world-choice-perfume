@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, StatGrid, StatTile, use
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchExpensesReport, type ExpensesReportPayload } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Expenses report — the mobile twin of super-admin/reports/expenses:
@@ -26,7 +27,7 @@ export default function ReportExpenses() {
   const cats = [...(data?.expenses_by_category ?? [])].sort((a, b) => b.total - a.total);
 
   return (
-    <AdminPage title="Expenses Report" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Expenses Report" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Building report…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { AdminPage, DataCard, GroupLabel } from '../../components/adminkit';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Reports hub — the mobile twin of super-admin/reports/index.blade.php.
@@ -16,7 +17,7 @@ export default function ReportsHub() {
   ];
 
   return (
-    <AdminPage title="Reports" onBack={() => router.back()}>
+    <AdminPage title="Reports" onBack={() => router.back()} onMenu={adminMenu.open}>
       <GroupLabel>Choose a report</GroupLabel>
       {reports.map((r) => (
         <DataCard

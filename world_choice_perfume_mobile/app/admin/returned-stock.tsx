@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, KV, StatGrid, StatTile,
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchReturnedStock, type ReturnedStockPayload } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Returned Stock — the mobile twin of super-admin/returned-stock/index:
@@ -36,7 +37,7 @@ export default function ReturnedStock() {
   const branches = Object.entries(data?.branches ?? {});
 
   return (
-    <AdminPage title="Returned Stock" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Returned Stock" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Loading returns…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

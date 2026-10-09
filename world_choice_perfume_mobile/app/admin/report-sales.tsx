@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, StatGrid, StatTile, use
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchSalesReport, type SalesReportPayload } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Sales report — the mobile twin of super-admin/reports/sales (and its PDF
@@ -24,7 +25,7 @@ export default function ReportSales() {
   const branches = data?.branches ?? [];
 
   return (
-    <AdminPage title="Sales Report" onBack={() => router.back()} refreshing={refreshing} onRefresh={refresh}>
+    <AdminPage title="Sales Report" onBack={() => router.back()} onMenu={adminMenu.open} refreshing={refreshing} onRefresh={refresh}>
       {loading ? <LoadingView label="Building report…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

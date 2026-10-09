@@ -7,6 +7,7 @@ import { Card, ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { errorMessage, isApiError } from '../../lib/api';
 import { fetchAdminOrder, saveOrderPersonalName } from '../../lib/adminApi';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 /**
  * Order detail — the mobile twin of super-admin/orders/show.blade.php,
@@ -49,7 +50,7 @@ export default function OrderDetail() {
   };
 
   return (
-    <AdminPage title="Order Detail" onBack={() => router.back()}>
+    <AdminPage title="Order Detail" onBack={() => router.back()} onMenu={adminMenu.open}>
       {loading ? <LoadingView label="Loading order…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

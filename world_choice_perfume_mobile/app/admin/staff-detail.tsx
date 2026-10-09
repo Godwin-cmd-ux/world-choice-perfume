@@ -12,6 +12,7 @@ import {
   toggleStaffStatus,
 } from '../../lib/adminApi';
 import { COLORS } from '../../lib/theme';
+import { adminMenu } from '../../components/adminsidebar';
 
 const STATUSES = ['active', 'approved', 'pending', 'blocked', 'rejected'];
 
@@ -61,7 +62,7 @@ export default function StaffDetail() {
   };
 
   return (
-    <AdminPage title="Staff Account" onBack={() => router.back()}>
+    <AdminPage title="Staff Account" onBack={() => router.back()} onMenu={adminMenu.open}>
       {loading ? <LoadingView label="Loading account…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}
