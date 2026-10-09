@@ -9,6 +9,7 @@ import { fetchSellerDashboard } from '../../../lib/sellerApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { COLORS, RADIUS, SELLER_ACCENT } from '../../../lib/theme';
+import { sellerMenu } from '../../../components/sellersidebar';
 
 /**
  * Dashboard — the website's seller.dashboard: today's own sales and
@@ -39,6 +40,7 @@ export default function SellerDashboard() {
 
   return (
     <AdminPage
+      onMenu={sellerMenu.open}
       title="Seller"
       eyebrow={scope?.branch_name ?? 'Seller'}
       accent={SELLER_ACCENT.main}

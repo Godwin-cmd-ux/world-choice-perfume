@@ -7,6 +7,7 @@ import { EmptyView, GoldButton, LoadingView, ErrorView } from '../../components/
 import { createSellerSale, fetchSellerSaleOptions, type SellerEmptyBottleLine, type SellerSaleItemInput } from '../../lib/sellerApi';
 import { formatMoney } from '../../lib/format';
 import { COLORS, RADIUS, SELLER_ACCENT } from '../../lib/theme';
+import { sellerMenu } from '../../components/sellersidebar';
 
 interface Line {
   key: string;
@@ -177,7 +178,7 @@ export default function SellerSaleNew() {
     (paymentMode === 'single' || Math.abs(paymentSum - total) <= 0.01);
 
   return (
-    <AdminPage title="New Sale" eyebrow="Seller" accent={SELLER_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Sale" eyebrow="Seller" accent={SELLER_ACCENT.main} onBack={() => router.back()} onMenu={sellerMenu.open}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
       {loading && !data ? <LoadingView label="Loading stock…" /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}

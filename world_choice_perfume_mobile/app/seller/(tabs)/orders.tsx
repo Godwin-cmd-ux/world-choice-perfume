@@ -8,6 +8,7 @@ import { fetchSellerOrders, setSellerOrderPersonalName, updateSellerOrderStatus,
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { COLORS, RADIUS, SELLER_ACCENT } from '../../../lib/theme';
+import { sellerMenu } from '../../../components/sellersidebar';
 
 const TABS = [
   { key: 'pending', label: 'Pending' },
@@ -84,6 +85,7 @@ export default function SellerOrders() {
 
   return (
     <AdminPage
+      onMenu={sellerMenu.open}
       title="Order Queue"
       eyebrow={data?.scope?.branch_name ?? 'Seller'}
       accent={SELLER_ACCENT.main}

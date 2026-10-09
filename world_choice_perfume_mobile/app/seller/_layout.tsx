@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { SellerSidebar } from '../../components/sellersidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -29,6 +31,10 @@ export default function SellerLayout() {
   useSellerGuard();
 
   return (
+    // The sidebar is the module's navigation (it mirrors the website's
+    // seller sidebar), so it lives above the whole stack and every screen
+    // can open it through the AdminPage menu button.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -40,5 +46,7 @@ export default function SellerLayout() {
       <Stack.Screen name="sale-new" />
       <Stack.Screen name="sale-detail" />
     </Stack>
+      <SellerSidebar />
+    </View>
   );
 }

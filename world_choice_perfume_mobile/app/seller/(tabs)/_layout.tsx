@@ -1,61 +1,32 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { COLORS, SELLER_ACCENT } from '../../../lib/theme';
 
 /**
- * Mobile navigation for the Seller module. The website sidebar runs to just
- * three entries (Dashboard, My Sales, Orders with a pending badge) plus the
- * account actions, so all four destinations fit the bottom bar directly —
- * no More hub is needed here. Active tint is the cyan of the website's
- * seller sidebar (bg-cyan-600 / text-cyan-400), not the admin gold.
+ * The Seller screens live behind a Tabs navigator purely as routes. The
+ * module's navigation is the sidebar (components/sellersidebar.tsx), a
+ * slide-in copy of the website's seller sidebar, so the bottom tab bar is
+ * hidden: the hamburger on each screen opens the sidebar, and the
+ * sidebar's entries — Dashboard · My Sales · Orders, then Account →
+ * Profile (this module's Account tab) · Logout — are the only navigation
+ * this module has. Unlike the other modules there is no More hub: the
+ * seller sidebar is exactly these destinations, so all four stay routable
+ * as tabs.
  */
 export default function SellerTabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.bgRaised,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
+        tabBarStyle: { display: 'none' },
         tabBarActiveTintColor: SELLER_ACCENT.main,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         sceneStyle: { backgroundColor: COLORS.bg },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="sales"
-        options={{
-          title: 'My Sales',
-          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: 'Orders',
-          tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
+      <Tabs.Screen name="sales" options={{ title: 'My Sales' }} />
+      <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
+      <Tabs.Screen name="account" options={{ title: 'Account' }} />
     </Tabs>
   );
 }

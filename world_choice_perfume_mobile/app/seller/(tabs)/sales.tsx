@@ -8,6 +8,7 @@ import { fetchSellerSales } from '../../../lib/sellerApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { SELLER_ACCENT } from '../../../lib/theme';
+import { sellerMenu } from '../../../components/sellersidebar';
 
 /**
  * My Sales — the website's seller/sales index: the member's OWN sales
@@ -35,6 +36,7 @@ export default function SellerSales() {
 
   return (
     <AdminPage
+      onMenu={sellerMenu.open}
       title="My Sales"
       eyebrow="Seller"
       accent={SELLER_ACCENT.main}

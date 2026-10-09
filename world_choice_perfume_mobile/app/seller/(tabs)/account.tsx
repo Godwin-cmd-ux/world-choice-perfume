@@ -6,6 +6,7 @@ import { staffSession } from '../../../lib/staffSession';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { SELLER_ACCENT } from '../../../lib/theme';
+import { sellerMenu } from '../../../components/sellersidebar';
 
 /**
  * Account — the website's shared ProfileController screens (the same
@@ -81,7 +82,7 @@ export default function SellerAccount() {
   };
 
   return (
-    <AdminPage title="Account" eyebrow="Seller" accent={SELLER_ACCENT.main}>
+    <AdminPage title="Account" eyebrow="Seller" accent={SELLER_ACCENT.main} onMenu={sellerMenu.open}>
       {ok ? <Banner kind="success" message={ok} /> : null}
       {err ? <Banner kind="error" message={err} /> : null}
 

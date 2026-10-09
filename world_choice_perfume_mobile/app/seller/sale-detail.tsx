@@ -8,6 +8,7 @@ import { fetchSellerSale } from '../../lib/sellerApi';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { SELLER_ACCENT } from '../../lib/theme';
+import { sellerMenu } from '../../components/sellersidebar';
 
 /**
  * Sale receipt — the website's seller/sales/{id}: line items with their
@@ -39,6 +40,7 @@ export default function SellerSaleDetail() {
 
   return (
     <AdminPage
+      onMenu={sellerMenu.open}
       title={sale?.sale_number ? String(sale.sale_number) : 'Sale'}
       eyebrow="Receipt"
       accent={SELLER_ACCENT.main}
