@@ -6,6 +6,7 @@ import { ErrorView, LoadingView, OutlineButton } from '../../components/ui';
 import { fetchGdQrCode, type GdQrCodePayload } from '../../lib/gdApi';
 import { BASE_URL } from '../../lib/config';
 import { COLORS, GD_ACCENT, RADIUS } from '../../lib/theme';
+import { gdMenu } from '../../components/gdsidebar';
 
 /**
  * QR Code — the mobile twin of graphic-designer/qr-code.blade.php. The
@@ -18,7 +19,7 @@ export default function GdQrCode() {
   const { data, error, loading, reload } = useAsyncData<GdQrCodePayload>(() => fetchGdQrCode(), []);
 
   return (
-    <AdminPage title="QR Code" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="QR Code" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()} onMenu={gdMenu.open}>
       {loading ? <LoadingView label="Generating QR code…" /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}
 

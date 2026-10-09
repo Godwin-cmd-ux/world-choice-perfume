@@ -7,6 +7,7 @@ import { ConfirmDialog, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData }
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { deleteGdPost, fetchGdDashboard, type GdDashboardPayload, type GdPost } from '../../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
+import { GdMenuButton } from '../../../components/gdsidebar';
 
 /**
  * GD dashboard — the mobile twin of graphic-designer/dashboard.blade.php:
@@ -60,6 +61,7 @@ export default function GdDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={GD_ACCENT.main} />}
       >
         <View>
+          <GdMenuButton />
           <Text style={[styles.eyebrow, { color: GD_ACCENT.main }]}>World Choice Perfumes</Text>
           <Text style={styles.h1}>Graphic Designer</Text>
         </View>

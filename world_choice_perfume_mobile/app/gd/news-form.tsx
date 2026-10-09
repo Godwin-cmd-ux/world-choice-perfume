@@ -8,6 +8,7 @@ import { ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { errorMessage, isApiError } from '../../lib/api';
 import { createGdPost, fetchGdPost, updateGdPost } from '../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../lib/theme';
+import { gdMenu } from '../../components/gdsidebar';
 
 /**
  * News create/edit — the mobile twin of the news create/edit Blade forms:
@@ -92,7 +93,7 @@ export default function GdNewsForm() {
 
   if (editingId && (existing.loading || (existing.error && !existing.data))) {
     return (
-      <AdminPage title="Edit Post" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()}>
+      <AdminPage title="Edit Post" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()} onMenu={gdMenu.open}>
         {existing.loading ? (
           <LoadingView label="Loading post…" />
         ) : (
@@ -104,6 +105,7 @@ export default function GdNewsForm() {
 
   return (
     <AdminPage
+      onMenu={gdMenu.open}
       title={editingId ? 'Edit Post' : 'New Post'}
       eyebrow="Graphic Designer"
       accent={GD_ACCENT.main}

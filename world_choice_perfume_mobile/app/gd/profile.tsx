@@ -8,6 +8,7 @@ import { ErrorView, GoldButton, LoadingView, OutlineButton } from '../../compone
 import { errorMessage, isApiError } from '../../lib/api';
 import { changeGdPassword, fetchGdProfile, saveGdProfile } from '../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../lib/theme';
+import { gdMenu } from '../../components/gdsidebar';
 
 /**
  * Profile — the mobile twin of the website's shared Profile page (the same
@@ -125,7 +126,7 @@ export default function GdProfile() {
   const avatarUri = photo?.uri ?? data?.user.profile_picture ?? null;
 
   return (
-    <AdminPage title="My Profile" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="My Profile" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()} onMenu={gdMenu.open}>
       {loading ? <LoadingView label="Loading profile…" /> : null}
       {sessionExpired ? <Banner kind="error" message="Your session has expired. Please sign in again." /> : null}
       {error && !data ? <ErrorView message={error} onRetry={reload} /> : null}

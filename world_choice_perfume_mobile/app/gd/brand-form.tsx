@@ -8,6 +8,7 @@ import { ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { errorMessage, isApiError } from '../../lib/api';
 import { createGdBrand, fetchGdBrand, updateGdBrand } from '../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../lib/theme';
+import { gdMenu } from '../../components/gdsidebar';
 
 /**
  * Brand create/edit — the mobile twin of the brands create/edit Blade forms:
@@ -89,7 +90,7 @@ export default function GdBrandForm() {
 
   if (editingId && (existing.loading || (existing.error && !existing.data))) {
     return (
-      <AdminPage title="Edit Brand" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()}>
+      <AdminPage title="Edit Brand" eyebrow="Graphic Designer" accent={GD_ACCENT.main} onBack={() => router.back()} onMenu={gdMenu.open}>
         {existing.loading ? (
           <LoadingView label="Loading brand…" />
         ) : (
@@ -103,6 +104,7 @@ export default function GdBrandForm() {
 
   return (
     <AdminPage
+      onMenu={gdMenu.open}
       title={editingId ? 'Edit Brand' : 'New Brand'}
       eyebrow="Graphic Designer"
       accent={GD_ACCENT.main}

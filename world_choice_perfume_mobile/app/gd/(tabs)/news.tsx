@@ -16,6 +16,7 @@ import {
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { deleteGdPost, fetchGdNews, type GdNewsPayload, type GdPost } from '../../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
+import { GdMenuButton } from '../../../components/gdsidebar';
 
 type Filter = 'all' | 'approved' | 'pending' | 'rejected';
 
@@ -69,6 +70,7 @@ export default function GdNews() {
       <View style={styles.scroll}>
         <View style={styles.headRow}>
           <View>
+            <GdMenuButton />
             <Text style={[styles.eyebrow, { color: GD_ACCENT.main }]}>Graphic Designer</Text>
             <Text style={styles.h1}>News Posts</Text>
           </View>

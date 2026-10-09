@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { GdSidebar } from '../../components/gdsidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -27,6 +29,10 @@ export default function GdLayout() {
   useGraphicDesignerGuard();
 
   return (
+    // The sidebar is the module's navigation (it mirrors the website's
+    // graphic-designer sidebar), so it lives above the whole stack and every
+    // screen can open it — the AdminPage menu button or GdMenuButton.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -40,5 +46,7 @@ export default function GdLayout() {
       <Stack.Screen name="qr-code" />
       <Stack.Screen name="profile" />
     </Stack>
+      <GdSidebar />
+    </View>
   );
 }

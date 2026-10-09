@@ -7,6 +7,7 @@ import { Chip, ChipRow, ConfirmDialog, DataCard, GroupLabel, StatGrid, StatTile,
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { deleteGdBrand, fetchGdBrands, type GdBrand } from '../../../lib/gdApi';
 import { COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
+import { GdMenuButton } from '../../../components/gdsidebar';
 
 type Filter = 'all' | 'active' | 'inactive';
 
@@ -64,6 +65,7 @@ export default function GdBrands() {
       <View style={styles.scroll}>
         <View style={styles.headRow}>
           <View>
+            <GdMenuButton />
             <Text style={[styles.eyebrow, { color: GD_ACCENT.main }]}>Graphic Designer</Text>
             <Text style={styles.h1}>Brands</Text>
           </View>
