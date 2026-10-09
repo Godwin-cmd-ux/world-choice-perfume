@@ -5,6 +5,7 @@ import { AdminPage, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } fro
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchCrossBranchRows } from '../../lib/smApi';
 import { COLORS, SM_ACCENT } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Cross-branch monitoring — the mobile twin of cross-branch.blade.php for
@@ -27,7 +28,7 @@ export default function SmCrossBranch() {
   const rows = data?.rows ?? [];
 
   return (
-    <AdminPage title="Cross-Branch" eyebrow="Kinondoni monitor" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Cross-Branch" eyebrow="Kinondoni monitor" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {forbidden ? (
         <Banner kind="error" message={error ?? 'Only the Kinondoni branch stock manager or the Super Admin can monitor other branches.'} />
       ) : (

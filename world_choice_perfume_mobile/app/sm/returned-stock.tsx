@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, DataCard, GroupLabel, KV, useAsy
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchReturnedStock, fileDamageReport, type SmReturnedRow } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Returned Stock module — Kinondoni branch stock manager only (the server
@@ -49,7 +50,7 @@ export default function SmReturnedStock() {
   const rows = (data?.rows ?? []) as SmReturnedRow[];
 
   return (
-    <AdminPage title="Returned Stock" eyebrow="Kinondoni only" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Returned Stock" eyebrow="Kinondoni only" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {forbidden ? (
         <Banner kind="error" message={error ?? 'The Returned Stock module is reserved for the Kinondoni branch stock manager.'} />
       ) : (

@@ -7,6 +7,7 @@ import { AdminPage, Chip, ChipRow, DataCard, useAsyncData } from '../../componen
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchProductMovements } from '../../lib/smApi';
 import { COLORS, SM_ACCENT } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 const TYPES = ['entry', 'sale', 'transfer_in', 'transfer_out', 'adjustment'] as const;
 
@@ -35,7 +36,7 @@ export default function SmMovements() {
   return (
     <AdminPage
       title="Movements"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
       refreshing={refreshing}

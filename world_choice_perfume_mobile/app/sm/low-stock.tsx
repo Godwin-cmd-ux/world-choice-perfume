@@ -5,6 +5,7 @@ import { AdminPage, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } fro
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchLowStock } from '../../lib/smApi';
 import { COLORS, SM_ACCENT } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Low-stock list — the same server-side `quantity <= 5` filter the dashboard
@@ -26,7 +27,7 @@ export default function SmLowStock() {
   return (
     <AdminPage
       title="Low Stock"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
       refreshing={refreshing}

@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, DataCard, GroupLabel, useAsyncData, messageOf }
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchIncoming, receiveTransferItem, rejectTransferItem } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Incoming stock — the flat pending-incoming list the website's
@@ -46,7 +47,7 @@ export default function SmIncoming() {
   const rows = data?.rows ?? [];
 
   return (
-    <AdminPage title="Incoming Stock" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Incoming Stock" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error || actionError ? <Banner kind="error" message={actionError ?? error ?? ''} /> : null}
 
       {loading ? (

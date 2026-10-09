@@ -12,6 +12,7 @@ import {
   type SmStockRow,
 } from '../../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
+import { SmMenuButton } from '../../../components/smsidebar';
 
 /**
  * Product Stock tab — the mobile twin of stock-manager/product-stock.blade.php:
@@ -63,6 +64,7 @@ export default function SmStock() {
   return (
     <View style={styles.root}>
       <View style={styles.head}>
+        <SmMenuButton />
         <Text style={[styles.eyebrow, { color: SM_ACCENT.main }]}>World Choice Perfumes</Text>
         <Text style={styles.h1}>Product Stock</Text>
         <SearchInput value={search} onChangeText={setSearch} placeholder="Search product, brand, category…" />

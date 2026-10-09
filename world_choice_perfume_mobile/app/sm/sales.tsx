@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, StatGrid, StatTile, use
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchSales, type SmSale } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 type Range = 'today' | 'week' | 'all';
 
@@ -46,7 +47,7 @@ export default function SmSales() {
   return (
     <AdminPage
       title="My Sales"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
       refreshing={refreshing}

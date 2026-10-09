@@ -7,6 +7,7 @@ import { AdminPage, BusyOverlay, GroupLabel, useAsyncData, messageOf } from '../
 import { GoldButton } from '../../components/ui';
 import { changeSmPassword, fetchSmProfile, updateSmProfile } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 interface ProfilePayload {
   user?: { id?: number | string; name?: string; email?: string; phone?: string | null; profile_picture?: string | null; role?: string };
@@ -112,7 +113,7 @@ export default function SmProfile() {
   const avatarUri = photo?.uri ?? (data?.user?.profile_picture ? String(data.user.profile_picture) : null);
 
   return (
-    <AdminPage title="Profile" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Profile" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {ok ? <Banner kind="success" message={ok} /> : null}
       {err || error ? <Banner kind="error" message={err ?? error ?? ''} /> : null}
       {loading ? <Text style={styles.loading}>Loading profile…</Text> : null}

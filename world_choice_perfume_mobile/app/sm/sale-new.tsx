@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, StatGrid, StatTile, 
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { createSale, fetchSaleOptions, type SmSaleFields, type SmVarietyBuckets } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 interface Line {
   key: string;
@@ -148,7 +149,7 @@ export default function SmSaleNew() {
   };
 
   return (
-    <AdminPage title="New Sale" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Sale" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error ? <Banner kind="error" message={error} /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}
 

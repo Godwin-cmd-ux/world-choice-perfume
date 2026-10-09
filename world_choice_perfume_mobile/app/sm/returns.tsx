@@ -12,6 +12,7 @@ import {
   writeOffReturnItem,
 } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Returned items + Lost items — the two lower transfer screens of the
@@ -63,7 +64,7 @@ export default function SmReturns() {
   const lostTransfers = section === 'lost' ? ((data as { transfers?: { id: number | string; transfer_number?: string | null; stock_type_label: string; to_branch_name: string }[] })?.transfers ?? []) : [];
 
   return (
-    <AdminPage title="Returns & Lost" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Returns & Lost" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       <ChipRow>
         <Chip label="Returned items" active={section === 'returns'} onPress={() => setSection('returns')} />
         <Chip label="Declare lost item" active={section === 'lost'} onPress={() => setSection('lost')} />

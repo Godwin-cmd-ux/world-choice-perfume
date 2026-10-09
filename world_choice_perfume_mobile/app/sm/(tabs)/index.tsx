@@ -6,6 +6,7 @@ import { DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../..
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchSmDashboard, type SmDashboardPayload } from '../../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
+import { SmMenuButton } from '../../../components/smsidebar';
 
 /**
  * Stock Manager dashboard — the mobile twin of stock-manager/dashboard.blade.php:
@@ -43,6 +44,7 @@ export default function SmDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={SM_ACCENT.main} />}
       >
         <View>
+          <SmMenuButton />
           <Text style={[styles.eyebrow, { color: SM_ACCENT.main }]}>World Choice Perfumes</Text>
           <Text style={styles.h1}>Stock Manager</Text>
           <Text style={styles.branch}>

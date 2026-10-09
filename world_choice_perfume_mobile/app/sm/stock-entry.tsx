@@ -11,6 +11,7 @@ import {
   type SmProductStockEntryForm,
 } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 const CATEGORIES = ['Brand Perfume', 'Oil Fragrance'] as const;
 const DETAIL_VOLUMES = [30, 50, 100];
@@ -87,7 +88,7 @@ export default function SmStockEntry() {
   };
 
   return (
-    <AdminPage title="Stock In" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Stock In" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error ? <Banner kind="error" message={error} /> : null}
       {!loadError && formLoading ? <Text style={styles.loading}>Loading form…</Text> : null}
       {loadError ? <Banner kind="error" message={loadError} /> : null}

@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { SmSidebar } from '../../components/smsidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -29,6 +31,10 @@ export default function SmLayout() {
   useStockManagerGuard();
 
   return (
+    // The sidebar is the module's navigation (it mirrors the website's
+    // stock-manager sidebar), so it lives above the whole stack and every
+    // screen can open it — the AdminPage menu button or SmMenuButton.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -57,5 +63,7 @@ export default function SmLayout() {
       <Stack.Screen name="cross-branch" />
       <Stack.Screen name="profile" />
     </Stack>
+      <SmSidebar />
+    </View>
   );
 }

@@ -15,6 +15,7 @@ import {
   type SmAccessoryType,
 } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 type Mode = 'list' | 'in' | 'out';
 
@@ -68,7 +69,7 @@ export default function SmAccessories() {
   return (
     <AdminPage
       title="Bottle Accessories"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
       refreshing={refreshing}

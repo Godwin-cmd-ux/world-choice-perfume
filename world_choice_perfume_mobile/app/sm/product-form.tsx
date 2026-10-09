@@ -13,6 +13,7 @@ import {
   type SmProductFields,
 } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 type PickedImage = { uri: string; name: string; type: string };
 
@@ -109,7 +110,7 @@ export default function SmProductForm() {
   return (
     <AdminPage
       title={isEdit ? 'Edit product' : 'New product'}
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
     >

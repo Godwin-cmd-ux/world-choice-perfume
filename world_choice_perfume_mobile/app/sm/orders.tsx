@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, DataCard, useAsyncData, messageO
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchOrders, setOrderPersonalName, updateOrderStatus, type SmOrder } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 const TABS = ['pending', 'picked', 'served'] as const;
 
@@ -50,7 +51,7 @@ export default function SmOrders() {
   const counts = data?.counts ?? {};
 
   return (
-    <AdminPage title="Orders" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Orders" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       <ChipRow>
         {TABS.map((t) => (
           <Chip

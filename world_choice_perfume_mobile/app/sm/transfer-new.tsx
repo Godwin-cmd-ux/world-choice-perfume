@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, useAsyncData, messag
 import { GoldButton } from '../../components/ui';
 import { createTransfer, fetchSmScope, fetchTransferForm, type SmTransferItemInput, type SmTransferType } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * New transfer — mobile twin of stock-transfers/create. Target branches,
@@ -104,7 +105,7 @@ export default function SmTransferNew() {
   };
 
   return (
-    <AdminPage title="New Transfer" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Transfer" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error || submitError ? <Banner kind="error" message={submitError ?? error ?? ''} /> : null}
 
       <GroupLabel>Stock type</GroupLabel>

@@ -13,6 +13,7 @@ import {
   type SmBottleRecord,
 } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 type Mode = 'list' | 'in' | 'broken';
 
@@ -73,7 +74,7 @@ export default function SmBottleStock() {
   return (
     <AdminPage
       title="Bottle Stock"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
       refreshing={refreshing}

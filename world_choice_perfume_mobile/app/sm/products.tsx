@@ -6,6 +6,7 @@ import { AdminPage, Chip, ChipRow, ConfirmDialog, DataCard, SearchInput, useAsyn
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { deleteProduct, fetchProducts, type SmCatalogueProduct } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Product catalogue management — the mobile twin of the website's
@@ -37,7 +38,7 @@ export default function SmProducts() {
   return (
     <AdminPage
       title="Products"
-      eyebrow="Stock Manager"
+      eyebrow="Stock Manager" onMenu={smMenu.open}
       action={
         <Pressable
           onPress={() => router.push('/sm/product-form')}

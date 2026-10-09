@@ -7,6 +7,7 @@ import { Chip, ChipRow, DataCard, GroupLabel, useAsyncData } from '../../../comp
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchReturns, fetchTransfers, type SmReturnRow, type SmTransfer } from '../../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
+import { SmMenuButton } from '../../../components/smsidebar';
 
 /**
  * Transfers tab — outgoing transfers, with quick segments into Incoming,
@@ -48,6 +49,7 @@ export default function SmTransfers() {
   return (
     <View style={styles.root}>
       <View style={styles.head}>
+        <SmMenuButton />
         <Text style={[styles.eyebrow, { color: SM_ACCENT.main }]}>World Choice Perfumes</Text>
         <Text style={styles.h1}>Stock Transfers</Text>
         <ChipRow>

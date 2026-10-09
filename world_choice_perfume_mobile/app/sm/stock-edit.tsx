@@ -5,6 +5,7 @@ import { AdminPage, BusyOverlay, GroupLabel, messageOf } from '../../components/
 import { GoldButton } from '../../components/ui';
 import { updateProductStock, updateStockVariety } from '../../lib/smApi';
 import { SM_ACCENT } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Edit one stock line — either a product's aggregate branch_stock row or a
@@ -57,6 +58,7 @@ export default function SmStockEdit() {
     <AdminPage
       title={isVariety ? 'Edit variety' : 'Edit stock'}
       eyebrow={params.label ?? 'Stock Manager'}
+      onMenu={smMenu.open}
       accent={SM_ACCENT.main}
       onBack={() => router.back()}
     >

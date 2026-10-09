@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, DataCard, GroupLabel, KV, useAsyncData, message
 import { ErrorView, LoadingView } from '../../components/ui';
 import { fetchTransfer, receiveTransferItem, rejectTransferItem } from '../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { smMenu } from '../../components/smsidebar';
 
 /**
  * Transfer detail — the mobile twin of stock-transfers/show, with the two
@@ -37,7 +38,7 @@ export default function SmTransferDetail() {
   };
 
   return (
-    <AdminPage title="Transfer" eyebrow="Stock Manager" accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Transfer" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error || actionError ? <Banner kind="error" message={actionError ?? error ?? ''} /> : null}
 
       {loading ? (
