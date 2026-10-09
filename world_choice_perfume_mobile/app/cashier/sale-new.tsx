@@ -7,6 +7,7 @@ import { EmptyView, GoldButton, LoadingView, ErrorView } from '../../components/
 import { createCashierSale, fetchCashierSaleOptions, type CashierEmptyBottleLine, type CashierSaleItemInput } from '../../lib/cashierApi';
 import { formatMoney } from '../../lib/format';
 import { CASHIER_ACCENT, COLORS, RADIUS } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 interface Line {
   key: string;
@@ -177,7 +178,7 @@ export default function CashierSaleNew() {
     (paymentMode === 'single' || Math.abs(paymentSum - total) <= 0.01);
 
   return (
-    <AdminPage title="New Sale" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Sale" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()} onMenu={cashierMenu.open}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
       {loading && !data ? <LoadingView label="Loading stock…" /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}

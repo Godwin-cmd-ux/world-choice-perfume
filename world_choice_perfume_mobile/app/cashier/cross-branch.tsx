@@ -8,6 +8,7 @@ import { cashierMonitor } from '../../lib/cashierMonitor';
 import { formatMoney } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { CASHIER_ACCENT } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /**
  * Cross-Branch Monitoring — the website's cashier/cross-branch page for the
@@ -38,6 +39,7 @@ export default function CashierCrossBranch() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title="Cross-Branch"
       eyebrow="Head Quarters"
       accent={CASHIER_ACCENT.main}

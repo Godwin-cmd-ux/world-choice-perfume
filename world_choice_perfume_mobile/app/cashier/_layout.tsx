@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { CashierSidebar } from '../../components/cashiersidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -31,6 +33,10 @@ export default function CashierLayout() {
   useCashierGuard();
 
   return (
+    // The sidebar is the module's navigation (it mirrors the website's
+    // cashier sidebar), so it lives above the whole stack and every screen
+    // can open it through the AdminPage menu button.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -47,5 +53,7 @@ export default function CashierLayout() {
       <Stack.Screen name="cross-branch" />
       <Stack.Screen name="daily-overview" />
     </Stack>
+      <CashierSidebar />
+    </View>
   );
 }

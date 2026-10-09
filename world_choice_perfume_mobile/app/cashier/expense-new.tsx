@@ -5,6 +5,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel } from '../../compone
 import { GoldButton } from '../../components/ui';
 import { createCashierExpense } from '../../lib/cashierApi';
 import { CASHIER_ACCENT } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /** The six categories the website's store rule accepts — hardcoded there too. */
 const CATEGORIES = ['electricity', 'water', 'transport', 'cleaning', 'packaging', 'other'];
@@ -48,7 +49,7 @@ export default function CashierExpenseNew() {
   const canSubmit = Boolean(category) && amountValue >= 0.01 && description.trim().length >= 10;
 
   return (
-    <AdminPage title="Record Expense" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Record Expense" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()} onMenu={cashierMenu.open}>
       {err ? <Banner kind="error" message={err} /> : null}
 
       <GroupLabel>Category</GroupLabel>

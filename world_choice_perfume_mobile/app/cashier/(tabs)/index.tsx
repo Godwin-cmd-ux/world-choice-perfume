@@ -10,6 +10,7 @@ import { fetchCashierDashboard } from '../../../lib/cashierApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { CASHIER_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
+import { cashierMenu } from '../../../components/cashiersidebar';
 
 /**
  * Dashboard — the website's cashier.dashboard: today's money and
@@ -47,6 +48,7 @@ export default function CashierDashboard() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title="Cashier"
       eyebrow={scope?.branch_name ?? 'Cashier'}
       accent={CASHIER_ACCENT.main}

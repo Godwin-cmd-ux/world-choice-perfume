@@ -7,6 +7,7 @@ import { cashierMonitor } from '../../../lib/cashierMonitor';
 import { fetchCashierScope } from '../../../lib/cashierApi';
 import { staffSession } from '../../../lib/staffSession';
 import { CASHIER_ACCENT } from '../../../lib/theme';
+import { cashierMenu } from '../../../components/cashiersidebar';
 
 /**
  * More — the hub the bottom bar cannot hold. The website sidebar runs to
@@ -30,7 +31,7 @@ export default function CashierMore() {
   }
 
   return (
-    <AdminPage title="More" eyebrow={scope?.branch_name ?? 'Cashier'} accent={CASHIER_ACCENT.main}>
+    <AdminPage title="More" eyebrow={scope?.branch_name ?? 'Cashier'} accent={CASHIER_ACCENT.main} onMenu={cashierMenu.open}>
       {error ? <Banner kind="error" message={error} actionLabel="Retry" onAction={reload} /> : null}
       {loading && !scope ? <LoadingView label="Loading…" /> : null}
       {error && !scope ? <ErrorView message={error} onRetry={reload} /> : null}

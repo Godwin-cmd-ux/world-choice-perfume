@@ -8,6 +8,7 @@ import { fetchCashierSale } from '../../lib/cashierApi';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { CASHIER_ACCENT } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /**
  * Sale receipt — the website's cashier/sales/{id}: line items with their
@@ -39,6 +40,7 @@ export default function CashierSaleDetail() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title={sale?.sale_number ? String(sale.sale_number) : 'Sale'}
       eyebrow="Receipt"
       accent={CASHIER_ACCENT.main}

@@ -6,6 +6,7 @@ import { GoldButton } from '../../components/ui';
 import { changeCashierPassword, fetchCashierProfile, updateCashierProfile } from '../../lib/cashierApi';
 import { staffSession } from '../../lib/staffSession';
 import { CASHIER_ACCENT } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /**
  * Account — the website's shared ProfileController screens (the same
@@ -81,7 +82,7 @@ export default function CashierProfile() {
   };
 
   return (
-    <AdminPage title="Account" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Account" eyebrow="Cashier" accent={CASHIER_ACCENT.main} onBack={() => router.back()} onMenu={cashierMenu.open}>
       {ok ? <Banner kind="success" message={ok} /> : null}
       {err ? <Banner kind="error" message={err} /> : null}
 

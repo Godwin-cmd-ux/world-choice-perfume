@@ -9,6 +9,7 @@ import { fetchCashierSales } from '../../../lib/cashierApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { CASHIER_ACCENT } from '../../../lib/theme';
+import { cashierMenu } from '../../../components/cashiersidebar';
 
 /**
  * Sales — the website's cashier/sales index: the member's OWN sales (the
@@ -44,6 +45,7 @@ export default function CashierSales() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title="Sales"
       eyebrow={data?.scope?.branch_name ?? 'Cashier'}
       accent={CASHIER_ACCENT.main}

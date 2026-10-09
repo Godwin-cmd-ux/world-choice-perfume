@@ -15,6 +15,7 @@ import {
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { CASHIER_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
+import { cashierMenu } from '../../../components/cashiersidebar';
 
 const TABS = [
   { key: 'pending', label: 'Pending' },
@@ -108,6 +109,7 @@ export default function CashierOrders() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title="Order Queue"
       eyebrow={data?.scope?.branch_name ?? 'Cashier'}
       accent={CASHIER_ACCENT.main}

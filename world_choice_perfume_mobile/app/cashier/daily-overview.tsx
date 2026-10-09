@@ -7,6 +7,7 @@ import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchCashierDailyOverview } from '../../lib/cashierApi';
 import { staffSession } from '../../lib/staffSession';
 import { CASHIER_ACCENT, COLORS, RADIUS } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /**
  * Daily Sales — All Branches: the website's cashier daily-sales-overview
@@ -28,7 +29,7 @@ export default function CashierDailyOverview() {
   const rows = data?.rows ?? [];
 
   return (
-    <AdminPage title="Daily Sales" eyebrow="All branches" accent={CASHIER_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Daily Sales" eyebrow="All branches" accent={CASHIER_ACCENT.main} onBack={() => router.back()} onMenu={cashierMenu.open}>
       {forbidden ? (
         <Banner
           kind="error"

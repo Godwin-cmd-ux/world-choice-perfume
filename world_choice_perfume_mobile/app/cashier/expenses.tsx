@@ -9,6 +9,7 @@ import { fetchCashierExpenses } from '../../lib/cashierApi';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { CASHIER_ACCENT, COLORS } from '../../lib/theme';
+import { cashierMenu } from '../../components/cashiersidebar';
 
 /**
  * Expenses — the website's cashier/expenses index: the active branch's
@@ -46,6 +47,7 @@ export default function CashierExpenses() {
 
   return (
     <AdminPage
+      onMenu={cashierMenu.open}
       title="Expenses"
       eyebrow={data?.scope?.branch_name ?? 'Cashier'}
       accent={CASHIER_ACCENT.main}
