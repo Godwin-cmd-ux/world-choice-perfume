@@ -8,7 +8,7 @@ import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchSales } from '../../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
-import { CC_ACCENT } from '../../../lib/theme';
+import { CC_ACCENT, COLORS } from '../../../lib/theme';
 
 /**
  * Sales — the website's customer-care/sales index: the branch's latest 50
@@ -157,5 +157,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  newBtnText: { color: '#7DD3FC', fontWeight: '800', fontSize: 12 },
+  newBtnText: { color: COLORS.info, fontWeight: '800', fontSize: 12 },
 });

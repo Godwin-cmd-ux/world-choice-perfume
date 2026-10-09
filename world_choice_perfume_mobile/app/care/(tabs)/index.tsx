@@ -98,7 +98,7 @@ export default function CareDashboard() {
               accessibilityRole="button"
             >
               <View style={styles.pendingIcon}>
-                <Ionicons name="time-outline" size={20} color="#FDE68A" />
+                <Ionicons name="time-outline" size={20} color={COLORS.warning} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.pendingTitle}>Pending Orders</Text>
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   pendingTitle: { color: COLORS.text, fontWeight: '800', fontSize: 14 },
   pendingBody: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  pendingCount: { color: '#FDE68A', fontWeight: '800', fontSize: 18 },
+  pendingCount: { color: COLORS.warning, fontWeight: '800', fontSize: 18 },
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
   quick: {
     width: '48%',

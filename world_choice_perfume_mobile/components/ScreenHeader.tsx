@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../lib/theme';
+import { ThemeToggle } from './ThemeToggle';
 
 /**
  * Standard header for every dedicated page: a back button (normal stack
@@ -43,6 +44,7 @@ export function ScreenHeader({
         ) : null}
       </View>
       {right}
+      <ThemeToggle />
     </View>
   );
 }

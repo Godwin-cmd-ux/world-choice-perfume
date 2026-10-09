@@ -34,15 +34,15 @@ interface StatusBadge {
 function statusBadge(status?: string): StatusBadge {
   switch ((status ?? '').toLowerCase()) {
     case 'pending':
-      return { label: 'Pending', fg: '#FDE68A', bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.30)' };
+      return { label: 'Pending', fg: COLORS.warning, bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.30)' };
     case 'picked':
-      return { label: 'Picked', fg: '#93C5FD', bg: 'rgba(96, 165, 250, 0.15)', border: 'rgba(96, 165, 250, 0.30)' };
+      return { label: 'Picked', fg: COLORS.info, bg: 'rgba(96, 165, 250, 0.15)', border: 'rgba(96, 165, 250, 0.30)' };
     case 'served':
-      return { label: 'Served', fg: '#6EE7B7', bg: 'rgba(52, 211, 153, 0.15)', border: 'rgba(52, 211, 153, 0.30)' };
+      return { label: 'Served', fg: COLORS.success, bg: 'rgba(52, 211, 153, 0.15)', border: 'rgba(52, 211, 153, 0.30)' };
     default: {
       const raw = (status ?? '').trim();
       const label = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Status unknown';
-      return { label, fg: '#D1D5DB', bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.30)' };
+      return { label, fg: COLORS.textSecondary, bg: 'rgba(156, 163, 175, 0.15)', border: 'rgba(156, 163, 175, 0.30)' };
     }
   }
 }

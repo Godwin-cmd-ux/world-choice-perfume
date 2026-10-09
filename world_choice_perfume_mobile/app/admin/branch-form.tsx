@@ -230,7 +230,7 @@ export default function BranchForm() {
             value={active}
             onValueChange={setActive}
             trackColor={{ true: COLORS.goldDark, false: COLORS.surfaceHigh }}
-            thumbColor={active ? COLORS.gold : '#9CA3AF'}
+            thumbColor={active ? COLORS.goldFill : '#9CA3AF'}
           />
         </View>
       ) : null}
@@ -271,7 +271,7 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  fieldLabel: { color: '#D1D5DB', fontSize: 13.5, fontWeight: '600' },
+  fieldLabel: { color: COLORS.textSecondary, fontSize: 13.5, fontWeight: '600' },
   fieldError: { color: COLORS.danger, fontSize: 12 },
   input: {
     backgroundColor: COLORS.surfaceHigh,

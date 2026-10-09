@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   label: {
-    color: '#D1D5DB',
+    color: COLORS.textSecondary,
     fontSize: 13.5,
     fontWeight: '600',
   },

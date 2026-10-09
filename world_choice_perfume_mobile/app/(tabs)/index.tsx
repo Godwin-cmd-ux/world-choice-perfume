@@ -17,9 +17,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactForm } from '../../components/contactform';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { ErrorView, GoldButton, LoadingView, OutlineButton, SectionHeading } from '../../components/ui';
 import { errorMessage, fetchHome, type Branch, type HomePayload } from '../../lib/api';
 import { COLORS, RADIUS } from '../../lib/theme';
@@ -51,6 +62,7 @@ export default function HomeScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   const storyY = useRef(0);
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') setRefreshing(true);
@@ -111,12 +123,13 @@ export default function HomeScreen() {
         </Text>
         <Text style={styles.brandTagline}>BE SMART, NUKIA KIJANJA</Text>
       </View>
+      <ThemeToggle />
     </View>
   );
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         {brandBar}
         <LoadingView label="Loading the homepage…" />
       </SafeAreaView>
@@ -125,7 +138,7 @@ export default function HomeScreen() {
 
   if (status === 'error' || !data) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         {brandBar}
         <ErrorView message={error} onRetry={() => load()} />
       </SafeAreaView>
@@ -139,6 +152,14 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {brandBar}
+      {/* Lift the contact form at the end of the page above the iOS keyboard
+          (Android resizes the window itself); the offset is the distance from
+          the screen top to here — safe-area inset + brand bar. */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.top + 69}
+      >
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
@@ -501,6 +522,7 @@ export default function HomeScreen() {
           © {new Date().getFullYear()} World Choice Perfume · worldchoiceperfume.com
         </Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -510,6 +532,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+  flex: { flex: 1 },
   content: {
     paddingHorizontal: 20,
     paddingBottom: 40,

@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { CartProvider } from '../lib/cart';
-import { COLORS } from '../lib/theme';
+import { COLORS, hydrateTheme, useTheme } from '../lib/theme';
 
 // World Choice Perfume — root layout.
 // Minimal shell: a single stack with the header hidden. The native splash
@@ -11,9 +12,19 @@ import { COLORS } from '../lib/theme';
 // as buttons. Add screens under `app/` and expo-router picks them up
 // automatically.
 export default function RootLayout() {
+  // Subscribing here means a theme toggle re-renders this root and, with it,
+  // the whole tree — inline COLORS.x reads pick up the new palette while
+  // registered StyleSheet entries have already been swapped by theme.ts.
+  const { isDark } = useTheme();
+
+  // Restore the saved mode (light is the default until the user toggles).
+  useEffect(() => {
+    hydrateTheme();
+  }, []);
+
   return (
     <CartProvider>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,

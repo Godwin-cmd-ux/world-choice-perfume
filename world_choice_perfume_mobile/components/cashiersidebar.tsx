@@ -29,7 +29,7 @@ import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react
 import { fetchCashierScope, type CashierScope } from '../lib/cashierApi';
 import { cashierMonitor } from '../lib/cashierMonitor';
 import { staffSession } from '../lib/staffSession';
-import { CASHIER_ACCENT, COLORS, RADIUS } from '../lib/theme';
+import { CASHIER_ACCENT, RADIUS } from '../lib/theme';
 import { useAsyncData } from './adminkit';
 
 /* ------------------------------------------------------------------ *
@@ -236,7 +236,7 @@ export function CashierSidebar() {
                   accessibilityRole="button"
                   accessibilityLabel="Logout"
                 >
-                  <Ionicons name="exit-outline" size={17} color={COLORS.danger} />
+                  <Ionicons name="exit-outline" size={17} color={'#EF4444'} />
                   <Text style={[styles.itemLabel, styles.logoutLabel]}>Logout</Text>
                 </Pressable>
               )}
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(217, 119, 6, 0.30)',
   },
   monitorLabel: {
-    color: '#FCD34D',
+    color: '#FBBF24',
     fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 1.6,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   logout: { backgroundColor: 'rgba(248, 113, 113, 0.08)', borderColor: 'rgba(248, 113, 113, 0.28)' },
-  logoutLabel: { color: COLORS.danger },
+  logoutLabel: { color: '#EF4444' },
   confirmBox: {
     backgroundColor: 'rgba(248, 113, 113, 0.08)',
     borderWidth: 1,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   },
   confirmCancel: { color: '#CBD5E1', fontSize: 12, fontWeight: '700' },
   confirmGo: { backgroundColor: 'rgba(248, 113, 113, 0.18)', borderColor: 'rgba(248, 113, 113, 0.50)' },
-  confirmGoText: { color: COLORS.danger, fontSize: 12, fontWeight: '800' },
+  confirmGoText: { color: '#EF4444', fontSize: 12, fontWeight: '800' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
 
   label: {
     alignSelf: 'flex-start',
-    color: '#D1D5DB',
+    color: COLORS.textSecondary,
     fontSize: 13.5,
     fontWeight: '600',
     marginTop: 6,

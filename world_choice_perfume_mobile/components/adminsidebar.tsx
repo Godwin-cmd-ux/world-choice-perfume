@@ -69,7 +69,7 @@ export function AdminMenuButton() {
       accessibilityRole="button"
       accessibilityLabel="Open navigation menu"
     >
-      <Ionicons name="menu-outline" size={22} color={COLORS.gold} />
+      <Ionicons name="menu-outline" size={22} color={COLORS.goldFill} />
     </Pressable>
   );
 }
@@ -127,7 +127,7 @@ export function AdminSidebar() {
         onPress={() => go(item.href)}
         style={({ pressed }) => [
           styles.item,
-          active && { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
+          active && { backgroundColor: COLORS.goldFill, borderColor: COLORS.goldFill },
           pressed && !active && styles.itemPressed,
         ]}
         accessibilityRole="button"
@@ -212,7 +212,7 @@ export function AdminSidebar() {
                   accessibilityRole="button"
                   accessibilityLabel="Logout"
                 >
-                  <Ionicons name="exit-outline" size={17} color={COLORS.danger} />
+                  <Ionicons name="exit-outline" size={17} color={'#EF4444'} />
                   <Text style={[styles.itemLabel, styles.logoutLabel]}>Logout</Text>
                 </Pressable>
               )}
@@ -273,12 +273,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#0F172A',
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: COLORS.goldFill,
   },
   brandText: { flex: 1 },
   brandTitle: { color: '#F1F5F9', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6 },
   brandSub: {
-    color: COLORS.gold,
+    color: COLORS.goldFill,
     fontSize: 9.5,
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   logout: { backgroundColor: 'rgba(248, 113, 113, 0.08)', borderColor: 'rgba(248, 113, 113, 0.28)' },
-  logoutLabel: { color: COLORS.danger },
+  logoutLabel: { color: '#EF4444' },
   confirmBox: {
     backgroundColor: 'rgba(248, 113, 113, 0.08)',
     borderWidth: 1,
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   confirmCancel: { color: '#CBD5E1', fontSize: 12, fontWeight: '700' },
   confirmGo: { backgroundColor: 'rgba(248, 113, 113, 0.18)', borderColor: 'rgba(248, 113, 113, 0.50)' },
-  confirmGoText: { color: COLORS.danger, fontSize: 12, fontWeight: '800' },
+  confirmGoText: { color: '#EF4444', fontSize: 12, fontWeight: '800' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.gold,
+    backgroundColor: COLORS.goldFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   footerText: { flex: 1 },
   footerName: { color: '#F1F5F9', fontSize: 13.5, fontWeight: '600' },
   footerRole: {
-    color: COLORS.gold,
+    color: COLORS.goldFill,
     fontSize: 9.5,
     letterSpacing: 1.6,
     textTransform: 'uppercase',

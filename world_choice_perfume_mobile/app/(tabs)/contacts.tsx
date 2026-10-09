@@ -1,7 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../components/authkit';
 import { ContactForm } from '../../components/contactform';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -27,6 +36,7 @@ export default function ContactsScreen() {
   const [status, setStatus] = useState<Status>('loading');
   const [contact, setContact] = useState<Contact | null>(null);
   const [infoError, setInfoError] = useState('');
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -86,7 +96,14 @@ export default function ContactsScreen() {
       {status === 'loading' ? (
         <LoadingView label="Loading contact details…" />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        // Lift the form above the keyboard on iOS (Android resizes the
+        // window itself) so the Send Message button stays reachable.
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={insets.top + 60}
+        >
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <SectionHeading eyebrow="We're Here to Help" title="Contact" accent="Us" />
           <Text style={styles.intro}>{INTRO}</Text>
 
@@ -113,7 +130,8 @@ export default function ContactsScreen() {
           ) : null}
 
           <ContactForm />
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );
@@ -124,6 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+  flex: { flex: 1 },
   content: {
     paddingHorizontal: 18,
     paddingBottom: 28,

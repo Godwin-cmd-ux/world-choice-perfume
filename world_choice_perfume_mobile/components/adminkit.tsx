@@ -51,7 +51,7 @@ export function AdminPage({
   onRefresh?: () => void;
   children: ReactNode;
 }) {
-  const accentColor = accent ?? 'rgba(255, 193, 7, 0.65)';
+  const accentColor = accent ?? COLORS.goldDark;
   return (
     <View style={styles.page}>
       <View style={styles.topBar}>
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   },
   titleWrap: { flex: 1 },
   eyebrow: {
-    color: 'rgba(255, 193, 7, 0.65)',
+    color: COLORS.goldDark,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2.5,

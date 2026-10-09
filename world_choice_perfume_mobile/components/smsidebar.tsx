@@ -31,7 +31,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fetchSmScope, type SmScope } from '../lib/smApi';
 import { staffSession } from '../lib/staffSession';
-import { SM_ACCENT, COLORS, RADIUS } from '../lib/theme';
+import { SM_ACCENT, RADIUS } from '../lib/theme';
 import { useAsyncData } from './adminkit';
 
 /* ------------------------------------------------------------------ *
@@ -262,7 +262,7 @@ export function SmSidebar() {
                   accessibilityRole="button"
                   accessibilityLabel="Logout"
                 >
-                  <Ionicons name="exit-outline" size={17} color={COLORS.danger} />
+                  <Ionicons name="exit-outline" size={17} color={'#EF4444'} />
                   <Text style={[styles.itemLabel, styles.logoutLabel]}>Logout</Text>
                 </Pressable>
               )}
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   logout: { backgroundColor: 'rgba(248, 113, 113, 0.08)', borderColor: 'rgba(248, 113, 113, 0.28)' },
-  logoutLabel: { color: COLORS.danger },
+  logoutLabel: { color: '#EF4444' },
   confirmBox: {
     backgroundColor: 'rgba(248, 113, 113, 0.08)',
     borderWidth: 1,
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   confirmCancel: { color: '#CBD5E1', fontSize: 12, fontWeight: '700' },
   confirmGo: { backgroundColor: 'rgba(248, 113, 113, 0.18)', borderColor: 'rgba(248, 113, 113, 0.50)' },
-  confirmGoText: { color: COLORS.danger, fontSize: 12, fontWeight: '800' },
+  confirmGoText: { color: '#EF4444', fontSize: 12, fontWeight: '800' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { COLORS } from '../../lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, useTheme } from '../../lib/theme';
 
 /**
  * Public (signed-out) navigation for the World Choice Perfume app.
@@ -15,18 +16,32 @@ import { COLORS } from '../../lib/theme';
  * (/shop, /track, /contacts, /news, /staff-access).
  */
 export default function PublicTabsLayout() {
+  // The bar sits flush with the bottom edge, so its labels have to clear the
+  // home indicator (iOS) and the gesture/navigation bar (Android edge-to-edge)
+  // or they render behind the system UI and the taps land on the system bar.
+  // tabBarStyle is merged last, which also replaces the library's own
+  // `paddingBottom: insets.bottom` — the inset has to be added back here.
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
+  // Subscribe so screenOptions (inline colours like the bar background)
+  // re-evaluate the moment the user toggles the theme.
+  useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Keep the bar from hovering squeezed above the keyboard while a
+        // form field is focused — hide it instead.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
           backgroundColor: COLORS.bgRaised,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
+          height: 54 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },

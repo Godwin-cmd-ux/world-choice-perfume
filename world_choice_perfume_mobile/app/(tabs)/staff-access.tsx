@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -80,12 +81,19 @@ export default function StaffAccessScreen() {
   const loading = phase === 'loading';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
+        {/* A ScrollView (instead of a fixed centered View) keeps the whole
+            panel reachable when the keyboard covers the lower half of a small
+            screen — content scrolls instead of being clipped at the top. */}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.iconCircle}>
             <Ionicons name="lock-closed" size={26} color={COLORS.gold} />
           </View>
@@ -157,7 +165,7 @@ export default function StaffAccessScreen() {
             <Ionicons name="arrow-back" size={15} color={COLORS.textSecondary} />
             <Text style={styles.cancelText}>Back to Home</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   content: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,

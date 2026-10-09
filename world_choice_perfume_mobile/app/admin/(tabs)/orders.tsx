@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40, gap: 12 },
   guard: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: COLORS.bg },
   eyebrow: {
-    color: 'rgba(255, 193, 7, 0.65)',
+    color: COLORS.goldDark,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 3,
