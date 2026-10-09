@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../../components/authkit';
+import { baMenu } from '../../../components/basidebar';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchBaDashboard } from '../../../lib/baApi';
@@ -41,6 +42,7 @@ export default function BaDashboard() {
       title="Branch Admin"
       eyebrow={scope?.branch_name ?? 'Branch Admin'}
       accent={BA_ACCENT.main}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

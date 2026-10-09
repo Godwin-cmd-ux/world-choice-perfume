@@ -1,5 +1,7 @@
 import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
+import { View } from 'react-native';
+import { BaSidebar } from '../../components/basidebar';
 import { COLORS } from '../../lib/theme';
 import { staffSession } from '../../lib/staffSession';
 
@@ -29,20 +31,26 @@ export default function BaLayout() {
   useBranchAdminGuard();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: COLORS.bg },
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-      <Stack.Screen name="sale-new" />
-      <Stack.Screen name="sale-detail" />
-      <Stack.Screen name="staff" />
-      <Stack.Screen name="staff-new" />
-      <Stack.Screen name="expenses" />
-      <Stack.Screen name="profile" />
-    </Stack>
+    // The sidebar is the module's navigation (it mirrors the website's
+    // branch-admin sidebar), so it lives above the whole stack and every
+    // screen can open it through the AdminPage menu button.
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: COLORS.bg },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="sale-new" />
+        <Stack.Screen name="sale-detail" />
+        <Stack.Screen name="staff" />
+        <Stack.Screen name="staff-new" />
+        <Stack.Screen name="expenses" />
+        <Stack.Screen name="profile" />
+      </Stack>
+      <BaSidebar />
+    </View>
   );
 }

@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { EmptyView, GoldButton, LoadingView, ErrorView } from '../../components/ui';
 import { createBaSale, fetchBaSaleOptions, type BaEmptyBottleLine, type BaSaleItemInput } from '../../lib/baApi';
@@ -177,7 +178,7 @@ export default function BaSaleNew() {
     (paymentMode === 'single' || Math.abs(paymentSum - total) <= 0.01);
 
   return (
-    <AdminPage title="New Sale" eyebrow="Branch Admin" accent={BA_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Sale" eyebrow="Branch Admin" accent={BA_ACCENT.main} onBack={() => router.back()} onMenu={baMenu.open}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
       {loading && !data ? <LoadingView label="Loading stock…" /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}

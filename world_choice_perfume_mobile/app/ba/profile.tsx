@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { AuthField, Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { GoldButton } from '../../components/ui';
 import { changeBaPassword, fetchBaProfile, updateBaProfile } from '../../lib/baApi';
@@ -81,7 +82,7 @@ export default function BaProfile() {
   };
 
   return (
-    <AdminPage title="Account" eyebrow="Branch Admin" accent={BA_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="Account" eyebrow="Branch Admin" accent={BA_ACCENT.main} onBack={() => router.back()} onMenu={baMenu.open}>
       {ok ? <Banner kind="success" message={ok} /> : null}
       {err ? <Banner kind="error" message={err} /> : null}
 

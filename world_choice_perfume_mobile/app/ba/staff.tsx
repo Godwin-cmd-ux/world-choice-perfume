@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, Chip, ChipRow, ConfirmDialog, DataCard, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { approveBaStaff, fetchBaStaff, rejectBaStaff, type BaStaffMember } from '../../lib/baApi';
@@ -79,6 +80,7 @@ export default function BaStaff() {
       eyebrow="Branch Admin"
       accent={BA_ACCENT.main}
       onBack={() => router.back()}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

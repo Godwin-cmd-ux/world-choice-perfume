@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Banner } from '../../../components/authkit';
+import { baMenu } from '../../../components/basidebar';
 import { AdminPage, BusyOverlay, Chip, ChipRow, DataCard, GroupLabel, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchBaSales } from '../../../lib/baApi';
@@ -39,6 +40,7 @@ export default function BaSales() {
       title="Sales"
       eyebrow="Branch Admin"
       accent={BA_ACCENT.main}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

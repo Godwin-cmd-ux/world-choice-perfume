@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AdminPage, BusyOverlay, ConfirmDialog, DataCard, GroupLabel, useAsyncData } from '../../../components/adminkit';
+import { baMenu } from '../../../components/basidebar';
 import { ErrorView, LoadingView } from '../../../components/ui';
 import { fetchBaScope } from '../../../lib/baApi';
 import { staffSession } from '../../../lib/staffSession';
@@ -38,6 +39,7 @@ export default function BaMore() {
       title="More"
       eyebrow={scope?.branch_name ?? 'Branch Admin'}
       accent={BA_ACCENT.main}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { AuthField, Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { createBaStaff, fetchBaStaffFormData, type BaStaffRole } from '../../lib/baApi';
@@ -60,7 +61,7 @@ export default function BaStaffNew() {
   const canSubmit = name.trim() && email.trim() && password.length >= 8 && confirm === password;
 
   return (
-    <AdminPage title="New Staff" eyebrow={data?.branchName ?? 'Branch Admin'} accent={BA_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage title="New Staff" eyebrow={data?.branchName ?? 'Branch Admin'} accent={BA_ACCENT.main} onBack={() => router.back()} onMenu={baMenu.open}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
       {loading && !data ? <LoadingView label="Loading form…" /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}

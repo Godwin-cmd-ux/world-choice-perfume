@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, KV, useAsyncData } from '../../components/adminkit';
 import { ErrorView, LoadingView } from '../../components/ui';
 import { fetchBaSale } from '../../lib/baApi';
@@ -43,6 +44,7 @@ export default function BaSaleDetail() {
       eyebrow="Receipt"
       accent={BA_ACCENT.main}
       onBack={() => router.back()}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

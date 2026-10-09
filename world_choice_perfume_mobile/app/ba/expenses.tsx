@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { AuthField, Banner } from '../../components/authkit';
+import { baMenu } from '../../components/basidebar';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { EmptyView, ErrorView, GoldButton, LoadingView } from '../../components/ui';
 import { fetchBaExpenses } from '../../lib/baApi';
@@ -46,6 +47,7 @@ export default function BaExpenses() {
       eyebrow="Branch Admin · view only"
       accent={BA_ACCENT.main}
       onBack={() => router.back()}
+      onMenu={baMenu.open}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
