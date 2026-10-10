@@ -30,6 +30,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactForm } from '../../components/contactform';
+import { SwipeHoldScrollView } from '../../components/swipetabs';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { ErrorView, GoldButton, LoadingView, OutlineButton, SectionHeading } from '../../components/ui';
 import { errorMessage, fetchHome, type Branch, type HomePayload } from '../../lib/api';
@@ -263,7 +264,9 @@ export default function HomeScreen() {
         <View style={[styles.section, styles.sectionRaised]}>
           <SectionHeading eyebrow="World-Class Houses" title="Featured" accent="Brands" />
           {data.featured_brands.length > 0 ? (
-            <ScrollView
+            /* SwipeHoldScrollView, not ScrollView: a sideways drag on this row
+               scrolls the row — it does not move the tab bar. */
+            <SwipeHoldScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.brandRow}
@@ -290,7 +293,7 @@ export default function HomeScreen() {
                   </Text>
                 </Pressable>
               ))}
-            </ScrollView>
+            </SwipeHoldScrollView>
           ) : (
             <View style={styles.brandEmpty}>
               <Ionicons name="diamond-outline" size={22} color={COLORS.textMuted} />

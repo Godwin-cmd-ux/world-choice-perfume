@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -47,7 +47,10 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
  * Where each role lands after signing in: its own module's dashboard in the
  * app. The website dashboard stays reachable from inside every module.
  */
-const MODULE_HREF: Record<string, string> = {
+// Href, not string: these are the app's own module routes, and typing them as
+// the open routes the router accepts is what lets the lookup above be passed
+// straight to router.replace() below.
+const MODULE_HREF: Record<string, Href> = {
   super_admin: '/admin',
   graphic_designer: '/gd',
   stock_manager: '/sm',

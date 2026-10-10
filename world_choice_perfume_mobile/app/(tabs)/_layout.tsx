@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SwipeTabScreen } from '../../components/swipetabs';
 import { COLORS, useTheme } from '../../lib/theme';
 
 /**
@@ -14,6 +15,12 @@ import { COLORS, useTheme } from '../../lib/theme';
  * splash. The tab bar keeps the brand's deep-black + gold treatment; the
  * group folder is transparent, so every screen keeps its old URL
  * (/shop, /track, /contacts, /news, /staff-access).
+ *
+ * Tapping the bar is not the only way across: `screenLayout` wraps every
+ * screen in the swipe layer (components/swipetabs.tsx), so a left/right swipe
+ * moves to the next/previous tab. `animation: 'shift'` makes the incoming tab
+ * slide in the direction of the swipe, so the screen follows the finger
+ * rather than appearing without it.
  */
 export default function PublicTabsLayout() {
   // The bar sits flush with the bottom edge, so its labels have to clear the
@@ -45,8 +52,17 @@ export default function PublicTabsLayout() {
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
+        // The swipe needs the tab to arrive the way the finger went, or the
+        // gesture reads as a jump cut.
+        animation: 'shift',
         sceneStyle: { backgroundColor: COLORS.bg },
       }}
+      // One swipe for every tab, applied by the navigator rather than screen by
+      // screen — 'shift' above makes the incoming tab slide the way the finger
+      // went. (Not inside screenOptions: screenLayout is a navigator prop.)
+      screenLayout={({ children, navigation }) => (
+        <SwipeTabScreen navigation={navigation}>{children}</SwipeTabScreen>
+      )}
     >
       <Tabs.Screen
         name="index"

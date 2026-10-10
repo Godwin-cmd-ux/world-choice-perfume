@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CartButton } from '../../components/CartButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { SwipeHoldScrollView } from '../../components/swipetabs';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { errorMessage, fetchProducts, type ProductsPayload, type StockItem } from '../../lib/api';
 import { formatMoney } from '../../lib/format';
@@ -44,7 +45,9 @@ function ChipRow({
   onChange: (next: string) => void;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+    /* SwipeHoldScrollView, not ScrollView: sliding the chips sideways must not
+       move the tab bar. */
+    <SwipeHoldScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -60,7 +63,7 @@ function ChipRow({
           </Pressable>
         );
       })}
-    </ScrollView>
+    </SwipeHoldScrollView>
   );
 }
 
