@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\SupabaseService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -64,6 +65,40 @@ class WebsiteThemeModeTest extends TestCase
         // the toggle, and the key it shares with the boot script
         $response->assertSee('data-theme-toggle', false);
         $response->assertSee("var KEY = 'wcp-theme'", false);
+    }
+
+    /**
+     * The public navigation renders the switch twice — desktop bar and mobile
+     * menu — but the script that wires it is emitted once, at the first of the
+     * two. A listener bound per button at that moment never reaches the phone's
+     * switch, which sits further down the document, so the phone's tap did
+     * nothing. The script therefore delegates from the document.
+     */
+    public function test_the_phone_switch_is_wired_by_the_same_script_as_the_desktop_one(): void
+    {
+        Http::fake(['*' => Http::response([], 200)]);
+
+        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
+        $cache->setAccessible(true);
+        $cache->setValue(null, []);
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        // desktop bar + the switch inside the collapsed mobile menu
+        $this->assertSame(
+            2,
+            substr_count($html, '<button type="button" data-theme-toggle'),
+            'the mobile menu lost its theme switch'
+        );
+
+        // and both are behind one delegated listener, so the one rendered after
+        // the script still responds
+        $this->assertSame(1, substr_count($html, "closest('[data-theme-toggle]')"));
+        $this->assertStringNotContainsString('buttons.forEach', $html, 'switches are bound one by one again');
     }
 
     public function test_every_button_is_the_brand_colour_in_both_modes(): void
