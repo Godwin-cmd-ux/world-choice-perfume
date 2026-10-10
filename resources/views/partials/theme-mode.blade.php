@@ -299,9 +299,9 @@
     html[data-theme="light"] .wcp-dark-skin.border-dark-700, html[data-theme="light"] .wcp-dark-skin .border-dark-700 { border-color: #E5E2DA; }
     html[data-theme="light"] .wcp-dark-skin.border-dark-800, html[data-theme="light"] .wcp-dark-skin .border-dark-800 { border-color: #EDEAE3; }
     html[data-theme="light"] .wcp-dark-skin.text-gold-300, html[data-theme="light"] .wcp-dark-skin .text-gold-300 { color: #6F5410; }
-    html[data-theme="light"] .wcp-dark-skin.text-gold-400, html[data-theme="light"] .wcp-dark-skin .text-gold-400 { color: #8A6A15; }
-    html[data-theme="light"] .wcp-dark-skin.text-gold-400\/50, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/50 { color: rgba(138, 106, 21, 0.7); }
-    html[data-theme="light"] .wcp-dark-skin.text-gold-400\/60, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/60 { color: rgba(138, 106, 21, 0.75); }
+    html[data-theme="light"] .wcp-dark-skin.text-gold-400, html[data-theme="light"] .wcp-dark-skin .text-gold-400 { color: #7A5E12; }
+    html[data-theme="light"] .wcp-dark-skin.text-gold-400\/50, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/50 { color: rgba(122, 94, 18, 0.7); }
+    html[data-theme="light"] .wcp-dark-skin.text-gold-400\/60, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/60 { color: rgba(122, 94, 18, 0.75); }
     html[data-theme="light"] .wcp-dark-skin.text-gold-400\/70, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/70 { color: rgba(122, 94, 18, 0.85); }
     html[data-theme="light"] .wcp-dark-skin.text-gold-400\/80, html[data-theme="light"] .wcp-dark-skin .text-gold-400\/80 { color: rgba(122, 94, 18, 0.9); }
     html[data-theme="light"] .wcp-dark-skin.text-gold-500\/20, html[data-theme="light"] .wcp-dark-skin .text-gold-500\/20 { color: rgba(124, 96, 18, 0.45); }
@@ -311,15 +311,15 @@
     html[data-theme="light"] .wcp-dark-skin.text-gray-200, html[data-theme="light"] .wcp-dark-skin .text-gray-200 { color: #2A2A2A; }
     html[data-theme="light"] .wcp-dark-skin.text-gray-300, html[data-theme="light"] .wcp-dark-skin .text-gray-300 { color: #3F3F46; }
     html[data-theme="light"] .wcp-dark-skin.text-gray-400, html[data-theme="light"] .wcp-dark-skin .text-gray-400 { color: #52525B; }
-    html[data-theme="light"] .wcp-dark-skin.text-gray-500, html[data-theme="light"] .wcp-dark-skin .text-gray-500 { color: #6B7280; }
+    html[data-theme="light"] .wcp-dark-skin.text-gray-500, html[data-theme="light"] .wcp-dark-skin .text-gray-500 { color: #5F6672; }
     html[data-theme="light"] .wcp-dark-skin.text-white, html[data-theme="light"] .wcp-dark-skin .text-white { color: #111111; }
-    html[data-theme="light"] .wcp-dark-skin.group:hover .group-hover\:text-gold-400, html[data-theme="light"] .wcp-dark-skin .group:hover .group-hover\:text-gold-400 { color: #8A6A15; }
+    html[data-theme="light"] .wcp-dark-skin.group:hover .group-hover\:text-gold-400, html[data-theme="light"] .wcp-dark-skin .group:hover .group-hover\:text-gold-400 { color: #7A5E12; }
     html[data-theme="light"] .wcp-dark-skin.hover\:bg-dark-700:hover, html[data-theme="light"] .wcp-dark-skin .hover\:bg-dark-700:hover { background-color: #E9E7E0; }
     html[data-theme="light"] .wcp-dark-skin.hover\:bg-dark-800:hover, html[data-theme="light"] .wcp-dark-skin .hover\:bg-dark-800:hover { background-color: #F2F1ED; }
     html[data-theme="light"] .wcp-dark-skin.hover\:bg-white\/20:hover, html[data-theme="light"] .wcp-dark-skin .hover\:bg-white\/20:hover { background-color: rgba(17, 17, 17, 0.1); }
     html[data-theme="light"] .wcp-dark-skin.hover\:bg-white\/5:hover, html[data-theme="light"] .wcp-dark-skin .hover\:bg-white\/5:hover { background-color: rgba(17, 17, 17, 0.04); }
     html[data-theme="light"] .wcp-dark-skin.hover\:text-gold-300:hover, html[data-theme="light"] .wcp-dark-skin .hover\:text-gold-300:hover { color: #6F5410; }
-    html[data-theme="light"] .wcp-dark-skin.hover\:text-gold-400:hover, html[data-theme="light"] .wcp-dark-skin .hover\:text-gold-400:hover { color: #8A6A15; }
+    html[data-theme="light"] .wcp-dark-skin.hover\:text-gold-400:hover, html[data-theme="light"] .wcp-dark-skin .hover\:text-gold-400:hover { color: #7A5E12; }
     html[data-theme="light"] .wcp-dark-skin.hover\:text-gray-300:hover, html[data-theme="light"] .wcp-dark-skin .hover\:text-gray-300:hover { color: #3F3F46; }
     html[data-theme="light"] .wcp-dark-skin.hover\:text-white:hover, html[data-theme="light"] .wcp-dark-skin .hover\:text-white:hover { color: #111111; }
 
@@ -331,8 +331,12 @@
         background: linear-gradient(135deg, #FFFFFF 0%, #F7F3E8 45%, #F0E3C2 100%);
         background-attachment: fixed;
     }
+    /* The light-mode gold is darker than the dark-mode one because it is read
+       on white: the old #C8A02A edge only reached 2.2:1 against the light band
+       under it, so the gold half of a heading like "Signature Scent" was the
+       last unreadable piece of the section once the band itself was fixed. */
     html[data-theme="light"] .wcp-dark-skin .gold-text, html[data-theme="light"] .wcp-dark-skin.gold-text {
-        background: linear-gradient(135deg, #A68523, #7C6012, #C8A02A);
+        background: linear-gradient(135deg, #8A6A15, #7C6012, #A68523);
         -webkit-background-clip: text;
         background-clip: text;
     }
@@ -341,5 +345,41 @@
     }
     html[data-theme="light"] .wcp-dark-skin .shimmer {
         background: linear-gradient(90deg, transparent, rgba(200, 160, 42, 0.14), transparent);
+    }
+
+    /*
+     * Bands built from dark gradient stops.
+     *
+     * A Tailwind gradient is painted with background-image, so the
+     * background-color rules above cannot reach it: the band kept its dark
+     * stops while the light-mode rules flipped the ink on top of it to
+     * #111111. That is why "Find Your Signature Scent" — a text-white heading
+     * and a text-gray-400 line inside a from-dark-900 band — was unreadable in
+     * light mode. Every band on the public pages that carries text is restated
+     * here in the light palette, the same way .hero-gradient and .page-gradient
+     * already are.
+     *
+     * The selectors match exact class tokens (~=) and name the whole gradient,
+     * so the gold gradient CTAs — which the brand-button rule at the top of
+     * this file owns with !important — and the tinted veils over photos are
+     * never caught by mistake. A veil that sits over a picture is composited
+     * against the picture, so it is set near-opaque: the dark ink lands on the
+     * veil, not on the photo showing through it.
+     */
+    html[data-theme="light"] .wcp-dark-skin[class~="from-dark-900"][class~="via-dark-800"][class~="to-dark-900"],
+    html[data-theme="light"] .wcp-dark-skin [class~="from-dark-900"][class~="via-dark-800"][class~="to-dark-900"] {
+        background-image: linear-gradient(to right, #FFFFFF 0%, #F2F1ED 50%, #FFFFFF 100%);
+    }
+    html[data-theme="light"] .wcp-dark-skin[class~="from-dark-800"][class~="to-dark-900"],
+    html[data-theme="light"] .wcp-dark-skin [class~="from-dark-800"][class~="to-dark-900"] {
+        background-image: linear-gradient(to bottom right, #F2F1ED 0%, #FFFFFF 100%);
+    }
+    html[data-theme="light"] .wcp-dark-skin[class~="from-dark-900"][class~="via-dark-900\/60"][class~="to-transparent"],
+    html[data-theme="light"] .wcp-dark-skin [class~="from-dark-900"][class~="via-dark-900\/60"][class~="to-transparent"] {
+        background-image: linear-gradient(to top, rgba(247, 247, 244, 0.97) 0%, rgba(247, 247, 244, 0.66) 50%, rgba(247, 247, 244, 0) 100%);
+    }
+    html[data-theme="light"] .wcp-dark-skin[class~="from-dark-950\/95"][class~="via-dark-950\/80"][class~="to-dark-950\/55"],
+    html[data-theme="light"] .wcp-dark-skin [class~="from-dark-950\/95"][class~="via-dark-950\/80"][class~="to-dark-950\/55"] {
+        background-image: linear-gradient(to right, rgba(247, 247, 244, 0.97) 0%, rgba(247, 247, 244, 0.90) 50%, rgba(247, 247, 244, 0.78) 100%);
     }
 </style>
