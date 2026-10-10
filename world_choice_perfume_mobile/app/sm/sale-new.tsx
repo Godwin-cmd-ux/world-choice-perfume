@@ -5,7 +5,7 @@ import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, StatGrid, StatTile, useAsyncData, messageOf } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { createSale, fetchSaleOptions, type SmSaleFields, type SmVarietyBuckets } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 interface Line {
@@ -353,11 +353,11 @@ const styles = StyleSheet.create({
   cartMeta: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
   remove: { color: COLORS.danger, fontSize: 12.5, fontWeight: '700' },
   submitBtn: {
-    backgroundColor: SM_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     paddingVertical: 15,
     marginTop: 6,
   },
-  submitText: { color: '#052E1B', fontSize: 15.5, fontWeight: '800' },
+  submitText: { color: BUTTON.text, fontSize: 15.5, fontWeight: '800' },
 });

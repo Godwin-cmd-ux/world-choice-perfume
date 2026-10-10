@@ -1,0 +1,66 @@
+DUKA_MKONONI - BUILD & INSTALL APK (Expo / EAS)
+=============================================
+
+Run these inside the duka_mkononi project folder, NOT in world-choice-perfume.
+
+  cd path/to/duka_mkononi
+
+
+STEP 0 - CHECK PREREQUISITES
+----------------------------
+  adb version          # must exist for device install
+  node -v
+
+
+STEP 1 - LOG IN TO EXPO (one time)
+----------------------------------
+  npx eas-cli@latest login
+
+
+STEP 2 - MAKE SURE eas.json BUILDS AN APK
+-----------------------------------------
+The default Android output is .aab, which CANNOT be installed on a device.
+eas.json must contain a profile like this:
+
+  {
+    "build": {
+      "preview": {
+        "android": { "buildType": "apk" }
+      }
+    }
+  }
+
+
+STEP 3 - BUILD THE APK
+-------------
+
+
+STEP 4 - INSTALL ON DEVICE / EMULATOR  <-- THE COMMAND YOU WANTED
+-----------------------------------------------------------------
+  npx eas build:run -p android --latest
+
+  # without --latest, shows a list of builds to pick from:
+  npx eas build:run -p android
+
+
+OPTIONS / VARIANTS
+------------------
+  npx eas build:list -p android                          # list your builds
+  npx eas build:run -p android --device "Pixel 5"        # pick a device
+  npx eas build:run -p android --id <build-id>           # specific build
+
+
+IF YOU ALREADY HAVE A LOCAL .apk FILE
+-------------------------------------
+  adb devices
+  adb install "C:/path/to/duka_mkononi.apk"
+
+  adb install -r  file.apk    # reinstall / overwrite existing
+  adb install -d  file.apk    # allow version downgrade
+  adb install -g  file.apk    # grant all runtime permissions
+
+
+ALTERNATIVE - BUILD AND INSTALL LOCALLY (no cloud build)
+--------------------------------------------------------
+  npx expo run:android
+  # requires Android SDK + connected device/emulator

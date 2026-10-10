@@ -1,6 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the public site is dark
+     even with JavaScript off; partials/theme-boot swaps in the saved choice
+     before the first paint, so the light mode never flashes. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -10,6 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    @include('partials.golden-w-loader-styles')
     <script>
         tailwind.config = {
             theme: {
@@ -44,9 +49,10 @@
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: #C8A02A; border-radius: 4px; }
     </style>
+    @include('partials.theme-mode')
     @stack('styles')
 </head>
-<body class="bg-dark-950 text-white font-sans">
+<body class="wcp-dark-skin bg-dark-950 text-white font-sans">
     <!-- Navigation -->
     <nav class="fixed top-0 w-full z-50 transition-all duration-300" id="mainNav">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -80,6 +86,12 @@
 
                 <!-- Auth Buttons -->
                 <div class="hidden md:flex items-center gap-4">
+                    {{-- The app listing lives in config/app_download.php so the
+                         desktop bar and the mobile menu cannot disagree. --}}
+                    <a href="{{ config('app_download.url') }}" data-app-download
+                       class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 px-4 py-2 text-sm font-semibold text-dark-900 shadow-lg shadow-gold-500/25 transition-all duration-300 hover:from-gold-400 hover:to-gold-500">
+                        <i class="fas fa-mobile-screen-button" aria-hidden="true"></i> Download Our App
+                    </a>
                     @auth
                         <a href="{{ route(\App\Support\StaffDashboard::fallbackRoute(auth()->user()->role)) }}" class="text-sm font-medium text-gold-400 hover:text-gold-300 transition">
                             <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
@@ -91,6 +103,7 @@
                     <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
                         <i class="fas fa-user-lock"></i> Staff Login
                     </button>
+                    @include('partials.theme-toggle', ['variant' => 'gold'])
                 </div>
 
                 <!-- Mobile Menu Toggle -->
@@ -106,8 +119,16 @@
                 <a href="{{ route('home') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-home mr-2"></i> Home</a>
                 <a href="{{ route('customer.products.index') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-shopping-bag mr-2"></i> Shop</a>
                 <a href="{{ route('customer.orders.track') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-truck mr-2"></i> Track Order</a>
+                <a href="{{ route('customer.news') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-newspaper mr-2"></i> News</a>
+                <a href="{{ request()->routeIs('home') ? '#contact' : route('home').'#contact' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-envelope mr-2"></i> Contact</a>
                 <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
+                {{-- Same listing as the desktop button above. --}}
+                <a href="{{ config('app_download.url') }}" data-app-download
+                   class="block px-4 py-3 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 text-center font-semibold text-dark-900 shadow-lg shadow-gold-500/25">
+                    <i class="fas fa-mobile-screen-button mr-2" aria-hidden="true"></i> Download Our App
+                </a>
                 <div class="border-t border-dark-700 my-3"></div>
+                <div class="px-1">@include('partials.theme-toggle', ['variant' => 'gold'])</div>
                 @auth
                     <a href="{{ route(\App\Support\StaffDashboard::fallbackRoute(auth()->user()->role)) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
                 @endauth
@@ -296,7 +317,7 @@
     @yield('modals')
 
     <!-- Staff Login Secret Code Modal -->
-    <div id="staffLoginModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div id="staffLoginModal" data-swipe-block class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-dark-800 border border-dark-600 rounded-2xl p-8 max-w-sm w-full shadow-2xl">
             <div class="text-center">
                 <div class="w-16 h-16 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center mx-auto mb-4">
@@ -343,6 +364,7 @@
             }
         });
     </script>
+    @include('partials.swipe-nav')
     @include('partials.toast')
     @stack('scripts')
 </body>

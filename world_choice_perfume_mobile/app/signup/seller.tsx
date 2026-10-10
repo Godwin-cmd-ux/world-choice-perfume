@@ -1,4 +1,5 @@
 import { SignupForm, type SignupConfig } from '../../components/SignupForm';
+import { BUTTON } from '../../lib/theme';
 
 /**
  * SIGNUP PAGE — Seller (resources/views/auth/register-seller.blade.php).
@@ -9,7 +10,7 @@ const config: SignupConfig = {
   title: 'Join Our Team',
   subtitle: 'Register as a Seller at World Choice Perfume',
   buttonLabel: 'Register as Seller',
-  buttonColor: '#06B6D4', // cyan-500 → cyan-600 gradient on the website
+  buttonColor: BUTTON.fill, // brand button colour — #F89A1E in every theme
   buttonTextColor: '#FFFFFF',
   nameLabel: 'Full Name',
   branchLabel: 'Branch',

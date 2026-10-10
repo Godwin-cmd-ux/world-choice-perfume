@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -16,6 +17,8 @@ import { AdminMenuButton } from '../../../components/adminsidebar';
  * their durations. Quick links cover the sections the website sidebar links.
  */
 export default function AdminDashboard() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData<AdminDashboardPayload>(
     () => fetchAdminDashboard(),
     [],
@@ -35,7 +38,7 @@ export default function AdminDashboard() {
   const fin = data.today_financials ?? {};
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.gold} />}

@@ -1,4 +1,5 @@
 import { SignupForm, type SignupConfig } from '../../components/SignupForm';
+import { BUTTON } from '../../lib/theme';
 
 /**
  * SIGNUP PAGE — Cashier (resources/views/auth/register-cashier.blade.php).
@@ -10,7 +11,7 @@ const config: SignupConfig = {
   title: 'Join Our Team',
   subtitle: 'Register as a Cashier at World Choice Perfume',
   buttonLabel: 'Register as Cashier',
-  buttonColor: '#C8A02A', // gold-500 → gold-600 gradient on the website
+  buttonColor: BUTTON.fill, // brand button colour — #F89A1E in every theme
   buttonTextColor: '#0D0D0D', // text-dark-900
   nameLabel: 'Full Name',
   branchLabel: 'Branch',

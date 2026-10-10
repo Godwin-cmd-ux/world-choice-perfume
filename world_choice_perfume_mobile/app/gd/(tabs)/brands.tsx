@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { Chip, ChipRow, ConfirmDialog, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { deleteGdBrand, fetchGdBrands, type GdBrand } from '../../../lib/gdApi';
-import { COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
+import { BUTTON, COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
 import { GdMenuButton } from '../../../components/gdsidebar';
 
 type Filter = 'all' | 'active' | 'inactive';
@@ -19,6 +20,8 @@ type Filter = 'all' | 'active' | 'inactive';
  * disabled while a brand is still used by products (server returns 422 too).
  */
 export default function GdBrands() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const { data, error, loading, sessionExpired, reload } = useAsyncData<{
     brands: GdBrand[];
     counts: { total: number; active: number; inactive: number; with_logo: number };
@@ -61,7 +64,7 @@ export default function GdBrands() {
   const c = data?.counts;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.scroll}>
         <View style={styles.headRow}>
           <View>
@@ -75,7 +78,7 @@ export default function GdBrands() {
             accessibilityRole="button"
             accessibilityLabel="Create brand"
           >
-            <Ionicons name="add" size={22} color="#1A1400" />
+            <Ionicons name="add" size={22} color={BUTTON.text} />
           </Pressable>
         </View>
 
@@ -199,7 +202,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: GD_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     alignItems: 'center',
     justifyContent: 'center',
   },

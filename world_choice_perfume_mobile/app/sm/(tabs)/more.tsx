@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { ConfirmDialog, GroupLabel, useAsyncData } from '../../../components/adminkit';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
@@ -17,6 +18,8 @@ import { staffSession } from '../../../lib/staffSession';
  * never even sees a closed door.
  */
 export default function SmMore() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const [confirmOut, setConfirmOut] = useState(false);
   const identity = staffSession.getIdentity();
   const { data: scope } = useAsyncData<SmScope>(() => fetchSmScope(), []);
@@ -49,7 +52,7 @@ export default function SmMore() {
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.identity}>
           <View style={styles.avatar}>

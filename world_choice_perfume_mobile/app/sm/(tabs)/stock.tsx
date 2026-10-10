@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { ConfirmDialog, DataCard, SearchInput, StatGrid, StatTile, useAsyncData, messageOf } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -11,7 +12,7 @@ import {
   fetchProductStock,
   type SmStockRow,
 } from '../../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../../lib/theme';
 import { SmMenuButton } from '../../../components/smsidebar';
 
 /**
@@ -21,6 +22,8 @@ import { SmMenuButton } from '../../../components/smsidebar';
  * their own quantity+price edit; everything routes through the stock screens.
  */
 export default function SmStock() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData(() => fetchProductStock({ search }), [search]);
 
@@ -62,7 +65,7 @@ export default function SmStock() {
   const rows = data?.rows ?? [];
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.head}>
         <SmMenuButton />
         <Text style={[styles.eyebrow, { color: SM_ACCENT.main }]}>World Choice Perfumes</Text>
@@ -74,7 +77,7 @@ export default function SmStock() {
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Ionicons name="add-circle-outline" size={16} color="#052E1B" />
+            <Ionicons name="add-circle-outline" size={16} color={BUTTON.text} />
             <Text style={styles.primaryBtnText}>Stock In</Text>
           </Pressable>
           <Pressable
@@ -204,12 +207,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: SM_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  primaryBtnText: { color: '#052E1B', fontSize: 13.5, fontWeight: '800' },
+  primaryBtnText: { color: BUTTON.text, fontSize: 13.5, fontWeight: '800' },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',

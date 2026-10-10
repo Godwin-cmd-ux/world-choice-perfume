@@ -103,8 +103,8 @@
                                     @if($branchVarieties)
                                         {{-- Bottled in several sizes at this branch, so one
                                              number would be wrong — list them all. --}}
-                                        <p class="text-sm font-semibold text-gold-400 mb-1">Depends on variety</p>
-                                        <p class="text-xs text-gray-500 mb-3">Pick a size and packaging to order at this branch.</p>
+                                        <p class="text-sm font-semibold text-gold-400 mb-1">Depends on size</p>
+                                        <p class="text-xs text-gray-500 mb-3">Pick a size to order at this branch.</p>
                                         @include('customer.products.partials.variety-list', [
                                             'buckets' => $branchVarieties,
                                             'branchId' => $bs->branch_id,
@@ -131,8 +131,8 @@
                     <div class="bg-gradient-to-r from-gold-500/10 to-gold-600/5 border border-gold-500/20 rounded-2xl p-6 mb-6">
                         <p class="text-sm text-gold-400/80">Price at {{ $selectedBranch->name }}</p>
                         @if(!empty($varieties))
-                            <p class="font-display text-2xl font-bold text-gold-400 mt-1">Depends on variety</p>
-                            <p class="text-xs text-gray-400 mt-1 mb-4">Choose one of the options below to see its price.</p>
+                            <p class="font-display text-2xl font-bold text-gold-400 mt-1">Depends on size</p>
+                            <p class="text-xs text-gray-400 mt-1 mb-4">Choose one of the sizes below to see its price.</p>
                             @include('customer.products.partials.variety-list', [
                                 'buckets' => $varieties,
                                 'branchId' => $selectedBranch->id,
@@ -183,24 +183,45 @@
                     </div>
                 </div>
 
-                <!-- Branch switcher: shown while the page is listing every
-                     branch, so the customer can narrow down to one. -->
-                @if($listEveryBranch)
+                <!-- Branch picker: a perfume stocked at more than one branch is
+                     ordered from exactly one of them, so every branch's price
+                     and stock is shown and the customer chooses. -->
+                @if($inStockBranchCount > 1)
                     <div class="mt-6 bg-dark-800/50 border border-gold-500/20 rounded-2xl p-6">
                         <h3 class="text-sm font-semibold text-gold-400 mb-3">
                             <i class="fas fa-store mr-2"></i> Choose a branch
                         </h3>
-                        <p class="text-xs text-gray-500 mb-4">Prices and stock differ per branch — open one to see only what that branch has.</p>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach($branches as $branch)
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('customer.products.show', ['product' => $product->id, 'branch_id' => $branch->id]) }}"
-                                       class="px-4 py-2 bg-dark-700 border border-dark-600 rounded-xl text-sm text-gray-300 hover:border-gold-500/30 hover:text-gold-400 transition">
-                                        {{ $branch->name }}
+                        <p class="text-xs text-gray-500 mb-4">
+                            Stocked at {{ $inStockBranchCount }} branches — pick where you want to order from.
+                        </p>
+                        <div class="space-y-2">
+                            @foreach($inStockBranches as $bs)
+                                @php
+                                    // The branch's cheapest size, so every option on
+                                    // this list carries its own price and stock.
+                                    $branchSizes = $varietiesByBranch[(int) $bs->branch_id] ?? [];
+                                    $branchFrom = collect($branchSizes)
+                                        ->map(fn ($size) => (float) ($size['price'] ?? 0) > 0 ? (float) $size['price'] : (float) $bs->selling_price)
+                                        ->filter()
+                                        ->min();
+                                    $isCurrent = (int) $bs->branch_id === (int) ($selectedBranch->id ?? 0);
+                                @endphp
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('customer.products.show', ['product' => $product->id, 'branch_id' => $bs->branch_id]) }}"
+                                       class="flex flex-1 min-w-[220px] items-center justify-between gap-3 px-4 py-3 rounded-xl border transition {{ $isCurrent ? 'bg-gold-500/10 border-gold-500/40' : 'bg-dark-700 border-dark-600 hover:border-gold-500/30' }}">
+                                        <span class="text-sm {{ $isCurrent ? 'text-gold-400 font-semibold' : 'text-gray-300' }}">
+                                            <i class="fas fa-store mr-2 text-xs"></i>{{ $bs->branch->name ?? 'Branch #' . $bs->branch_id }}
+                                        </span>
+                                        <span class="text-xs text-gray-400 whitespace-nowrap">
+                                            @if($branchFrom > 0)
+                                                from TZS {{ number_format($branchFrom) }} ·
+                                            @endif
+                                            {{ $bs->quantity }} in stock
+                                        </span>
                                     </a>
-                                    @if($branch->latitude && $branch->longitude)
-                                        <a href="{{ route('customer.twende-dukani', $branch->id) }}"
-                                           class="px-3 py-2 bg-gold-500/10 border border-gold-500/20 text-gold-400 text-xs font-bold rounded-xl hover:bg-gold-500/20 transition" title="Twende Dukani">
+                                    @if(!empty($bs->branch->latitude) && !empty($bs->branch->longitude))
+                                        <a href="{{ route('customer.twende-dukani', $bs->branch_id) }}"
+                                           class="px-3 py-3 bg-gold-500/10 border border-gold-500/20 text-gold-400 text-xs font-bold rounded-xl hover:bg-gold-500/20 transition" title="Twende Dukani">
                                             <i class="fas fa-walking"></i>
                                         </a>
                                     @endif

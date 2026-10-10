@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -17,6 +18,8 @@ import { SmMenuButton } from '../../../components/smsidebar';
  * products-only stock manager sees.
  */
 export default function SmDashboard() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData<SmDashboardPayload>(
     () => fetchSmDashboard(),
     [],
@@ -37,7 +40,7 @@ export default function SmDashboard() {
   const productsOnly = scope.is_products_only;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

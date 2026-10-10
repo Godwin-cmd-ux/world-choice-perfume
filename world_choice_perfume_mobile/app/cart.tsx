@@ -40,10 +40,10 @@ export default function CartScreen() {
   const [error, setError] = useState('');
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
-  // A line saved without a bottling (added by an older build, before the
-  // picker rendered) is refused by the server for any product sold in
-  // varieties. Ask the product endpoint once per such line so the cart can
-  // offer the missing choice here instead of dead-ending at Place Order.
+  // A line saved without a size (added by an older build, before the picker
+  // rendered) is refused by the server for any product sold in sizes. Ask the
+  // product endpoint once per such line so the cart can offer the missing
+  // choice here instead of dead-ending at Place Order.
   const [needsVariety, setNeedsVariety] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -70,8 +70,8 @@ export default function CartScreen() {
     };
   }, [items, needsVariety]);
 
-  /** Drop the incomplete line and open the product so its size/packaging
-   *  picker can be used — the only place that choice can be made. */
+  /** Drop the incomplete line and open the product so its size picker can be
+   *  used — the only place that choice can be made. */
   const chooseVariety = (item: (typeof items)[number]) => {
     removeItem(item.key);
     router.push({
@@ -100,7 +100,7 @@ export default function CartScreen() {
 
     const unpicked = items.find((item) => item.volume == null && needsVariety[item.key]);
     if (unpicked) {
-      setError(`Choose the size and packaging for ${unpicked.productName} before placing your order.`);
+      setError(`Choose the size for ${unpicked.productName} before placing your order.`);
       return;
     }
 
@@ -113,11 +113,12 @@ export default function CartScreen() {
         customer_phone: trimmedPhone,
         customer_email: email.trim() || undefined,
         delivery_notes: notes.trim() || undefined,
+        // Only the SIZE is sent: the server resolves which packaging bucket
+        // to pack it from (Customer\OrderController@store).
         items: items.map((item) => ({
           product_id: item.productId,
           quantity: item.quantity,
           ...(item.volume ? { volume: item.volume } : {}),
-          ...(item.variant ? { variant: item.variant } : {}),
         })),
       });
       setPlaced(payload.order);
@@ -264,10 +265,10 @@ export default function CartScreen() {
                       onPress={() => chooseVariety(item)}
                       style={styles.fixVariety}
                       accessibilityRole="button"
-                      accessibilityLabel={`Choose size and packaging for ${item.productName}`}
+                      accessibilityLabel={`Choose a size for ${item.productName}`}
                     >
                       <Ionicons name="options-outline" size={13} color={COLORS.goldBright} />
-                      <Text style={styles.fixVarietyText}>Choose size &amp; packaging</Text>
+                      <Text style={styles.fixVarietyText}>Choose a size</Text>
                     </Pressable>
                   ) : null}
                 </View>

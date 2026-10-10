@@ -4,8 +4,8 @@
 
 @section('content')
 <!-- Page Header -->
-{{-- The clip is 1920x1080 (16:9), and the header is sized to that shape so the
-     video lands at its natural proportions instead of being zoomed into a
+{{-- The clip (reef_33.mp4) is 4K 16:9, and the header is sized to that shape so
+     the video lands at its natural proportions instead of being zoomed into a
      short banner. 56.25vw is exactly 16:9 of the viewport width; min() with
      85vh caps it on short/ultra-wide screens so the products stay reachable.
      min-height (not a fixed height) lets the heading and search bar grow the
@@ -13,9 +13,9 @@
      pair was avoided on purpose: Chrome then shrinks the width too, leaving a
      gap to the right of the header. --}}
 <section class="relative overflow-hidden min-h-[min(56.25vw,85vh)] pt-28 pb-20 bg-dark-900/50 border-b border-dark-700">
-    <!-- Background video (reef 33) -->
+    <!-- Background video (reef_33.mp4) -->
     <video class="absolute inset-0 w-full h-full object-cover object-center" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
-        <source src="{{ asset('videos/reef-33.mp4') }}" type="video/mp4">
+        <source src="{{ asset('videos/reef_33.mp4') }}" type="video/mp4">
     </video>
     <!-- Readability overlay so the heading and search stay legible over the video -->
     <div class="absolute inset-0 bg-gradient-to-r from-dark-950/95 via-dark-950/80 to-dark-950/55"></div>
@@ -268,15 +268,13 @@
                         <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                             @foreach($products as $stock)
                                 @php
-                                    // Bottlings the customer can pick on the details
-                                    // page. A product stocked as several sizes has
-                                    // no single price, so the card says so instead of
-                                    // quoting one that may not apply to their choice.
+                                    // Sizes the customer can pick on the details page.
+                                    // A product stocked in several volumes has no single
+                                    // price, so the card says so instead of quoting one
+                                    // that may not apply to their choice. Packaging is
+                                    // never offered to a customer — the branch packs it.
                                     $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
-                                    $cardOptionCount = 0;
-                                    foreach ($cardVarieties as $volume) {
-                                        $cardOptionCount += count($volume['variants'] ?? []);
-                                    }
+                                    $cardOptionCount = count($cardVarieties);
                                     // This grid mixes branches, and a perfume that is
                                     // stocked at more than one branch is priced per
                                     // branch, so it gets no single number either.
@@ -328,13 +326,13 @@
                                                 @if($stock->quantity <= 0)
                                                     <p class="text-sm font-medium text-gray-500">Check availability</p>
                                                 @elseif($cardOptionCount > 0 && $cardDependsOnBranch)
-                                                    {{-- Priced per branch and per bottling: the
+                                                    {{-- Priced per branch and per size: the
                                                          details page lists both. --}}
-                                                    <p class="text-sm font-bold text-gold-400">Depends on branch and variety</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} options · {{ $cardBranchCount }} branches</p>
+                                                    <p class="text-sm font-bold text-gold-400">Depends on branch and size</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} · {{ $cardBranchCount }} branches</p>
                                                 @elseif($cardOptionCount > 0)
-                                                    <p class="text-sm font-bold text-gold-400">Depends on variety</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                    <p class="text-sm font-bold text-gold-400">Depends on size</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
                                                 @elseif($cardDependsOnBranch)
                                                     <p class="text-sm font-bold text-gold-400">Depends on branch</p>
                                                     <p class="text-[10px] text-gray-500 mt-1">{{ $cardBranchCount }} branches</p>
@@ -372,12 +370,10 @@
                             @php
                                 // One branch only, so the card can quote that
                                 // branch's price unless the perfume is bottled
-                                // in several sizes there.
+                                // in several sizes there. One option per size —
+                                // the packaging is the branch's to choose.
                                 $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
-                                $cardOptionCount = 0;
-                                foreach ($cardVarieties as $volume) {
-                                    $cardOptionCount += count($volume['variants'] ?? []);
-                                }
+                                $cardOptionCount = count($cardVarieties);
                             @endphp
                             <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $selectedBranch->id]) }}"
                                class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
@@ -417,8 +413,8 @@
                                             @if($stock->quantity <= 0)
                                                 <p class="text-sm font-medium text-gray-500">Check availability</p>
                                             @elseif($cardOptionCount > 0)
-                                                <p class="text-sm font-bold text-gold-400">Depends on variety</p>
-                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} option{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                <p class="text-sm font-bold text-gold-400">Depends on size</p>
+                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
                                             @else
                                                 <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                             @endif

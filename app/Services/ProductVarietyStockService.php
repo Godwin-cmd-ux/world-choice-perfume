@@ -101,6 +101,156 @@ class ProductVarietyStockService
     }
 
     /**
+     * Customer-facing bottling options: ONE ENTRY PER VOLUME.
+     *
+     * The box/logo/colour of a bottling decides what the branch packs, never
+     * what the customer pays — every 50ml of a product sells for the same
+     * money — so a customer is only ever asked for a volume. Availability is
+     * the sum of that volume's packaging buckets, which is exactly what the
+     * branch can hand over.
+     *
+     * Returns [product_id => [['volume' => 50, 'label' => '50ml',
+     * 'available' => 7, 'price' => 45000.0], ...]] ordered by volume, with
+     * only volumes that hold stock. `price` is 0 when no bucket carries one,
+     * so callers fall back to the product's branch price.
+     */
+    public function volumeBucketsForProducts(int $branchId, array $productIds): array
+    {
+        $rows = $this->fetch($branchId, false);
+        $stock = $this->mapRows($rows);
+        $prices = $this->mapPrices($rows);
+        $bottles = new BottleStockService($this->supabase);
+
+        $result = [];
+        foreach (array_unique(array_map('intval', $productIds)) as $pid) {
+            if ($pid <= 0 || empty($stock[$pid])) {
+                continue;
+            }
+
+            $volumes = [];
+            foreach ($stock[$pid] as $volume => $variantsInStock) {
+                $available = array_sum($variantsInStock);
+                if ($available <= 0) {
+                    continue;
+                }
+                $volume = (int) $volume;
+                $volumes[] = [
+                    'volume' => $volume,
+                    'label' => $bottles->volumeLabel($volume),
+                    'available' => $available,
+                    'price' => $this->firstPrice($bottles, $volume, $prices[$pid][$volume] ?? []),
+                ];
+            }
+
+            usort($volumes, fn ($a, $b) => $a['volume'] <=> $b['volume']);
+            if (!empty($volumes)) {
+                $result[(string) $pid] = $volumes;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Which packaging a volume-only order is packed from.
+     *
+     * The customer picks a size and the branch picks the packaging, so the
+     * order needs the bucket that is easiest to fulfil: the one holding the
+     * most of that volume, with the canonical variant order breaking ties.
+     *
+     * Returns ['variant' => key, 'available' => units, 'price' => float]
+     * where `available` is the volume's WHOLE stock (a branch can pack the
+     * same size from any of its buckets), or null when the product has none
+     * of that volume. `price` is 0 when no bucket carries one.
+     */
+    public function resolveVariantForVolume(int $branchId, int $productId, int $volume): ?array
+    {
+        if ($volume <= 0) {
+            return null;
+        }
+
+        $rows = $this->supabase->queryFresh('branch_stock_varieties', [
+            'select' => 'variant,quantity,selling_price',
+            'branch_id' => "eq.{$branchId}",
+            'product_id' => "eq.{$productId}",
+            'volume' => "eq.{$volume}",
+        ]);
+
+        $bottles = new BottleStockService($this->supabase);
+        $rank = array_flip($bottles->variantBuckets($volume));
+
+        $available = 0;
+        $prices = [];
+        $best = null;
+
+        foreach ($rows as $row) {
+            $key = (string) ($row['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $prices[$key] = (float) ($row['selling_price'] ?? 0);
+
+            $quantity = (int) ($row['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                continue;
+            }
+            $available += $quantity;
+
+            if ($best === null
+                || $quantity > $best['quantity']
+                || ($quantity === $best['quantity'] && ($rank[$key] ?? 99) < ($rank[$best['variant']] ?? 99))) {
+                $best = ['variant' => $key, 'quantity' => $quantity];
+            }
+        }
+
+        if ($best === null || $available <= 0) {
+            return null;
+        }
+
+        // Every packaging of one volume shares its price, so the packing
+        // bucket's price is the volume's price; any bucket will do as a
+        // fallback for a row that was saved without one.
+        $price = $this->firstPrice($bottles, $volume, [$best['variant'] => $prices[$best['variant']] ?? 0])
+            ?: $this->firstPrice($bottles, $volume, $prices);
+
+        return [
+            'variant' => $best['variant'],
+            'available' => $available,
+            'price' => $price,
+        ];
+    }
+
+    /**
+     * "50ml" — the only choice a customer is shown, and the label order
+     * tracking prints back to them.
+     */
+    public function volumeLabel(int $volume): string
+    {
+        return (new BottleStockService($this->supabase))->volumeLabel($volume);
+    }
+
+    /**
+     * The price a volume sells for: the first packaging bucket that carries
+     * one, read in the canonical variant order so the same volume always
+     * reports the same number.
+     */
+    private function firstPrice(BottleStockService $bottles, int $volume, array $variantPrices): float
+    {
+        foreach ($bottles->variantBuckets($volume) as $key) {
+            $price = (float) ($variantPrices[$key] ?? 0);
+            if ($price > 0) {
+                return $price;
+            }
+        }
+
+        // A bucket outside the canonical list (older data) still counts.
+        foreach ($variantPrices as $price) {
+            if ((float) $price > 0) {
+                return (float) $price;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
      * Flat list of the variety buckets that actually hold stock, each with
      * its own id, quantity, selling price and display label. Stock and sale
      * pages list these as independent product lines named

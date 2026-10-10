@@ -5,7 +5,7 @@ import { Banner } from '../../components/authkit';
 import { AdminPage, Chip, ChipRow, ConfirmDialog, DataCard, SearchInput, useAsyncData, messageOf } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { deleteProduct, fetchProducts, type SmCatalogueProduct } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 /**
@@ -130,8 +130,8 @@ export default function SmProducts() {
 
 const styles = StyleSheet.create({
   guardWrap: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: COLORS.bg },
-  newBtn: { backgroundColor: SM_ACCENT.main, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 8 },
-  newBtnText: { color: '#052E1B', fontWeight: '800', fontSize: 13 },
+  newBtn: { backgroundColor: BUTTON.fill, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  newBtnText: { color: BUTTON.text, fontWeight: '800', fontSize: 13 },
   pressed: { opacity: 0.7 },
   rowActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   actionBtn: {

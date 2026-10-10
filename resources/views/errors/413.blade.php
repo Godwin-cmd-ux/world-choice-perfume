@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the page is dark even
+     with JavaScript off; partials/theme-boot swaps in the saved choice before
+     the first paint. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Too Large — World Choice Perfume</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    @include('partials.theme-mode')
 </head>
 <body class="bg-gray-50 font-sans">
     <div class="min-h-screen flex items-center justify-center p-4">

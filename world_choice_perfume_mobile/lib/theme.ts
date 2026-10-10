@@ -28,6 +28,7 @@ import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StyleSheet } from 'react-native';
 import {
+  BUTTON_COLORS,
   DARK_COLORS,
   LIGHT_COLORS,
   MODULE_ACCENTS,
@@ -58,9 +59,17 @@ export const BA_ACCENT: ModuleAccent = { ...MODULE_ACCENTS.ba };
 export const SELLER_ACCENT: ModuleAccent = { ...MODULE_ACCENTS.seller };
 export const CASHIER_ACCENT: ModuleAccent = { ...MODULE_ACCENTS.cashier };
 
-/** Soft gold elevation used on primary buttons (website: shadow-gold-500/25). Always the brand gold, in both modes. */
+/**
+ * Brand button tokens (lib/palettes.ts) — #F89A1E with white labels in both
+ * modes, so a button looks identical in light and dark. Deliberately kept out
+ * of the palette swap.
+ */
+export const BUTTON = { ...BUTTON_COLORS };
+
+
+/** Soft brand elevation under primary buttons — the brand fill, in both modes. */
 export const GOLD_SHADOW = {
-  shadowColor: DARK_COLORS.goldFill,
+  shadowColor: BUTTON_COLORS.fill,
   shadowOpacity: 0.25,
   shadowRadius: 12,
   shadowOffset: { width: 0, height: 6 },

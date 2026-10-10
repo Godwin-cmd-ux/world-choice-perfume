@@ -5,7 +5,7 @@ import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, KV, useAsyncData, messageOf } from '../../components/adminkit';
 import { ErrorView, LoadingView } from '../../components/ui';
 import { fetchTransfer, receiveTransferItem, rejectTransferItem } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 /**
@@ -136,8 +136,8 @@ export default function SmTransferDetail() {
 
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
-  primaryBtn: { backgroundColor: SM_ACCENT.main, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 8 },
-  primaryBtnText: { color: '#052E1B', fontWeight: '800', fontSize: 13 },
+  primaryBtn: { backgroundColor: BUTTON.fill, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  primaryBtnText: { color: BUTTON.text, fontWeight: '800', fontSize: 13 },
   dangerBtn: {
     backgroundColor: COLORS.dangerBg,
     borderWidth: 1,

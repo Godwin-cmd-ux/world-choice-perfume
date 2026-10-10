@@ -1,6 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the page is dark even
+     with JavaScript off; partials/theme-boot swaps in the saved choice before
+     the first paint. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
@@ -34,8 +38,9 @@
         ::-webkit-scrollbar-track { background: #1a1a1a; }
         ::-webkit-scrollbar-thumb { background: #C8A02A; border-radius: 4px; }
     </style>
+    @include('partials.theme-mode')
 </head>
-<body class="page-gradient text-white font-sans min-h-screen">
+<body class="wcp-dark-skin page-gradient text-white font-sans min-h-screen">
     <nav class="sticky top-0 z-50 border-b border-gold-500/20 bg-dark-950/90 backdrop-blur">
         <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-3">
             <a href="{{ route('home') }}" class="flex items-center gap-3">
@@ -143,5 +148,10 @@
             </a>
         </div>
     </main>
+
+    {{-- Standalone page: the swipe navigation the public layout ships has to be
+         included here too, so a visitor reading a result can still swipe back
+         to the tabs. --}}
+    @include('partials.swipe-nav')
 </body>
 </html>

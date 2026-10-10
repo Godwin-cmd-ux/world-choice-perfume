@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { Chip, ChipRow, DataCard, GroupLabel, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -32,6 +33,8 @@ const STATUSES = [
  * Reject live.
  */
 export default function AdminApprovals() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('pending');
   const [page, setPage] = useState(1);
@@ -55,7 +58,7 @@ export default function AdminApprovals() {
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.per_page ?? 20)));
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.gold} />}

@@ -172,3 +172,24 @@ export const MODULE_ACCENTS = {
     border: 'rgba(217, 119, 6, 0.30)',
   },
 };
+
+/**
+ * Brand button colour — #F89A1E with white labels, in BOTH app modes.
+ *
+ * Deliberately outside the light/dark palettes and outside MODULE_ACCENTS:
+ * a button is the brand colour whatever mode the app is in, exactly like the
+ * website, where every button is #F89A1E. The value never enters the swap
+ * maps (lib/theme.ts), so no style-sheet remap can change it.
+ *
+ * Destructive controls stay red — they are not brand actions — and tinted
+ * chips, steppers, tabs and navigation chrome are not buttons, so they keep
+ * their own colours.
+ */
+export const BUTTON_COLORS = {
+  /** solid fill for every primary/secondary button */
+  fill: '#F89A1E',
+  /** label + icon colour on the brand fill */
+  text: '#FFFFFF',
+  /** border of the brand fill (outlined variants would use the same tone) */
+  border: '#F89A1E',
+} as const;

@@ -12,7 +12,7 @@ import {
   updateBottleStock,
   type SmBottleRecord,
 } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 type Mode = 'list' | 'in' | 'broken';
@@ -350,12 +350,12 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   label: { color: COLORS.textSecondary, fontSize: 12.5, fontWeight: '700', marginTop: 6 },
   submitBtn: {
-    backgroundColor: SM_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     paddingVertical: 14,
     marginTop: 10,
   },
   submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#052E1B', fontSize: 15, fontWeight: '800' },
+  submitText: { color: BUTTON.text, fontSize: 15, fontWeight: '800' },
 });

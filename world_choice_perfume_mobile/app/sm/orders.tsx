@@ -5,7 +5,7 @@ import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, DataCard, useAsyncData, messageOf } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchOrders, setOrderPersonalName, updateOrderStatus, type SmOrder } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 const TABS = ['pending', 'picked', 'served'] as const;
@@ -115,7 +115,7 @@ export default function SmOrders() {
                         style={({ pressed }) => [styles.smallBtn, styles.primary, pressed && styles.pressed]}
                         accessibilityRole="button"
                       >
-                        <Text style={styles.smallBtnText}>Mark picked</Text>
+                        <Text style={[styles.smallBtnText, styles.primaryText]}>Mark picked</Text>
                       </Pressable>
                     ) : null}
                     {status !== 'served' ? (
@@ -124,7 +124,7 @@ export default function SmOrders() {
                         style={({ pressed }) => [styles.smallBtn, styles.primary, pressed && styles.pressed]}
                         accessibilityRole="button"
                       >
-                        <Text style={styles.smallBtnText}>Mark served</Text>
+                        <Text style={[styles.smallBtnText, styles.primaryText]}>Mark served</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -165,7 +165,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 8,
   },
-  primary: { backgroundColor: SM_ACCENT.main, borderColor: SM_ACCENT.main },
+  primary: { backgroundColor: BUTTON.fill, borderColor: BUTTON.border },
+  primaryText: { color: BUTTON.text },
   smallBtnText: { color: SM_ACCENT.light, fontSize: 12.5, fontWeight: '800' },
   pressed: { opacity: 0.7 },
 });

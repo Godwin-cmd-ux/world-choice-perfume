@@ -1,12 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the page is dark even
+     with JavaScript off; partials/theme-boot swaps in the saved choice before
+     the first paint. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <title>Place Order - {{ $branch->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    @include('partials.theme-mode')
 </head>
 <body class="bg-gray-50">
     <nav class="bg-amber-900 text-white shadow-lg">
@@ -46,37 +51,30 @@
                     @foreach($products as $stock)
                         @php
                             // Products bottled in several sizes are ordered as one
-                            // specific bottling, so the row offers those options
-                            // with the price of each.
+                            // size, so the row offers the volumes in stock with the
+                            // price of each. How the bottling is boxed, branded or
+                            // coloured never changes that price, so it is the
+                            // branch that picks the packaging.
                             $buckets = $productVarieties[$stock->product_id] ?? [];
                             $isVariety = ($stock->product->category ?? '') === 'Oil Fragrance' && !empty($buckets);
                             $wanted = $preselect['product_id'] == $stock->product_id;
-                            $selectedKey = null;
-                            $selectedPrice = (float) $stock->selling_price;
-                            if ($isVariety) {
-                                foreach ($buckets as $volume) {
-                                    foreach ($volume['variants'] as $variant) {
-                                        if ($wanted && (int) $volume['volume'] === (int) $preselect['volume'] && $variant['key'] === $preselect['variant']) {
-                                            $selectedKey = $volume['volume'] . '|' . $variant['key'];
-                                        }
-                                    }
-                                }
-                                // No match means the page was opened from the
-                                // product's own "Order now" button, so start on
-                                // the first option in stock.
-                                $selectedKey = $selectedKey ?? ($buckets[0]['volume'] . '|' . $buckets[0]['variants'][0]['key']);
-                                foreach ($buckets as $volume) {
-                                    foreach ($volume['variants'] as $variant) {
-                                        if ($volume['volume'] . '|' . $variant['key'] === $selectedKey) {
-                                            $picked = (float) ($variant['price'] ?? 0);
-                                            // A variety with no price of its own
-                                            // falls back to the product's price.
-                                            $selectedPrice = $picked > 0 ? $picked : (float) $stock->selling_price;
-                                        }
+                            $selectedVolume = $isVariety ? (int) $buckets[0]['volume'] : 0;
+                            if ($isVariety && $wanted) {
+                                foreach ($buckets as $bucket) {
+                                    if ((int) $bucket['volume'] === (int) $preselect['volume']) {
+                                        $selectedVolume = (int) $bucket['volume'];
                                     }
                                 }
                             }
-                            [$selectedVolume, $selectedVariant] = $isVariety ? explode('|', $selectedKey) : ['', ''];
+                            $selectedPrice = (float) $stock->selling_price;
+                            foreach ($buckets as $bucket) {
+                                if ($isVariety && (int) $bucket['volume'] === $selectedVolume) {
+                                    // A size with no price of its own falls back to
+                                    // the product's price at this branch.
+                                    $picked = (float) ($bucket['price'] ?? 0);
+                                    $selectedPrice = $picked > 0 ? $picked : (float) $stock->selling_price;
+                                }
+                            }
                         @endphp
                         <div class="order-row flex flex-wrap items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
                             <label class="flex items-center gap-3 flex-1 min-w-[220px] cursor-pointer">
@@ -92,22 +90,19 @@
                             <input type="hidden" name="items[{{ $loop->index }}][quantity]" value="1" class="item-qty" disabled>
 
                             @if($isVariety)
-                                {{-- One option per bottling in stock; the hidden fields
-                                     below carry the chosen size and packaging. --}}
+                                {{-- One option per size in stock; the hidden field
+                                     below carries the chosen size. --}}
                                 <select class="variety-select w-full sm:w-auto rounded-lg border px-3 py-2 text-sm {{ $wanted ? 'border-amber-500 ring-1 ring-amber-200' : '' }}" onchange="syncVariety(this)">
-                                    @foreach($buckets as $volume)
-                                        @foreach($volume['variants'] as $variant)
-                                            @php
-                                                $optionPrice = (float) ($variant['price'] ?? 0) > 0 ? (float) $variant['price'] : (float) $stock->selling_price;
-                                            @endphp
-                                            <option value="{{ $volume['volume'] }}|{{ $variant['key'] }}" data-price="{{ $optionPrice }}" @selected($selectedKey === $volume['volume'] . '|' . $variant['key'])>
-                                                {{ $volume['label'] }} {{ $variant['label'] }} — TZS {{ number_format($optionPrice) }} ({{ $variant['available'] }} in stock)
-                                            </option>
-                                        @endforeach
+                                    @foreach($buckets as $bucket)
+                                        @php
+                                            $optionPrice = (float) ($bucket['price'] ?? 0) > 0 ? (float) $bucket['price'] : (float) $stock->selling_price;
+                                        @endphp
+                                        <option value="{{ $bucket['volume'] }}" data-price="{{ $optionPrice }}" @selected((int) $selectedVolume === (int) $bucket['volume'])>
+                                            {{ $bucket['label'] }} — TZS {{ number_format($optionPrice) }} ({{ $bucket['available'] }} in stock)
+                                        </option>
                                     @endforeach
                                 </select>
                                 <input type="hidden" name="items[{{ $loop->index }}][volume]" value="{{ $selectedVolume }}" class="item-volume" disabled>
-                                <input type="hidden" name="items[{{ $loop->index }}][variant]" value="{{ $selectedVariant }}" class="item-variant" disabled>
                             @endif
 
                             <div class="text-right">
@@ -144,16 +139,13 @@
         qtyInput.value = val;
     }
 
-    // Keep the ordered bottling and the price on screen in step with the option
-    // the customer picked. The posted values live in hidden fields so the
-    // server receives the size and packaging separately.
+    // Keep the ordered size and the price on screen in step with the option the
+    // customer picked. The posted value lives in a hidden field so the server
+    // receives the size on its own — the packaging follows from the branch.
     function syncVariety(select) {
         const row = select.closest('.order-row');
-        const parts = select.value.split('|');
         const volumeField = row.querySelector('.item-volume');
-        const variantField = row.querySelector('.item-variant');
-        if (volumeField) volumeField.value = parts[0] || '';
-        if (variantField) variantField.value = parts[1] || '';
+        if (volumeField) volumeField.value = select.value || '';
 
         const price = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.price : 0;
         const display = row.querySelector('.item-price');
@@ -167,7 +159,7 @@
             const row = this.closest('.order-row');
             // An unticked row submits nothing, so its own fields have to stop
             // being sent too or the order fails validation on a half-filled row.
-            row.querySelectorAll('.item-qty, .item-volume, .item-variant').forEach(field => {
+            row.querySelectorAll('.item-qty, .item-volume').forEach(field => {
                 field.disabled = !this.checked;
             });
             row.classList.toggle('bg-amber-50', this.checked);

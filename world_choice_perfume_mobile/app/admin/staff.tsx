@@ -6,7 +6,7 @@ import { Banner } from '../../components/authkit';
 import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, SearchInput, useAsyncData } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { fetchStaff, type AdminUserRow } from '../../lib/adminApi';
-import { COLORS, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS } from '../../lib/theme';
 import { adminMenu } from '../../components/adminsidebar';
 
 const ROLES = [
@@ -62,7 +62,7 @@ export default function Staff() {
           accessibilityRole="button"
           accessibilityLabel="Create staff account"
         >
-          <Ionicons name="person-add-outline" size={16} color="#1A1400" />
+          <Ionicons name="person-add-outline" size={16} color={BUTTON.text} />
           <Text style={styles.addText}>New</Text>
         </Pressable>
       }
@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: COLORS.gold,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 13,
     paddingVertical: 8,
   },
-  addText: { color: '#1A1400', fontWeight: '800', fontSize: 13 },
+  addText: { color: BUTTON.text, fontWeight: '800', fontSize: 13 },
   pressed: { opacity: 0.75 },
   applyHint: { color: COLORS.gold, fontSize: 13, fontWeight: '600' },
   count: { color: COLORS.textMuted, fontSize: 12 },

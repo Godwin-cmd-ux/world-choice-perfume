@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS, GOLD_SHADOW, RADIUS } from '../lib/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BUTTON, COLORS, GOLD_SHADOW, RADIUS } from '../lib/theme';
+import { GoldenWLoader } from './GoldenWLoader';
 
-/** Full-screen loading state in brand colours. */
+/** Full-screen loading state: the brand's Golden Signature W plus the message. */
 export function LoadingView({ label = 'Loading…' }: { label?: string }) {
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="large" color={COLORS.gold} />
+      <GoldenWLoader variant="page" brand />
       <Text style={styles.centerMuted}>{label}</Text>
     </View>
   );
@@ -81,10 +82,10 @@ export function GoldButton({
       accessibilityRole="button"
     >
       {loading ? (
-        <ActivityIndicator color="#1A1400" />
+        <GoldenWLoader variant="inline" tone="light" />
       ) : (
         <>
-          {icon ? <Ionicons name={icon} size={18} color="#1A1400" /> : null}
+          {icon ? <Ionicons name={icon} size={18} color={BUTTON.text} /> : null}
           <Text style={styles.goldButtonText}>{label}</Text>
         </>
       )}
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   goldButton: {
     minHeight: 50,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.gold,
+    backgroundColor: BUTTON.fill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   goldButtonText: {
-    color: '#1A1400',
+    color: BUTTON.text,
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.4,

@@ -268,17 +268,20 @@ export interface BranchStock {
   branch?: { id?: number | string; name?: string } | null;
 }
 
-export interface Variety {
-  key: string;
+/**
+ * One size a product is bottled in at a branch — GET /api/products/{id}.
+ *
+ * The box, logo and colour behind a bottling decide what the branch packs,
+ * never what the customer pays (every 50ml of a product costs the same), so
+ * the customer endpoint collapses those buckets into one entry per volume.
+ * `available` is therefore the whole volume's stock. Staff sale screens read
+ * their own payload, which still breaks each size down by packaging.
+ */
+export interface ProductSize {
+  volume: number;
   label: string;
   available: number;
   price: number;
-}
-
-export interface VarietyVolume {
-  volume: number;
-  label: string;
-  variants: Variety[];
 }
 
 export interface ProductDetailPayload {
@@ -288,21 +291,20 @@ export interface ProductDetailPayload {
   selected_branch: Branch | null;
   price: number | string | null;
   /**
-   * `varieties[branchId]` = this product's volume buckets at that branch.
-   * The detail endpoint loads a single product, so the branch level is
-   * already the list of volumes — it is NOT nested again by product id.
+   * `varieties[branchId]` = this product's sizes at that branch (one entry per
+   * volume). The detail endpoint loads a single product, so the branch level is
+   * already the list of sizes — it is NOT nested again by product id.
    */
-  varieties: Record<string, VarietyVolume[]>;
+  varieties: Record<string, ProductSize[]>;
   in_stock_branch_count: number;
 }
 
-/** One line of POST /api/orders — a product and, for bottled sizes, the
- * exact volume/variant the customer picked. */
+/** One line of POST /api/orders — a product and, for bottled sizes, the size
+ * the customer chose. The packaging is resolved by the server. */
 export interface PlaceOrderItem {
   product_id: number | string;
   quantity: number;
   volume?: number;
-  variant?: string;
 }
 
 export interface PlaceOrderInput {
@@ -410,7 +412,7 @@ export function fetchProducts(params: {
   return apiGet<ProductsPayload>('/products', params);
 }
 
-/** GET /api/products/{id} — detail with per-branch stock and varieties. */
+/** GET /api/products/{id} — detail with per-branch stock and sizes. */
 export function fetchProduct(id: string, branchId?: string): Promise<ProductDetailPayload> {
   return apiGet<ProductDetailPayload>(`/products/${encodeURIComponent(id)}`, { branch_id: branchId });
 }

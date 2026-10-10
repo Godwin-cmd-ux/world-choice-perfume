@@ -56,19 +56,19 @@ class OrderController extends Controller
         });
 
         // Oil fragrance products are bottled in several sizes, each with its
-        // own price, so the form has to offer the options in stock at this
-        // branch and the customer has to pick one.
-        $productVarieties = $this->varieties->bucketsForProducts(
+        // own price, so the form offers the sizes in stock at this branch and
+        // the customer picks one. The box/logo/colour of the bottling is the
+        // branch's to pack and never changes the price, so it is not offered.
+        $productVarieties = $this->varieties->volumeBucketsForProducts(
             (int) $branchId,
             $products->map(fn ($p) => (int) $p->product_id)->all()
         );
 
-        // Coming from the details page the choice is already made, so keep it
+        // Coming from the details page the size is already chosen, so keep it
         // selected instead of making the customer choose it a second time.
         $preselect = [
             'product_id' => (int) ($request->product_id ?? 0),
             'volume' => (int) ($request->volume ?? 0),
-            'variant' => (string) ($request->variant ?? ''),
         ];
 
         return view('customer.orders.create', compact('branch', 'products', 'productVarieties', 'preselect'));
@@ -85,6 +85,8 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required',
             'items.*.quantity' => 'required|integer|min:1',
+            // The customer picks a size; the packaging behind it is optional
+            // and resolved server-side.
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
         ]);
@@ -149,24 +151,50 @@ class OrderController extends Controller
                 $volume = (int) ($item['volume'] ?? 0);
                 $variant = trim((string) ($item['variant'] ?? ''));
 
+                // Price of the chosen size; 0 means "no size price", which
+                // falls back to the product's branch price below.
+                $varietyPrice = 0.0;
+
                 // A product bottled in several sizes has to say which one is
-                // being ordered, and enough of that exact bottling must exist.
+                // being ordered, and enough of that size must exist. The
+                // packaging behind it is the branch's to choose, so the bucket
+                // to pack from is resolved here — a variant posted by an older
+                // client or a saved link is honoured when it fits the size.
                 // Products stocked in before variety tracking have no buckets
                 // and are ordered as plain product lines.
                 if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
-                    if ($volume <= 0 || $variant === '') {
+                    if ($volume <= 0) {
                         return $this->orderProblem(
                             $request,
                             'items',
-                            'Please choose the size and packaging for ' . ($stock['product']['name'] ?? 'this product') . '.'
+                            'Please choose the size for ' . ($stock['product']['name'] ?? 'this product') . '.'
                         );
                     }
-                    $available = (int) ($varietyStock[$productId][$volume][$variant] ?? 0);
+
+                    $pick = $this->varieties->resolveVariantForVolume((int) $validated['branch_id'], $productId, $volume);
+                    if ($pick === null) {
+                        return $this->orderProblem(
+                            $request,
+                            'items',
+                            $this->varieties->volumeLabel($volume) . ' for ' . ($stock['product']['name'] ?? 'this product') . ' is no longer available.'
+                        );
+                    }
+
+                    $varietyPrice = (float) $pick['price'];
+                    $available = (int) $pick['available'];
+
+                    if ($variant !== '' && isset($varietyStock[$productId][$volume][$variant])) {
+                        $available = (int) $varietyStock[$productId][$volume][$variant];
+                        $varietyPrice = (float) ($varietyPrices[$productId][$volume][$variant] ?? 0) ?: $varietyPrice;
+                    } else {
+                        $variant = (string) $pick['variant'];
+                    }
+
                     if ($available < $quantity) {
                         return $this->orderProblem(
                             $request,
                             'items',
-                            'Only ' . $available . ' left of ' . $this->varieties->pickLabel($volume, $variant) . ' for ' . ($stock['product']['name'] ?? 'this product') . '.'
+                            'Only ' . $available . ' left of ' . $this->varieties->volumeLabel($volume) . ' for ' . ($stock['product']['name'] ?? 'this product') . '.'
                         );
                     }
                 } else {
@@ -174,11 +202,8 @@ class OrderController extends Controller
                     $variant = '';
                 }
 
-                // The picked bottling carries its own price (50ml != 30ml);
+                // The picked size carries its own price (50ml != 30ml);
                 // the product's branch price is only the fallback.
-                $varietyPrice = ($volume > 0 && $variant !== '')
-                    ? (float) ($varietyPrices[$productId][$volume][$variant] ?? 0)
-                    : 0.0;
                 $unitPrice = $varietyPrice > 0 ? $varietyPrice : (float) ($stock['selling_price'] ?? 0);
                 $lineTotal = $unitPrice * $quantity;
                 $total += $lineTotal;
@@ -325,9 +350,10 @@ class OrderController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'total' => $item['total'],
-                    // The size and packaging that was ordered, so the customer
-                    // can see the same thing the branch is packing.
-                    'variety_label' => $volume > 0 && $variant !== '' ? $this->varieties->pickLabel($volume, $variant) : '',
+                    // The size that was ordered — the customer chose a volume,
+                    // so that is what they are shown back, not the branch's
+                    // packaging choice.
+                    'variety_label' => $volume > 0 ? $this->varieties->volumeLabel($volume) : '',
                     'product' => (object) ($item['product'] ?? []),
                 ];
             });

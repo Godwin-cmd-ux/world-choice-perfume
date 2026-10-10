@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { ConfirmDialog, GroupLabel } from '../../../components/adminkit';
 import { COLORS, GD_ACCENT, RADIUS } from '../../../lib/theme';
@@ -14,6 +15,8 @@ import { staffSession } from '../../../lib/staffSession';
  * profile opens the same account/password form the website's /profile uses.
  */
 export default function GdMore() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const [confirmOut, setConfirmOut] = useState(false);
   const identity = staffSession.getIdentity();
 
@@ -23,7 +26,7 @@ export default function GdMore() {
   ];
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.identity}>
           <View style={styles.avatar}>

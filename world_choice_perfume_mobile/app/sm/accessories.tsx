@@ -14,7 +14,7 @@ import {
   type SmAccessoryColor,
   type SmAccessoryType,
 } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 type Mode = 'list' | 'in' | 'out';
@@ -286,12 +286,12 @@ const styles = StyleSheet.create({
   },
   inlineEditTitle: { color: SM_ACCENT.light, fontSize: 14, fontWeight: '800' },
   submitBtn: {
-    backgroundColor: SM_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     paddingVertical: 14,
     marginTop: 10,
   },
   submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#052E1B', fontSize: 15, fontWeight: '800' },
+  submitText: { color: BUTTON.text, fontSize: 15, fontWeight: '800' },
 });

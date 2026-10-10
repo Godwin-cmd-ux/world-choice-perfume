@@ -1,6 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the page is dark even
+     with JavaScript off; partials/theme-boot swaps in the saved choice before
+     the first paint. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
@@ -60,6 +64,7 @@
         }
         .leaflet-control-zoom a:hover { background: #374151 !important; }
     </style>
+    @include('partials.theme-mode')
 </head>
 <body class="bg-gray-900">
     <!-- Top Bar -->
@@ -124,8 +129,8 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="fixed inset-0 z-[2000] bg-amber-900 flex items-center justify-center">
         <div class="text-center text-white">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center">
-                <i class="fas fa-map-marker-alt text-2xl text-amber-300 animate-bounce"></i>
+            <div class="mb-4 flex justify-center">
+                <x-golden-w-loader variant="page" message="Loading map to {{ $branch->name }}" />
             </div>
             <h2 class="font-bold text-xl mb-1">Twende Dukani</h2>
             <p class="text-amber-200 text-sm">Loading map to {{ $branch->name }}...</p>

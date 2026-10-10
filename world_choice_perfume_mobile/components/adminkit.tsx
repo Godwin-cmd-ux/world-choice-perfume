@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   RefreshControl,
@@ -13,7 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { COLORS, RADIUS } from '../lib/theme';
+import { GoldenWLoader } from './GoldenWLoader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BUTTON, COLORS, RADIUS } from '../lib/theme';
 import { isApiError } from '../lib/api';
 import { staffSession } from '../lib/staffSession';
 
@@ -51,10 +52,16 @@ export function AdminPage({
   onRefresh?: () => void;
   children: ReactNode;
 }) {
+  // Every module screen hides the native header and draws edge-to-edge (Expo
+  // SDK 54 / Android 15+ always-on), so the top bar has to keep itself clear of
+  // the status bar — otherwise the branch eyebrow and the page title sit behind
+  // the system clock/notification icons. The bar's own raised background still
+  // fills the strip, which reads as a proper app bar.
+  const insets = useSafeAreaInsets();
   const accentColor = accent ?? COLORS.goldDark;
   return (
     <View style={styles.page}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 14 }]}>
         {onBack ? (
           <Pressable onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={22} color={accent ?? COLORS.gold} />
@@ -258,7 +265,7 @@ export function BusyOverlay({ visible, label = 'Working…' }: { visible: boolea
   return (
     <View style={styles.busy}>
       <View style={styles.busyBox}>
-        <ActivityIndicator size="large" color={COLORS.gold} />
+        <GoldenWLoader variant="compact" />
         <Text style={styles.busyText}>{label}</Text>
       </View>
     </View>
@@ -317,7 +324,7 @@ export function ConfirmDialog({
               accessibilityRole="button"
             >
               {loading ? (
-                <ActivityIndicator size="small" color={danger ? '#FFF' : '#1A1400'} />
+                <GoldenWLoader variant="inline" tone="light" />
               ) : (
                 <Text style={[styles.dialogConfirmText, danger && { color: '#FFF' }]}>{confirmLabel}</Text>
               )}
@@ -407,7 +414,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 14,
+    // paddingTop comes from the safe-area inset — see AdminPage above.
     paddingBottom: 10,
     gap: 8,
     borderBottomWidth: 1,
@@ -566,9 +573,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  dialogCancel: { backgroundColor: COLORS.surfaceHigh, borderWidth: 1, borderColor: COLORS.border },
-  dialogCancelText: { color: COLORS.textSecondary, fontSize: 14.5, fontWeight: '700' },
-  dialogConfirm: { backgroundColor: COLORS.gold },
+  dialogCancel: { backgroundColor: BUTTON.fill, borderWidth: 1, borderColor: BUTTON.border },
+  dialogCancelText: { color: BUTTON.text, fontSize: 14.5, fontWeight: '700' },
+  dialogConfirm: { backgroundColor: BUTTON.fill },
   dialogDanger: { backgroundColor: '#B91C1C' },
-  dialogConfirmText: { color: '#1A1400', fontSize: 14.5, fontWeight: '800' },
+  dialogConfirmText: { color: BUTTON.text, fontSize: 14.5, fontWeight: '800' },
 });

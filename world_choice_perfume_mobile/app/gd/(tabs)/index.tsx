@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { ConfirmDialog, DataCard, GroupLabel, StatGrid, StatTile, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -16,6 +17,8 @@ import { GdMenuButton } from '../../../components/gdsidebar';
  * and Delete, or the "all approved" empty state.
  */
 export default function GdDashboard() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData<GdDashboardPayload>(
     () => fetchGdDashboard(),
     [],
@@ -54,7 +57,7 @@ export default function GdDashboard() {
   const c = data.counts;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

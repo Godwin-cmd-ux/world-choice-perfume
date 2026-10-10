@@ -94,7 +94,7 @@
                     </button>
                 </div>
                 <div id="profile-location-loading" class="hidden mt-4">
-                    <i class="fas fa-spinner fa-spin text-green-600 text-xl"></i>
+                    <x-golden-w-loader variant="compact" message="Getting your location" />
                     <p class="text-xs text-gray-500 mt-2">Getting your location...</p>
                 </div>
                 <div id="profile-location-error" class="hidden mt-4 text-xs text-red-500"></div>

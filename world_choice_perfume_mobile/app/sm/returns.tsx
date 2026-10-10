@@ -11,7 +11,7 @@ import {
   resendReturnItem,
   writeOffReturnItem,
 } from '../../lib/smApi';
-import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
 /**
@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
   guardWrap: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: COLORS.bg },
   actions: { marginTop: 10, gap: 8 },
   primaryBtn: {
-    backgroundColor: SM_ACCENT.main,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 9,
     alignSelf: 'flex-start',
   },
-  primaryBtnText: { color: '#052E1B', fontWeight: '800', fontSize: 13 },
+  primaryBtnText: { color: BUTTON.text, fontWeight: '800', fontSize: 13 },
   dangerBtn: {
     backgroundColor: COLORS.dangerBg,
     borderWidth: 1,

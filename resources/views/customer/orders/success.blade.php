@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- data-theme is the dark default, server-rendered so the page is dark even
+     with JavaScript off; partials/theme-boot swaps in the saved choice before
+     the first paint. --}}
+<html lang="en" data-theme="dark">
 <head>
+    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <title>Order Placed - World Choice Perfume</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    @include('partials.theme-mode')
 </head>
 <body class="bg-gray-50 flex items-center justify-center min-h-screen">
     <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">

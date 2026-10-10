@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
 import { Chip, ChipRow, DataCard, SearchInput, useAsyncData } from '../../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
@@ -16,6 +17,8 @@ import { AdminMenuButton } from '../../../components/adminsidebar';
  * lives, just like the website).
  */
 export default function AdminOrders() {
+  // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('pending');
   const [branchId, setBranchId] = useState('');
   const [search, setSearch] = useState('');
@@ -40,7 +43,7 @@ export default function AdminOrders() {
   const counts = data?.counts ?? {};
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={COLORS.gold} />}

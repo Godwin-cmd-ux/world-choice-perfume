@@ -140,8 +140,10 @@ class ProductController extends Controller
 
         return view('customer.products.index', [
             ...compact('branches', 'products', 'selectedBranch', 'availableBrands'),
-            // In-stock bottlings per branch so an Oil Fragrance card that is
-            // sold in several varieties does not advertise a single price.
+            // In-stock SIZES per branch so an Oil Fragrance card that is sold in
+            // several volumes does not advertise a single price. The
+            // box/logo/colour of a bottling is the branch's to pack, so it is
+            // collapsed away before the customer sees anything.
             'varietiesByBranch' => $this->varietiesByBranch($products),
             // A perfume stocked at more than one branch is listed per branch
             // instead of being given one number for the whole country.
@@ -172,13 +174,14 @@ class ProductController extends Controller
     }
 
     /**
-     * Variety picker data for every branch the listed cards point at.
+     * Size picker data for every branch the listed cards point at.
      *
      * In "All branches" view each card links to the branch its own stock row
-     * belongs to, so the varieties have to be read per branch rather than
-     * once for the whole page.
+     * belongs to, so the sizes have to be read per branch rather than once
+     * for the whole page. One entry per VOLUME — the packaging behind it is
+     * the branch's to choose, not the customer's.
      *
-     * @return array<int, array<int, array>> [branch_id => [product_id => [volumes]]]
+     * @return array<int, array<int, array>> [branch_id => [product_id => [sizes]]]
      */
     private function varietiesByBranch($products): array
     {
@@ -195,7 +198,7 @@ class ProductController extends Controller
 
         $result = [];
         foreach ($productIds as $branchId => $ids) {
-            $result[$branchId] = $this->varieties->bucketsForProducts((int) $branchId, array_keys($ids));
+            $result[$branchId] = $this->varieties->volumeBucketsForProducts((int) $branchId, array_keys($ids));
         }
 
         return $result;
@@ -219,7 +222,9 @@ class ProductController extends Controller
 
         // Fetch branch stock for this product
         $rawStock = $this->supabase->query('branch_stock', [
-            'select' => '*, branch:branches(id,name), product:products(id,name)',
+            // latitude/longitude ride along so the branch picker can offer
+            // "Twende Dukani" for the branches that really have stock.
+            'select' => '*, branch:branches(id,name,latitude,longitude), product:products(id,name)',
             'product_id' => "eq.{$productId}",
         ]);
 
@@ -235,13 +240,14 @@ class ProductController extends Controller
             ];
         });
 
-        // In-stock bottlings for this product at every branch it is stocked in.
-        // A product sold in several varieties has no single price, so the page
-        // lists each bottling with its own price and the customer orders the
-        // one they want.
+        // In-stock SIZES for this product at every branch it is stocked in.
+        // A product sold in several volumes has no single price, so the page
+        // lists each size with its own price and the customer orders the one
+        // they want. Box/logo/colour never reaches the customer — the branch
+        // packs whichever it has.
         $varietiesByBranch = [];
         foreach ($branchStocks->map(fn ($s) => (int) $s->branch_id)->filter()->unique() as $branchId) {
-            $varietiesByBranch[$branchId] = $this->varieties->bucketsForProducts($branchId, [$productId])[(int) $productId] ?? [];
+            $varietiesByBranch[$branchId] = $this->varieties->volumeBucketsForProducts($branchId, [$productId])[(int) $productId] ?? [];
         }
 
         // Get selected branch and price
@@ -260,7 +266,6 @@ class ProductController extends Controller
                 $price = $stockItem?->selling_price;
             }
         }
-
         // Cast product to object for the view
         $product = (object) $product;
         if (isset($product->images) && is_array($product->images)) {
@@ -269,14 +274,15 @@ class ProductController extends Controller
             $product->images = collect($product->images)->map(fn ($img) => (object) $img);
         }
 
-        // Which branches actually stock it. With no branch picked the page
-        // lists each of them with its own price; with one picked the page
-        // belongs to that branch alone.
-        $inStockBranches = $branchStocks->filter(fn ($s) => $s->quantity > 0);
+        // Which branches actually stock it. A perfume on more than one
+        // branch's shelf is ordered from exactly one of them, so the page
+        // shows every branch's price and stock and lets the customer pick —
+        // whether or not they arrived with one branch already in mind.
+        $inStockBranches = $branchStocks->filter(fn ($s) => $s->quantity > 0)->values();
 
         if ($request->expectsJson()) {
             // Mobile app: product detail as JSON, same computed values the
-            // view uses (per-branch stock, prices, varieties).
+            // view uses (per-branch stock, prices, sizes).
             return response()->json([
                 'product' => $product,
                 'branches' => $branches,
@@ -292,6 +298,7 @@ class ProductController extends Controller
             ...compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'),
             'varietiesByBranch' => $varietiesByBranch,
             'varieties' => $selectedBranch ? ($varietiesByBranch[(int) $selectedBranch->id] ?? []) : [],
+            'inStockBranches' => $inStockBranches,
             'inStockBranchCount' => $inStockBranches->count(),
         ]);
     }

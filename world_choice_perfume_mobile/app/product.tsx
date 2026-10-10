@@ -14,10 +14,17 @@ import { COLORS, RADIUS } from '../lib/theme';
 
 /**
  * Product details — GET /api/products/{id} (Customer\ProductController@show):
- * description plus the real per-branch stock, prices and varieties the
- * website shows, so a customer knows where to find the fragrance — and, at
- * the bottom, the same "add to cart" choice the website's order form offers
- * (branch, bottling, quantity) feeding the in-app cart.
+ * description plus the real per-branch stock, prices and sizes the website
+ * shows, so a customer knows where to find the fragrance — and, at the bottom,
+ * the same "add to cart" choice the website's order form offers (branch, size,
+ * quantity) feeding the in-app cart.
+ *
+ * A perfume stocked at more than one branch is ordered from exactly one of
+ * them, so the branch options carry that branch's price and stock and adding to
+ * the cart from another branch starts a fresh cart (lib/cart).
+ *
+ * Only sizes are ever offered: box/logo/colour is the branch's to pack and
+ * never changes the price.
  */
 const SEX_LABELS: Record<string, string> = {
   male: "Men's",
@@ -37,9 +44,9 @@ export default function ProductScreen() {
   const [data, setData] = useState<ProductDetailPayload | null>(null);
   const [error, setError] = useState('');
 
-  // Ordering state: which branch, which bottling, how many.
+  // Ordering state: which branch, which size, how many.
   const [branchId, setBranchId] = useState<string>(params.branch_id ?? '');
-  const [pick, setPick] = useState('');
+  const [size, setSize] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   const load = useCallback(async () => {
@@ -74,42 +81,29 @@ export default function ProductScreen() {
   const selectedStock =
     stockedBranches.find((stock) => String(stock.branch_id) === branchId) ?? null;
 
-  // Bottlings in stock at the chosen branch (empty for plain products).
+  // Sizes in stock at the chosen branch (empty for plain products).
   // GET /api/products/{id} answers `varieties[branchId]` with THIS product's
-  // own volume list — the endpoint loads one product at a time — so the
-  // branch level is already the bucket array. (It used to be read as
+  // own size list — the endpoint loads one product at a time — so the branch
+  // level is already the array. (It used to be read as
   // varieties[branchId][productId], which always resolved to undefined: the
   // picker never rendered and checkout then rejected the order.)
-  const buckets = useMemo(() => data?.varieties?.[branchId] ?? [], [data, branchId]);
+  const sizes = useMemo(() => data?.varieties?.[branchId] ?? [], [data, branchId]);
 
-  // Keep the bottling pick valid (defaults to the first one in stock).
+  // Keep the size pick valid (defaults to the smallest one in stock).
   useEffect(() => {
-    const keys = buckets.flatMap((volume) =>
-      volume.variants.map((variant) => `${volume.volume}|${variant.key}`),
-    );
-    if (keys.length === 0) {
-      if (pick) setPick('');
+    if (sizes.length === 0) {
+      if (size !== null) setSize(null);
       return;
     }
-    if (!keys.includes(pick)) setPick(keys[0]);
-  }, [buckets, pick]);
-
-  const picked = useMemo(() => {
-    for (const volume of buckets) {
-      for (const variant of volume.variants) {
-        if (`${volume.volume}|${variant.key}` === pick) {
-          return {
-            volume: volume.volume,
-            variant: variant.key,
-            label: `${volume.label} ${variant.label}`,
-            price: variant.price,
-            available: variant.available,
-          };
-        }
-      }
+    if (size === null || !sizes.some((option) => option.volume === size)) {
+      setSize(sizes[0].volume);
     }
-    return null;
-  }, [buckets, pick]);
+  }, [sizes, size]);
+
+  const picked = useMemo(
+    () => sizes.find((option) => option.volume === size) ?? null,
+    [sizes, size],
+  );
 
   const branchPrice = Number(selectedStock?.selling_price ?? 0);
   const unitPrice = picked && picked.price > 0 ? picked.price : branchPrice;
@@ -128,7 +122,7 @@ export default function ProductScreen() {
     if (!orderable || !product || !selectedStock) return;
 
     const item = {
-      key: `${branchId}-${id}-${picked ? `${picked.volume}|${picked.variant}` : 'plain'}`,
+      key: `${branchId}-${id}-${picked ? picked.volume : 'plain'}`,
       productId: id,
       productName: product.name ?? 'Unnamed product',
       brand: product.brand ?? null,
@@ -138,7 +132,6 @@ export default function ProductScreen() {
       quantity,
       unitPrice,
       volume: picked?.volume,
-      variant: picked?.variant,
       varietyLabel: picked?.label,
       available,
     };
@@ -249,20 +242,35 @@ export default function ProductScreen() {
             <>
               {stockedBranches.length > 1 ? (
                 <>
-                  <Text style={styles.fieldLabel}>Branch</Text>
+                  <Text style={styles.fieldLabel}>
+                    Branch · {stockedBranches.length} stock this
+                  </Text>
                   <View style={styles.chipWrap}>
                     {stockedBranches.map((stock, index) => {
                       const value = String(stock.branch_id);
                       const active = value === branchId;
+                      const sizesHere = data.varieties?.[value] ?? [];
+                      // Cheapest size at this branch, so each option carries
+                      // its own price as well as its own stock.
+                      const fromPrice = sizesHere
+                        .map((option) =>
+                          option.price > 0 ? option.price : Number(stock.selling_price ?? 0),
+                        )
+                        .filter((price) => price > 0)
+                        .sort((a, b) => a - b)[0];
                       return (
                         <Pressable
                           key={String(stock.id ?? `${value}-${index}`)}
                           onPress={() => setBranchId(value)}
-                          style={[styles.chip, active && styles.chipActive]}
+                          style={[styles.chip, styles.branchChip, active && styles.chipActive]}
                           accessibilityRole="button"
                         >
                           <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
                             {stock.branch?.name ?? 'Branch'}
+                          </Text>
+                          <Text style={[styles.chipSub, active && styles.chipTextActive]}>
+                            {fromPrice ? `from ${formatMoney(fromPrice)} · ` : ''}
+                            {stock.quantity ?? 0} in stock
                           </Text>
                         </Pressable>
                       );
@@ -276,32 +284,29 @@ export default function ProductScreen() {
                 </Text>
               )}
 
-              {buckets.length > 0 ? (
+              {sizes.length > 0 ? (
                 <>
-                  <Text style={styles.fieldLabel}>Size &amp; packaging</Text>
+                  <Text style={styles.fieldLabel}>Size</Text>
                   <View style={styles.chipWrap}>
-                    {buckets.flatMap((volume) =>
-                      volume.variants.map((variant) => {
-                        const key = `${volume.volume}|${variant.key}`;
-                        const active = key === pick;
-                        return (
-                          <Pressable
-                            key={key}
-                            onPress={() => setPick(key)}
-                            style={[styles.chip, styles.varietyChip, active && styles.chipActive]}
-                            accessibilityRole="button"
-                          >
-                            <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                              {volume.label} {variant.label}
-                            </Text>
-                            <Text style={[styles.chipSub, active && styles.chipTextActive]}>
-                              {variant.price > 0 ? formatMoney(variant.price) : 'Price at branch'} ·{' '}
-                              {variant.available} left
-                            </Text>
-                          </Pressable>
-                        );
-                      }),
-                    )}
+                    {sizes.map((option) => {
+                      const active = option.volume === size;
+                      return (
+                        <Pressable
+                          key={option.volume}
+                          onPress={() => setSize(option.volume)}
+                          style={[styles.chip, styles.varietyChip, active && styles.chipActive]}
+                          accessibilityRole="button"
+                        >
+                          <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                            {option.label}
+                          </Text>
+                          <Text style={[styles.chipSub, active && styles.chipTextActive]}>
+                            {option.price > 0 ? formatMoney(option.price) : 'Price at branch'} ·{' '}
+                            {option.available} left
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 </>
               ) : null}
@@ -355,14 +360,14 @@ export default function ProductScreen() {
           </Card>
         ) : null}
 
-        {/* Per-branch stock, prices and varieties — the website's data. */}
+        {/* Per-branch stock, prices and sizes — the website's data. */}
         <Card style={styles.block}>
           <Text style={styles.blockTitle}>Where to find it</Text>
           {stockedBranches.length === 0 ? (
             <Text style={styles.paragraph}>No branch currently has this in stock.</Text>
           ) : (
             stockedBranches.map((stock, index) => {
-              const varieties = data.varieties?.[String(stock.branch_id)] ?? [];
+              const sizesHere = data.varieties?.[String(stock.branch_id)] ?? [];
               return (
                 <View
                   key={String(stock.id ?? `${String(stock.branch_id)}-${index}`)}
@@ -380,18 +385,13 @@ export default function ProductScreen() {
                     </View>
                   </View>
 
-                  {varieties.map((volume) => (
-                    <View key={volume.volume} style={styles.varietyGroup}>
-                      <Text style={styles.varietyVolume}>{volume.label}</Text>
-                      {volume.variants.map((variant) => (
-                        <View key={variant.key} style={styles.varietyRow}>
-                          <Text style={styles.varietyLabel}>{variant.label}</Text>
-                          <Text style={styles.varietyPrice}>
-                            {variant.price > 0 ? formatMoney(variant.price) : '—'}
-                            {variant.available > 0 ? ` · ${variant.available} left` : ''}
-                          </Text>
-                        </View>
-                      ))}
+                  {sizesHere.map((option) => (
+                    <View key={option.volume} style={styles.varietyRow}>
+                      <Text style={styles.varietyLabel}>{option.label}</Text>
+                      <Text style={styles.varietyPrice}>
+                        {option.price > 0 ? formatMoney(option.price) : '—'}
+                        {option.available > 0 ? ` · ${option.available} left` : ''}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -553,6 +553,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderRadius: RADIUS.md,
   },
+  branchChip: {
+    alignItems: 'flex-start',
+    borderRadius: RADIUS.md,
+  },
   chipActive: {
     backgroundColor: COLORS.goldSoft,
     borderColor: COLORS.goldBorder,
@@ -646,17 +650,6 @@ const styles = StyleSheet.create({
     color: COLORS.goldBright,
     fontSize: 11,
     fontWeight: '600',
-  },
-  varietyGroup: {
-    marginTop: 4,
-    gap: 4,
-  },
-  varietyVolume: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   varietyRow: {
     flexDirection: 'row',

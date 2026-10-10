@@ -19,7 +19,7 @@ import {
   type BranchListItem,
 } from '../../lib/adminApi';
 import { errorMessage } from '../../lib/api';
-import { COLORS, RADIUS } from '../../lib/theme';
+import { BUTTON, COLORS, RADIUS } from '../../lib/theme';
 import { adminMenu } from '../../components/adminsidebar';
 
 /**
@@ -71,7 +71,7 @@ export default function Branches() {
           accessibilityRole="button"
           accessibilityLabel="Create branch"
         >
-          <Ionicons name="add" size={20} color="#1A1400" />
+          <Ionicons name="add" size={20} color={BUTTON.text} />
           <Text style={styles.addText}>New</Text>
         </Pressable>
       }
@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: COLORS.gold,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 13,
     paddingVertical: 8,
   },
-  addText: { color: '#1A1400', fontWeight: '800', fontSize: 13 },
+  addText: { color: BUTTON.text, fontWeight: '800', fontSize: 13 },
   pressed: { opacity: 0.75 },
   count: { color: COLORS.textMuted, fontSize: 12 },
   panel: { gap: 10, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 10 },

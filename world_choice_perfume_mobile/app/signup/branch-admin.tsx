@@ -1,4 +1,5 @@
 import { SignupForm, type SignupConfig } from '../../components/SignupForm';
+import { BUTTON } from '../../lib/theme';
 
 /**
  * SIGNUP PAGE — Branch Admin (resources/views/auth/register-branch-admin.blade.php).
@@ -11,7 +12,7 @@ const config: SignupConfig = {
   title: 'Branch Admin',
   subtitle: 'Register as a Branch Administrator',
   buttonLabel: 'Register as Branch Admin',
-  buttonColor: '#C8A02A', // gold-500 → gold-600 gradient on the website
+  buttonColor: BUTTON.fill, // brand button colour — #F89A1E in every theme
   buttonTextColor: '#0D0D0D', // text-dark-900
   nameLabel: 'Your Full Name',
   branchLabel: 'Select Your Branch',

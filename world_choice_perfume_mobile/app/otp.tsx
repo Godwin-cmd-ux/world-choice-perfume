@@ -21,7 +21,7 @@ import {
   verifyRegistrationOtp,
 } from '../lib/api';
 import { staffSession } from '../lib/staffSession';
-import { COLORS, RADIUS } from '../lib/theme';
+import { BUTTON, COLORS, RADIUS } from '../lib/theme';
 
 /**
  * VERIFY YOUR EMAIL — the website's verify-otp step
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   verifyButton: {
     width: '100%',
     marginTop: 8,
-    backgroundColor: COLORS.goldBright,
+    backgroundColor: BUTTON.fill,
   },
   resend: {
     flexDirection: 'row',
@@ -335,14 +335,14 @@ const styles = StyleSheet.create({
   },
   pendingPrimary: {
     width: '100%',
-    backgroundColor: COLORS.goldBright,
+    backgroundColor: BUTTON.fill,
     borderRadius: RADIUS.md,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 6,
   },
   pendingPrimaryText: {
-    color: '#111111',
+    color: BUTTON.text,
     fontSize: 15,
     fontWeight: '800',
   },

@@ -12,12 +12,11 @@ import { COLORS, hydrateTheme, useTheme } from '../lib/theme';
 // as buttons. Add screens under `app/` and expo-router picks them up
 // automatically.
 export default function RootLayout() {
-  // Subscribing here means a theme toggle re-renders this root and, with it,
-  // the whole tree — inline COLORS.x reads pick up the new palette while
-  // registered StyleSheet entries have already been swapped by theme.ts.
-  const { isDark } = useTheme();
+  // The current mode: light (default) or dark.
+  const { mode, isDark } = useTheme();
 
-  // Restore the saved mode (light is the default until the user toggles).
+  // Restore the saved mode (light is the default until the user toggles on a
+  // device that has never run the app).
   useEffect(() => {
     hydrateTheme();
   }, []);
@@ -25,7 +24,23 @@ export default function RootLayout() {
   return (
     <CartProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      {/*
+        Keyed by the mode, and that key is what makes a toggle visible.
+
+        lib/theme.ts swaps the palette in place (COLORS plus every registered
+        StyleSheet entry), but a screen only paints the swapped values when it
+        re-renders — and React Navigation keeps the mounted screens' elements,
+        so subscribing to the theme here re-rendered the navigator's own chrome
+        and left every screen showing the old colours until a reload.
+        Remounting the navigator re-applies the whole tree at once: registered
+        style sheets, inline COLORS reads and the StatusBar alike.
+
+        Safe to remount: the cart lives above this key (it survives), a saved
+        mode is restored before the first paint through hydrateTheme(), and on
+        web the URL keeps the screen the customer was on.
+      */}
       <Stack
+        key={mode}
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: COLORS.bg },
