@@ -142,6 +142,19 @@ export default function ShopScreen() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Deep links (Home's category cards, brand cards, the brands page) land on
+  // this tab with params. The tab stays mounted between visits, so the state
+  // initializers above only run once — without these syncs a second visit
+  // would keep the previous filter (e.g. "all genders") and silently ignore
+  // the category the user just picked. Same for a brand opened from /brands.
+  useEffect(() => {
+    if (params.sex_category) setSex(params.sex_category);
+  }, [params.sex_category]);
+
+  useEffect(() => {
+    if (params.brand) setBrand(params.brand);
+  }, [params.brand]);
+
   const load = useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
       if (mode === 'refresh') setRefreshing(true);

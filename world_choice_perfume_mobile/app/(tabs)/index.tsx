@@ -301,7 +301,7 @@ export default function HomeScreen() {
             </View>
           )}
           <Pressable
-            onPress={() => router.push({ pathname: '/shop' })}
+            onPress={() => router.push('/brands')}
             style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
             accessibilityRole="button"
           >

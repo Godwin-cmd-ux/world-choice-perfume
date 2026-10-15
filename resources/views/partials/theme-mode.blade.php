@@ -382,4 +382,19 @@
     html[data-theme="light"] .wcp-dark-skin [class~="from-dark-950\/95"][class~="via-dark-950\/80"][class~="to-dark-950\/55"] {
         background-image: linear-gradient(to right, rgba(247, 247, 244, 0.97) 0%, rgba(247, 247, 244, 0.90) 50%, rgba(247, 247, 244, 0.78) 100%);
     }
+
+    /*
+     * Section seams: the hero's "Bottom fade into next section"
+     * (bg-gradient-to-b from-transparent to-dark-950). On the dark page the
+     * fade dissolves into the band below it. In light mode the same veil
+     * painted a near-black wedge across the bottom of the hero — a sharp dark
+     * shadow sitting right on the seam between the two sections. It now
+     * fades into the light page colour instead, which is what the seam
+     * actually looks like in this mode. The stops are named exactly so the
+     * tinted veils over photos keep theirs.
+     */
+    html[data-theme="light"] .wcp-dark-skin[class~="from-transparent"][class~="to-dark-950"],
+    html[data-theme="light"] .wcp-dark-skin [class~="from-transparent"][class~="to-dark-950"] {
+        background-image: linear-gradient(to bottom, rgba(247, 247, 244, 0) 0%, #F7F7F4 100%);
+    }
 </style>

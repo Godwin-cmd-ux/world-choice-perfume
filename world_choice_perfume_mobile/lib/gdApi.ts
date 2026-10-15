@@ -166,13 +166,32 @@ export function deleteGdBrand(id: string): Promise<{ message: string }> {
 
 /* ------------------------------ QR code ---------------------------- */
 
+/** One row of the product picker — same catalogue the website lists. */
+export interface GdQrProduct {
+  id: number | string;
+  name: string;
+  brand?: string | null;
+  category?: string | null;
+  /** Public order page the printed code encodes (built server-side). */
+  url: string;
+}
+
 export interface GdQrCodePayload {
   url: string;
   image: string | null;
+  /** Active catalogue for the product tab (empty when Supabase is down). */
+  products?: GdQrProduct[];
 }
 
-export function fetchGdQrCode(): Promise<GdQrCodePayload> {
-  return apiGet<GdQrCodePayload>('/gd/qr-code');
+/**
+ * General code (the site root) or, with an id, that product's own order
+ * page — the two tabs of the website's QR page.
+ */
+export function fetchGdQrCode(productId?: number | string): Promise<GdQrCodePayload> {
+  return apiGet<GdQrCodePayload>(
+    '/gd/qr-code',
+    productId != null ? { product_id: String(productId) } : undefined,
+  );
 }
 
 /* --------------------------- Profile/account ----------------------- */

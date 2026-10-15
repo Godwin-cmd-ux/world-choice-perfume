@@ -98,4 +98,28 @@ class HomeController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Every active brand — the JSON twin of the website's GET /brands page
+     * (routes/web.php, the destination of the homepage's "View All Brands"
+     * button). Same query and same graceful empty-on-failure behaviour, so
+     * the app's brands screen lists exactly what the website lists.
+     */
+    public function brands()
+    {
+        $brands = collect();
+
+        try {
+            $brands = collect($this->supabase->query('brands', [
+                'select' => 'id,name,logo_url',
+                'is_active' => 'eq.true',
+                'order' => 'name.asc',
+            ]))->map(fn ($b) => (object) $b);
+        } catch (Exception $e) {
+            // Same graceful fallback as the homepage: an empty list, not a 500.
+            $brands = collect();
+        }
+
+        return response()->json(['brands' => $brands->values()]);
+    }
 }

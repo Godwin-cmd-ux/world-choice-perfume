@@ -89,6 +89,10 @@ Route::post('/inbound-emails', [InfoMailWebhookController::class, 'store'])
 // and the contact details from config/contact.php + config/info_mail.php.
 Route::get('/home', [HomeController::class, 'index']);
 
+// Every active brand — the JSON twin of the website's GET /brands page,
+// for the app's "View All Brands" screen (the same query the page runs).
+Route::get('/brands', [HomeController::class, 'brands']);
+
 // Catalogue — reuses Customer\ProductController with the website's own
 // branch/search/category/brand query parameters.
 Route::get('/products', [ProductController::class, 'index']);

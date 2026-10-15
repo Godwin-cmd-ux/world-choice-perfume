@@ -9,6 +9,7 @@ use App\Services\RawEmailParser;
 use App\Services\SupabaseService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use ReflectionProperty;
 use RuntimeException;
@@ -512,6 +513,21 @@ class InfoMailReplyAttachmentTest extends TestCase
 
     private function loginAsHeadQuartersCustomerCare(): void
     {
+        // The HQ gate (customer-care.hq) resolves branch 10's name from
+        // Supabase on every request and only grants access to "Head
+        // Quarters-Mikocheni", so the lookup has to be faked here — otherwise
+        // the reply endpoint answers 403 before its validation runs. The
+        // static request cache is cleared first: it outlives a single test
+        // and an earlier row could answer this one's read.
+        $cache = new ReflectionProperty(SupabaseService::class, 'queryCache');
+        $cache->setAccessible(true);
+        $cache->setValue(null, []);
+
+        Http::fake([
+            '*/rest/v1/branches*' => Http::response([['id' => 10, 'name' => 'Head Quarters-Mikocheni']], 200),
+            '*' => Http::response([], 200),
+        ]);
+
         $user = new User;
         $user->forceFill([
             'id' => 14,

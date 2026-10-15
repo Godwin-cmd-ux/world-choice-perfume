@@ -129,6 +129,7 @@ app/
   contacts.tsx       # CONTACTS (the website's Contact Us section + message form)
   news.tsx           # NEWS (the website's /news page)
   branches.tsx       # Branch list + Twende Dukani maps link (HOME / product)
+  brands.tsx         # ALL BRANDS (the website's /brands page) → shop by brand
   staff-access.tsx   # STAFF LOGIN secret-code prompt (modal, stores X-Staff-Access grant)
   staff.tsx          # Staff login (Welcome Back) + six signup tiles → module dashboard
   signup/            # Six dedicated signup pages (one small config each)
@@ -150,7 +151,7 @@ app/
     (tabs)/            # Bottom tabs: Dashboard, News, Brands, More
     news-form.tsx      # Create/edit post (image on create, resubmit → approval)
     brand-form.tsx     # Create/edit brand (logo, active flag, duplicate-name 422)
-    qr-code.tsx        # Server-rendered QR (PNG data URI; download/print on web)
+    qr-code.tsx        # QR page (General / Product tabs; server-rendered PNG data URI; download/print on web)
     profile.tsx        # Shared account/password (same ProfileController as web)
   sm/                 # Stock Manager module (server-role-guarded screens)
     _layout.tsx        # Role guard + stack for every SM screen
@@ -227,6 +228,7 @@ declared in the Laravel app's `routes/api.php` (they reuse the website's own
 controllers and return JSON when called with `Accept: application/json`):
 
 - `GET  /api/home` — branches, featured brands, category images, contact
+- `GET  /api/brands` — every active brand (the website's /brands page)
 - `GET  /api/products` — catalogue with the website's filters
 - `GET  /api/products/{id}` — detail, per-branch stock and varieties
 - `POST /api/orders/track` — order tracking by phone
@@ -258,7 +260,7 @@ role re-verification as the admin group:
 - `GET  /api/gd/dashboard` — five stat counts + rejected-posts list
 - `GET|POST /api/gd/news`, `GET|PUT|DELETE /api/gd/news/{id}` — author-scoped posts (submit/edit always re-enter approval)
 - `GET|POST /api/gd/brands`, `GET|PUT|DELETE /api/gd/brands/{id}` — duplicate-name guard, rename → product sync, in-use delete protection
-- `GET  /api/gd/qr-code` — server-rendered QR PNG as a `data:` URI (ECC H)
+- `GET  /api/gd/qr-code` — server-rendered QR PNG as a `data:` URI (ECC H): the general code (site root) or `?product_id=` for a product's own order page; includes the active catalogue
 - `GET|PUT /api/gd/profile`, `PUT …/profile/password` — the website's shared ProfileController
 
 Stock Manager module — every route below sits behind

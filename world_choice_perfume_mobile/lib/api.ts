@@ -402,6 +402,15 @@ export function fetchHome(): Promise<HomePayload> {
   return apiGet<HomePayload>('/home');
 }
 
+/** GET /api/brands — every active brand (the website's /brands page). */
+export interface BrandsPayload {
+  brands: Brand[];
+}
+
+export function fetchBrands(): Promise<BrandsPayload> {
+  return apiGet<BrandsPayload>('/brands');
+}
+
 /** GET /api/products — same filters as the website shop. */
 export function fetchProducts(params: {
   search?: string;

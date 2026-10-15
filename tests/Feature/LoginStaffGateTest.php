@@ -45,8 +45,11 @@ class LoginStaffGateTest extends TestCase
             'password' => 'secret-password',
         ]);
 
-        $response->assertOk();
-        $response->assertViewIs('auth.staff-code');
+        // Never a bare code page: the controller redirects back to /login
+        // with a notice saying the company secret code has to be re-entered,
+        // instead of silently discarding what was typed.
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('staff_access_notice');
         $this->assertGuest();
     }
 }

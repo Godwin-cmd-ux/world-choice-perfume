@@ -19,6 +19,10 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Testing-only key: the suite encrypts staff-session tokens and the
+             workspace has no .env file, and phpunit.xml is the one place the
+             suite guarantees its own value (the CLI clears APP_KEY on boot). -->
+        <env name="APP_KEY" value="base64:aPuV3XNU4boT/VC2vugEseYuHUArV4Ux4Q997bYZyO0="/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
@@ -29,6 +33,12 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- Fake Supabase endpoint: every test Http::fakes the PostgREST calls,
+             but SupabaseService's typed constructor properties still need a
+             value to boot in a workspace with no .env file. -->
+        <env name="SUPABASE_URL" value="http://supabase.test"/>
+        <env name="SUPABASE_ANON_KEY" value="test-anon-key"/>
+        <env name="SUPABASE_SERVICE_ROLE_KEY" value="test-service-role-key"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

@@ -18,10 +18,6 @@ needed.
   The app can CREATE news (for designers), but there is no screen where a
   customer browses published news posts.
 
-- Open the full Brands page (worldchoiceperfume.com/brands).
-  The app's home page shows the featured brands and the shop can filter by
-  brand, but there is no dedicated "all brands" listing screen.
-
 - Place a new order online (/orders/create).
   The app can only TRACK an order by phone number. Creating an order still
   has to be done on the website.
