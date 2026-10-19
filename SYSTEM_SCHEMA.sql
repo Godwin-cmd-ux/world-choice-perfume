@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS public.bottle_accessories_movements CASCADE;
 DROP TABLE IF EXISTS public.bottle_accessories CASCADE;
 DROP TABLE IF EXISTS public.bottle_stock_movements CASCADE;
 DROP TABLE IF EXISTS public.bottle_stock CASCADE;
+DROP TABLE IF EXISTS public.loyal_customers CASCADE;
 DROP TABLE IF EXISTS public.customers CASCADE;
 DROP TABLE IF EXISTS public.company_settings CASCADE;
 DROP TABLE IF EXISTS public.brands CASCADE;
@@ -231,6 +232,19 @@ CREATE TABLE public.customers (
     whatsapp VARCHAR(255),
     created_at TIMESTAMP,
     updated_at TIMESTAMP
+);
+
+-- loyal_customers
+-- Which clients customer care has flagged as loyal. One row per customer
+-- (UNIQUE), so a second "Create Loyal" for the same client is a no-op, and
+-- ON DELETE CASCADE keeps the flag from outliving the customer record.
+CREATE TABLE public.loyal_customers (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id BIGINT NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
+    assigned_by BIGINT,
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (customer_id)
 );
 
 -- bottle_stock
@@ -721,6 +735,7 @@ CREATE INDEX idx_sessions_last_activity ON sessions(last_activity);
 CREATE INDEX idx_cache_expiration ON cache(expiration);
 CREATE INDEX idx_jobs_queue ON jobs(queue);
 CREATE INDEX idx_customers_phone ON customers(phone);
+CREATE INDEX idx_loyal_customers_customer ON loyal_customers(customer_id);
 CREATE INDEX idx_stock_movements_branch_product_type ON stock_movements(branch_id, product_id, type);
 CREATE INDEX idx_stock_movements_reference ON stock_movements(reference_type, reference_id);
 CREATE INDEX idx_sales_branch_created ON sales(branch_id, created_at);

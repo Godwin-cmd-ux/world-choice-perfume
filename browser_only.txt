@@ -204,6 +204,6 @@ printing, saving PDF files, downloading files, and showing other websites
 inside the page. A phone app has to build each of those by hand, so for now
 those buttons simply link out to the website instead.
 
-The rest (contact form, news reading, brand list, placing an order) are
+The rest (contact form, brand list, placing an order) are
 website screens that have not been copied into the app yet — they can be
 added later if you want them.

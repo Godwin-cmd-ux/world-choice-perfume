@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { EmptyView, ErrorView, LoadingView, SectionHeading } from '../../components/ui';
@@ -19,12 +20,24 @@ import { COLORS, RADIUS } from '../../lib/theme';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** "Mar 12, 2026" — the Blade formats with Carbon in Africa/Dar_es_Salaam. */
-function formatPostDate(iso: string | null | undefined): string {
+export function formatPostDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return '';
   const local = new Date(parsed.getTime() + 3 * 60 * 60 * 1000);
   return `${MONTHS[local.getUTCMonth()]} ${local.getUTCDate()}, ${local.getUTCFullYear()}`;
+}
+
+/**
+ * The list shows an excerpt — the card opens the post's own page, where the
+ * whole announcement reads. Exported alongside the screen so the detail page
+ * dates its header the exact same way.
+ */
+const EXCERPT_LENGTH = 160;
+export function excerptOf(content: string | null | undefined): { text: string; truncated: boolean } {
+  const clean = content ?? '';
+  if (clean.length <= EXCERPT_LENGTH) return { text: clean, truncated: false };
+  return { text: clean.slice(0, EXCERPT_LENGTH).trimEnd() + '…', truncated: true };
 }
 
 type Status = 'loading' | 'error' | 'ready';
@@ -81,26 +94,40 @@ export default function NewsScreen() {
           <EmptyView icon="newspaper-outline" title="No news posts yet." hint="Check back soon!" />
         ) : (
           <View style={styles.list}>
-            {posts.map((post, index) => (
-              <View key={String(post.id ?? index)} style={styles.article}>
-                {post.image_url ? (
-                  <Image source={{ uri: post.image_url }} style={styles.articleImage} contentFit="cover" transition={200} />
-                ) : null}
-                <View style={styles.articleBody}>
-                  <View style={styles.metaRow}>
-                    {post.branch?.name ? (
-                      <View style={styles.branchChip}>
-                        <Ionicons name="storefront-outline" size={11} color={COLORS.goldBright} />
-                        <Text style={styles.branchChipText}>{post.branch.name}</Text>
-                      </View>
-                    ) : null}
-                    <Text style={styles.date}>{formatPostDate(post.created_at)}</Text>
+            {posts.map((post, index) => {
+              const excerpt = excerptOf(post.content);
+              return (
+                // The whole card is the tap target — it opens the post's page.
+                <Pressable
+                  key={String(post.id ?? index)}
+                  onPress={() => router.push(`/news/${post.id}`)}
+                  style={({ pressed }) => [styles.article, pressed && { opacity: 0.8, borderColor: COLORS.goldBright }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Read ${post.title}`}
+                >
+                  {post.image_url ? (
+                    <Image source={{ uri: post.image_url }} style={styles.articleImage} contentFit="cover" transition={200} />
+                  ) : null}
+                  <View style={styles.articleBody}>
+                    <View style={styles.metaRow}>
+                      {post.branch?.name ? (
+                        <View style={styles.branchChip}>
+                          <Ionicons name="storefront-outline" size={11} color={COLORS.goldBright} />
+                          <Text style={styles.branchChipText}>{post.branch.name}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.date}>{formatPostDate(post.created_at)}</Text>
+                    </View>
+                    <Text style={styles.articleTitle}>{post.title}</Text>
+                    <Text style={styles.articleContent}>{excerpt.text}</Text>
+                    <View style={styles.readMoreRow}>
+                      <Text style={styles.readMore}>Read more</Text>
+                      <Ionicons name="arrow-forward" size={13} color={COLORS.goldBright} />
+                    </View>
                   </View>
-                  <Text style={styles.articleTitle}>{post.title}</Text>
-                  <Text style={styles.articleContent}>{post.content}</Text>
-                </View>
-              </View>
-            ))}
+                </Pressable>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -186,5 +213,16 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 13.5,
     lineHeight: 21,
+  },
+  readMoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 9,
+  },
+  readMore: {
+    color: COLORS.goldBright,
+    fontWeight: '700',
+    fontSize: 12,
   },
 });

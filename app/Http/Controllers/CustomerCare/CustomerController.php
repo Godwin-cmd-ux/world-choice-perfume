@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
 use App\Services\SupabaseService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
+    use ResolvesClientRecords;
+
     /** Rows rendered per page (the codebase does not paginate anywhere). */
     private const LIST_LIMIT = 50;
 
     /** Branch sales scanned to find a branch's most recent visitors. */
     private const VISIT_SCAN = 1000;
-
-    /** Cap on the single scan used for the tab counters. */
-    private const COUNT_SCAN = 2000;
 
     private SupabaseService $supabase;
 
@@ -107,6 +107,9 @@ class CustomerController extends Controller
             'branchNames' => $branchNames,
             'truncated' => $truncated,
             'visits' => $this->visitSummary($customers->pluck('id')->all()),
+            // The Loyal tab sits in the same strip, badge and all.
+            'view' => 'all',
+            'loyalCount' => $this->loyalCount(),
         ]);
     }
 
@@ -348,49 +351,6 @@ class CustomerController extends Controller
     }
 
     /**
-     * Search clients by name, phone or whatsapp — PostgREST cannot OR across columns,
-     * so each column is queried and the hits are merged.
-     */
-    private function searchCustomers(string $q, int $limit = self::LIST_LIMIT)
-    {
-        $like = 'ilike.*' . urlencode($q) . '*';
-
-        $hits = array_merge(
-            $this->supabase->query('customers', ['select' => '*', 'name' => $like, 'order' => 'name.asc', 'limit' => $limit]),
-            $this->supabase->query('customers', ['select' => '*', 'phone' => $like, 'order' => 'name.asc', 'limit' => $limit]),
-            $this->supabase->query('customers', ['select' => '*', 'whatsapp' => $like, 'order' => 'name.asc', 'limit' => $limit]),
-        );
-
-        $merged = [];
-        foreach ($hits as $c) {
-            $merged[$c['id']] = $c;
-        }
-
-        return collect(array_slice(array_values($merged), 0, $limit))->map(fn ($c) => (object) $c);
-    }
-
-    /**
-     * Load customer records by id, keeping the order they were requested in.
-     *
-     * @param  array<int>  $ids
-     */
-    private function customersByIds(array $ids)
-    {
-        $ids = array_values(array_filter(array_map('intval', $ids)));
-        if (!$ids) return collect();
-
-        $rows = $this->supabase->query('customers', [
-            'select' => '*',
-            'id' => 'in.(' . implode(',', $ids) . ')',
-        ]);
-
-        $byId = [];
-        foreach ($rows as $row) $byId[(int) $row['id']] = (object) $row;
-
-        return collect($ids)->map(fn ($id) => $byId[$id] ?? null)->filter()->values();
-    }
-
-    /**
      * Customer ids of the most recent visitors to a branch, newest first.
      *
      * Rows arrive newest first, so the first hit per customer is their latest
@@ -447,34 +407,6 @@ class CustomerController extends Controller
         }
 
         return $visitors;
-    }
-
-    /**
-     * Distinct customers per branch, from a single scan of the sales history.
-     *
-     * Returns an empty map when the history is larger than the scan window so the
-     * caller can hide the tab counters rather than show an undercount.
-     */
-    private function customerCountsByBranch(): array
-    {
-        $rows = $this->supabase->query('sales', [
-            'select' => 'branch_id,customer_id',
-            'limit' => self::COUNT_SCAN,
-        ]);
-
-        if (count($rows) >= self::COUNT_SCAN) {
-            return [];
-        }
-
-        $counts = [];
-        foreach ($rows as $row) {
-            $branchId = (int) ($row['branch_id'] ?? 0);
-            $customerId = (int) ($row['customer_id'] ?? 0);
-            if (!$branchId || !$customerId) continue;
-            $counts[$branchId][$customerId] = true;
-        }
-
-        return array_map(fn ($set) => count($set), $counts);
     }
 
     /**

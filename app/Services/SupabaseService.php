@@ -692,6 +692,11 @@ class SupabaseService
             'brands' => [
                 'name','logo_url','is_active','created_by','created_at','updated_at',
             ],
+            // Which clients customer care has flagged as loyal — see the
+            // loyal_customers table in SYSTEM_SCHEMA.sql.
+            'loyal_customers' => [
+                'customer_id','assigned_by','assigned_at','created_at',
+            ],
         ];
 
         $cols = $allowlists[$table] ?? [];

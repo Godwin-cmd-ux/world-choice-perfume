@@ -11,6 +11,7 @@ use App\Http\Controllers\Customer\NewsController;
 use App\Http\Controllers\Customer\OrderController;
 use App\Http\Controllers\Customer\ProductController;
 use App\Http\Controllers\CustomerCare\CustomerController;
+use App\Http\Controllers\CustomerCare\LoyalCustomerController;
 use App\Http\Controllers\GraphicDesigner\BrandsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seller\SellerController;
@@ -106,6 +107,8 @@ Route::get('/brands', function () {
 Route::get('/products', [ProductController::class, 'index'])->name('customer.products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('customer.products.show');
 Route::get('/news', [NewsController::class, 'index'])->name('customer.news');
+// One post, read whole — the list links every card here.
+Route::get('/news/{post}', [NewsController::class, 'show'])->name('customer.news.show');
 Route::post('/contact', [InquiryController::class, 'store'])->name('customer.contact.store');
 
 // Customer Orders
@@ -407,6 +410,14 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
         Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
         Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+
+        // Loyal Customers — the Clients screen's new tab: the loyal list plus
+        // the picker that assigns the flag. Declared before {customer} so
+        // "loyal" is never read as a customer id.
+        Route::get('/customers/loyal', [LoyalCustomerController::class, 'index'])->name('customers.loyal');
+        Route::post('/customers/loyal', [LoyalCustomerController::class, 'store'])->name('customers.loyal.store');
+        Route::post('/customers/loyal/{customer}/remove', [LoyalCustomerController::class, 'remove'])->name('customers.loyal.remove');
+
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
         // Sales

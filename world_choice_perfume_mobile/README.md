@@ -35,7 +35,8 @@ Splash (native, app.json)
                         → app/product.tsx  (product detail)
       → TRACK ORDERS → app/track.tsx       (phone lookup + timeline)
       → CONTACTS     → app/contacts.tsx   (Contact Us portal: details + message form)
-      → NEWS         → app/news.tsx       (published posts, pull to refresh)
+      → NEWS         → app/(tabs)/news.tsx (published posts, pull to refresh;
+                        tap one → app/news/[id].tsx reads it whole)
       → STAFF LOGIN  → app/staff-access.tsx (secret-code prompt, modal)
                         → app/staff.tsx    (staff sign-in + six signup tiles)
                             → LOGIN        → straight to that module's dashboard
@@ -72,8 +73,10 @@ Splash (native, app.json)
                                 → app/care/  (right after LOGIN)
                                    (tabs) Dashboard · Clients · Sales · Orders · Profile
                                           — the website's customer-care sidebar, in its
-                                          own order; Profile carries the account and
-                                          password forms plus Sign Out
+                                          own order; Clients carries the Loyal segment
+                                          (+ Loyal → app/care/loyal-new.tsx picker);
+                                          Profile carries the account and password
+                                          forms plus Sign Out
                                    More (Head Quarters tab only) → Inquiries · News ·
                                           info@ Mails · New Sale · Account
                                    Branch members never see the More tab; the server
@@ -127,7 +130,8 @@ app/
   product.tsx        # Product detail (per-branch stock, prices, varieties)
   track.tsx          # TRACK ORDERS (status, timeline, items)
   contacts.tsx       # CONTACTS (the website's Contact Us section + message form)
-  news.tsx           # NEWS (the website's /news page)
+  news.tsx           # NEWS (the website's /news page — excerpt cards)
+  news/[id].tsx      # One post, read whole (GET /api/news/{id})
   branches.tsx       # Branch list + Twende Dukani maps link (HOME / product)
   brands.tsx         # ALL BRANDS (the website's /brands page) → shop by brand
   staff-access.tsx   # STAFF LOGIN secret-code prompt (modal, stores X-Staff-Access grant)
@@ -169,6 +173,7 @@ app/
     (tabs)/profile.tsx # account + password + Sign Out — the sidebar's "Profile"
     (tabs)/more.tsx    # HQ only: Inquiries · News · info@ Mails · New Sale
     customer-new.tsx customer-detail.tsx
+    loyal-new.tsx     # Create Loyal picker (search, multi-select, add)
     order-detail.tsx   # orders/{id}: items, update notes, required status note
     sale-new.tsx sale-detail.tsx             # checkout incl. empty-bottle lines
     inquiries.tsx news.tsx news-form.tsx     # Head Quarters only (assertHq)
@@ -232,6 +237,7 @@ controllers and return JSON when called with `Accept: application/json`):
 - `GET  /api/products` — catalogue with the website's filters
 - `GET  /api/products/{id}` — detail, per-branch stock and varieties
 - `POST /api/orders/track` — order tracking by phone
+- `GET  /api/news`, `GET /api/news/{post}` — published posts: the list, and one post read whole
 - `POST /api/verify-staff-access` — server-side secret-code validation (issues encrypted grant)
 - `POST /api/staff/login` — server-side credential validation *(grant required; issues `X-Staff-Session`)*
 - `POST /api/register/{type}` — the six signup types → OTP challenge *(grant required)*
@@ -307,6 +313,7 @@ role re-verification, in two tiers exactly like the website:
 
 - `GET  /api/care/scope` / `dashboard` — HQ flag + branch figures
 - `GET|POST /api/care/customers`, `GET …/{id}` — clients (branch tabs, duplicate-phone returns the existing record)
+- `GET|POST /api/care/loyal-customers`, `DELETE …/{customer}` — Loyal tab: list, multi-assign (skips already-loyal/unknown), revoke
 - `GET  /api/care/sales`, `…/options`, `POST /api/care/sales`, `GET …/{id}` — listing, form data, checkout (products, varieties, empty bottles, split payments), receipt
 - `GET  /api/care/orders`, `…/{id}`, `POST …/{id}/status|personal-name`
 - `GET  /api/care/inquiries`, `…/{id}`, `POST …/{id}/reply|read|comment`, `DELETE …/{id}` *(HQ)*

@@ -52,4 +52,52 @@ class NewsController extends Controller
 
         return view('customer.news', ['posts' => $posts]);
     }
+
+    /**
+     * One published post, read whole — every card on the news page links here.
+     *
+     * The website renders the Blade detail page; the app asks for JSON
+     * (GET /api/news/{post}) off the same read, so both always show the same
+     * post. An unpublished or unknown id is a 404 on either side: the list only
+     * ever links published ids, and a stale link must not surface a post the
+     * news page no longer shows.
+     */
+    public function show(Request $request, $post)
+    {
+        $id = (string) $post;
+        if (! ctype_digit($id)) {
+            abort(404);
+        }
+
+        $row = collect($this->supabase->query('news_posts', [
+            'select' => '*',
+            'id' => 'eq.' . $id,
+            'is_published' => 'eq.true',
+            'limit' => 1,
+        ]))->first();
+
+        if (! $row) {
+            abort(404);
+        }
+
+        // Same PHP-side branch join as the list.
+        $row['branch'] = null;
+        if (! empty($row['branch_id'])) {
+            $branch = collect($this->supabase->query('branches', [
+                'select' => 'id,name',
+                'id' => 'eq.' . $row['branch_id'],
+            ]))->first();
+            if ($branch) {
+                $row['branch'] = (object) ['id' => $branch['id'], 'name' => $branch['name']];
+            }
+        }
+
+        $post = (object) $row;
+
+        if ($request->expectsJson()) {
+            return response()->json(['post' => $post]);
+        }
+
+        return view('customer.news-show', ['post' => $post]);
+    }
 }

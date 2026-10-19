@@ -10,28 +10,10 @@
 @endsection
 
 @section('content')
-@php $showCounts = $counts !== []; @endphp
 
-{{-- Branch tabs — built from the branches table, so new branches appear on their own --}}
-<div class="border-b border-gray-200 mb-6 -mx-1 px-1 overflow-x-auto">
-    <div class="flex items-center gap-1 min-w-max">
-        <a href="{{ route('customer-care.customers.index', array_filter(['q' => $q])) }}"
-           class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $tab === 0 ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
-            <i class="fas fa-users mr-1"></i> All Customers
-            <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $tab === 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $totalCustomers }}</span>
-        </a>
-        @foreach($tabs as $t)
-            <a href="{{ route('customer-care.customers.index', array_filter(['q' => $q, 'branch' => $t->id])) }}"
-               class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $tab === $t->id ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
-               @if($showCounts) title="{{ $t->count }} {{ \Illuminate\Support\Str::plural('client', $t->count) }} with transactions at this branch" @endif>
-                <i class="fas fa-store mr-1"></i> {{ $t->name }}
-                @if($showCounts)
-                    <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $tab === $t->id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $t->count }}</span>
-                @endif
-            </a>
-        @endforeach
-    </div>
-</div>
+{{-- Branch tabs — built from the branches table, so new branches appear on their own.
+     The shared partial also carries the Loyal Customers tab. --}}
+@include('customer-care.customers._tabs')
 
 <div class="bg-white rounded-xl shadow p-4 mb-6">
     <form method="GET" action="{{ route('customer-care.customers.index') }}" class="flex flex-wrap items-center gap-3">

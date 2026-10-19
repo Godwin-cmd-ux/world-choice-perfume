@@ -15,7 +15,10 @@
 
         <div class="space-y-8">
             @forelse($posts as $post)
-                <article class="bg-dark-800 border border-dark-600 rounded-2xl overflow-hidden hover:border-gold-500/30 transition-all duration-300">
+                {{-- Every card links to the post's own page — the list shows an
+                     excerpt, the detail page reads whole. --}}
+                <a href="{{ route('customer.news.show', $post->id) }}"
+                   class="block bg-dark-800 border border-dark-600 rounded-2xl overflow-hidden hover:border-gold-500/40 hover:bg-dark-700/70 transition-all duration-300 group">
                     @if($post->image_url)
                         <img src="{{ $post->image_url }}" alt="{{ $post->title }}" class="w-full h-64 object-cover">
                     @endif
@@ -28,10 +31,13 @@
                             @endif
                             <span class="text-xs text-gray-500">{{ $post->created_at ? \Carbon\Carbon::parse($post->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '' }}</span>
                         </div>
-                        <h2 class="font-display text-xl font-bold text-white mb-3">{{ $post->title }}</h2>
-                        <p class="text-gray-400 leading-relaxed">{{ $post->content }}</p>
+                        <h2 class="font-display text-xl font-bold text-white mb-3 group-hover:text-gold-400 transition-colors">{{ $post->title }}</h2>
+                        <p class="text-gray-400 leading-relaxed">{{ \Illuminate\Support\Str::limit($post->content, 260) }}</p>
+                        <span class="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-gold-400 transition-all">
+                            Read full story <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </span>
                     </div>
-                </article>
+                </a>
             @empty
                 <div class="text-center py-12">
                     <i class="fas fa-newspaper text-4xl text-gray-600 mb-4 block"></i>

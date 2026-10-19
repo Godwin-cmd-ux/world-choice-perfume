@@ -159,6 +159,39 @@ export function createCustomer(fields: CcCustomerFields): Promise<{
   return apiPost('/care/customers', fields);
 }
 
+/* --------------------------- Loyal Customers ---------------------- */
+
+/** One row of the Clients screen's Loyal tab — a membership, not a customer. */
+export interface CcLoyalRow {
+  id: number | string | null;
+  customer_id: number | string;
+  assigned_at?: string | null;
+  assigned_by?: number | string | null;
+  assigned_by_name?: string | null;
+  /** The joined client record — dropped server-side if it no longer exists. */
+  customer: CcCustomerRow;
+}
+
+/** GET /care/loyal-customers — every client flagged as loyal, newest first. */
+export function fetchLoyalCustomers(): Promise<{ loyal: CcLoyalRow[]; total: number }> {
+  return apiGet('/care/loyal-customers');
+}
+
+/** POST /care/loyal-customers — the picker's "Add selected as Loyal" (one or many). */
+export function addLoyalCustomers(customer_ids: (number | string)[]): Promise<{
+  message: string;
+  added: number;
+  skipped: number;
+  ids: (number | string)[];
+}> {
+  return apiPost('/care/loyal-customers', { customer_ids });
+}
+
+/** DELETE /care/loyal-customers/{customer} — revoke the flag from one client. */
+export function removeLoyalCustomer(customer: number | string): Promise<{ message: string }> {
+  return apiDelete(`/care/loyal-customers/${customer}`);
+}
+
 export interface CcCustomerDetail {
   customer: CcCustomerRow;
   whatsappLink: string | null;

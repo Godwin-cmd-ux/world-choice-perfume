@@ -455,6 +455,11 @@ export function fetchNews(): Promise<{ posts: NewsPost[] }> {
   return apiGet<{ posts: NewsPost[] }>('/news');
 }
 
+/** GET /api/news/{post} — one published post, read whole (the list shows an excerpt). */
+export function fetchNewsPost(id: number | string): Promise<{ post: NewsPost }> {
+  return apiGet<{ post: NewsPost }>(`/news/${id}`);
+}
+
 /** POST /api/contact — the website's Contact Us form (POST /contact). */
 export function sendContact(input: {
   email: string;

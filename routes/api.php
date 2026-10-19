@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Cashier\CaSalesController;
 use App\Http\Controllers\Api\CustomerCare\CcCustomerController;
 use App\Http\Controllers\Api\CustomerCare\CcDashboardController;
 use App\Http\Controllers\Api\CustomerCare\CcInquiryController;
+use App\Http\Controllers\Api\CustomerCare\CcLoyalCustomerController;
 use App\Http\Controllers\Api\CustomerCare\CcMailController;
 use App\Http\Controllers\Api\CustomerCare\CcNewsController;
 use App\Http\Controllers\Api\CustomerCare\CcOrderController;
@@ -110,6 +111,8 @@ Route::post('/orders/track', [OrderController::class, 'trackByPhone']);
 // Public news list — the very list the website's /news page renders
 // (Customer\NewsController@index), answered as JSON for the app.
 Route::get('/news', [NewsController::class, 'index']);
+// One published post, read whole — the JSON twin of /news/{post}.
+Route::get('/news/{post}', [NewsController::class, 'show']);
 
 // Public contact form — twin of the website's POST /contact
 // (Customer\InquiryController@store): same validation, same Head Quarters
@@ -393,6 +396,12 @@ Route::middleware(EnsureStaffSessionApi::class.':customer_care')->prefix('care')
     Route::get('/customers', [CcCustomerController::class, 'index']);
     Route::post('/customers', [CcCustomerController::class, 'store']);
     Route::get('/customers/{customer}', [CcCustomerController::class, 'show']);
+
+    // Loyal Customers — the Clients screen's loyal tab in the app: the list,
+    // the picker's multi-assign, and revoking the flag.
+    Route::get('/loyal-customers', [CcLoyalCustomerController::class, 'index']);
+    Route::post('/loyal-customers', [CcLoyalCustomerController::class, 'store']);
+    Route::delete('/loyal-customers/{customer}', [CcLoyalCustomerController::class, 'destroy']);
 
     // Sales (listing, sale-form data, checkout, receipt).
     Route::get('/sales', [CcSalesController::class, 'index']);
