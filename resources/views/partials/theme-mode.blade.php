@@ -286,6 +286,15 @@
     html[data-theme="light"] .wcp-dark-skin.bg-dark-900, html[data-theme="light"] .wcp-dark-skin .bg-dark-900 { background-color: #FFFFFF; }
     html[data-theme="light"] .wcp-dark-skin.bg-dark-900\/50, html[data-theme="light"] .wcp-dark-skin .bg-dark-900\/50 { background-color: rgba(255, 255, 255, 0.8); }
     html[data-theme="light"] .wcp-dark-skin.bg-dark-900\/80, html[data-theme="light"] .wcp-dark-skin .bg-dark-900\/80 { background-color: rgba(255, 255, 255, 0.94); }
+    /*
+     * The public navbar gains its background from the scroll script in
+     * layouts/public.blade.php (bg-dark-900/95 once the page is past 50px),
+     * so unlike every other band here it was not in the markup for this table
+     * to have been written from. Without this row the scrolled bar kept the
+     * raw dark value in light mode: the navbar turned black on the first
+     * scroll and read as if the theme had switched to dark.
+     */
+    html[data-theme="light"] .wcp-dark-skin.bg-dark-900\/95, html[data-theme="light"] .wcp-dark-skin .bg-dark-900\/95 { background-color: rgba(255, 255, 255, 0.96); }
     html[data-theme="light"] .wcp-dark-skin.bg-dark-900\/98, html[data-theme="light"] .wcp-dark-skin .bg-dark-900\/98 { background-color: rgba(255, 255, 255, 0.98); }
     html[data-theme="light"] .wcp-dark-skin.bg-dark-950, html[data-theme="light"] .wcp-dark-skin .bg-dark-950 { background-color: #F7F7F4; }
     html[data-theme="light"] .wcp-dark-skin.bg-dark-950\/25, html[data-theme="light"] .wcp-dark-skin .bg-dark-950\/25 { background-color: rgba(247, 247, 244, 0.6); }

@@ -199,6 +199,58 @@ class WebsiteThemeModeTest extends TestCase
         $this->assertStringContainsString('bg-gradient-to-r from-dark-950/95 via-dark-950/80 to-dark-950/55', $shop);
     }
 
+    /**
+     * Scrolling the public site down turned the navbar black in light mode.
+     *
+     * The navbar is transparent at the top of the page and gains its
+     * background from a scroll script (layouts/public.blade.php adds
+     * bg-dark-900/95 past 50px). Because that class never appears in the
+     * markup, the light-mode table had a row for bg-dark-900/50, /80 and /98
+     * but not for the one the script actually adds — so the bar kept the raw
+     * dark value and the site read as if it had switched to dark mode on the
+     * first scroll. The rule is pinned here against the exact class the script
+     * toggles, and its computed colour is checked the way the browser would
+     * composite it over the light page.
+     */
+    public function test_scrolling_does_not_turn_the_public_navbar_black_in_light_mode(): void
+    {
+        $theme = file_get_contents(resource_path('views/partials/theme-mode.blade.php'));
+        $layout = file_get_contents(resource_path('views/layouts/public.blade.php'));
+
+        // the scroll effect really adds this one class token — the one the
+        // light table has to answer
+        $this->assertStringContainsString("nav.classList.add('bg-dark-900/95'", $layout);
+
+        $start = strpos($theme, 'html[data-theme="light"] .wcp-dark-skin.bg-dark-900\\/95');
+        $this->assertNotFalse($start, 'no light rule for the scrolled navbar');
+
+        $rule = substr($theme, $start);
+        $rule = substr($rule, 0, strpos($rule, '}'));
+
+        $this->assertStringContainsString('html[data-theme="light"]', $rule);
+
+        preg_match('/rgba\\((\\d+), (\\d+), (\\d+), ([0-9.]+)\\)/', $rule, $match);
+        $this->assertNotEmpty($match, "the scrolled navbar declares no light background: $rule");
+
+        // opaque enough that the page does not show through the bar
+        $this->assertGreaterThanOrEqual(0.9, (float) $match[4], 'the scrolled navbar is too transparent');
+
+        // composited over the light page colour (#F7F7F4) the bar is light
+        $composite = array_map(
+            fn (int $channel): float => (float) $channel * (float) $match[4] + 247 * (1 - (float) $match[4]),
+            [(int) $match[1], (int) $match[2], (int) $match[3]]
+        );
+
+        $this->assertGreaterThan(220, $this->average($composite), "the scrolled navbar is still dark in light mode: $rule");
+
+        // and the rule actually ships: the layout includes the partial, so a
+        // rendered public page carries the escaped selector
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertSee('bg-dark-900\\/95', false);
+    }
+
     public function test_a_staff_page_renders_in_dark_mode_too(): void
     {
         Http::fake(['*' => Http::response([], 200)]);
