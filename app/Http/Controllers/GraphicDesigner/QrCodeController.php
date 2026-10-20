@@ -17,7 +17,7 @@ class QrCodeController extends Controller
      * be browsing from would bake a localhost (or a preview) address into the
      * label, so both tabs encode the deployed site instead.
      */
-    private const PUBLIC_BASE_URL = 'https://world-choice-perfume.onrender.com';
+    private const PUBLIC_BASE_URL = 'https://worldchoiceperfume.com';
 
     private SupabaseService $supabase;
 

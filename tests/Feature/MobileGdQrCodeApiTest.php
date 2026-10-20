@@ -83,14 +83,14 @@ class MobileGdQrCodeApiTest extends TestCase
             ->getJson('/api/gd/qr-code');
 
         $response->assertOk();
-        $response->assertJsonPath('url', 'https://world-choice-perfume.onrender.com/');
+        $response->assertJsonPath('url', 'https://worldchoiceperfume.com/');
         $this->assertStringStartsWith('data:image/png;base64,', (string) $response->json('image'));
 
         $response->assertJsonCount(2, 'products');
         // Each row carries the product's own public address, built from the
         // named route — not the shop root.
-        $response->assertJsonPath('products.0.url', 'https://world-choice-perfume.onrender.com/products/7');
-        $response->assertJsonPath('products.1.url', 'https://world-choice-perfume.onrender.com/products/12');
+        $response->assertJsonPath('products.0.url', 'https://worldchoiceperfume.com/products/7');
+        $response->assertJsonPath('products.1.url', 'https://worldchoiceperfume.com/products/12');
         $response->assertJsonPath('products.0.name', 'Reef 33');
         $response->assertJsonPath('products.0.brand', 'Reef');
     }
@@ -103,7 +103,7 @@ class MobileGdQrCodeApiTest extends TestCase
             ->getJson('/api/gd/qr-code?product_id=12');
 
         $response->assertOk();
-        $response->assertJsonPath('url', 'https://world-choice-perfume.onrender.com/products/12');
+        $response->assertJsonPath('url', 'https://worldchoiceperfume.com/products/12');
         $this->assertStringStartsWith('data:image/png;base64,', (string) $response->json('image'));
     }
 
@@ -138,7 +138,7 @@ class MobileGdQrCodeApiTest extends TestCase
             ->getJson('/api/gd/qr-code');
 
         $response->assertOk();
-        $response->assertJsonPath('url', 'https://world-choice-perfume.onrender.com/');
+        $response->assertJsonPath('url', 'https://worldchoiceperfume.com/');
         $response->assertJsonCount(0, 'products');
         $this->assertStringStartsWith('data:image/png;base64,', (string) $response->json('image'));
     }

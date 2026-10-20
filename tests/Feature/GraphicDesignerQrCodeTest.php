@@ -92,8 +92,8 @@ class GraphicDesignerQrCodeTest extends TestCase
         $response->assertSee('Dune');
 
         // each row carries the product's own public address, not the shop's
-        $response->assertSee('https://world-choice-perfume.onrender.com/products/7', false);
-        $response->assertSee('https://world-choice-perfume.onrender.com/products/12', false);
+        $response->assertSee('https://worldchoiceperfume.com/products/7', false);
+        $response->assertSee('https://worldchoiceperfume.com/products/12', false);
     }
 
     public function test_the_general_code_still_points_at_the_site_root(): void
@@ -103,7 +103,7 @@ class GraphicDesignerQrCodeTest extends TestCase
         $response = $this->actingAsGraphicDesigner()->get('/graphic-designer/qr-code');
 
         $response->assertOk();
-        $response->assertSee('https://world-choice-perfume.onrender.com/', false);
+        $response->assertSee('https://worldchoiceperfume.com', false);
     }
 
     /** A Supabase outage must not take the general code down with it. */

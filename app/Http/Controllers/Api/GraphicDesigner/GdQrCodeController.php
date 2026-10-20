@@ -31,7 +31,7 @@ class GdQrCodeController extends Controller
      * the website's QR page, which encodes the deployed site rather than the
      * host the designer happens to be browsing from).
      */
-    private const PUBLIC_BASE_URL = 'https://world-choice-perfume.onrender.com';
+    private const PUBLIC_BASE_URL = 'https://worldchoiceperfume.com';
 
     public function qrCode(Request $request)
     {
