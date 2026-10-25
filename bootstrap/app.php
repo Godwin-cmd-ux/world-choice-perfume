@@ -13,7 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
-        $middleware->validateCsrfTokens(except: ['*']);
+
+        // CSRF protection covers every browser-facing route in the `web`
+        // group. The previous blanket ['*'] exemption switched it off for the
+        // whole application, so any cross-site page could submit our forms.
+        //
+        // Only the stateless API group is exempt: the mobile app holds no
+        // cookies and authenticates with the X-Staff-Session header, so it can
+        // never present a CSRF token. Nothing else is exempt.
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'branch.access' => \App\Http\Middleware\BranchAccessMiddleware::class,
