@@ -27,9 +27,7 @@ class MobileCareLoyalCustomersApiTest extends TestCase
 
         // SupabaseService's request cache outlives a single test — clear it
         // so an earlier test's row cannot answer this one's read.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     /** The token shape StaffAuthController issues after a password check. */

@@ -168,7 +168,6 @@ class AuthController extends Controller
                 'status' => $sbUser['status'],
                 'branch_id' => $sbUser['branch_id'] ?? null,
                 'otp_verified' => $sbUser['otp_verified'] ?? false,
-                'supabase_id' => $sbUser['id'],
             ]);
         } else {
             // Sync local user with Supabase data
@@ -177,7 +176,6 @@ class AuthController extends Controller
                 'role' => $sbUser['role'],
                 'password' => $sbUser['password'],
                 'branch_id' => $sbUser['branch_id'] ?? $localUser->branch_id,
-                'supabase_id' => $sbUser['id'],
                 'profile_picture' => $sbUser['profile_picture'] ?? $localUser->profile_picture,
             ]);
             // If branch exists in Supabase but not SQLite, sync it
@@ -496,7 +494,6 @@ class AuthController extends Controller
                 'status' => 'pending',
                 'branch_id' => $validated['branch_id'],
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 
@@ -598,7 +595,6 @@ class AuthController extends Controller
                 'status' => 'pending',
                 'branch_id' => $validated['branch_id'],
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 
@@ -679,7 +675,6 @@ class AuthController extends Controller
                 'status' => 'pending',
                 'branch_id' => null,
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 
@@ -770,7 +765,6 @@ class AuthController extends Controller
                 'status' => 'pending',
                 'branch_id' => $validated['branch_id'],
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 
@@ -994,7 +988,6 @@ class AuthController extends Controller
                 'role' => $sbUser['role'],
                 'status' => $sbUser['status'],
                 'branch_id' => $sbUser['branch_id'] ?? null,
-                'supabase_id' => $sbUser['id'] ?? null,
             ]
         );
 

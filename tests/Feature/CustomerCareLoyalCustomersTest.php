@@ -29,9 +29,7 @@ class CustomerCareLoyalCustomersTest extends TestCase
         // SupabaseService caches query results in a static that outlives a
         // single test; without clearing it a previous test's answer could
         // serve this one's read and the fake would never be consulted.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     public function test_the_clients_page_carries_the_loyal_tab(): void

@@ -28,9 +28,7 @@ class PublicNewsDetailTest extends TestCase
 
         // SupabaseService's request cache outlives a single test — clear it
         // so an earlier test's row cannot answer this one's read.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     public function test_each_card_on_the_news_page_links_to_its_own_page(): void

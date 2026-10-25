@@ -32,9 +32,7 @@ class BranchCategoryTest extends TestCase
         // SupabaseService keeps its query cache in a static, which outlives a
         // single test. Without this, a row fetched in an earlier test could be
         // served from cache here and the fake below would never be consulted.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         $this->createMirrorTable();
     }

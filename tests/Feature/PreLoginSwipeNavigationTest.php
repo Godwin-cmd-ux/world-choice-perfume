@@ -36,9 +36,7 @@ class PreLoginSwipeNavigationTest extends TestCase
 
         // SupabaseService caches its last answers in a static, which outlives a
         // single test. Clear it so one test's rows cannot answer the next one.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         Http::fake(['*' => Http::response([], 200)]);
     }

@@ -23,9 +23,7 @@ class AppDownloadButtonTest extends TestCase
     {
         parent::setUp();
 
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         Http::fake(['*' => Http::response([], 200)]);
     }

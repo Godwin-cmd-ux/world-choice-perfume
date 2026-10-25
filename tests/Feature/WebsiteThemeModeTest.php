@@ -78,9 +78,7 @@ class WebsiteThemeModeTest extends TestCase
     {
         Http::fake(['*' => Http::response([], 200)]);
 
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         $response = $this->get('/');
 

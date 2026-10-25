@@ -128,7 +128,6 @@ class BaStaffController extends BaBaseController
                 'status' => 'active',
                 'branch_id' => $branchId,
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 

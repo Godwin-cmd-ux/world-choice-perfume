@@ -35,6 +35,9 @@ return [
         ],
     ],
 
+    // Which engine answers App\Services\SupabaseService: with SUPABASE_URL and
+    // the service role key set the app uses Supabase's PostgREST API; with them
+    // empty every read and write goes to the local Postgres connection (DB_*).
     'supabase' => [
         'url' => env('SUPABASE_URL'),
         'anon_key' => env('SUPABASE_ANON_KEY'),

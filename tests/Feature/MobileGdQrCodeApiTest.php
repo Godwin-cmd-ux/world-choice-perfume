@@ -26,9 +26,7 @@ class MobileGdQrCodeApiTest extends TestCase
 
         // SupabaseService's request cache outlives a single test — clear it
         // so an earlier test's row cannot answer this one's read.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     /** The catalogue the picker lists, plus the user row the session middleware re-reads. */

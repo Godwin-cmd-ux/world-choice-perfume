@@ -519,9 +519,7 @@ class InfoMailReplyAttachmentTest extends TestCase
         // the reply endpoint answers 403 before its validation runs. The
         // static request cache is cleared first: it outlives a single test
         // and an earlier row could answer this one's read.
-        $cache = new ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         Http::fake([
             '*/rest/v1/branches*' => Http::response([['id' => 10, 'name' => 'Head Quarters-Mikocheni']], 200),

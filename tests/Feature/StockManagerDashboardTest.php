@@ -31,9 +31,7 @@ class StockManagerDashboardTest extends TestCase
 
         // SupabaseService keeps its query cache in a static, which outlives a
         // single test. Clear it so one test's rows cannot answer the next one.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     /** Two products: Reef 33 with 3 units (low) and Dune with 40 (fine). */

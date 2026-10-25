@@ -163,14 +163,12 @@ trait SmTransferSupport
         }
 
         $localUsers = \App\Models\User::whereIn('id', $ids)
-            ->get(['id', 'name', 'supabase_id'])
+            ->get(['id', 'name'])
             ->keyBy('id');
 
         foreach ($ids as $id) {
             $local = $localUsers->get($id);
-            if ($local && ! empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
-                $map[$id] = $supById[(int) $local->supabase_id];
-            } elseif (isset($supById[$id])) {
+            if (isset($supById[$id])) {
                 $map[$id] = $supById[$id];
             } elseif ($local && $local->name) {
                 $map[$id] = $local->name;

@@ -2,834 +2,160 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Collection;
-
+/**
+ * Data access for the whole application.
+ *
+ * The app was written against Supabase's PostgREST API, and this class still
+ * exposes exactly that surface (query/find/insert/update/delete/count plus the
+ * storage helpers), so no call site had to change when the data moved home.
+ *
+ * Which engine answers is decided once per instance:
+ *
+ *  - SUPABASE_URL configured  → SupabaseRestService (HTTP/PostgREST).
+ *  - no SUPABASE_URL          → LocalPostgresService (the local database
+ *                               configured by DB_* in .env).
+ *
+ * With the Supabase credentials removed from .env every read and write goes to
+ * the local Postgres database through the normal Laravel connection.
+ */
 class SupabaseService
 {
-    /**
-     * Long enough for a large attachment to arrive. The normal 30s is not:
-     * an 18MB file over a slow link is still going when that expires.
-     */
-    private const STORAGE_DOWNLOAD_TIMEOUT = 300;
-
-    private string $url;
-    private string $anonKey;
-    private string $serviceRoleKey;
-
-    /** @var array Request-level cache to avoid duplicate queries within one request */
-    private static array $queryCache = [];
-
-    /** @var string|null Last failed update/insert error body, for surfacing to the UI */
-    private ?string $lastErrorMessage = null;
-
-    /** @var array Pending concurrent requests for batch execution */
-    private array $pendingRequests = [];
+    private SupabaseRestService|LocalPostgresService|null $driver = null;
 
     public function __construct()
     {
-        $this->url = config('services.supabase.url');
-        $this->anonKey = config('services.supabase.anon_key');
-        $this->serviceRoleKey = config('services.supabase.service_role_key');
     }
 
-    private function headers(): array
+    private function driver(): SupabaseRestService|LocalPostgresService
     {
-        return [
-            'apikey' => $this->serviceRoleKey,
-            'Authorization' => "Bearer {$this->serviceRoleKey}",
-            'Content-Type' => 'application/json',
-            'Prefer' => 'return=representation',
-        ];
+        if ($this->driver !== null) {
+            return $this->driver;
+        }
+
+        $url = (string) config('services.supabase.url');
+        $key = (string) config('services.supabase.service_role_key');
+
+        return $this->driver = ($url !== '' && $key !== '')
+            ? new SupabaseRestService()
+            : new LocalPostgresService();
     }
 
-    private function request(): \Illuminate\Http\Client\PendingRequest
-    {
-        return Http::withHeaders($this->headers())->timeout(30)->retry(2, 1000);
-    }
-
-    /**
-     * Get a cache key for a query
-     */
-    private function cacheKey(string $table, array $params): string
-    {
-        return 'sb:' . $table . ':' . md5(json_encode($params));
-    }
-
-    /**
-     * Query with PostgREST filters — cached within the same request
-     */
     public function query(string $table, array $params = []): array
     {
-        $key = $this->cacheKey($table, $params);
-
-        // Return cached result if available within this request
-        if (isset(self::$queryCache[$key])) {
-            return self::$queryCache[$key];
-        }
-
-        $url = "{$this->url}/rest/v1/{$table}";
-        $queryParams = $this->buildQueryParams($params);
-
-        try {
-            $response = $this->request()->get($url, $queryParams);
-        } catch (\Exception $e) {
-            Log::error("Supabase query failed for table {$table}: " . $e->getMessage());
-            return [];
-        }
-
-        if ($response->failed()) {
-            Log::warning("Supabase query returned error for table {$table}: " . $response->body());
-            return [];
-        }
-
-        $result = $response->json() ?? [];
-        self::$queryCache[$key] = $result;
-
-        return $result;
+        return $this->driver()->query($table, $params);
     }
 
-    /**
-     * Query without caching (for write-after-read patterns)
-     */
     public function queryFresh(string $table, array $params = []): array
     {
-        $url = "{$this->url}/rest/v1/{$table}";
-        $queryParams = $this->buildQueryParams($params);
-
-        try {
-            $response = $this->request()->get($url, $queryParams);
-        } catch (\Exception $e) {
-            Log::error("Supabase queryFresh failed for table {$table}: " . $e->getMessage());
-            return [];
-        }
-
-        if ($response->failed()) {
-            return [];
-        }
-
-        return $response->json() ?? [];
+        return $this->driver()->queryFresh($table, $params);
     }
 
-    /**
-     * Probe whether a column currently exists on a table via a cheap SELECT.
-     * Results are cached for the request lifetime.
-     */
-    public function tableHasColumn(string $table, string $column): bool
-    {
-        $key = '__col__' . $table . '.' . $column;
-        if (isset(self::$queryCache[$key])) {
-            return (bool) self::$queryCache[$key];
-        }
-
-        $result = false;
-        try {
-            $response = $this->request()->get("{$this->url}/rest/v1/{$table}", [
-                'select' => $column,
-                'limit' => '1',
-            ]);
-            $result = $response->successful();
-        } catch (\Exception $e) {
-            Log::warning("tableHasColumn probe failed for {$table}.{$column}: " . $e->getMessage());
-        }
-
-        self::$queryCache[$key] = $result;
-        return $result;
-    }
     public function queryWithCount(string $table, array $params = []): array
     {
-        $url = "{$this->url}/rest/v1/{$table}";
-        $queryParams = $this->buildQueryParams($params);
-
-        try {
-            $response = $this->request()->withHeaders([
-                'Prefer' => 'return=representation,count=exact',
-            ])->get($url, $queryParams);
-        } catch (\Exception $e) {
-            Log::error("Supabase queryWithCount failed for table {$table}: " . $e->getMessage());
-            return ['data' => [], 'count' => 0];
-        }
-
-        if ($response->failed()) {
-            return ['data' => [], 'count' => 0];
-        }
-
-        $count = $response->header('Content-Range');
-        $total = 0;
-        if ($count && str_contains($count, '/')) {
-            $total = (int) explode('/', $count)[1];
-        }
-
-        return [
-            'data' => $response->json() ?? [],
-            'count' => $total,
-        ];
+        return $this->driver()->queryWithCount($table, $params);
     }
 
-    /**
-     * Get a single record by ID (cached)
-     */
+    public function tableHasColumn(string $table, string $column): bool
+    {
+        return $this->driver()->tableHasColumn($table, $column);
+    }
+
     public function find(string $table, int|string $id, string $select = '*'): ?array
     {
-        $results = $this->query($table, [
-            'select' => $select,
-            'id' => "eq.{$id}",
-            'limit' => 1,
-        ]);
-
-        return $results[0] ?? null;
+        return $this->driver()->find($table, $id, $select);
     }
 
-    /**
-     * Get a single record matching conditions (cached)
-     */
     public function findOne(string $table, array $conditions, string $select = '*'): ?array
     {
-        $params = ['select' => $select, 'limit' => 1];
-        foreach ($conditions as $key => $value) {
-            $params[$key] = "eq.{$value}";
-        }
-
-        $results = $this->query($table, $params);
-        return $results[0] ?? null;
+        return $this->driver()->findOne($table, $conditions, $select);
     }
 
-    /**
-     * Insert a single record (invalidates cache for that table)
-     */
     public function insert(string $table, array|object $data): ?array
     {
-        // Remove columns that don't exist in the table to avoid PGRST204.
-        // PostgREST's schema cache can be stale when a column was added after
-        // the service role key was first used, so we drop unknown keys rather
-        // than retrying endlessly.
-        $data = $this->stripUnknownColumns($table, $data);
-
-        Log::debug("insert({$table}): sending keys=" . json_encode(array_keys($data)));
-
-        try {
-            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
-
-            // If PostgREST returns PGRST204 (stale schema cache for this table),
-            // invalidate the table's cache and retry up to 5 times. Between retries
-            // we sleep longer to give PostgREST time to refresh its schema cache.
-            $attempts = 0;
-            while ($response->failed() && $attempts < 5 && str_contains($response->body(), 'PGRST204')) {
-                $attempts++;
-                $this->invalidateCache($table);
-                $this->invalidateCache('information_schema.columns');
-                usleep(3000000);
-                $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
-            }
-        } catch (\Exception $e) {
-            Log::error("Supabase insert failed for table {$table}: " . $e->getMessage());
-            return null;
-        }
-
-        if ($response->failed()) {
-            Log::warning("Supabase insert error for table {$table}: " . $response->body());
-            return null;
-        }
-
-        $this->invalidateCache($table);
-
-        $result = $response->json();
-        return is_array($result) && count($result) > 0 ? $result[0] : $result;
+        return $this->driver()->insert($table, $data);
     }
 
     public function insertOrFail(string $table, array|object $data): array
     {
-        $result = $this->insert($table, $data);
-        if ($result === null) {
-            throw new \RuntimeException("Failed to insert into {$table}");
-        }
-        return $result;
+        return $this->driver()->insertOrFail($table, $data);
     }
 
-    /**
-     * Insert multiple records at once (batch insert — single HTTP request)
-     */
     public function insertMany(string $table, array $records): ?array
     {
-        // Strip unknown columns from each record. PostgREST bulk inserts expect a
-        // plain JSON array of records. Wrapping them as [table => [...]] makes
-        // PostgREST interpret the table name as a nested-insert column, which fails
-        // with PGRST204: "Could not find the '{table}' column of '{table}'".
-        $clean = [];
-        foreach ($records as $r) {
-            $clean[] = $this->stripUnknownColumns($table, $r);
-        }
-        $payload = $clean;
-
-        $firstKeys = $clean ? array_keys($clean[0]) : [];
-        Log::debug("insertMany({$table}): payload keys=" . json_encode($firstKeys));
-
-        try {
-            $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $payload);
-
-            // If PostgREST returns PGRST204 (stale schema cache for this table),
-            // invalidate the table's cache and retry up to 5 times. Between retries
-            // we sleep long enough for PostgREST to refresh its schema cache.
-            $attempts = 0;
-            while ($response->failed() && $attempts < 5 && str_contains($response->body(), 'PGRST204')) {
-                $attempts++;
-                $this->invalidateCache($table);
-                $this->invalidateCache('information_schema.columns');
-                usleep(20000000);
-
-                // Completely fresh HTTP client built from scratch each retry.
-                $response = Http::withHeaders([
-                    'apikey' => $this->serviceRoleKey,
-                    'Authorization' => 'Bearer ' . $this->serviceRoleKey,
-                    'Content-Type' => 'application/json',
-                    'Prefer' => 'return=representation',
-                ])->timeout(300)->post("{$this->url}/rest/v1/{$table}", $payload);
-            }
-        } catch (\Exception $e) {
-            Log::error("Supabase insertMany failed for table {$table}: " . $e->getMessage());
-            return null;
-        }
-
-        if ($response->failed()) {
-            Log::warning("Supabase insertMany error for table {$table}: " . $response->body());
-            return null;
-        }
-
-        $this->invalidateCache($table);
-
-        return $response->json();
+        return $this->driver()->insertMany($table, $records);
     }
 
     public function insertManyOrFail(string $table, array $records): array
     {
-        $result = $this->insertMany($table, $records);
-        if ($result === null) {
-            throw new \RuntimeException("Failed to insert into {$table}");
-        }
-        return $result;
+        return $this->driver()->insertManyOrFail($table, $records);
     }
 
-    /**
-     * Update records matching conditions (invalidates cache)
-     */
     public function update(string $table, array|object $data, array $conditions): array
     {
-        // Drop keys that aren't real columns so a missing column (e.g. served_at
-        // before its migration is run) never makes the PATCH fail with PGRST204.
-        $data = $this->stripUnknownColumns($table, $data);
-
-        $queryParams = $this->buildFilterParams($conditions);
-
-        try {
-            $response = $this->request()->patch("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams), $data);
-        } catch (\Exception $e) {
-            $this->lastErrorMessage = $e->getMessage();
-            Log::error("Supabase update failed for table {$table}: " . $e->getMessage());
-            return [];
-        }
-
-        $this->invalidateCache($table);
-
-        if ($response->failed()) {
-            $this->lastErrorMessage = $response->body();
-            Log::warning("Supabase update error for table {$table}: " . $response->body());
-            return [];
-        }
-
-        return $response->json() ?? [];
-    }
-
-    /**
-     * The reason the most recent update/insert/query failed, if any.
-     */
-    public function lastErrorMessage(): ?string
-    {
-        return $this->lastErrorMessage;
+        return $this->driver()->update($table, $data, $conditions);
     }
 
     public function updateOrFail(string $table, array|object $data, array $conditions): array
     {
-        $result = $this->update($table, $data, $conditions);
-        if (empty($result)) {
-            throw new \RuntimeException("Failed to update {$table}");
-        }
-        return $result;
+        return $this->driver()->updateOrFail($table, $data, $conditions);
     }
 
-    /**
-     * Delete records matching conditions (invalidates cache)
-     */
     public function delete(string $table, array $conditions): bool
     {
-        $queryParams = $this->buildFilterParams($conditions);
-
-        try {
-            $response = $this->request()->withHeaders([
-                'Prefer' => '',
-            ])->delete("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams));
-        } catch (\Exception $e) {
-            Log::error("Supabase delete failed for table {$table}: " . $e->getMessage());
-            return false;
-        }
-
-        $this->invalidateCache($table);
-
-        return $response->successful();
+        return $this->driver()->delete($table, $conditions);
     }
 
-    /**
-     * Make sure a private bucket exists, and say whether it is there.
-     *
-     * Storage answers a missing bucket with an error rather than an empty
-     * success, and the HTTP client raises that error, so the create is tried
-     * first and the read is only the confirmation.
-     */
+    public function count(string $table, array $conditions = []): int
+    {
+        return $this->driver()->count($table, $conditions);
+    }
+
+    public function rpc(string $functionName, array $params = []): mixed
+    {
+        return $this->driver()->rpc($functionName, $params);
+    }
+
+    public function parallel(array $callbacks): array
+    {
+        return $this->driver()->parallel($callbacks);
+    }
+
+    public function lastErrorMessage(): ?string
+    {
+        return $this->driver()->lastErrorMessage();
+    }
+
     public function ensureStorageBucket(string $bucket): bool
     {
-        $created = null;
-
-        try {
-            $created = $this->request()
-                ->withHeaders(['Prefer' => ''])
-                ->post("{$this->url}/storage/v1/bucket", [
-                    'id' => $bucket,
-                    'name' => $bucket,
-                    'public' => false,
-                    'file_size_limit' => 26214400,
-                ]);
-        } catch (\Exception $e) {
-            // Raised when the bucket is already there, which is fine.
-            Log::debug("Supabase storage create bucket {$bucket} raised: " . $e->getMessage());
-        }
-
-        if ($created !== null && $created->successful()) {
-            return true;
-        }
-
-        if ($created !== null && str_contains($created->body(), 'already exists')) {
-            return true;
-        }
-
-        // Confirm with a read, which answers 200 only when the bucket is real.
-        try {
-            $exists = $this->request()
-                ->withHeaders(['Prefer' => ''])
-                ->get("{$this->url}/storage/v1/bucket/{$bucket}");
-        } catch (\Exception $e) {
-            Log::error("Supabase storage bucket {$bucket} is unusable: " . $e->getMessage());
-
-            return false;
-        }
-
-        if ($exists->successful()) {
-            return true;
-        }
-
-        Log::warning("Could not create storage bucket {$bucket}: " . $exists->body());
-
-        return false;
+        return $this->driver()->ensureStorageBucket($bucket);
     }
 
-    /**
-     * Put raw bytes into a bucket. $path is the key inside the bucket.
-     */
     public function storagePut(string $bucket, string $path, string $contents, string $contentType): bool
     {
-        try {
-            // withBody, not the $data argument: the bytes are a file and must
-            // not be run through json_encode, which would mangle anything that
-            // is not valid UTF-8.
-            $response = $this->request()
-                ->withHeaders(['Prefer' => '', 'x-upsert' => 'false'])
-                ->withBody($contents, $contentType !== '' ? $contentType : 'application/octet-stream')
-                ->post("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
-        } catch (\Exception $e) {
-            Log::error("Supabase storage put failed for {$bucket}/{$path}: " . $e->getMessage());
-
-            return false;
-        }
-
-        if (! $response->successful()) {
-            Log::warning("Supabase storage put failed for {$bucket}/{$path}: " . $response->body());
-
-            return false;
-        }
-
-        return true;
+        return $this->driver()->storagePut($bucket, $path, $contents, $contentType);
     }
 
-    /**
-     * Read a stored object back into memory.
-     *
-     * Only for small files: a big attachment will run into the request
-     * timeout, so anything a person may open goes through
-     * storageDownloadTo() instead.
-     */
     public function storageGet(string $bucket, string $path): ?string
     {
-        try {
-            $response = $this->request()
-                ->withHeaders(['Prefer' => '', 'Accept' => '*/*'])
-                ->get("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
-        } catch (\Exception $e) {
-            Log::error("Supabase storage get failed for {$bucket}/{$path}: " . $e->getMessage());
-
-            return null;
-        }
-
-        if ($response->failed()) {
-            Log::warning("Supabase storage get failed for {$bucket}/{$path}: " . $response->body());
-
-            return null;
-        }
-
-        return $response->body();
+        return $this->driver()->storageGet($bucket, $path);
     }
 
-    /**
-     * Download a stored object straight to a local file.
-     *
-     * A 20MB video does not fit the normal request timeout when it is read
-     * into memory, and buffering it would use the same amount of RAM, so the
-     * bytes are written to disk as they arrive and the response is allowed
-     * much longer.
-     */
     public function storageDownloadTo(string $bucket, string $path, string $destination): bool
     {
-        try {
-            $response = $this->request()
-                ->withOptions(['sink' => $destination])
-                ->withHeaders(['Prefer' => '', 'Accept' => '*/*'])
-                ->timeout(self::STORAGE_DOWNLOAD_TIMEOUT)
-                ->get("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
-        } catch (\Exception $e) {
-            Log::error("Supabase storage download failed for {$bucket}/{$path}: " . $e->getMessage());
-            @unlink($destination);
-
-            return false;
-        }
-
-        if ($response->failed()) {
-            Log::warning("Supabase storage download failed for {$bucket}/{$path}: " . $response->body());
-            @unlink($destination);
-
-            return false;
-        }
-
-        return true;
+        return $this->driver()->storageDownloadTo($bucket, $path, $destination);
     }
 
     public function storageDelete(string $bucket, string $path): bool
     {
-        try {
-            // No body on a DELETE, so the JSON content type the shared
-            // headers carry has to come off or storage rejects the call.
-            $response = $this->request()
-                ->withHeaders(['Prefer' => '', 'Content-Type' => 'application/json'])
-                ->withBody('', '')
-                ->delete("{$this->url}/storage/v1/object/{$bucket}/" . $this->storagePath($path));
-        } catch (\Exception $e) {
-            Log::error("Supabase storage delete failed for {$bucket}/{$path}: " . $e->getMessage());
-
-            return false;
-        }
-
-        if (! $response->successful()) {
-            Log::warning("Supabase storage delete failed for {$bucket}/{$path}: " . $response->body());
-        }
-
-        return $response->successful();
+        return $this->driver()->storageDelete($bucket, $path);
     }
 
     /**
-     * Bucket keys are URL paths, so each segment has to be encoded. Slashes in
-     * $path stay as folder separators.
-     */
-    private function storagePath(string $path): string
-    {
-        return implode('/', array_map('rawurlencode', explode('/', $path)));
-    }
-
-    /**
-     * Remove keys from $data that don't exist as columns in $table.
-     * Uses a lightweight allowlist per table to avoid PGRST204 errors from
-     * PostgREST's stale schema cache.
-     */    private function stripUnknownColumns(string $table, array|object $data): array
-    {
-        $data = is_object($data) ? (array) $data : $data;            Log::debug("stripUnknownColumns({$table}): input keys=" . json_encode(array_keys($data)));
-
-        $columns = $this->knownColumns($table);
-        Log::debug("stripUnknownColumns({$table}): known columns=" . json_encode($columns));
-
-        if (empty($columns)) {
-            // No known columns — trust the data as-is (best effort).
-            Log::warning("stripUnknownColumns({$table}): no known columns, returning data as-is");
-            return $data;
-        }
-
-        $clean = array_intersect_key($data, array_fill_keys($columns, true));
-        Log::debug("stripUnknownColumns({$table}): output keys=" . json_encode(array_keys($clean)));
-        return $clean;
-    }
-
-    /**
-     * Get the known columns for a table.
-     * Uses hardcoded allowlists derived from the live Supabase schema for the
-     * tables we write to. This avoids reliance on the introspection endpoint.
-     */
-    private function knownColumns(string $table): array
-    {
-        static $cache = [];
-
-        if (isset($cache[$table])) {
-            return $cache[$table];
-        }
-
-        $allowlists = [
-            'sales' => [
-                'sale_number','branch_id','cashier_id','customer_id','subtotal',
-                'discount','total','payment_status','sale_type','notes','created_at','updated_at',
-                'supplier','payment_method','payment_summary',
-            ],
-            'sale_items' => [
-                'sale_id','product_id','quantity','unit_price','unit_cost','total',
-                'volume','variant','created_at','updated_at',
-            ],
-            'stock_movements' => [
-                'branch_id','product_id','type','quantity','unit_cost','unit_price',
-                'reference_type','reference_id','performed_by','notes','created_at','updated_at',
-            ],
-            'bottle_stock' => [
-                'branch_id','volume','variant','quantity','has_logo','logo_color','has_box','box_color',
-                'created_at','updated_at',
-            ],
-            'stock_transfer_items' => [
-                // NOTE: 'stock_transfer_id' was wrong — the real column is
-                // 'transfer_id' (see database/supabase_stock_transfers.sql).
-                // Stripping 'transfer_id' made every item insert fail without
-                // it (NOT NULL) → "Could not save the transfer items.".
-                'transfer_id','stock_type','item_index','product_id','name','quantity','unit_cost','unit_price','variety_unit_price',
-                'category','supplier','volume','variant','type','color',
-                'status','received_by','received_at','returned_by','returned_at',
-                'return_reason','return_status','loss_reason','resent_transfer_id',
-                'damage_type','damage_reason','damage_reported_by','damage_reported_at',
-                'created_at','updated_at',
-            ],
-            'oil_fragrance_stock' => [
-                'branch_id','name','volume','quantity','created_at','updated_at',
-            ],
-            'branch_stock_varieties' => [
-                'branch_id','product_id','volume','variant','quantity','selling_price','created_at','updated_at',
-            ],
-            'bottle_stock_movements' => [
-                'branch_id','volume','variant','type','quantity','reason','performed_by',
-                'created_at','updated_at','has_logo','logo_color','has_box','box_color',
-            ],
-            'oil_fragrance_movements' => [
-                'branch_id','name','volume','type','quantity','reason','performed_by',
-                'created_at','updated_at',
-            ],
-            'orders' => [
-                'order_number','branch_id','cashier_id','customer_id','status','total',
-                'delivery_notes','assigned_to','assigned_at','completed_at','served_at',
-                'cancelled_at','paid_at','personal_order_name',
-                'payment_status','payment_method','payment_confirmation_code',
-                'created_at','updated_at',
-            ],
-            'order_items' => [
-                'order_id','product_id','quantity','unit_price','total',
-                // Which bottling the customer ordered (Oil Fragrance lines) —
-                // see database/supabase_order_item_varieties.sql.
-                'volume','variant',
-                'created_at','updated_at',
-            ],
-            'order_notes' => [
-                'order_id','note','created_by','created_at','updated_at',
-            ],
-            'bottle_accessories_movements' => [
-                'branch_id','type','color','movement_type','quantity','reason',
-                'performed_by','created_at','updated_at',
-            ],
-            'news_posts' => [
-                'title','content','branch_id','author_id','image_url','is_published',
-                'status','rejection_reason','reviewed_by','reviewed_at',
-                'created_at','updated_at',
-            ],
-            'inquiries' => [
-                'branch_id','user_id','email','phone','subject','message','attachments',
-                'is_read','status','is_featured','reply_message','replied_by','replied_at',
-                'created_at','updated_at',
-            ],
-            // The info@worldchoiceperfume.com mailbox — see
-            // database/supabase_info_mails.sql.
-            'info_emails' => [
-                'message_id','in_reply_to','reference_ids','from_email','from_name','to_email',
-                'cc','bcc','reply_to','subject','body_text','body_html','raw_email','headers',
-                'attachment_names','has_attachments','spf_result','dkim_result','is_read',
-                'is_starred','status','thread_key','parent_id','received_at','read_at',
-                'replied_at','created_at','updated_at',
-            ],
-            'info_email_replies' => [
-                'info_email_id','from_email','to_email','subject','body','message_id',
-                'in_reply_to','status','error','sent_by','sent_by_name','sent_at','created_at',
-            ],
-            'info_email_attachments' => [
-                'info_email_id','file_name','mime_type','size_bytes','storage_path','created_at',
-            ],
-            'audit_logs' => [
-                'user_id','action','created_at','updated_at','auditable_type',
-                'auditable_id','old_values','new_values','ip_address',
-            ],
-            'admin_notifications' => [
-                'type','branch_id','user_id','title','message','data',
-                'is_read','created_at','updated_at',
-            ],
-            'company_settings' => [
-                'key','value','updated_at',
-            ],
-            'brands' => [
-                'name','logo_url','is_active','created_by','created_at','updated_at',
-            ],
-            // Which clients customer care has flagged as loyal — see the
-            // loyal_customers table in SYSTEM_SCHEMA.sql.
-            'loyal_customers' => [
-                'customer_id','assigned_by','assigned_at','created_at',
-            ],
-        ];
-
-        $cols = $allowlists[$table] ?? [];
-        $cache[$table] = $cols;
-        return $cols;
-    }
-
-    /**
-     * Count records (cached)
-     */
-    public function count(string $table, array $conditions = []): int
-    {
-        $key = $this->cacheKey($table, array_merge($conditions, ['_count' => true]));
-
-        if (isset(self::$queryCache[$key])) {
-            return self::$queryCache[$key];
-        }
-
-        $url = "{$this->url}/rest/v1/{$table}";
-        $queryParams = $this->buildFilterParams($conditions);
-        $queryParams['select'] = 'id';
-
-        try {
-            $response = $this->request()->withHeaders([
-                'Prefer' => 'count=exact',
-            ])->head($url, $queryParams);
-        } catch (\Exception $e) {
-            Log::error("Supabase count failed for table {$table}: " . $e->getMessage());
-            return 0;
-        }
-
-        $header = $response->header('Content-Range');
-        $count = 0;
-        if ($header && str_contains($header, '/')) {
-            $count = (int) explode('/', $header)[1];
-        }
-
-        self::$queryCache[$key] = $count;
-
-        return $count;
-    }
-
-    /**
-     * Execute raw RPC (Supabase Edge Function or database function)
-     */
-    public function rpc(string $functionName, array $params = []): mixed
-    {
-        try {
-            $response = $this->request()->post("{$this->url}/rest/v1/rpc/{$functionName}", $params);
-        } catch (\Exception $e) {
-            Log::error("Supabase rpc failed for function {$functionName}: " . $e->getMessage());
-            return null;
-        }
-
-        if ($response->failed()) {
-            return null;
-        }
-
-        return $response->json();
-    }
-
-    /**
-     * Run several queries and return the results in the order they were given.
-     *
-     * Sequential on purpose: Http::pool() only collects requests issued through the
-     * pool instance it injects, so callbacks that build their own request here would
-     * be discarded and the pool would come back empty.
-     */
-    public function parallel(array $callbacks): array
-    {
-        $results = [];
-        foreach ($callbacks as $key => $callback) {
-            $results[$key] = $callback();
-        }
-        return $results;
-    }
-
-    /**
-     * Clear the request-level query cache for a specific table
-     */
-    private function invalidateCache(string $table): void
-    {
-        $prefix = 'sb:' . $table . ':';
-        foreach (self::$queryCache as $key => $value) {
-            if (str_starts_with($key, $prefix)) {
-                unset(self::$queryCache[$key]);
-            }
-        }
-    }
-
-    /**
-     * Clear all request-level cache
+     * Clear the request-level caches of both engines.
      */
     public static function clearCache(): void
     {
-        self::$queryCache = [];
-    }
-
-    /**
-     * Build PostgREST query parameters from our shorthand
-     */
-    private function buildQueryParams(array $params): array
-    {
-        $result = [];
-
-        foreach ($params as $key => $value) {
-            if (in_array($key, ['select', 'order', 'limit', 'offset', 'group'])) {
-                $result[$key] = (string) $value;
-            } elseif (is_string($value) && preg_match('/^(eq|neq|gt|gte|lt|lte|like|ilike|in|is|not|or)\./', $value)) {
-                $result[$key] = $value;
-            } elseif (is_int($value) || is_float($value)) {
-                $result[$key] = "eq.{$value}";
-            } else {
-                $result[$key] = "eq.{$value}";
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Build filter parameters for where conditions
-     */
-    private function buildFilterParams(array $conditions): array
-    {
-        $result = [];
-        foreach ($conditions as $key => $value) {
-            if (is_string($value) && preg_match('/^(eq|neq|gt|gte|lt|lte|like|ilike|in|is|not)\./', $value)) {
-                $result[$key] = $value;
-            } else {
-                $result[$key] = "eq.{$value}";
-            }
-        }
-        return $result;
+        SupabaseRestService::clearCache();
+        LocalPostgresService::clearCache();
     }
 }

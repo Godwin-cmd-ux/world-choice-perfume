@@ -204,9 +204,9 @@ abstract class SmBaseController extends Controller
     }
 
     /**
-     * Resolve performed_by ids to display names: prefer the Supabase user,
-     * fall back through the local user's supabase_id mapping, then the local
-     * user name — same chain the website uses.
+     * Resolve performed_by ids to display names: prefer the users table, then
+     * the local user name. Ids are the same in both now that the app runs on
+     * the local database, so the old supabase_id hop is gone.
      */
     protected function resolvePerformedByNames(array $ids): array
     {
@@ -228,14 +228,12 @@ abstract class SmBaseController extends Controller
         }
 
         $localUsers = \App\Models\User::whereIn('id', $ids)
-            ->get(['id', 'name', 'supabase_id'])
+            ->get(['id', 'name'])
             ->keyBy('id');
 
         foreach ($ids as $id) {
             $local = $localUsers->get($id);
-            if ($local && ! empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
-                $map[$id] = $supById[(int) $local->supabase_id];
-            } elseif (isset($supById[$id])) {
+            if (isset($supById[$id])) {
                 $map[$id] = $supById[$id];
             } elseif ($local && $local->name) {
                 $map[$id] = $local->name;

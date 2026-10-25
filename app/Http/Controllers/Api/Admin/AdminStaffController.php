@@ -134,7 +134,6 @@ class AdminStaffController extends Controller
                 'status' => 'active',
                 'branch_id' => (int) $validated['branch_id'],
                 'otp_verified' => false,
-                'supabase_id' => $sbUser['id'],
             ]
         );
 

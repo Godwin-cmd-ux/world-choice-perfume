@@ -24,9 +24,7 @@ class GraphicDesignerQrCodeTest extends TestCase
     {
         parent::setUp();
 
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
     }
 
     /**

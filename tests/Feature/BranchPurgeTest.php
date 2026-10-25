@@ -29,9 +29,7 @@ class BranchPurgeTest extends TestCase
         // SupabaseService caches query results in a static that outlives a
         // single test; without clearing it a previous test's row could answer
         // this one's read and the fake would never be consulted.
-        $cache = new \ReflectionProperty(SupabaseService::class, 'queryCache');
-        $cache->setAccessible(true);
-        $cache->setValue(null, []);
+        SupabaseService::clearCache();
 
         $this->createMirrorTable();
     }
