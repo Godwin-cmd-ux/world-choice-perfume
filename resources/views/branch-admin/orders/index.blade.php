@@ -61,7 +61,7 @@
             <tbody>
                 @forelse($orders as $order)
                     @php
-                        // assigned_to is the current picker column, cashier_id
+                        // assigned_to is the current picker column, cashier_id....
                         // the legacy one still set on orders placed before it.
                         $me = (string) $userId;
                         $isMine = (string) ($order->assigned_to ?? '') === $me
