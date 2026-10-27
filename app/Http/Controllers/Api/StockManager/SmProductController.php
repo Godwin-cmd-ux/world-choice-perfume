@@ -100,7 +100,9 @@ class SmProductController extends SmBaseController
         ]);
 
         // Eloquent mirror for SQLite compatibility, same as the website.
-        if ($product) {
+        // Skipped in local mode: the insert above already wrote that row to
+        // the table Product reads, so mirroring it would store it twice.
+        if ($product && $this->supabase->isRemote()) {
             \App\Models\Product::create([
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,

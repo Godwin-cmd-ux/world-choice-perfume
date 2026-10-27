@@ -109,15 +109,17 @@ class ProductController extends Controller
             'updated_at' => now()->toIso8601String(),
         ]);
 
-        // Also create in SQLite for Eloquent compatibility
-        $localProduct = Product::create([
+        // Eloquent mirror — only needed when the row above went to Supabase.
+        // In local mode that insert already wrote to the table Product reads,
+        // so mirroring it here would store the product twice.
+        $localProduct = $this->supabase->isRemote() ? Product::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'brand' => $validated['brand'] ?? null,
             'category' => $category,
             'sex_category' => $validated['sex_category'] ?? null,
             'fundamental_ingredient' => $validated['fundamental_ingredient'] ?? null,
-        ]);
+        ]) : null;
 
         // Upload images to Cloudinary
         if ($request->hasFile('images')) {

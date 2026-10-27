@@ -26,16 +26,28 @@ class SupabaseService
     {
     }
 
+    /**
+     * True when reads and writes go to Supabase over HTTP; false when they go
+     * to the local database configured by DB_* — the very table the Eloquent
+     * models read and write.
+     *
+     * Callers that keep an Eloquent "mirror" row next to a SupabaseService
+     * write must skip the mirror when this is false, otherwise the same row is
+     * written to the same table twice.
+     */
+    public function isRemote(): bool
+    {
+        return (string) config('services.supabase.url') !== ''
+            && (string) config('services.supabase.service_role_key') !== '';
+    }
+
     private function driver(): SupabaseRestService|LocalPostgresService
     {
         if ($this->driver !== null) {
             return $this->driver;
         }
 
-        $url = (string) config('services.supabase.url');
-        $key = (string) config('services.supabase.service_role_key');
-
-        return $this->driver = ($url !== '' && $key !== '')
+        return $this->driver = $this->isRemote()
             ? new SupabaseRestService()
             : new LocalPostgresService();
     }
