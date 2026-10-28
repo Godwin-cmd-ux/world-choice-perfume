@@ -4,7 +4,7 @@
      the first paint. --}}
 <html lang="en" data-theme="dark">
 <head>
-    @include('partials.theme-boot')
+    @include('partials.theme-boot', ['forceDark' => true])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Too Large — World Choice Perfume</title>

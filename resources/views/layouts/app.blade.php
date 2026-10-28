@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-{{-- data-theme is the dark default, server-rendered so the page is dark even
-     with JavaScript off; partials/theme-boot swaps in the saved choice before
-     the first paint. --}}
+{{-- The web staff area stays dark; theme selection is available in the mobile app. --}}
 <html lang="en" data-theme="dark">
 <head>
-    @include('partials.theme-boot')
+    @include('partials.theme-boot', ['forceDark' => true])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -107,7 +105,6 @@
                 </div>
                 <div class="flex items-center gap-3">
                     @yield('header-actions')
-                    @include('partials.theme-toggle')
                 </div>
             </header>
 
