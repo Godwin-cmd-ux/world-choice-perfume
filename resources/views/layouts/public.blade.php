@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-{{-- data-theme is the dark default, server-rendered so the public site is dark
-     even with JavaScript off; partials/theme-boot swaps in the saved choice
-     before the first paint, so the light mode never flashes. --}}
+{{-- The public website always uses the dark theme. --}}
 <html lang="en" data-theme="dark">
 <head>
-    @include('partials.theme-boot')
+    @include('partials.theme-boot', ['forceDark' => true])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -103,7 +101,6 @@
                     <button onclick="document.getElementById('staffLoginModal').classList.remove('hidden')" class="text-sm font-medium text-gray-300 hover:text-gold-400 transition flex items-center gap-1">
                         <i class="fas fa-user-lock"></i> Staff Login
                     </button>
-                    @include('partials.theme-toggle', ['variant' => 'gold'])
                 </div>
 
                 <!-- Mobile Menu Toggle -->
@@ -128,7 +125,6 @@
                     <i class="fas fa-mobile-screen-button mr-2" aria-hidden="true"></i> Download Our App
                 </a>
                 <div class="border-t border-dark-700 my-3"></div>
-                <div class="px-1">@include('partials.theme-toggle', ['variant' => 'gold'])</div>
                 @auth
                     <a href="{{ route(\App\Support\StaffDashboard::fallbackRoute(auth()->user()->role)) }}" class="block px-4 py-3 rounded-lg bg-gold-500/10 text-gold-400"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
                 @endauth

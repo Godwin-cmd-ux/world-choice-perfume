@@ -1,5 +1,5 @@
 {{--
-    Theme toggle — the dark/light switch.
+    Theme toggle — the dark/light switch for pages that allow theme selection.
 
     Include once per layout (or once per header, plus once in a mobile menu):
     every `[data-theme-toggle]` button on the page is wired by one script, and
@@ -15,6 +15,8 @@
     It reads and writes the same localStorage key as
     partials/theme-boot.blade.php ('wcp-theme'), so the choice survives
     navigation and the next page paints in the right mode before it appears.
+    Pages that must remain dark should use theme-boot with forceDark=true and
+    must not include this toggle.
 --}}
 @php
     $themeToggleGold = ($variant ?? 'neutral') === 'gold';

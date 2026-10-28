@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-{{-- data-theme is the dark default, server-rendered so the page is dark even
-     with JavaScript off; partials/theme-boot swaps in the saved choice before
-     the first paint. --}}
+{{-- Customer-facing website page: always use the dark theme. --}}
 <html lang="en" data-theme="dark">
 <head>
-    @include('partials.theme-boot')
+    @include('partials.theme-boot', ['forceDark' => true])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
