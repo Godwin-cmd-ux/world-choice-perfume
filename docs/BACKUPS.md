@@ -44,6 +44,19 @@ php artisan schedule:list
 `0 21` is UTC (the app's timezone); with the schedule pinned to
 `Africa/Dar_es_Salaam` that is 00:00 midnight in Tanzania, once a day.
 
+## See and delete them in the app
+
+Super Admin → **Backups** (`/super-admin/backups`) lists every backup by date,
+with each file's size and a download button for both halves. The trash button
+deletes that day's two files from Cloudinary and then the row from the
+`backups` table; if Cloudinary refuses, the row stays and the page says why, so
+the list never shows a backup that is already gone.
+
+The page reads the `backups` table, which each night's run writes to. On load it
+also asks Cloudinary for folders the table does not know about and records them,
+so a backup taken before the page existed — or one whose row failed to write —
+still appears and can be deleted.
+
 ## Take one now
 
 Any of these:

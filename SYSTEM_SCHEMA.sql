@@ -737,8 +737,8 @@ CREATE TABLE public.backups (
     rows_count INTEGER DEFAULT 0 NOT NULL,
     seconds NUMERIC(8, 2),
     status VARCHAR(255) DEFAULT 'complete' NOT NULL,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    created_at TIMESTAMP(0),
+    updated_at TIMESTAMP(0)
 );
 
 -- migrations
