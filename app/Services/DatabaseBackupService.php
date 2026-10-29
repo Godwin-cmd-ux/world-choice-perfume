@@ -202,7 +202,9 @@ class DatabaseBackupService
         try {
             // The folder is the identity: unique per backup, and present since
             // the table was created, unlike the stamp added later.
-            $existing = $this->supabase->findOne('backups', ['folder' => 'eq.' . $result['folder']], 'id');
+            // findOne() adds the eq. filter itself — pass the raw value, or the
+            // PostgREST driver answers folder=eq.eq.<folder> and matches nothing.
+            $existing = $this->supabase->findOne('backups', ['folder' => $result['folder']], 'id');
 
             if (isset($existing['id'])) {
                 $this->supabase->update('backups', $row, ['id' => $existing['id']]);

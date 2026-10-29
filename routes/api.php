@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminApprovalController;
+use App\Http\Controllers\Api\Admin\AdminBackupController;
 use App\Http\Controllers\Api\Admin\AdminBranchController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminMailController;
@@ -200,6 +201,14 @@ Route::middleware(EnsureStaffSessionApi::class.':super_admin')->prefix('admin')-
     Route::post('/emails/{id}/star', [AdminMailController::class, 'star']);
     Route::post('/emails/{id}/status', [AdminMailController::class, 'status']);
     Route::delete('/emails/{id}', [AdminMailController::class, 'destroy']);
+
+    // Database backups: the nightly catalogue plus backups induced on demand.
+    // A backup is addressed by its stamp — a date (2026-10-29) or date+time
+    // (2026-10-29_143501) — the same identity the website page uses.
+    Route::get('/backups', [AdminBackupController::class, 'index']);
+    Route::post('/backups/induce', [AdminBackupController::class, 'induce']);
+    Route::delete('/backups/{stamp}', [AdminBackupController::class, 'destroy'])
+        ->where('stamp', '\d{4}-\d{2}-\d{2}(_\d{6})?');
 
     // Admin notifications.
     Route::get('/notifications', [AdminNotificationController::class, 'index']);

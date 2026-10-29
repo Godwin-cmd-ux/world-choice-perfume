@@ -626,6 +626,72 @@ export function fetchReturnedStock(params: {
   });
 }
 
+/* ------------------------------ Backups ----------------------------- */
+
+/**
+ * One snapshot of the database. `kind` separates the nightly run from a backup
+ * induced on demand: the induced one carries its own time and lives under a
+ * different Cloudinary folder, so it never replaces the night's copy.
+ */
+export interface AdminBackupRow {
+  date: string;
+  stamp: string;
+  kind: 'automatic' | 'induced';
+  time: string | null;
+  label: string;
+  folder: string;
+  schema_url: string;
+  seed_url: string;
+  schema_bytes: number;
+  seed_bytes: number;
+  rows_count: number;
+  tables_count: number;
+  seconds: number | null;
+  status: string;
+  created_at: string | null;
+}
+
+export interface AdminBackupsPayload {
+  backups: AdminBackupRow[];
+  total_stored: number;
+  total_bytes: number;
+  matching_bytes: number;
+  filters: { date_from: string | null; date_to: string | null };
+  imported: number;
+  cloudinary_warning: string | null;
+  system: { folder: string; timezone: string };
+}
+
+export interface InducedBackup {
+  message: string;
+  backup: {
+    date: string;
+    stamp: string;
+    kind: string;
+    folder: string;
+    rows_count: number;
+    tables_count: number;
+    seconds: number;
+  };
+}
+
+export function fetchAdminBackups(params: { date_from?: string; date_to?: string }): Promise<AdminBackupsPayload> {
+  return apiGet<AdminBackupsPayload>('/admin/backups', {
+    date_from: params.date_from,
+    date_to: params.date_to,
+  });
+}
+
+/** Take a backup now; it is filed separately from the nightly one. */
+export function induceAdminBackup(): Promise<InducedBackup> {
+  return apiPost<InducedBackup>('/admin/backups/induce', {});
+}
+
+/** Remove a day's two files from Cloudinary and its row from the database. */
+export function deleteAdminBackup(stamp: string): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/admin/backups/${stamp}`);
+}
+
 /* --------------------- Settings + profile/account ------------------ */
 
 export interface AdminSettingsPayload {

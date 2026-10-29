@@ -51,6 +51,7 @@ export default function AdminLayout() {
       <Stack.Screen name="emails" />
       <Stack.Screen name="email-detail" options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="backups" />
       <Stack.Screen name="returned-stock" />
       <Stack.Screen name="daily-sales" />
       <Stack.Screen name="cross-stock" />

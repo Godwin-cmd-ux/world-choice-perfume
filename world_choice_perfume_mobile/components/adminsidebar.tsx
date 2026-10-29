@@ -5,7 +5,7 @@
  *
  *   Dashboard · Daily Sales Overview · Branches · Cross-Branch Stock ·
  *   Cross-Branch Sales · Approvals · Orders · Emails · Returned Stock ·
- *   Notifications · Reports · Staff · Settings
+ *   Notifications · Backups · Reports · Staff · Settings
  *   ── Account ── Profile · Logout
  *
  * The module used to show a bottom tab bar with a "More" launcher instead,
@@ -87,6 +87,7 @@ const ITEMS: NavItem[] = [
   { label: 'Orders', icon: 'bag-handle-outline', href: '/admin/orders' },
   { label: 'Emails', icon: 'mail-outline', href: '/admin/emails' },
   { label: 'Returned Stock', icon: 'archive-outline', href: '/admin/returned-stock' },
+  { label: 'Backups', icon: 'cloud-upload-outline', href: '/admin/backups' },
   { label: 'Notifications', icon: 'notifications-outline', href: '/admin/notifications' },
   { label: 'Reports', icon: 'bar-chart-outline', href: '/admin/reports' },
   { label: 'Staff', icon: 'people-outline', href: '/admin/staff' },
