@@ -728,8 +728,8 @@ CREATE TABLE public.info_email_attachments (
 CREATE TABLE public.backups (
     id BIGSERIAL PRIMARY KEY,
     backup_date DATE NOT NULL,
-    kind VARCHAR(20) DEFAULT 'automatic' NOT NULL,
-    stamp VARCHAR(32) NOT NULL,
+    kind VARCHAR(255) DEFAULT 'automatic' NOT NULL,
+    stamp VARCHAR(255),
     folder TEXT NOT NULL,
     schema_url TEXT,
     schema_bytes BIGINT,
