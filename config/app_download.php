@@ -18,7 +18,7 @@
 
 $url = trim((string) env(
     'APP_DOWNLOAD_URL',
-    'https://expo.dev/artifacts/eas/rMyg84t61LbAfjGHBc8kjVFZvbEN8IYpIfwBabmPMgs.apk'
+    'https://expo.dev/artifacts/eas/8P1vuU74KUmwZKF4m4h_8XmEnei5EU9Cu7J9N4MXgCg.apk'
 ));
 
 return [
