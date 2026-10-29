@@ -499,6 +499,35 @@ class SuperAdminBackupsPageTest extends TestCase
         );
     }
 
+    public function test_the_delete_signature_covers_every_param_it_sends(): void
+    {
+        $this->cloudinary();
+        $this->bind($this->supabaseStub([$this->row('2026-10-29')]));
+
+        $this->be($this->admin())->delete('/super-admin/backups/2026-10-29');
+
+        $destroyed = array_values(array_filter($this->requests, fn (Request $r) => str_contains($r->url(), '/raw/destroy')));
+        $this->assertCount(2, $destroyed);
+
+        foreach ($destroyed as $request) {
+            $params = $request->data();
+
+            // Cloudinary verifies every param that was sent; api_key and the
+            // signature itself are the only ones left out.
+            $signed = $params;
+            unset($signed['api_key'], $signed['signature']);
+            ksort($signed);
+
+            $expected = sha1(implode('&', array_map(
+                fn ($key) => "{$key}={$signed[$key]}",
+                array_keys($signed)
+            )) . 'test-secret');
+
+            $this->assertSame($expected, $params['signature'], 'the signature must cover every param sent');
+            $this->assertArrayHasKey('invalidate', $signed, 'invalidate is sent, so it has to be signed');
+        }
+    }
+
     public function test_a_refused_cloudinary_delete_keeps_the_row_and_reports_the_reason(): void
     {
         $this->cloudinary([], ['error' => ['message' => 'Invalid Signature']], 400);

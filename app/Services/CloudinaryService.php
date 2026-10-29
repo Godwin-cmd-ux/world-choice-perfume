@@ -176,12 +176,22 @@ class CloudinaryService
         try {
             $timestamp = now()->timestamp;
 
+            // Cloudinary verifies a signature over every param that was sent
+            // (except file, api_key and resource_type), so anything added to
+            // the body below must also be signed — an unsigned `invalidate`
+            // is answered with "Invalid Signature".
+            $signature = sha1($this->buildSignatureString([
+                'invalidate' => 'true',
+                'public_id' => $publicId,
+                'timestamp' => (string) $timestamp,
+            ]) . $this->apiSecret);
+
             $response = Http::timeout(60)->post("https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/destroy", [
                 'public_id' => $publicId,
                 'api_key' => $this->apiKey,
                 'timestamp' => $timestamp,
                 'invalidate' => 'true',
-                'signature' => $this->generateSignature($publicId, $timestamp),
+                'signature' => $signature,
             ]);
 
             // "not found" is the answer for a file that is already gone, which
