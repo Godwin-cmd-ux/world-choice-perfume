@@ -52,7 +52,10 @@
 </head>
 <body class="wcp-dark-skin bg-dark-950 text-white font-sans">
     <!-- Navigation -->
-    <nav class="fixed top-0 w-full z-50 transition-all duration-300" id="mainNav">
+    {{-- absolute, not fixed: the bar sits over the top of the page like before
+         (the pages below already pad for its 80px), but it scrolls away with
+         the content instead of staying pinned to the viewport. --}}
+    <nav class="absolute top-0 w-full z-50 transition-all duration-300" id="mainNav">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20">
                 <!-- Logo -->
