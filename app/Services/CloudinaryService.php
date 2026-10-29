@@ -11,13 +11,80 @@ class CloudinaryService
     private string $apiKey;
     private string $apiSecret;
     private string $uploadUrl;
+    private string $rawUploadUrl;
+    private ?string $lastError = null;
 
     public function __construct()
     {
-        $this->cloudName = config('services.cloudinary.cloud_name');
-        $this->apiKey = config('services.cloudinary.api_key');
-        $this->apiSecret = config('services.cloudinary.api_secret');
+        $this->cloudName = (string) config('services.cloudinary.cloud_name');
+        $this->apiKey = (string) config('services.cloudinary.api_key');
+        $this->apiSecret = (string) config('services.cloudinary.api_secret');
         $this->uploadUrl = "https://api.cloudinary.com/v1_1/{$this->cloudName}/image/upload";
+        $this->rawUploadUrl = "https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/upload";
+    }
+
+    /**
+     * Why the last upload or delete failed, for callers that must report the
+     * reason instead of quietly carrying on (the nightly backup does).
+     */
+    public function lastError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    /**
+     * Upload a non-image file (the nightly .sql backups) as a raw resource.
+     *
+     * A public_id containing slashes is what creates the folders in Cloudinary:
+     * "4ftdshm54xvhks/backup_2026-10-30/seed_2026-10-30.sql" lands in that
+     * folder. `overwrite` means a re-run on the same day replaces the file
+     * instead of failing with "already exists".
+     *
+     * Returns the secure URL, or null with lastError() set.
+     */
+    public function uploadRaw(string $contents, string $publicId, string $contentType = 'application/octet-stream'): ?string
+    {
+        $this->lastError = null;
+
+        if ($this->cloudName === '' || $this->apiKey === '' || $this->apiSecret === '') {
+            $this->lastError = 'Cloudinary is not configured (CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET are empty).';
+
+            return null;
+        }
+
+        try {
+            $timestamp = now()->timestamp;
+
+            $signPairs = [
+                'overwrite' => 'true',
+                'public_id' => $publicId,
+                'timestamp' => (string) $timestamp,
+            ];
+            $signature = sha1($this->buildSignatureString($signPairs) . $this->apiSecret);
+
+            $response = Http::timeout(180)
+                ->attach('file', $contents, basename($publicId), ['Content-Type' => $contentType])
+                ->post($this->rawUploadUrl, [
+                    'api_key' => $this->apiKey,
+                    'timestamp' => $timestamp,
+                    'public_id' => $publicId,
+                    'overwrite' => 'true',
+                    'signature' => $signature,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json('secure_url');
+            }
+
+            $this->lastError = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));
+
+            return null;
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            report($e);
+
+            return null;
+        }
     }
 
     public function upload(UploadedFile $file, string $folder = 'world-choice-perfumes'): ?string

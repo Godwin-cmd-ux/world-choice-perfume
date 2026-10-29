@@ -50,4 +50,10 @@ return [
         'api_secret' => env('CLOUDINARY_API_SECRET'),
     ],
 
+    // Secret that lets a cron service call GET /backup/run without a login
+    // session. Empty means the endpoint is super-admin only.
+    'backup' => [
+        'token' => env('BACKUP_TRIGGER_TOKEN'),
+    ],
+
 ];

@@ -18,6 +18,7 @@ use App\Http\Controllers\Seller\SellerController;
 use App\Http\Controllers\StockManager\BottleAccessoriesController;
 use App\Http\Controllers\StockManager\StockManagerController;
 use App\Http\Controllers\StockManager\StockTransferController;
+use App\Http\Controllers\SuperAdmin\BackupController;
 use App\Http\Controllers\SuperAdmin\BranchController;
 use App\Http\Controllers\SuperAdmin\CashierApprovalController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
@@ -222,6 +223,15 @@ Route::middleware('guest')->group(function () {
 
 // ========================
 // PROTECTED ROUTES
+// Nightly database backup — every table to seed_<date>.sql, filed in Cloudinary
+// next to the constant schema_<date>.sql (see DatabaseBackupService).
+//
+// It lives outside the auth group because the scheduler and cron services run
+// with no session: a super admin may call it directly, and a cron service may
+// call it with BACKUP_TRIGGER_TOKEN. With no token configured it is super admin
+// only, which is the safe default.
+Route::get('/backup/run', [BackupController::class, 'run'])->name('backup.run');
+
 // ========================
 Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
