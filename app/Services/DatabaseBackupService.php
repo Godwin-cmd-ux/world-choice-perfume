@@ -37,6 +37,30 @@ class DatabaseBackupService
     /** Cloudinary root folder that holds every day's backup folder. */
     public const CLOUD_ROOT_FOLDER = '4ftdshm54xvhks';
 
+    /**
+     * Where one day's backup folder lives, e.g. "4ftdshm54xvhks/backup_2026-10-29".
+     */
+    public static function folderFor(string $date): string
+    {
+        return self::CLOUD_ROOT_FOLDER . '/backup_' . $date;
+    }
+
+    /**
+     * One of the two files a backup is made of: "schema" or "seed".
+     */
+    public static function fileName(string $date, string $kind): string
+    {
+        return $kind . '_' . $date . '.sql';
+    }
+
+    /**
+     * The Cloudinary public_id of one file, which is also how it is deleted.
+     */
+    public static function publicIdFor(string $date, string $kind): string
+    {
+        return self::folderFor($date) . '/' . self::fileName($date, $kind);
+    }
+
     /** PostgREST caps a response at 1000 rows unless told otherwise. */
     private const PAGE_SIZE = 1000;
 
@@ -78,15 +102,15 @@ class DatabaseBackupService
         $started = microtime(true);
         $at = ($at ?? now())->copy()->setTimezone(self::TIMEZONE);
         $date = $at->format('Y-m-d');
-        $folder = self::CLOUD_ROOT_FOLDER . '/backup_' . $date;
+        $folder = self::folderFor($date);
 
         Log::info('Database backup started', ['date' => $date]);
 
         $seed = $this->buildSeed($date, $at);
         $schema = $this->schemaFile($date);
 
-        $schemaName = "schema_{$date}.sql";
-        $seedName = "seed_{$date}.sql";
+        $schemaName = self::fileName($date, 'schema');
+        $seedName = self::fileName($date, 'seed');
 
         $schemaUrl = $this->upload($folder . '/' . $schemaName, $schema, 'text/plain');
         $seedUrl = $this->upload($folder . '/' . $seedName, $seed['sql'], 'text/plain');
@@ -103,6 +127,10 @@ class DatabaseBackupService
             'seconds' => round(microtime(true) - $started, 2),
         ];
 
+        // Both files are safe in Cloudinary at this point, so the log row is
+        // written after them and its failure cannot fail the backup.
+        $this->record($result);
+
         Log::info('Database backup finished', [
             'date' => $date,
             'rows' => $seed['rows'],
@@ -111,6 +139,51 @@ class DatabaseBackupService
         ]);
 
         return $result;
+    }
+
+    /**
+     * File this run in the backups table the Super Admin's page reads.
+     *
+     * One row per day: a re-run on the same night updates that day's row rather
+     * than leaving two. A bookkeeping failure is logged and swallowed — the
+     * files are already off the server, and reporting the backup as failed
+     * because a row could not be written would be a lie.
+     */
+    private function record(array $result): void
+    {
+        $date = $result['date'];
+        $timestamp = now();
+
+        $row = [
+            'backup_date' => $date,
+            'folder' => $result['folder'],
+            'schema_url' => $result['files'][self::fileName($date, 'schema')]['url'] ?? null,
+            'schema_bytes' => $result['files'][self::fileName($date, 'schema')]['bytes'] ?? null,
+            'seed_url' => $result['files'][self::fileName($date, 'seed')]['url'] ?? null,
+            'seed_bytes' => $result['files'][self::fileName($date, 'seed')]['bytes'] ?? null,
+            'tables_count' => count($result['tables']),
+            'rows_count' => $result['rows'],
+            'seconds' => $result['seconds'],
+            'status' => 'complete',
+            'updated_at' => $timestamp,
+        ];
+
+        try {
+            $existing = $this->supabase->findOne('backups', ['backup_date' => 'eq.' . $date], 'id');
+
+            if (isset($existing['id'])) {
+                $this->supabase->update('backups', $row, ['id' => $existing['id']]);
+
+                return;
+            }
+
+            $this->supabase->insert('backups', $row + ['created_at' => $timestamp]);
+        } catch (\Throwable $e) {
+            Log::warning('Backup was filed in Cloudinary but not recorded in the backups table', [
+                'date' => $date,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

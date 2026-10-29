@@ -30,6 +30,9 @@ class DatabaseBackupTest extends TestCase
             /** @var list<array{table: string, params: array}> */
             public array $calls = [];
 
+            /** @var list<array{table: string, data: array}> */
+            public array $recorded = [];
+
             public function __construct(private array $rows)
             {
             }
@@ -43,6 +46,27 @@ class DatabaseBackupTest extends TestCase
                 $limit = (int) ($params['limit'] ?? 1000);
 
                 return array_slice($rows, $offset, $limit);
+            }
+
+            // The backup records itself in `backups` once the uploads are done.
+            // These are answered here so a dump test never reaches the real DB.
+            public function findOne(string $table, array $conditions, string $select = '*'): ?array
+            {
+                return null;
+            }
+
+            public function insert(string $table, array|object $data): ?array
+            {
+                $this->recorded[] = ['table' => $table, 'data' => (array) $data];
+
+                return (array) $data;
+            }
+
+            public function update(string $table, array|object $data, array $conditions): array
+            {
+                $this->recorded[] = ['table' => $table, 'data' => (array) $data];
+
+                return [(array) $data];
             }
         };
     }
@@ -129,6 +153,30 @@ class DatabaseBackupTest extends TestCase
         );
     }
 
+    public function test_a_completed_backup_is_recorded_in_the_backups_table(): void
+    {
+        $this->fakeCloudinary();
+
+        $supabase = $this->supabaseWith([
+            'branches' => [['id' => 8, 'name' => 'Kinondoni branch']],
+        ]);
+
+        $this->backups($supabase)->run($this->at());
+
+        $this->assertCount(1, $supabase->recorded, 'the run should be logged once');
+        $this->assertSame('backups', $supabase->recorded[0]['table']);
+
+        $row = $supabase->recorded[0]['data'];
+
+        $this->assertSame(self::DATE, $row['backup_date']);
+        $this->assertSame('4ftdshm54xvhks/backup_' . self::DATE, $row['folder']);
+        $this->assertSame(1, $row['rows_count']);
+        $this->assertSame(45, $row['tables_count']);
+        $this->assertStringEndsWith('/seed_' . self::DATE . '.sql', (string) $row['seed_url']);
+        $this->assertStringEndsWith('/schema_' . self::DATE . '.sql', (string) $row['schema_url']);
+        $this->assertGreaterThan(0, $row['seed_bytes']);
+    }
+
     public function test_the_seed_contains_a_restorable_insert_for_every_row(): void
     {
         $this->fakeCloudinary();
@@ -193,9 +241,11 @@ class DatabaseBackupTest extends TestCase
 
         $tables = $this->backups($this->supabaseWith([]))->tables();
 
-        $this->assertCount(44, $tables, 'the table list must follow SYSTEM_SCHEMA.sql');
+        $this->assertCount(45, $tables, 'the table list must follow SYSTEM_SCHEMA.sql');
         $this->assertArrayHasKey('sales', $tables);
         $this->assertArrayHasKey('info_email_attachments', $tables);
+        // the log of the backups is itself part of the database, so it is dumped
+        $this->assertArrayHasKey('backups', $tables);
 
         $order = array_keys($tables);
         $this->assertLessThan(array_search('users', $order, true), array_search('branches', $order, true));

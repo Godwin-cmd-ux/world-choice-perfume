@@ -74,6 +74,12 @@
             <span>Returned Stock</span>
         </a>
 
+        <a href="{{ route('super-admin.backups.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.backups.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-cloud-arrow-up w-5 text-center"></i>
+            <span>Backups</span>
+        </a>
+
         <a href="{{ route('super-admin.notifications.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.notifications.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-bell w-5 text-center"></i>

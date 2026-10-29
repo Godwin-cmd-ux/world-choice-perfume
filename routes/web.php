@@ -314,6 +314,18 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/staff/{user}/status', [StaffController::class, 'changeStatus'])->name('staff.change-status');
         Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
 
+        // Backups — the nightly SQL snapshots filed in Cloudinary. The page
+        // lists them by date, downloads either half, and deletes both the files
+        // and the record.
+        $sbBackups = App\Http\Controllers\SuperAdmin\BackupsController::class;
+        Route::get('/backups', [$sbBackups, 'index'])->name('backups.index');
+        Route::get('/backups/{date}/download/{file}', [$sbBackups, 'download'])
+            ->where(['date' => '\d{4}-\d{2}-\d{2}', 'file' => 'schema|seed'])
+            ->name('backups.download');
+        Route::delete('/backups/{date}', [$sbBackups, 'destroy'])
+            ->where('date', '\d{4}-\d{2}-\d{2}')
+            ->name('backups.destroy');
+
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     });

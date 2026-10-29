@@ -46,9 +46,7 @@ class CloudinaryService
     {
         $this->lastError = null;
 
-        if ($this->cloudName === '' || $this->apiKey === '' || $this->apiSecret === '') {
-            $this->lastError = 'Cloudinary is not configured (CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET are empty).';
-
+        if (! $this->isConfigured()) {
             return null;
         }
 
@@ -85,6 +83,134 @@ class CloudinaryService
 
             return null;
         }
+    }
+
+    /**
+     * Every raw file under a prefix, so the Backups page can show what is
+     * actually in Cloudinary rather than only what this app remembers writing.
+     *
+     * Returns a list of ['public_id', 'bytes', 'url', 'created_at'], or null with
+     * lastError() set. Follows Cloudinary's cursor so a long history is not cut
+     * off at the first page.
+     *
+     * @return list<array{public_id: string, bytes: int, url: string, created_at: ?string}>|null
+     */
+    public function listRaw(string $prefix, int $maxResults = 500): ?array
+    {
+        $this->lastError = null;
+
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $files = [];
+        $cursor = null;
+
+        try {
+            // 20 pages of 500 is 10,000 backups: far past any real history, and
+            // a hard stop so a broken cursor cannot loop forever.
+            for ($page = 0; $page < 20; $page++) {
+                $query = ['prefix' => $prefix, 'max_results' => $maxResults];
+
+                if ($cursor !== null) {
+                    $query['next_cursor'] = $cursor;
+                }
+
+                $response = Http::withBasicAuth($this->apiKey, $this->apiSecret)
+                    ->timeout(60)
+                    ->get("https://api.cloudinary.com/v1_1/{$this->cloudName}/resources/raw", $query);
+
+                if (! $response->successful()) {
+                    $this->lastError = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));
+
+                    return $files === [] ? null : $files;
+                }
+
+                foreach ((array) $response->json('resources', []) as $resource) {
+                    $publicId = (string) ($resource['public_id'] ?? '');
+
+                    if ($publicId === '') {
+                        continue;
+                    }
+
+                    $files[] = [
+                        'public_id' => $publicId,
+                        'bytes' => (int) ($resource['bytes'] ?? 0),
+                        'url' => (string) ($resource['secure_url'] ?? $resource['url'] ?? ''),
+                        'created_at' => $resource['created_at'] ?? null,
+                    ];
+                }
+
+                $cursor = $response->json('next_cursor');
+
+                if ($cursor === null || $cursor === '') {
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            report($e);
+
+            return $files === [] ? null : $files;
+        }
+
+        return $files;
+    }
+
+    /**
+     * Delete a raw file (a backup .sql). Raw files live under their own
+     * resource type, so the image destroy endpoint does not reach them.
+     *
+     * Returns false with lastError() set when Cloudinary did not confirm it.
+     */
+    public function deleteRaw(string $publicId): bool
+    {
+        $this->lastError = null;
+
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
+        try {
+            $timestamp = now()->timestamp;
+
+            $response = Http::timeout(60)->post("https://api.cloudinary.com/v1_1/{$this->cloudName}/raw/destroy", [
+                'public_id' => $publicId,
+                'api_key' => $this->apiKey,
+                'timestamp' => $timestamp,
+                'invalidate' => 'true',
+                'signature' => $this->generateSignature($publicId, $timestamp),
+            ]);
+
+            // "not found" is the answer for a file that is already gone, which
+            // is what the caller wanted; refusing it would leave the database
+            // row listing a file nobody can delete.
+            if ($response->successful() && in_array($response->json('result'), ['ok', 'not found'], true)) {
+                return true;
+            }
+
+            $this->lastError = (string) ($response->json('error.message')
+                ?? $response->json('result')
+                ?? ('HTTP ' . $response->status()));
+
+            return false;
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            report($e);
+
+            return false;
+        }
+    }
+
+    private function isConfigured(): bool
+    {
+        if ($this->cloudName === '' || $this->apiKey === '' || $this->apiSecret === '') {
+            $this->lastError = 'Cloudinary is not configured (CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET are empty).';
+
+            return false;
+        }
+
+        return true;
     }
 
     public function upload(UploadedFile $file, string $folder = 'world-choice-perfumes'): ?string

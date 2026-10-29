@@ -6,6 +6,7 @@
 -- ============================================================================
 
 -- Clean slate (safe on a fresh project; re-runnable).
+DROP TABLE IF EXISTS public.backups CASCADE;
 DROP TABLE IF EXISTS public.migrations CASCADE;
 DROP TABLE IF EXISTS public.info_email_attachments CASCADE;
 DROP TABLE IF EXISTS public.info_email_replies CASCADE;
@@ -718,6 +719,26 @@ CREATE TABLE public.info_email_attachments (
     size_bytes BIGINT,
     storage_path TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- backups
+-- The record of every nightly backup: which day it covers, where its two
+-- files were filed in Cloudinary, and how much it holds. The Super Admin's
+-- Backups page reads this table to list, download and delete them.
+CREATE TABLE public.backups (
+    id BIGSERIAL PRIMARY KEY,
+    backup_date DATE NOT NULL UNIQUE,
+    folder TEXT NOT NULL,
+    schema_url TEXT,
+    schema_bytes BIGINT,
+    seed_url TEXT,
+    seed_bytes BIGINT,
+    tables_count INTEGER DEFAULT 0 NOT NULL,
+    rows_count INTEGER DEFAULT 0 NOT NULL,
+    seconds NUMERIC(8, 2),
+    status VARCHAR(255) DEFAULT 'complete' NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
 -- migrations
