@@ -227,6 +227,13 @@ class SuperAdminBackupsPageTest extends TestCase
 
         $response->assertSee('26 Oct 2026');
         $response->assertSee('found in Cloudinary');
+
+        // the admin API needs the resource type in the path, not only in the
+        // query: /resources/raw alone answers "Missing required parameter - type"
+        $listing = collect($this->requests)->first(fn (Request $r) => str_contains($r->url(), '/resources/'));
+        $this->assertNotNull($listing, 'Cloudinary should have been asked what it holds');
+        $this->assertStringContainsString('/resources/raw/upload', $listing->url());
+        $this->assertStringContainsString('prefix=4ftdshm54xvhks', $listing->url());
     }
 
     public function test_a_file_cloudinary_does_not_have_is_not_imported_from_a_stray_name(): void

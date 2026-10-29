@@ -116,9 +116,11 @@ class CloudinaryService
                     $query['next_cursor'] = $cursor;
                 }
 
+                // The admin API wants both halves in the path: /resources/raw/upload.
+                // /resources/raw alone is answered with "Missing required parameter - type".
                 $response = Http::withBasicAuth($this->apiKey, $this->apiSecret)
                     ->timeout(60)
-                    ->get("https://api.cloudinary.com/v1_1/{$this->cloudName}/resources/raw", $query);
+                    ->get("https://api.cloudinary.com/v1_1/{$this->cloudName}/resources/raw/upload", $query);
 
                 if (! $response->successful()) {
                     $this->lastError = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));
