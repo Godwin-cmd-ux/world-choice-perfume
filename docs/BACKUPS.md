@@ -52,6 +52,12 @@ deletes that day's two files from Cloudinary and then the row from the
 `backups` table; if Cloudinary refuses, the row stays and the page says why, so
 the list never shows a backup that is already gone.
 
+**Induce Backup**, at the top of the page, takes one immediately instead of
+waiting for midnight: it is the same run the scheduler does, dated today. Click
+it again the same day and that day's files and row are replaced rather than a
+second one being added. A cache lock stops two clicks (or a click landing on
+midnight) from writing the same files at once.
+
 The page reads the `backups` table, which each night's run writes to. On load it
 also asks Cloudinary for folders the table does not know about and records them,
 so a backup taken before the page existed — or one whose row failed to write —

@@ -7,6 +7,7 @@ use App\Services\CloudinaryService;
 use App\Services\DatabaseBackupService;
 use App\Services\SupabaseService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
@@ -35,12 +36,57 @@ class BackupsController extends Controller
 
     private CloudinaryService $cloudinary;
 
+    private DatabaseBackupService $backups;
+
     public function __construct(
         ?SupabaseService $supabase = null,
         ?CloudinaryService $cloudinary = null
     ) {
         $this->supabase = $supabase ?? new SupabaseService();
         $this->cloudinary = $cloudinary ?? new CloudinaryService();
+
+        // The same stores the page reads, so an induced backup lands exactly
+        // where the nightly one would.
+        $this->backups = new DatabaseBackupService($this->supabase, $this->cloudinary);
+    }
+
+    /**
+     * "Induce Backup": take one now, on demand.
+     *
+     * It is the same run the scheduler performs at midnight, so a backup is
+     * dated today and — if one already exists for today — replaces that day's
+     * two files and its row rather than leaving two for the same date.
+     *
+     * A cache lock keeps two clicks (or a click landing exactly on midnight)
+     * from writing the same Cloudinary files at once.
+     */
+    public function induce(): RedirectResponse
+    {
+        $lock = Cache::lock('database-backup', 600);
+
+        if (! $lock->get()) {
+            return redirect()->route('super-admin.backups.index')->with(
+                'error',
+                'A backup is already running. Give it a moment and refresh the page.'
+            );
+        }
+
+        try {
+            $result = $this->backups->run();
+        } catch (\Throwable $e) {
+            Log::error('Induced backup failed', ['message' => $e->getMessage()]);
+
+            return redirect()->route('super-admin.backups.index')
+                ->with('error', 'The backup failed: ' . $e->getMessage());
+        } finally {
+            $lock->release();
+        }
+
+        return redirect()->route('super-admin.backups.index')->with(
+            'success',
+            "Backup for {$result['date']} created — " . number_format($result['rows']) . ' rows from '
+            . count($result['tables']) . ' tables, filed in Cloudinary.'
+        );
     }
 
     public function index(): View

@@ -319,6 +319,8 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // and the record.
         $sbBackups = App\Http\Controllers\SuperAdmin\BackupsController::class;
         Route::get('/backups', [$sbBackups, 'index'])->name('backups.index');
+        // Take one immediately, without waiting for midnight.
+        Route::post('/backups/induce', [$sbBackups, 'induce'])->name('backups.induce');
         Route::get('/backups/{date}/download/{file}', [$sbBackups, 'download'])
             ->where(['date' => '\d{4}-\d{2}-\d{2}', 'file' => 'schema|seed'])
             ->name('backups.download');

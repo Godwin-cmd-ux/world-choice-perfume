@@ -114,9 +114,13 @@ class SuperAdminBackupsPageTest extends TestCase
     /** Cloudinary requests seen during the test (an array returned by value would lose them). */
     private array $requests = [];
 
-    private function cloudinary(array $resources = [], array $destroy = ['result' => 'ok'], int $destroyStatus = 200): void
-    {
-        Http::fake(function (Request $request) use ($resources, $destroy, $destroyStatus) {
+    private function cloudinary(
+        array $resources = [],
+        array $destroy = ['result' => 'ok'],
+        int $destroyStatus = 200,
+        int $uploadStatus = 200
+    ): void {
+        Http::fake(function (Request $request) use ($resources, $destroy, $destroyStatus, $uploadStatus) {
             $this->requests[] = $request;
 
             if (str_contains($request->url(), '/resources/raw')) {
@@ -125,6 +129,25 @@ class SuperAdminBackupsPageTest extends TestCase
 
             if (str_contains($request->url(), '/raw/destroy')) {
                 return Http::response($destroy, $destroyStatus);
+            }
+
+            if (str_contains($request->url(), '/raw/upload')) {
+                if ($uploadStatus !== 200) {
+                    return Http::response(['error' => ['message' => 'Invalid Signature']], $uploadStatus);
+                }
+
+                $publicId = 'unknown';
+                foreach ($request->data() as $part) {
+                    if (($part['name'] ?? '') === 'public_id') {
+                        $publicId = (string) $part['contents'];
+                    }
+                }
+
+                return Http::response([
+                    'public_id' => $publicId,
+                    'secure_url' => 'https://res.cloudinary.com/test-cloud/raw/upload/v1/' . $publicId,
+                    'bytes' => 1234,
+                ], 200);
             }
 
             return Http::response('', 200);
@@ -326,6 +349,50 @@ class SuperAdminBackupsPageTest extends TestCase
         $this->assertSame([], $stub->deleted);
     }
 
+    public function test_the_induce_button_takes_a_backup_immediately(): void
+    {
+        $this->cloudinary();
+        $stub = $this->bind($this->supabaseStub([]));
+
+        // the button is on the page, and it posts rather than links
+        $page = $this->be($this->admin())->get('/super-admin/backups');
+        $page->assertSee('Induce Backup');
+        $page->assertSee(route('super-admin.backups.induce'), false);
+
+        $today = now()->setTimezone('Africa/Dar_es_Salaam')->format('Y-m-d');
+
+        $response = $this->be($this->admin())->post('/super-admin/backups/induce');
+
+        $response->assertRedirect(route('super-admin.backups.index'));
+        $this->assertStringContainsString("Backup for {$today} created", (string) session('success'));
+
+        // today's row, pointing at today's folder — not tomorrow's
+        $this->assertCount(1, $stub->inserted);
+        $row = $stub->inserted[0]['data'];
+        $this->assertSame('backups', $stub->inserted[0]['table']);
+        $this->assertSame($today, $row['backup_date']);
+        $this->assertSame('4ftdshm54xvhks/backup_' . $today, $row['folder']);
+
+        // and both halves really were uploaded
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/raw/upload')
+            && str_contains($r->body(), 'schema_' . $today . '.sql'));
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/raw/upload')
+            && str_contains($r->body(), 'seed_' . $today . '.sql'));
+    }
+
+    public function test_an_induced_backup_cloudinary_rejects_is_reported_not_claimed(): void
+    {
+        $this->cloudinary([], ['result' => 'ok'], 200, 400);
+        $this->bind($this->supabaseStub([]));
+
+        $response = $this->be($this->admin())->post('/super-admin/backups/induce');
+
+        $response->assertRedirect(route('super-admin.backups.index'));
+        $this->assertStringContainsString('The backup failed', (string) session('error'));
+        $this->assertStringContainsString('Invalid Signature', (string) session('error'));
+        $this->assertSame(null, session('success'));
+    }
+
     public function test_only_a_super_admin_can_open_the_page(): void
     {
         $this->cloudinary();
@@ -342,5 +409,6 @@ class SuperAdminBackupsPageTest extends TestCase
         ]);
 
         $this->be($cashier)->get('/super-admin/backups')->assertForbidden();
+        $this->be($cashier)->post('/super-admin/backups/induce')->assertForbidden();
     }
 }

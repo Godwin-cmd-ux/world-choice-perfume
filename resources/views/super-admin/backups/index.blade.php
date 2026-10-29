@@ -4,6 +4,16 @@
 @section('subtitle', 'Every nightly snapshot of the database, filed in Cloudinary by date')
 
 @section('header-actions')
+    <form method="POST"
+          action="{{ route('super-admin.backups.induce') }}"
+          onsubmit="return confirm('Take a backup of the database right now?\n\nEvery table is dumped and filed in Cloudinary under today&#39;s date. If a backup has already been taken today, today&#39;s files and record are replaced.')">
+        @csrf
+        <button type="submit"
+                style="background-color: #F89A1E;"
+                class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <i class="fas fa-bolt mr-1"></i> Induce Backup
+        </button>
+    </form>
     <a href="{{ route('super-admin.backups.index') }}"
        class="border border-gray-300 text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-sync-alt mr-1"></i> Refresh
