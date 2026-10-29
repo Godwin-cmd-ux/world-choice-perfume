@@ -99,6 +99,14 @@
                                         </select>
                                         <button type="submit" class="text-amber-700 hover:text-amber-900" title="Apply Status"><i class="fas fa-check"></i></button>
                                     </form>
+                                    <form method="POST" action="{{ route('super-admin.staff.destroy', $user->id) }}" class="inline-flex">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800" title="Delete staff"
+                                            data-confirm="Delete {{ $user->name }} permanently? Their account is removed everywhere, together with their sales, expenses and activity records. This cannot be undone.">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                 @endif
                             </div>
                         </td>

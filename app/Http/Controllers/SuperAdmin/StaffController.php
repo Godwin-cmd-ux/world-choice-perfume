@@ -318,12 +318,53 @@ class StaffController extends Controller
         return back()->with('success', "{$user['name']} status changed from {$currentStatus} to {$newStatus}.");
     }
 
+    /**
+     * Delete a staff account completely.
+     *
+     * Two records make up an account: the user row in the database the app
+     * reads from, and the local mirror the sign-in flow keeps for Auth::login().
+     * Removing only the first left the person behind in this application's own
+     * tables, so both go. The rows that point at the account (their sales,
+     * expenses, cashier accounts, activity) follow the schema's ON DELETE
+     * CASCADE — that is what "delete completely" means here.
+     */
     public function destroy($userId)
     {
         $user = $this->supabase->find('users', $userId);
         if (!$user) abort(404);
 
-        $this->supabase->delete('users', ['id' => $userId]);
+        // The only account that can restore a deleted one must stay.
+        if (($user['role'] ?? '') === 'super_admin') {
+            return back()->with('error', 'The super admin account cannot be deleted.');
+        }
+
+        $signedIn = auth()->user();
+        $signedInId = $signedIn?->supabase_id ?? $signedIn?->id ?? auth()->id();
+        if ($signedInId && (string) $signedInId === (string) $userId) {
+            return back()->with('error', 'You cannot delete the account you are signed in with.');
+        }
+
+        if (!$this->supabase->delete('users', ['id' => $userId])) {
+            $reason = $this->supabase->lastErrorMessage();
+
+            return back()->with('error', 'Could not delete ' . ($user['name'] ?? 'this user')
+                . ': the database rejected the request.' . ($reason ? ' ' . $reason : ''));
+        }
+
+        // The local mirror: without this the account keeps a row in this app's
+        // own users table, so the person is not actually gone from the system.
+        try {
+            User::query()
+                ->where(function ($query) use ($userId, $user) {
+                    $query->where('supabase_id', $userId);
+                    if (!empty($user['email'])) {
+                        $query->orWhere('email', $user['email']);
+                    }
+                })
+                ->delete();
+        } catch (\Exception $e) {
+            // The database row is already gone; a local miss must not mask that.
+        }
 
         try {
             $adminUserId = auth()->user()->supabase_id ?? auth()->id();
@@ -351,6 +392,7 @@ class StaffController extends Controller
             // Audit log failure should not block the action
         }
 
-        return redirect()->route('super-admin.staff.index')->with('success', 'User deleted successfully.');
+        return redirect()->route('super-admin.staff.index')
+            ->with('success', ($user['name'] ?? 'The user') . ' has been deleted.');
     }
 }
