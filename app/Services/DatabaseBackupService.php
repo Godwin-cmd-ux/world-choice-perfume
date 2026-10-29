@@ -38,27 +38,34 @@ class DatabaseBackupService
     public const CLOUD_ROOT_FOLDER = '4ftdshm54xvhks';
 
     /**
-     * Where one day's backup folder lives, e.g. "4ftdshm54xvhks/backup_2026-10-29".
+     * Where one backup's folder lives.
+     *
+     * The nightly one is named for its date: "4ftdshm54xvhks/backup_2026-10-29".
+     * An induced one is filed under its own "induced/" parent and stamped with
+     * the time it was taken, so it can never land on — or overwrite — the night's
+     * snapshot: "4ftdshm54xvhks/induced/backup_2026-10-29_143501".
      */
-    public static function folderFor(string $date): string
+    public static function folderFor(string $stamp, bool $induced = false): string
     {
-        return self::CLOUD_ROOT_FOLDER . '/backup_' . $date;
+        return $induced
+            ? self::CLOUD_ROOT_FOLDER . '/induced/backup_' . $stamp
+            : self::CLOUD_ROOT_FOLDER . '/backup_' . $stamp;
     }
 
     /**
      * One of the two files a backup is made of: "schema" or "seed".
      */
-    public static function fileName(string $date, string $kind): string
+    public static function fileName(string $stamp, string $kind): string
     {
-        return $kind . '_' . $date . '.sql';
+        return $kind . '_' . $stamp . '.sql';
     }
 
     /**
      * The Cloudinary public_id of one file, which is also how it is deleted.
      */
-    public static function publicIdFor(string $date, string $kind): string
+    public static function publicIdFor(string $stamp, string $kind, bool $induced = false): string
     {
-        return self::folderFor($date) . '/' . self::fileName($date, $kind);
+        return self::folderFor($stamp, $induced) . '/' . self::fileName($stamp, $kind);
     }
 
     /** PostgREST caps a response at 1000 rows unless told otherwise. */
@@ -97,26 +104,47 @@ class DatabaseBackupService
      */
     public function run(?Carbon $at = null): array
     {
+        return $this->take('automatic', $at);
+    }
+
+    /**
+     * A backup taken on demand, independent of the nightly one.
+     *
+     * Induced runs are stamped with the time, so they never share a folder with
+     * the automatic backup for the same date and several can be taken in a day.
+     */
+    public function runInduced(?Carbon $at = null): array
+    {
+        return $this->take('induced', $at);
+    }
+
+    private function take(string $kind, ?Carbon $at = null): array
+    {
         set_time_limit(0);
 
         $started = microtime(true);
         $at = ($at ?? now())->copy()->setTimezone(self::TIMEZONE);
+        $induced = $kind === 'induced';
+
         $date = $at->format('Y-m-d');
-        $folder = self::folderFor($date);
+        $stamp = $induced ? $at->format('Y-m-d_His') : $date;
+        $folder = self::folderFor($stamp, $induced);
 
-        Log::info('Database backup started', ['date' => $date]);
+        Log::info('Database backup started', ['kind' => $kind, 'stamp' => $stamp]);
 
-        $seed = $this->buildSeed($date, $at);
-        $schema = $this->schemaFile($date);
+        $seed = $this->buildSeed($stamp, $at);
+        $schema = $this->schemaFile($stamp);
 
-        $schemaName = self::fileName($date, 'schema');
-        $seedName = self::fileName($date, 'seed');
+        $schemaName = self::fileName($stamp, 'schema');
+        $seedName = self::fileName($stamp, 'seed');
 
         $schemaUrl = $this->upload($folder . '/' . $schemaName, $schema, 'text/plain');
         $seedUrl = $this->upload($folder . '/' . $seedName, $seed['sql'], 'text/plain');
 
         $result = [
             'date' => $date,
+            'kind' => $kind,
+            'stamp' => $stamp,
             'folder' => $folder,
             'files' => [
                 $schemaName => ['url' => $schemaUrl, 'bytes' => strlen($schema)],
@@ -132,7 +160,8 @@ class DatabaseBackupService
         $this->record($result);
 
         Log::info('Database backup finished', [
-            'date' => $date,
+            'kind' => $kind,
+            'stamp' => $stamp,
             'rows' => $seed['rows'],
             'seconds' => $result['seconds'],
             'folder' => $folder,
@@ -151,16 +180,18 @@ class DatabaseBackupService
      */
     private function record(array $result): void
     {
-        $date = $result['date'];
+        $stamp = $result['stamp'];
         $timestamp = now();
 
         $row = [
-            'backup_date' => $date,
+            'backup_date' => $result['date'],
+            'kind' => $result['kind'],
+            'stamp' => $stamp,
             'folder' => $result['folder'],
-            'schema_url' => $result['files'][self::fileName($date, 'schema')]['url'] ?? null,
-            'schema_bytes' => $result['files'][self::fileName($date, 'schema')]['bytes'] ?? null,
-            'seed_url' => $result['files'][self::fileName($date, 'seed')]['url'] ?? null,
-            'seed_bytes' => $result['files'][self::fileName($date, 'seed')]['bytes'] ?? null,
+            'schema_url' => $result['files'][self::fileName($stamp, 'schema')]['url'] ?? null,
+            'schema_bytes' => $result['files'][self::fileName($stamp, 'schema')]['bytes'] ?? null,
+            'seed_url' => $result['files'][self::fileName($stamp, 'seed')]['url'] ?? null,
+            'seed_bytes' => $result['files'][self::fileName($stamp, 'seed')]['bytes'] ?? null,
             'tables_count' => count($result['tables']),
             'rows_count' => $result['rows'],
             'seconds' => $result['seconds'],
@@ -169,7 +200,9 @@ class DatabaseBackupService
         ];
 
         try {
-            $existing = $this->supabase->findOne('backups', ['backup_date' => 'eq.' . $date], 'id');
+            // The folder is the identity: unique per backup, and present since
+            // the table was created, unlike the stamp added later.
+            $existing = $this->supabase->findOne('backups', ['folder' => 'eq.' . $result['folder']], 'id');
 
             if (isset($existing['id'])) {
                 $this->supabase->update('backups', $row, ['id' => $existing['id']]);
@@ -180,7 +213,7 @@ class DatabaseBackupService
             $this->supabase->insert('backups', $row + ['created_at' => $timestamp]);
         } catch (\Throwable $e) {
             Log::warning('Backup was filed in Cloudinary but not recorded in the backups table', [
-                'date' => $date,
+                'stamp' => $stamp,
                 'message' => $e->getMessage(),
             ]);
         }

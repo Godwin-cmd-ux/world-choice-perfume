@@ -321,11 +321,13 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/backups', [$sbBackups, 'index'])->name('backups.index');
         // Take one immediately, without waiting for midnight.
         Route::post('/backups/induce', [$sbBackups, 'induce'])->name('backups.induce');
-        Route::get('/backups/{date}/download/{file}', [$sbBackups, 'download'])
-            ->where(['date' => '\d{4}-\d{2}-\d{2}', 'file' => 'schema|seed'])
+        // A backup is addressed by its stamp: a date for the nightly one
+        // (2026-10-29) or date plus time for an induced one (2026-10-29_143501).
+        Route::get('/backups/{stamp}/download/{file}', [$sbBackups, 'download'])
+            ->where(['stamp' => '\d{4}-\d{2}-\d{2}(_\d{6})?', 'file' => 'schema|seed'])
             ->name('backups.download');
-        Route::delete('/backups/{date}', [$sbBackups, 'destroy'])
-            ->where('date', '\d{4}-\d{2}-\d{2}')
+        Route::delete('/backups/{stamp}', [$sbBackups, 'destroy'])
+            ->where('stamp', '\d{4}-\d{2}-\d{2}(_\d{6})?')
             ->name('backups.destroy');
 
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

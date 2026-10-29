@@ -727,7 +727,9 @@ CREATE TABLE public.info_email_attachments (
 -- Backups page reads this table to list, download and delete them.
 CREATE TABLE public.backups (
     id BIGSERIAL PRIMARY KEY,
-    backup_date DATE NOT NULL UNIQUE,
+    backup_date DATE NOT NULL,
+    kind VARCHAR(20) DEFAULT 'automatic' NOT NULL,
+    stamp VARCHAR(32) NOT NULL,
     folder TEXT NOT NULL,
     schema_url TEXT,
     schema_bytes BIGINT,
@@ -738,7 +740,8 @@ CREATE TABLE public.backups (
     seconds NUMERIC(8, 2),
     status VARCHAR(255) DEFAULT 'complete' NOT NULL,
     created_at TIMESTAMP(0),
-    updated_at TIMESTAMP(0)
+    updated_at TIMESTAMP(0),
+    UNIQUE (stamp)
 );
 
 -- migrations
@@ -790,6 +793,7 @@ CREATE UNIQUE INDEX idx_info_emails_message_id ON info_emails(message_id) WHERE 
 CREATE INDEX idx_info_email_replies_email ON info_email_replies(info_email_id);
 CREATE UNIQUE INDEX idx_info_email_replies_message_id ON info_email_replies(message_id) WHERE message_id IS NOT NULL;
 CREATE INDEX idx_info_email_attachments_email ON info_email_attachments(info_email_id);
+CREATE INDEX idx_backups_date ON backups(backup_date DESC, stamp DESC);
 
 -- ----------------------------------------------------------------------------
 -- 4. PRIVILEGES (Supabase roles)

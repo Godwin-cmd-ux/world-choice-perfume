@@ -7,6 +7,7 @@ use App\Services\CloudinaryService;
 use App\Services\DatabaseBackupService;
 use App\Services\SupabaseService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,16 +17,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * The Super Admin's Backups page.
  *
- * Every nightly backup is two files in Cloudinary and one row in the backups
- * table. The page lists those rows by date, hands the files over as downloads,
- * and deletes a backup from both stores — Cloudinary first, the row only after
- * Cloudinary confirmed it, so the list never claims a file is gone when it is
- * still there.
+ * Two kinds of backup live in Cloudinary and in the backups table:
  *
- * Before listing, Cloudinary is read once and any backup folder that the table
- * does not know about is imported. Without that, a backup taken before this
- * page existed (or one whose bookkeeping row failed to write) would be
- * invisible and therefore impossible to delete from here.
+ *  - automatic: one per night at 00:00, filed as backup_<date>/
+ *  - induced:   taken on demand, filed as induced/backup_<date>_<time>/
+ *
+ * The stamp is the identity — a date for the automatic one, date plus time for
+ * an induced one — so clicking "Induce Backup" seconds after midnight writes a
+ * separate folder and row instead of replacing the night's snapshot.
+ *
+ * The page lists them newest first, filters by date, hands either file over as
+ * a download, and deletes both files and the row together.
  */
 class BackupsController extends Controller
 {
@@ -46,19 +48,86 @@ class BackupsController extends Controller
         $this->cloudinary = $cloudinary ?? new CloudinaryService();
 
         // The same stores the page reads, so an induced backup lands exactly
-        // where the nightly one would.
+        // where the page will look for it.
         $this->backups = new DatabaseBackupService($this->supabase, $this->cloudinary);
     }
 
+    public function index(Request $request): View
+    {
+        $import = $this->importFromCloudinary();
+
+        $from = $this->dateOrNull($request->query('date_from'));
+        $to = $this->dateOrNull($request->query('date_to'));
+
+        $rows = $this->supabase->queryFresh('backups', [
+            'select' => '*',
+            'limit' => 500,
+        ]);
+
+        $days = [];
+        $totalBytes = 0;
+        $matchingBytes = 0;
+
+        foreach ($rows as $row) {
+            $folder = (string) ($row['folder'] ?? '');
+            $kind = (string) ($row['kind'] ?? $this->kindFromFolder($folder));
+            $date = substr((string) ($row['backup_date'] ?? ''), 0, 10);
+            $stamp = (string) ($row['stamp'] ?? ($kind === 'induced' ? $this->stampFromFolder($folder) : $date));
+
+            if ($date === '' || $stamp === '') {
+                continue;
+            }
+
+            $schemaBytes = (int) ($row['schema_bytes'] ?? 0);
+            $seedBytes = (int) ($row['seed_bytes'] ?? 0);
+            $totalBytes += $schemaBytes + $seedBytes;
+
+            if (($from !== null && $date < $from) || ($to !== null && $date > $to)) {
+                continue;
+            }
+
+            $matchingBytes += $schemaBytes + $seedBytes;
+
+            $days[] = (object) [
+                'date' => $date,
+                'stamp' => $stamp,
+                'kind' => $kind,
+                'time' => $kind === 'induced' ? $this->timeFromStamp($stamp) : null,
+                'folder' => $folder,
+                'schema_bytes' => $schemaBytes,
+                'seed_bytes' => $seedBytes,
+                'rows_count' => (int) ($row['rows_count'] ?? 0),
+                'tables_count' => (int) ($row['tables_count'] ?? 0),
+                'seconds' => $row['seconds'] === null ? null : (float) $row['seconds'],
+                'status' => (string) ($row['status'] ?? 'complete'),
+                'created_at' => $row['created_at'] ?? null,
+            ];
+        }
+
+        // Newest first: a stamp sorts chronologically, and an induced one on a
+        // date sorts after that date's automatic backup.
+        usort($days, fn ($a, $b) => strcmp($b->stamp, $a->stamp));
+
+        return view('super-admin.backups.index', [
+            'days' => $days,
+            'totalStored' => count($rows),
+            'totalBytes' => $totalBytes,
+            'matchingBytes' => $matchingBytes,
+            'latest' => $days[0]->stamp ?? null,
+            'imported' => $import['imported'],
+            'cloudinaryWarning' => $import['warning'],
+            'cloudinaryFolder' => DatabaseBackupService::CLOUD_ROOT_FOLDER,
+            'scheduleTimezone' => DatabaseBackupService::TIMEZONE,
+            'filters' => ['date_from' => $from, 'date_to' => $to],
+            'filtered' => $from !== null || $to !== null,
+        ]);
+    }
+
     /**
-     * "Induce Backup": take one now, on demand.
-     *
-     * It is the same run the scheduler performs at midnight, so a backup is
-     * dated today and — if one already exists for today — replaces that day's
-     * two files and its row rather than leaving two for the same date.
+     * "Induce Backup": take one now, independent of the nightly run.
      *
      * A cache lock keeps two clicks (or a click landing exactly on midnight)
-     * from writing the same Cloudinary files at once.
+     * from writing at the same time.
      */
     public function induce(): RedirectResponse
     {
@@ -72,7 +141,7 @@ class BackupsController extends Controller
         }
 
         try {
-            $result = $this->backups->run();
+            $result = $this->backups->runInduced();
         } catch (\Throwable $e) {
             Log::error('Induced backup failed', ['message' => $e->getMessage()]);
 
@@ -84,52 +153,10 @@ class BackupsController extends Controller
 
         return redirect()->route('super-admin.backups.index')->with(
             'success',
-            "Backup for {$result['date']} created — " . number_format($result['rows']) . ' rows from '
-            . count($result['tables']) . ' tables, filed in Cloudinary.'
+            "Induced backup for {$result['date']} at " . substr($result['stamp'], -6, 2) . ':' . substr($result['stamp'], -4, 2)
+            . ':' . substr($result['stamp'], -2) . ' created — '
+            . number_format($result['rows']) . ' rows from ' . count($result['tables']) . ' tables, filed in Cloudinary.'
         );
-    }
-
-    public function index(): View
-    {
-        $import = $this->importFromCloudinary();
-
-        $rows = $this->supabase->queryFresh('backups', [
-            'select' => '*',
-            'order' => 'backup_date.desc',
-            'limit' => 365,
-        ]);
-
-        $days = [];
-        $totalBytes = 0;
-
-        foreach ($rows as $row) {
-            $date = (string) ($row['backup_date'] ?? '');
-            $schemaBytes = (int) ($row['schema_bytes'] ?? 0);
-            $seedBytes = (int) ($row['seed_bytes'] ?? 0);
-            $totalBytes += $schemaBytes + $seedBytes;
-
-            $days[] = (object) [
-                'date' => $date,
-                'folder' => (string) ($row['folder'] ?? ''),
-                'schema_bytes' => $schemaBytes,
-                'seed_bytes' => $seedBytes,
-                'rows_count' => (int) ($row['rows_count'] ?? 0),
-                'tables_count' => (int) ($row['tables_count'] ?? 0),
-                'seconds' => $row['seconds'] === null ? null : (float) $row['seconds'],
-                'status' => (string) ($row['status'] ?? 'complete'),
-                'created_at' => $row['created_at'] ?? null,
-            ];
-        }
-
-        return view('super-admin.backups.index', [
-            'days' => $days,
-            'totalBytes' => $totalBytes,
-            'latest' => $days[0]->date ?? null,
-            'imported' => $import['imported'],
-            'cloudinaryWarning' => $import['warning'],
-            'cloudinaryFolder' => DatabaseBackupService::CLOUD_ROOT_FOLDER,
-            'scheduleTimezone' => DatabaseBackupService::TIMEZONE,
-        ]);
     }
 
     /**
@@ -139,41 +166,47 @@ class BackupsController extends Controller
      * attachment (Cloudinary serves raw text inline) and so the download stays
      * behind the super admin login.
      */
-    public function download(string $date, string $file): StreamedResponse|RedirectResponse
+    public function download(string $stamp, string $file): StreamedResponse|RedirectResponse
     {
         if (! in_array($file, self::KINDS, true)) {
             abort(404);
         }
 
-        $row = $this->supabase->findOne('backups', ['backup_date' => 'eq.' . $date]);
+        $row = $this->findBackup($stamp);
 
         if ($row === null) {
             return redirect()->route('super-admin.backups.index')
-                ->with('error', "There is no backup recorded for {$date}.");
+                ->with('error', "There is no backup recorded for {$this->label($stamp)}.");
         }
 
         $url = (string) ($row[$file . '_url'] ?? '');
 
         if ($url === '') {
-            $url = $this->deliveryUrl(DatabaseBackupService::publicIdFor($date, $file));
+            $url = $this->deliveryUrl(DatabaseBackupService::publicIdFor(
+                $stamp,
+                $file,
+                $this->isInduced($row, $stamp)
+            ));
         }
 
         try {
             $response = Http::timeout(180)->get($url);
         } catch (\Throwable $e) {
-            Log::error('Backup download failed', ['date' => $date, 'file' => $file, 'message' => $e->getMessage()]);
+            Log::error('Backup download failed', ['stamp' => $stamp, 'file' => $file, 'message' => $e->getMessage()]);
 
             return redirect()->route('super-admin.backups.index')
-                ->with('error', "Could not reach Cloudinary for {$date}: " . $e->getMessage());
+                ->with('error', "Could not reach Cloudinary for {$this->label($stamp)}: " . $e->getMessage());
         }
 
         if (! $response->successful()) {
-            return redirect()->route('super-admin.backups.index')
-                ->with('error', "Cloudinary could not return the {$file} file for {$date} (HTTP " . $response->status() . ').');
+            return redirect()->route('super-admin.backups.index')->with(
+                'error',
+                "Cloudinary could not return the {$file} file for {$this->label($stamp)} (HTTP " . $response->status() . ').'
+            );
         }
 
         $body = $response->body();
-        $filename = DatabaseBackupService::fileName($date, $file);
+        $filename = DatabaseBackupService::fileName($stamp, $file);
 
         return response()->streamDownload(function () use ($body) {
             echo $body;
@@ -181,52 +214,76 @@ class BackupsController extends Controller
     }
 
     /**
-     * Delete one day's backup: both files, then the row.
+     * Delete one backup: both files, then the row.
      *
      * If Cloudinary refuses a file, nothing is removed from the table and the
      * reason is reported — a half-deleted backup that still looks complete in
      * the list is worse than one that is still there.
      */
-    public function destroy(string $date): RedirectResponse
+    public function destroy(string $stamp): RedirectResponse
     {
-        $row = $this->supabase->findOne('backups', ['backup_date' => 'eq.' . $date]);
+        $row = $this->findBackup($stamp);
 
         if ($row === null) {
             return redirect()->route('super-admin.backups.index')
-                ->with('error', "There is no backup recorded for {$date}.");
+                ->with('error', "There is no backup recorded for {$this->label($stamp)}.");
         }
 
+        $induced = $this->isInduced($row, $stamp);
         $failed = [];
 
         foreach (self::KINDS as $kind) {
-            if (! $this->cloudinary->deleteRaw(DatabaseBackupService::publicIdFor($date, $kind))) {
+            if (! $this->cloudinary->deleteRaw(DatabaseBackupService::publicIdFor($stamp, $kind, $induced))) {
                 $failed[$kind] = $this->cloudinary->lastError() ?? 'no reason given';
             }
         }
 
         if ($failed !== []) {
-            Log::error('Backup delete refused by Cloudinary', ['date' => $date, 'failed' => $failed]);
+            Log::error('Backup delete refused by Cloudinary', ['stamp' => $stamp, 'failed' => $failed]);
 
             $details = collect($failed)->map(fn ($reason, $kind) => "{$kind}: {$reason}")->implode('; ');
 
             return redirect()->route('super-admin.backups.index')
-                ->with('error', "Could not delete the backup for {$date} — {$details}. It is still listed.");
+                ->with('error', "Could not delete the backup for {$this->label($stamp)} — {$details}. It is still listed.");
         }
 
-        if (! $this->supabase->delete('backups', ['backup_date' => 'eq.' . $date])) {
+        $folder = (string) ($row['folder'] ?? DatabaseBackupService::folderFor($stamp, $induced));
+
+        if (! $this->supabase->delete('backups', ['folder' => 'eq.' . $folder])) {
             return redirect()->route('super-admin.backups.index')->with(
                 'error',
-                "The files for {$date} were deleted from Cloudinary, but the database row could not be removed"
+                "The files for {$this->label($stamp)} were deleted from Cloudinary, but the database row could not be removed"
                 . ($this->supabase->lastErrorMessage() ? ': ' . $this->supabase->lastErrorMessage() : '.')
             );
         }
 
-        Log::info('Backup deleted', ['date' => $date, 'by' => auth()->id()]);
+        Log::info('Backup deleted', ['stamp' => $stamp, 'kind' => $induced ? 'induced' : 'automatic', 'by' => auth()->id()]);
 
         return redirect()->route('super-admin.backups.index')->with(
             'success',
-            "The backup for {$date} has been deleted from Cloudinary and the database."
+            "The backup for {$this->label($stamp)} has been deleted from Cloudinary and the database."
         );
+    }
+
+    /**
+     * Find one backup by stamp, trying the automatic and induced folders.
+     *
+     * The folder is the lookup key because it exists in every version of the
+     * table, so a page loaded before the kind/stamp migration still answers.
+     */
+    private function findBackup(string $stamp): ?array
+    {
+        foreach ([false, true] as $induced) {
+            $row = $this->supabase->findOne('backups', [
+                'folder' => 'eq.' . DatabaseBackupService::folderFor($stamp, $induced),
+            ]);
+
+            if ($row !== null) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -247,40 +304,57 @@ class BackupsController extends Controller
         }
 
         $known = [];
-        foreach ($this->supabase->query('backups', ['select' => 'backup_date', 'limit' => 1000]) as $row) {
-            $known[(string) ($row['backup_date'] ?? '')] = true;
+        foreach ($this->supabase->query('backups', ['select' => 'folder', 'limit' => 1000]) as $row) {
+            $known[(string) ($row['folder'] ?? '')] = true;
         }
 
+        $root = preg_quote(DatabaseBackupService::CLOUD_ROOT_FOLDER, '#');
+
+        $patterns = [
+            'automatic' => '#^' . $root . '/backup_(\d{4}-\d{2}-\d{2})/(schema|seed)_(\d{4}-\d{2}-\d{2})\.sql$#',
+            'induced' => '#^' . $root . '/induced/backup_(\d{4}-\d{2}-\d{2}_\d{6})/(schema|seed)_(\d{4}-\d{2}-\d{2}_\d{6})\.sql$#',
+        ];
+
         $found = [];
-        $pattern = '#^' . preg_quote(DatabaseBackupService::CLOUD_ROOT_FOLDER, '#')
-            . '/backup_(\d{4}-\d{2}-\d{2})/(schema|seed)_(\d{4}-\d{2}-\d{2})\.sql$#';
 
         foreach ($files as $file) {
-            if (preg_match($pattern, $file['public_id'], $matches) !== 1) {
-                continue; // not a backup file: leave anything else in the folder alone
-            }
+            foreach ($patterns as $kind => $pattern) {
+                if (preg_match($pattern, $file['public_id'], $matches) !== 1) {
+                    continue;
+                }
 
-            if ($matches[1] !== $matches[3]) {
-                continue; // the file name disagrees with the folder it sits in
-            }
+                if ($matches[1] !== $matches[3]) {
+                    continue; // the file name disagrees with the folder it sits in
+                }
 
-            $found[$matches[1]][$matches[2]] = $file;
+                $stamp = $matches[1];
+                $folder = DatabaseBackupService::folderFor($stamp, $kind === 'induced');
+
+                $found[$folder]['kind'] = $kind;
+                $found[$folder]['stamp'] = $stamp;
+                $found[$folder]['date'] = substr($stamp, 0, 10);
+                $found[$folder]['parts'][$matches[2]] = $file;
+
+                break;
+            }
         }
 
         $imported = 0;
 
-        foreach ($found as $date => $parts) {
-            if (isset($known[$date])) {
+        foreach ($found as $folder => $backup) {
+            if (isset($known[$folder])) {
                 continue;
             }
 
             $this->supabase->insert('backups', [
-                'backup_date' => $date,
-                'folder' => DatabaseBackupService::folderFor($date),
-                'schema_url' => $parts['schema']['url'] ?? null,
-                'schema_bytes' => $parts['schema']['bytes'] ?? null,
-                'seed_url' => $parts['seed']['url'] ?? null,
-                'seed_bytes' => $parts['seed']['bytes'] ?? null,
+                'backup_date' => $backup['date'],
+                'kind' => $backup['kind'],
+                'stamp' => $backup['stamp'],
+                'folder' => $folder,
+                'schema_url' => $backup['parts']['schema']['url'] ?? null,
+                'schema_bytes' => $backup['parts']['schema']['bytes'] ?? null,
+                'seed_url' => $backup['parts']['seed']['url'] ?? null,
+                'seed_bytes' => $backup['parts']['seed']['bytes'] ?? null,
                 'tables_count' => 0,
                 'rows_count' => 0,
                 'seconds' => null,
@@ -293,6 +367,58 @@ class BackupsController extends Controller
         }
 
         return ['imported' => $imported, 'warning' => null];
+    }
+
+    private function isInduced(array $row, string $stamp): bool
+    {
+        $kind = (string) ($row['kind'] ?? '');
+
+        if ($kind !== '') {
+            return $kind === 'induced';
+        }
+
+        return str_contains((string) ($row['folder'] ?? ''), '/induced/') || str_contains($stamp, '_');
+    }
+
+    private function kindFromFolder(string $folder): string
+    {
+        return str_contains($folder, '/induced/') ? 'induced' : 'automatic';
+    }
+
+    private function stampFromFolder(string $folder): string
+    {
+        $name = basename($folder);
+
+        return str_starts_with($name, 'backup_') ? substr($name, 7) : $name;
+    }
+
+    /** "2026-10-29_143501" -> "14:35:01" */
+    private function timeFromStamp(string $stamp): ?string
+    {
+        if (preg_match('/_(\d{2})(\d{2})(\d{2})$/', $stamp, $m) !== 1) {
+            return null;
+        }
+
+        return "{$m[1]}:{$m[2]}:{$m[3]}";
+    }
+
+    private function label(string $stamp): string
+    {
+        $date = substr($stamp, 0, 10);
+        $time = $this->timeFromStamp($stamp);
+
+        return $time !== null ? "{$date} at {$time}" : $date;
+    }
+
+    private function dateOrNull(mixed $value): ?string
+    {
+        $value = (string) $value;
+
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) !== 1) {
+            return null;
+        }
+
+        return checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? $value : null;
     }
 
     /**

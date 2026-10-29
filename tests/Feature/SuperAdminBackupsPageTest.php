@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\CloudinaryService;
-use App\Services\DatabaseBackupService;
 use App\Services\SupabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -18,6 +16,10 @@ use Tests\TestCase;
  * all-or-nothing: a backup is two files plus a row, so a delete that removes
  * only one file — or removes the row while a file survives — would leave the
  * page lying about what is still stored.
+ *
+ * It also pins the two kinds apart: an induced backup must never write into the
+ * nightly folder for the same date, because that would silently destroy the
+ * night's snapshot.
  */
 class SuperAdminBackupsPageTest extends TestCase
 {
@@ -55,10 +57,19 @@ class SuperAdminBackupsPageTest extends TestCase
 
             public function findOne(string $table, array $conditions, string $select = '*'): ?array
             {
-                $date = (string) str_replace('eq.', '', (string) ($conditions['backup_date'] ?? ''));
-
                 foreach ($this->rows as $row) {
-                    if ((string) ($row['backup_date'] ?? '') === $date) {
+                    $matches = true;
+
+                    foreach ($conditions as $column => $value) {
+                        $expected = str_starts_with((string) $value, 'eq.') ? substr((string) $value, 3) : (string) $value;
+
+                        if ((string) ($row[$column] ?? '') !== $expected) {
+                            $matches = false;
+                            break;
+                        }
+                    }
+
+                    if ($matches) {
                         return $row;
                     }
                 }
@@ -90,6 +101,17 @@ class SuperAdminBackupsPageTest extends TestCase
             public function delete(string $table, array $conditions): bool
             {
                 $this->deleted[] = ['table' => $table, 'conditions' => $conditions];
+                $this->rows = array_values(array_filter($this->rows, function (array $row) use ($conditions) {
+                    foreach ($conditions as $column => $value) {
+                        $expected = str_starts_with((string) $value, 'eq.') ? substr((string) $value, 3) : (string) $value;
+
+                        if ((string) ($row[$column] ?? '') === $expected) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }));
 
                 return true;
             }
@@ -160,6 +182,33 @@ class SuperAdminBackupsPageTest extends TestCase
         ]);
     }
 
+    /**
+     * The public_id of every raw upload sent, in order.
+     *
+     * The multipart body cannot be searched for a folder name: the seed file
+     * itself contains the folder strings of the backups table it dumps.
+     *
+     * @return list<string>
+     */
+    private function uploadedPublicIds(): array
+    {
+        $ids = [];
+
+        foreach ($this->requests as $request) {
+            if (! str_contains($request->url(), '/raw/upload')) {
+                continue;
+            }
+
+            foreach ($request->data() as $part) {
+                if (($part['name'] ?? '') === 'public_id') {
+                    $ids[] = (string) $part['contents'];
+                }
+            }
+        }
+
+        return $ids;
+    }
+
     private function bind(SupabaseService $stub): SupabaseService
     {
         $this->app->instance(SupabaseService::class, $stub);
@@ -167,15 +216,21 @@ class SuperAdminBackupsPageTest extends TestCase
         return $stub;
     }
 
-    private function row(string $date, array $overrides = []): array
+    private function row(string $stamp, array $overrides = []): array
     {
+        $date = substr($stamp, 0, 10);
+        $induced = str_contains($stamp, '_');
+        $folder = self::FOLDER . ($induced ? '/induced' : '') . '/backup_' . $stamp;
+
         return array_merge([
             'id' => 1,
             'backup_date' => $date,
-            'folder' => self::FOLDER . '/backup_' . $date,
-            'schema_url' => 'https://res.cloudinary.com/test-cloud/raw/upload/' . self::FOLDER . '/backup_' . $date . '/schema_' . $date . '.sql',
+            'kind' => $induced ? 'induced' : 'automatic',
+            'stamp' => $stamp,
+            'folder' => $folder,
+            'schema_url' => 'https://res.cloudinary.com/test-cloud/raw/upload/' . $folder . '/schema_' . $stamp . '.sql',
             'schema_bytes' => 29741,
-            'seed_url' => 'https://res.cloudinary.com/test-cloud/raw/upload/' . self::FOLDER . '/backup_' . $date . '/seed_' . $date . '.sql',
+            'seed_url' => 'https://res.cloudinary.com/test-cloud/raw/upload/' . $folder . '/seed_' . $stamp . '.sql',
             'seed_bytes' => 789606,
             'tables_count' => 45,
             'rows_count' => 2635,
@@ -183,6 +238,11 @@ class SuperAdminBackupsPageTest extends TestCase
             'status' => 'complete',
             'created_at' => $date . 'T00:00:09+00:00',
         ], $overrides);
+    }
+
+    private function today(): string
+    {
+        return now()->setTimezone('Africa/Dar_es_Salaam')->format('Y-m-d');
     }
 
     public function test_the_page_lists_backups_newest_first_with_download_and_delete_actions(): void
@@ -219,6 +279,54 @@ class SuperAdminBackupsPageTest extends TestCase
         $response->assertSee('Delete the backup for 2026-10-29 permanently?', false);
     }
 
+    public function test_an_induced_backup_is_listed_with_its_time_and_badge(): void
+    {
+        $this->cloudinary();
+        $this->bind($this->supabaseStub([
+            $this->row('2026-10-29'),
+            $this->row('2026-10-29_143501', ['id' => 2]),
+        ]));
+
+        $response = $this->be($this->admin())->get('/super-admin/backups');
+
+        $response->assertOk();
+        $response->assertSee('14:35:01');
+        $response->assertSee('induced');
+        $response->assertSee(route('super-admin.backups.download', ['2026-10-29_143501', 'seed']), false);
+
+        // the induced one sits above that day's automatic backup: compare where
+        // their download links land, not the date (the summary repeats it)
+        $content = $response->getContent();
+        $this->assertLessThan(
+            strpos($content, route('super-admin.backups.download', ['2026-10-29', 'schema'])),
+            strpos($content, route('super-admin.backups.download', ['2026-10-29_143501', 'seed']))
+        );
+    }
+
+    public function test_the_date_filters_narrow_the_list_to_a_range(): void
+    {
+        $this->cloudinary();
+        $this->bind($this->supabaseStub([
+            $this->row('2026-10-29'),
+            $this->row('2026-10-20', ['id' => 2]),
+            $this->row('2026-10-10', ['id' => 3]),
+        ]));
+
+        $response = $this->be($this->admin())->get('/super-admin/backups?date_from=2026-10-15&date_to=2026-10-25');
+
+        $response->assertOk();
+        $response->assertSee('20 Oct 2026');
+        $response->assertDontSee('29 Oct 2026');
+        $response->assertDontSee('10 Oct 2026');
+        $response->assertSee('showing 1 of 3 backups');
+
+        // a nonsense date is ignored rather than breaking the page
+        $this->be($this->admin())
+            ->get('/super-admin/backups?date_from=2026-13-45')
+            ->assertOk()
+            ->assertSee('29 Oct 2026');
+    }
+
     public function test_a_backup_cloudinary_has_but_the_table_does_not_is_imported_and_listed(): void
     {
         $this->cloudinary([
@@ -245,6 +353,7 @@ class SuperAdminBackupsPageTest extends TestCase
         $this->assertCount(1, $stub->inserted, 'the folder Cloudinary has should have been recorded');
         $this->assertSame('backups', $stub->inserted[0]['table']);
         $this->assertSame('2026-10-26', $stub->inserted[0]['data']['backup_date']);
+        $this->assertSame('automatic', $stub->inserted[0]['data']['kind']);
         $this->assertSame(700000, $stub->inserted[0]['data']['seed_bytes']);
         $this->assertSame(self::FOLDER . '/backup_2026-10-26', $stub->inserted[0]['data']['folder']);
 
@@ -257,6 +366,30 @@ class SuperAdminBackupsPageTest extends TestCase
         $this->assertNotNull($listing, 'Cloudinary should have been asked what it holds');
         $this->assertStringContainsString('/resources/raw/upload', $listing->url());
         $this->assertStringContainsString('prefix=4ftdshm54xvhks', $listing->url());
+    }
+
+    public function test_an_induced_folder_found_in_cloudinary_is_imported_as_induced(): void
+    {
+        $stamp = '2026-10-25_090500';
+        $folder = self::FOLDER . '/induced/backup_' . $stamp;
+
+        $this->cloudinary([
+            ['public_id' => $folder . '/schema_' . $stamp . '.sql', 'bytes' => 29741, 'secure_url' => 'https://x/' . $stamp . '/schema.sql', 'created_at' => null],
+            ['public_id' => $folder . '/seed_' . $stamp . '.sql', 'bytes' => 800000, 'secure_url' => 'https://x/' . $stamp . '/seed.sql', 'created_at' => null],
+        ]);
+
+        $stub = $this->bind($this->supabaseStub([]));
+
+        $response = $this->be($this->admin())->get('/super-admin/backups');
+
+        $response->assertOk();
+        $this->assertCount(1, $stub->inserted);
+        $this->assertSame('induced', $stub->inserted[0]['data']['kind']);
+        $this->assertSame($stamp, $stub->inserted[0]['data']['stamp']);
+        $this->assertSame('2026-10-25', $stub->inserted[0]['data']['backup_date']);
+
+        $response->assertSee('09:05:00');
+        $response->assertSee('induced');
     }
 
     public function test_a_file_cloudinary_does_not_have_is_not_imported_from_a_stray_name(): void
@@ -330,7 +463,40 @@ class SuperAdminBackupsPageTest extends TestCase
             self::FOLDER . '/backup_2026-10-29/seed_2026-10-29.sql',
         ], $ids);
 
-        $this->assertSame([['table' => 'backups', 'conditions' => ['backup_date' => 'eq.2026-10-29']]], $stub->deleted);
+        $this->assertSame(
+            [['table' => 'backups', 'conditions' => ['folder' => 'eq.' . self::FOLDER . '/backup_2026-10-29']]],
+            $stub->deleted
+        );
+    }
+
+    public function test_deleting_an_induced_backup_only_touches_its_own_folder(): void
+    {
+        $this->cloudinary();
+        $stub = $this->bind($this->supabaseStub([
+            $this->row('2026-10-29'),
+            $this->row('2026-10-29_143501', ['id' => 2]),
+        ]));
+
+        $this->be($this->admin())
+            ->delete('/super-admin/backups/2026-10-29_143501')
+            ->assertSessionHas('success', 'The backup for 2026-10-29 at 14:35:01 has been deleted from Cloudinary and the database.');
+
+        $ids = array_map(
+            fn (Request $r) => (string) $r['public_id'],
+            array_values(array_filter($this->requests, fn (Request $r) => str_contains($r->url(), '/raw/destroy')))
+        );
+        sort($ids);
+
+        $this->assertSame([
+            self::FOLDER . '/induced/backup_2026-10-29_143501/schema_2026-10-29_143501.sql',
+            self::FOLDER . '/induced/backup_2026-10-29_143501/seed_2026-10-29_143501.sql',
+        ], $ids);
+
+        // and only that row went
+        $this->assertSame(
+            [['table' => 'backups', 'conditions' => ['folder' => 'eq.' . self::FOLDER . '/induced/backup_2026-10-29_143501']]],
+            $stub->deleted
+        );
     }
 
     public function test_a_refused_cloudinary_delete_keeps_the_row_and_reports_the_reason(): void
@@ -349,35 +515,64 @@ class SuperAdminBackupsPageTest extends TestCase
         $this->assertSame([], $stub->deleted);
     }
 
-    public function test_the_induce_button_takes_a_backup_immediately(): void
+    public function test_the_induce_button_takes_a_backup_independent_of_the_nightly_one(): void
     {
         $this->cloudinary();
-        $stub = $this->bind($this->supabaseStub([]));
+        $today = $this->today();
 
-        // the button is on the page, and it posts rather than links
+        // the night's automatic backup is already recorded
+        $stub = $this->bind($this->supabaseStub([$this->row($today)]));
+
         $page = $this->be($this->admin())->get('/super-admin/backups');
         $page->assertSee('Induce Backup');
         $page->assertSee(route('super-admin.backups.induce'), false);
 
-        $today = now()->setTimezone('Africa/Dar_es_Salaam')->format('Y-m-d');
-
         $response = $this->be($this->admin())->post('/super-admin/backups/induce');
 
         $response->assertRedirect(route('super-admin.backups.index'));
-        $this->assertStringContainsString("Backup for {$today} created", (string) session('success'));
+        $this->assertStringContainsString("Induced backup for {$today} at", (string) session('success'));
 
-        // today's row, pointing at today's folder — not tomorrow's
+        // a NEW row, not an update of the night's one
+        $this->assertSame([], $stub->updated, 'inducing must not overwrite the automatic row');
         $this->assertCount(1, $stub->inserted);
+
         $row = $stub->inserted[0]['data'];
         $this->assertSame('backups', $stub->inserted[0]['table']);
+        $this->assertSame('induced', $row['kind']);
         $this->assertSame($today, $row['backup_date']);
-        $this->assertSame('4ftdshm54xvhks/backup_' . $today, $row['folder']);
+        $this->assertMatchesRegularExpression('/^' . $today . '_\d{6}$/', $row['stamp']);
+        $this->assertSame(self::FOLDER . '/induced/backup_' . $row['stamp'], $row['folder']);
 
-        // and both halves really were uploaded
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/raw/upload')
-            && str_contains($r->body(), 'schema_' . $today . '.sql'));
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/raw/upload')
-            && str_contains($r->body(), 'seed_' . $today . '.sql'));
+        // and the files went to the induced folder, never over the night's
+        $uploaded = $this->uploadedPublicIds();
+
+        $this->assertContains(self::FOLDER . '/induced/backup_' . $row['stamp'] . '/seed_' . $row['stamp'] . '.sql', $uploaded);
+        $this->assertContains(self::FOLDER . '/induced/backup_' . $row['stamp'] . '/schema_' . $row['stamp'] . '.sql', $uploaded);
+        $this->assertNotContains(self::FOLDER . '/backup_' . $today . '/seed_' . $today . '.sql', $uploaded);
+        $this->assertNotContains(self::FOLDER . '/backup_' . $today . '/schema_' . $today . '.sql', $uploaded);
+    }
+
+    public function test_two_induced_backups_on_the_same_day_are_both_kept(): void
+    {
+        $this->cloudinary();
+        $today = $this->today();
+        $stub = $this->bind($this->supabaseStub([$this->row($today)]));
+
+        $this->be($this->admin())->post('/super-admin/backups/induce');
+
+        $first = $stub->inserted[0]['data'];
+
+        // a second, a minute later in the same day
+        $later = now()->setTimezone('Africa/Dar_es_Salaam')->addMinute();
+        \Illuminate\Support\Carbon::setTestNow($later);
+        $this->be($this->admin())->post('/super-admin/backups/induce');
+        \Illuminate\Support\Carbon::setTestNow();
+
+        $this->assertCount(2, $stub->inserted);
+        $second = $stub->inserted[1]['data'];
+
+        $this->assertNotSame($first['stamp'], $second['stamp'], 'two induced backups need their own stamps');
+        $this->assertNotSame($first['folder'], $second['folder'], 'and their own folders');
     }
 
     public function test_an_induced_backup_cloudinary_rejects_is_reported_not_claimed(): void

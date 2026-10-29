@@ -8,6 +8,15 @@ and files the result in Cloudinary, one folder per day:
 4ftdshm54xvhks/backup_2026-10-29/seed_2026-10-29.sql     every row of every table
 ```
 
+A backup taken on demand — **Induce Backup** — is filed under its own `induced/`
+parent, stamped with the time it was taken, so it can never land on the night's
+folder and several can be kept for the same day:
+
+```
+4ftdshm54xvhks/induced/backup_2026-10-29_143501/schema_2026-10-29_143501.sql
+4ftdshm54xvhks/induced/backup_2026-10-29_143501/seed_2026-10-29_143501.sql
+```
+
 The two files together are a complete restore: `schema` creates the tables,
 `seed` fills them. The schema is copied into each folder (rather than assumed to
 still exist somewhere) so an old backup keeps working even if `SYSTEM_SCHEMA.sql`
@@ -53,10 +62,15 @@ deletes that day's two files from Cloudinary and then the row from the
 the list never shows a backup that is already gone.
 
 **Induce Backup**, at the top of the page, takes one immediately instead of
-waiting for midnight: it is the same run the scheduler does, dated today. Click
-it again the same day and that day's files and row are replaced rather than a
-second one being added. A cache lock stops two clicks (or a click landing on
-midnight) from writing the same files at once.
+waiting for midnight. It is the same dump the scheduler makes, but it is filed
+under `induced/` with a time stamp and recorded as its own row, so inducing one
+seconds after midnight leaves the night's automatic backup untouched, and every
+click produces a separate backup. A cache lock stops two clicks from writing at
+the same time.
+
+**From** and **To** filter the list by date, so a particular day or week can be
+found without scrolling through the history. The filters only narrow what is
+shown — nothing is deleted or hidden in Cloudinary.
 
 The page reads the `backups` table, which each night's run writes to. On load it
 also asks Cloudinary for folders the table does not know about and records them,

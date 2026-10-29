@@ -76,6 +76,27 @@ class DatabaseBackupTest extends TestCase
         return new DatabaseBackupService($supabase);
     }
 
+    /**
+     * The public_id of a raw upload, or '' for any other request.
+     *
+     * The multipart body cannot be searched for a folder name: the seed file
+     * itself contains the folder strings of the backups table it dumps.
+     */
+    private function publicIdOf(Request $request): string
+    {
+        if (! str_contains($request->url(), '/raw/upload')) {
+            return '';
+        }
+
+        foreach ($request->data() as $part) {
+            if (($part['name'] ?? '') === 'public_id') {
+                return (string) $part['contents'];
+            }
+        }
+
+        return '';
+    }
+
     private function at(): Carbon
     {
         return Carbon::parse('2026-10-30 00:00:00', 'Africa/Dar_es_Salaam');
@@ -169,12 +190,41 @@ class DatabaseBackupTest extends TestCase
         $row = $supabase->recorded[0]['data'];
 
         $this->assertSame(self::DATE, $row['backup_date']);
+        $this->assertSame('automatic', $row['kind']);
+        $this->assertSame(self::DATE, $row['stamp']);
         $this->assertSame('4ftdshm54xvhks/backup_' . self::DATE, $row['folder']);
         $this->assertSame(1, $row['rows_count']);
         $this->assertSame(45, $row['tables_count']);
         $this->assertStringEndsWith('/seed_' . self::DATE . '.sql', (string) $row['seed_url']);
         $this->assertStringEndsWith('/schema_' . self::DATE . '.sql', (string) $row['schema_url']);
         $this->assertGreaterThan(0, $row['seed_bytes']);
+    }
+
+    public function test_an_induced_backup_is_filed_separately_from_the_nightly_one(): void
+    {
+        $this->fakeCloudinary();
+
+        $service = $this->backups($this->supabaseWith([
+            'branches' => [['id' => 8, 'name' => 'Kinondoni branch']],
+        ]));
+
+        $at = Carbon::parse('2026-10-30 14:35:01', 'Africa/Dar_es_Salaam');
+        $result = $service->runInduced($at);
+
+        $this->assertSame('induced', $result['kind']);
+        $this->assertSame('2026-10-30_143501', $result['stamp']);
+        $this->assertSame('2026-10-30', $result['date']);
+        $this->assertSame('4ftdshm54xvhks/induced/backup_2026-10-30_143501', $result['folder']);
+
+        // both halves carry the time stamp and live under induced/
+        $id = fn (Request $r) => $this->publicIdOf($r);
+
+        Http::assertSent(fn (Request $r) => $id($r) === '4ftdshm54xvhks/induced/backup_2026-10-30_143501/seed_2026-10-30_143501.sql');
+        Http::assertSent(fn (Request $r) => $id($r) === '4ftdshm54xvhks/induced/backup_2026-10-30_143501/schema_2026-10-30_143501.sql');
+
+        // and the night's own folder for that date was never written to
+        Http::assertNotSent(fn (Request $r) => $id($r) === '4ftdshm54xvhks/backup_2026-10-30/seed_2026-10-30.sql');
+        Http::assertNotSent(fn (Request $r) => $id($r) === '4ftdshm54xvhks/backup_2026-10-30/schema_2026-10-30.sql');
     }
 
     public function test_the_seed_contains_a_restorable_insert_for_every_row(): void
