@@ -213,9 +213,9 @@
             '</td>' +
             '<td class="px-3 py-2 text-center whitespace-nowrap">' +
                 '<div class="inline-flex items-center border rounded-lg">' +
-                    '<button type="button" class="cart-dec w-7 h-7 text-gray-600 hover:bg-gray-100 rounded-l-lg" onclick="changeQty(this, -1)">&minus;</button>' +
+                    '<button type="button" data-cart-step="-1" class="cart-dec w-7 h-7 text-gray-600 hover:bg-gray-100 rounded-l-lg">&minus;</button>' +
                     '<span class="cart-qty w-8 text-center text-sm font-medium">1</span>' +
-                    '<button type="button" class="cart-inc w-7 h-7 text-gray-600 hover:bg-gray-100 rounded-r-lg" onclick="changeQty(this, 1)">+</button>' +
+                    '<button type="button" data-cart-step="1" class="cart-inc w-7 h-7 text-gray-600 hover:bg-gray-100 rounded-r-lg">+</button>' +
                 '</div>' +
             '</td>' +
             '<td class="px-3 py-2 text-right cart-line-total text-sm font-medium">' + formatMoney(0) + '</td>' +
@@ -265,16 +265,49 @@
 
     function changeQty(btn, delta) {
         const row = btn.closest('.cart-row');
+        if (!row) return;
+
         const qtyEl = row.querySelector('.cart-qty');
-        let q = parseInt(qtyEl.textContent) + delta;
-        if (q < 1) q = 1;
-        // Never exceed what's actually in stock for this line's bottling.
-        const max = parseInt(row.dataset.stock || 0);
-        if (max > 0 && q > max) q = max;
-        qtyEl.textContent = q;
-        row.querySelector('.cart-qty-hidden').value = q;
+        const qtyInput = row.querySelector('.cart-qty-hidden');
+
+        // The hidden field is what posts AND what the totals are computed from,
+        // so it is the source of truth here too: the number on screen can never
+        // drift from the quantity that is actually sent.
+        let q = parseInt(qtyInput && qtyInput.value ? qtyInput.value : qtyEl.textContent, 10);
+        if (!Number.isFinite(q) || q < 1) q = 1;
+
+        let next = q + delta;
+        if (next < 1) next = 1;
+
+        // Never exceed what's actually in stock for this line's bottling. When
+        // the line is already at its stock, say so — a cap that refuses without
+        // a word reads as a dead + button, which is exactly how this page was
+        // reported.
+        const max = parseInt(row.dataset.stock || 0, 10);
+        if (delta > 0 && max > 0 && next > max) {
+            next = max;
+            if (window.wcpToast && typeof window.wcpToast.show === 'function') {
+                window.wcpToast.show('Only ' + max + ' in stock for this line.', 'warning');
+            }
+        }
+
+        qtyEl.textContent = next;
+        if (qtyInput) qtyInput.value = next;
         calculateTotal();
     }
+
+    // The steppers are wired once, by delegation, on the cart body: every row is
+    // built by addToCart after this script has run, and a delegated listener
+    // needs no per-row binding and no global function name to resolve.
+    (function () {
+        const cartBody = document.getElementById('cart-rows');
+        if (!cartBody) return;
+        cartBody.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-cart-step]');
+            if (!button) return;
+            changeQty(button, parseInt(button.dataset.cartStep, 10) || 0);
+        });
+    })();
 
     function reindex() {
         document.querySelectorAll('.cart-row').forEach((row, i) => {

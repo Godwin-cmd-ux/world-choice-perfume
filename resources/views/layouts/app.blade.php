@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-{{-- data-theme is the dark default, server-rendered so the page is dark even
-     with JavaScript off; partials/theme-boot swaps in the saved choice before
-     the first paint. --}}
-<html lang="en" data-theme="dark">
+{{-- The signed-in staff area is LIGHT ONLY: there is no dark mode here and no
+     switch to reach one. data-theme is hard-coded (nothing reads the saved
+     choice), so an authenticated page is light whatever preference the public
+     site stored in the same browser. --}}
+<html lang="en" data-theme="light">
 <head>
-    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -107,7 +107,6 @@
                 </div>
                 <div class="flex items-center gap-3">
                     @yield('header-actions')
-                    @include('partials.theme-toggle')
                 </div>
             </header>
 

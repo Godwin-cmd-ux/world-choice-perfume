@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-{{-- data-theme is the dark default, server-rendered so the page is dark even
-     with JavaScript off; partials/theme-boot swaps in the saved choice before
-     the first paint. --}}
-<html lang="en" data-theme="dark">
+{{-- The signed-in stock-manager area is LIGHT ONLY: no dark mode, no switch.
+     data-theme is hard-coded, so nothing the public site saved can darken it. --}}
+<html lang="en" data-theme="light">
 <head>
-    @include('partials.theme-boot')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -54,7 +52,6 @@
                 </div>
                 <div class="flex items-center gap-4">
                     @yield('header-actions')
-                    @include('partials.theme-toggle')
                 </div>
             </header>
 

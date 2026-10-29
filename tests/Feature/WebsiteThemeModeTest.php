@@ -3,22 +3,20 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\SupabaseService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * The website ships dark and can switch to light, on every page.
+ * The public website ships dark; the signed-in area ships light, with no switch.
  *
- * Two things have to hold for that to be true, and each is easy to lose by
- * accident:
+ * Two things have to hold, and each is easy to lose by accident:
  *
- *   1. the mode is on the <html> element before anything paints — a script in
- *      the head reads localStorage and writes data-theme, falling back to the
- *      dark default the layouts render server-side (so the site is still dark
- *      with JavaScript off);
- *   2. the theme stylesheet and the switch are actually included by every
- *      layout, including the standalone pages that carry their own <html>.
+ *   1. the public mode is on the <html> element before anything paints — a
+ *      script in the head applies the dark default the layouts render
+ *      server-side, so the site is still dark with JavaScript off;
+ *   2. the theme stylesheet is included by every layout, including the
+ *      standalone pages that carry their own <html>, while the staff layouts
+ *      hard-code data-theme="light" and never read a saved choice.
  *
  * The public pages are used for the rendered assertions because they are the
  * only ones a request can reach without a live Supabase project; the staff
@@ -27,11 +25,9 @@ use Tests\TestCase;
  */
 class WebsiteThemeModeTest extends TestCase
 {
-    /** The layouts a visitor or a staff member actually lands on. */
-    private const LAYOUTS = [
+    /** The standalone/public pages: dark by default, with the pre-paint boot. */
+    private const DARK_LAYOUTS = [
         'layouts/public.blade.php',
-        'layouts/app.blade.php',
-        'stock-manager/layouts/app.blade.php',
         'customer/orders/create.blade.php',
         'customer/orders/success.blade.php',
         'customer/orders/track.blade.php',
@@ -39,6 +35,19 @@ class WebsiteThemeModeTest extends TestCase
         'customer/navigation.blade.php',
         'errors/413.blade.php',
         'auth/register-super-admin.blade.php',
+    ];
+
+    /**
+     * The signed-in area: light only, no saved preference and no switch.
+     *
+     * Staff screens are authored light (bg-white, text-gray-700), so a stored
+     * 'dark' from the public site used to dress every authenticated page in the
+     * inverted skin. The two staff layouts now hard-code data-theme="light"
+     * and never read the saved choice.
+     */
+    private const LIGHT_LAYOUTS = [
+        'layouts/app.blade.php',
+        'stock-manager/layouts/app.blade.php',
     ];
 
     public function test_the_dark_mode_is_rendered_before_the_first_paint(): void
@@ -55,48 +64,50 @@ class WebsiteThemeModeTest extends TestCase
         $response->assertSee("setAttribute('data-theme', theme)", false);
     }
 
-    public function test_the_page_carries_both_modes_and_the_switch(): void
+    public function test_the_public_site_carries_both_modes_and_no_switch(): void
     {
         $response = $this->get('/login');
 
         $response->assertSee('html[data-theme="light"]', false);
         $response->assertSee('html[data-theme="dark"]', false);
 
-        // the toggle, and the key it shares with the boot script
-        $response->assertSee('data-theme-toggle', false);
-        $response->assertSee("var KEY = 'wcp-theme'", false);
+        // The public site is dark-only and has no switch to leave it.
+        $response->assertDontSee('data-theme-toggle', false);
     }
 
     /**
-     * The public navigation renders the switch twice — desktop bar and mobile
-     * menu — but the script that wires it is emitted once, at the first of the
-     * two. A listener bound per button at that moment never reaches the phone's
-     * switch, which sits further down the document, so the phone's tap did
-     * nothing. The script therefore delegates from the document.
+     * The switch is gone from the signed-in site for good.
+     *
+     * A staff member had a dark/light button in their header, and the choice it
+     * saved was read back by the boot script on the next authenticated page. No
+     * view includes the switch partial any more, and neither staff layout reads
+     * a saved theme, so an authenticated page cannot come out dark.
      */
-    public function test_the_phone_switch_is_wired_by_the_same_script_as_the_desktop_one(): void
+    public function test_no_view_renders_the_theme_switch_any_more(): void
     {
-        Http::fake(['*' => Http::response([], 200)]);
+        $includes = [];
 
-        SupabaseService::clearCache();
+        /** @var \Symfony\Component\Finder\SplFileInfo $file */
+        foreach (\Illuminate\Support\Facades\File::allFiles(resource_path('views')) as $file) {
+            // the component itself only carries its own usage examples
+            if ($file->getFilename() === 'theme-toggle.blade.php') {
+                continue;
+            }
 
-        $response = $this->get('/');
+            $source = $file->getContents();
+            if (str_contains($source, "@include('partials.theme-toggle'") || str_contains($source, '@include("partials.theme-toggle"')) {
+                $includes[] = $file->getRelativePathname();
+            }
+        }
 
-        $response->assertOk();
+        $this->assertSame([], $includes, 'a view still renders the theme switch');
 
-        $html = $response->getContent();
+        foreach (self::LIGHT_LAYOUTS as $layout) {
+            $source = file_get_contents(resource_path('views/'.$layout));
 
-        // desktop bar + the switch inside the collapsed mobile menu
-        $this->assertSame(
-            2,
-            substr_count($html, '<button type="button" data-theme-toggle'),
-            'the mobile menu lost its theme switch'
-        );
-
-        // and both are behind one delegated listener, so the one rendered after
-        // the script still responds
-        $this->assertSame(1, substr_count($html, "closest('[data-theme-toggle]')"));
-        $this->assertStringNotContainsString('buttons.forEach', $html, 'switches are bound one by one again');
+            $this->assertStringContainsString('data-theme="light"', $source, "$layout: not pinned to light");
+            $this->assertStringNotContainsString('theme-boot', $source, "$layout: still reads a saved theme");
+        }
     }
 
     public function test_every_button_is_the_brand_colour_in_both_modes(): void
@@ -249,7 +260,7 @@ class WebsiteThemeModeTest extends TestCase
         $response->assertSee('bg-dark-900\\/95', false);
     }
 
-    public function test_a_staff_page_renders_in_dark_mode_too(): void
+    public function test_a_staff_page_renders_light_without_a_switch(): void
     {
         Http::fake(['*' => Http::response([], 200)]);
 
@@ -267,14 +278,17 @@ class WebsiteThemeModeTest extends TestCase
         $response = $this->be($user)->get('/super-admin/dashboard');
 
         $response->assertOk();
-        $response->assertSee('data-theme="dark"', false);
-        $response->assertSee('data-theme-toggle', false);
+        $response->assertSee('data-theme="light"', false);
         $response->assertSee('html[data-theme="light"]', false);
+
+        // no switch, and nothing reads a saved dark choice back in
+        $response->assertDontSee('data-theme-toggle', false);
+        $response->assertDontSee("var KEY = 'wcp-theme'", false);
     }
 
-    public function test_every_layout_renders_the_theme_and_can_switch_it(): void
+    public function test_every_layout_carries_the_theme_it_is_pinned_to(): void
     {
-        foreach (self::LAYOUTS as $layout) {
+        foreach (self::DARK_LAYOUTS as $layout) {
             $source = file_get_contents(resource_path('views/'.$layout));
 
             $this->assertStringContainsString('data-theme="dark"', $source, "$layout: no dark default");
@@ -282,10 +296,11 @@ class WebsiteThemeModeTest extends TestCase
             $this->assertStringContainsString("partials.theme-mode", $source, "$layout: no theme stylesheet");
         }
 
-        foreach (['layouts/public.blade.php', 'layouts/app.blade.php', 'stock-manager/layouts/app.blade.php'] as $layout) {
+        foreach (self::LIGHT_LAYOUTS as $layout) {
             $source = file_get_contents(resource_path('views/'.$layout));
 
-            $this->assertStringContainsString('partials.theme-toggle', $source, "$layout: no theme switch");
+            $this->assertStringContainsString('data-theme="light"', $source, "$layout: no light default");
+            $this->assertStringContainsString("partials.theme-mode", $source, "$layout: no theme stylesheet");
         }
     }
 
