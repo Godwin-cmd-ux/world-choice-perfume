@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureStaffSessionApi;
 use App\Models\Branch;
 use App\Models\User;
 use App\Services\SupabaseService;
@@ -286,14 +287,47 @@ class AdminStaffController extends Controller
             return response()->json(['message' => 'User not found.'], 404);
         }
 
-        $this->supabase->delete('users', ['id' => $userId]);
+        // The only account that can restore a deleted one must stay.
+        if (($user['role'] ?? '') === 'super_admin') {
+            return response()->json(['message' => 'The super admin account cannot be deleted.'], 422);
+        }
+
+        // The app's own detail screen must not talk itself out of an account.
+        $signedIn = EnsureStaffSessionApi::user($request);
+        if ($signedIn !== null && (string) ($signedIn['id'] ?? '') === (string) $userId) {
+            return response()->json(['message' => 'You cannot delete the account you are signed in with.'], 422);
+        }
+
+        if (! $this->supabase->delete('users', ['id' => $userId])) {
+            $reason = $this->supabase->lastErrorMessage();
+
+            return response()->json([
+                'message' => 'Could not delete '.($user['name'] ?? 'this user')
+                    .': the database rejected the request.'.($reason ? ' '.$reason : ''),
+            ], 502);
+        }
+
+        // The local mirror: without this the account keeps a row in this app's
+        // own users table, so the person is not actually gone from the system.
+        try {
+            User::query()
+                ->where(function ($query) use ($userId, $user) {
+                    $query->where('supabase_id', $userId);
+                    if (! empty($user['email'])) {
+                        $query->orWhere('email', $user['email']);
+                    }
+                })
+                ->delete();
+        } catch (\Exception $e) {
+            // The database row is already gone; a local miss must not mask that.
+        }
 
         $this->audit($request, 'staff_deleted', 'deleted_user', 'Staff Deleted',
             "Staff {$user['name']} (".($user['role'] ?? 'staff').') was deleted.',
             ['user_id' => $userId, 'user_name' => $user['name'], 'role' => $user['role'] ?? null],
             ['status' => $user['status'] ?? 'active', 'name' => $user['name']], []);
 
-        return response()->json(['message' => 'User deleted successfully.']);
+        return response()->json(['message' => ($user['name'] ?? 'The user').' has been deleted.']);
     }
 
     /** Audit entry attributed to the session's Super Admin, never blocking. */

@@ -370,11 +370,19 @@ class SupabaseRestService
                 'Prefer' => '',
             ])->delete("{$this->url}/rest/v1/{$table}?" . http_build_query($queryParams));
         } catch (\Exception $e) {
+            $this->lastErrorMessage = $e->getMessage();
             Log::error("Supabase delete failed for table {$table}: " . $e->getMessage());
             return false;
         }
 
         $this->invalidateCache($table);
+
+        if (! $response->successful()) {
+            // The caller reports this refusal to the user; without the body it
+            // can only say "the database rejected it" and not why.
+            $this->lastErrorMessage = $response->body();
+            Log::warning("Supabase delete error for table {$table}: " . $response->body());
+        }
 
         return $response->successful();
     }
