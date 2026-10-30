@@ -59,8 +59,11 @@ class OrderWorkflowService
     /** An order waiting this long is called out as late on a monitor view. */
     public const WAIT_LATE_MINUTES = 30;
 
+    private OrderStockService $stock;
+
     public function __construct(private SupabaseService $supabase)
     {
+        $this->stock = new OrderStockService($supabase);
     }
 
     /**
@@ -509,10 +512,24 @@ class OrderWorkflowService
             return $this->fail($this->staleMessage($this->supabase->find('orders', $orderId) ?: [], null));
         }
 
+        // The handover is the moment the branch's stock actually leaves the
+        // shelf, so every role that can complete an order deducts it here.
+        // Orders served by the cashier already deduct through the sale path;
+        // this service's order reference keeps that from ever happening twice.
+        $stock = $this->stock->deductForOrder($order, $userId);
+
         $this->recordNote($orderId, $note, $userId);
         $this->audit($order, 'served', $current, $orderId, $note);
 
-        return ['ok' => true, 'message' => 'Order served. It is now in My Completed Orders.'];
+        $message = 'Order served. It is now in My Completed Orders.';
+
+        if (!$stock['ok']) {
+            $message .= ' ' . $stock['message'];
+        } elseif (!$stock['already'] && $stock['skipped'] !== []) {
+            $message .= ' Some items were short in stock and only the available units were deducted.';
+        }
+
+        return ['ok' => true, 'message' => $message];
     }
 
     /**
