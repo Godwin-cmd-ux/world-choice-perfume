@@ -337,6 +337,14 @@ export interface TrackStep {
   label: string;
 }
 
+/** One staff note on an order — the website's "Order Updates" feed. */
+export interface TrackUpdate {
+  note: string;
+  /** Name of the staff member who wrote it, when the server can resolve it. */
+  author?: string | null;
+  created_at?: string | null;
+}
+
 export interface TrackOrder {
   order_number: string;
   status?: string;
@@ -346,6 +354,8 @@ export interface TrackOrder {
   branch?: { name?: string } | null;
   items?: TrackItem[];
   timeline?: TrackStep[];
+  updates?: TrackUpdate[];
+  last_update_at?: string | null;
 }
 
 export interface TrackPayload {

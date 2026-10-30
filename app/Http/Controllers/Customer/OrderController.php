@@ -341,7 +341,28 @@ class OrderController extends Controller
             'served_at' => 'Order served',
         ];
 
-        $orders = collect($rawOrders)->map(function ($o) use ($steps) {
+        // The staff member behind each update is shown with it. One lookup
+        // covers every note on every order instead of a query per order.
+        $authorIds = [];
+        foreach ($rawOrders as $rawOrder) {
+            foreach ($rawOrder['notes'] ?? [] as $rawNote) {
+                if (!empty($rawNote['created_by'])) {
+                    $authorIds[(string) $rawNote['created_by']] = true;
+                }
+            }
+        }
+
+        $authors = [];
+        if ($authorIds !== []) {
+            foreach ($this->supabase->query('users', [
+                'select' => 'id,name',
+                'id' => 'in.(' . implode(',', array_keys($authorIds)) . ')',
+            ]) as $author) {
+                $authors[(string) $author['id']] = $author['name'] ?? null;
+            }
+        }
+
+        $orders = collect($rawOrders)->map(function ($o) use ($steps, $authors) {
             $o['items'] = collect($o['items'] ?? [])->map(function ($item) {
                 $volume = (int) ($item['volume'] ?? 0);
                 $variant = (string) ($item['variant'] ?? '');
@@ -357,10 +378,26 @@ class OrderController extends Controller
                     'product' => (object) ($item['product'] ?? []),
                 ];
             });
-            $o['notes'] = collect($o['notes'] ?? [])
+            $notes = collect($o['notes'] ?? [])
                 ->sortBy('created_at')
-                ->map(fn($n) => (object) $n)
                 ->values();
+
+            $o['notes'] = $notes->map(fn($n) => (object) $n)->values();
+
+            // The app's "Order Updates" feed: the same notes the website
+            // tracking page renders, with the staff member's name resolved.
+            $o['updates'] = $notes
+                ->map(fn($n) => (object) [
+                    'note' => (string) ($n['note'] ?? ''),
+                    'author' => $authors[(string) ($n['created_by'] ?? '')] ?? null,
+                    'created_at' => $n['created_at'] ?? null,
+                ])
+                ->filter(fn($update) => $update->note !== '')
+                ->values();
+
+            $latestUpdate = $o['updates']->last();
+            $o['last_update_at'] = $latestUpdate?->created_at;
+
             $o['branch'] = (object) ($o['branch'] ?? []);
 
             $o['timeline'] = collect([

@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  AppState,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { EmptyView, GoldButton } from '../../components/ui';
-import { errorMessage, trackOrders, type TrackOrder } from '../../lib/api';
+import { errorMessage, trackOrders, type TrackOrder, type TrackPayload } from '../../lib/api';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { COLORS, RADIUS } from '../../lib/theme';
 
@@ -23,6 +26,14 @@ import { COLORS, RADIUS } from '../../lib/theme';
  * tracking information is invented in the app.
  */
 type Phase = 'idle' | 'loading' | 'error' | 'done';
+
+/**
+ * While a phone number is being tracked the screen quietly re-asks the server
+ * for its orders, so a status change made by staff shows up without the
+ * customer having to leave and re-open the tab. Manual pull-to-refresh is the
+ * immediate version of the same request.
+ */
+const REFRESH_INTERVAL_MS = 20_000;
 
 interface StatusBadge {
   label: string;
@@ -51,6 +62,7 @@ function OrderCard({ order }: { order: TrackOrder }) {
   const badge = statusBadge(order.status);
   const items = order.items ?? [];
   const timeline = order.timeline ?? [];
+  const updates = order.updates ?? [];
 
   return (
     <View style={styles.orderCard}>
@@ -98,6 +110,26 @@ function OrderCard({ order }: { order: TrackOrder }) {
         </View>
       ) : null}
 
+      {updates.length > 0 ? (
+        <View style={styles.updates}>
+          <View style={styles.updatesHead}>
+            <Ionicons name="chatbubble-ellipses-outline" size={13} color={COLORS.goldBright} />
+            <Text style={styles.updatesTitle}>Order Updates</Text>
+          </View>
+          {updates.map((update, index) => (
+            <View key={`${update.created_at ?? 'update'}-${index}`} style={styles.updateCard}>
+              <Text style={styles.updateText}>{update.note}</Text>
+              {update.author || update.created_at ? (
+                <View style={styles.updateMeta}>
+                  {update.author ? <Text style={styles.updateAuthor}>{update.author}</Text> : null}
+                  {update.created_at ? <Text style={styles.updateDate}>{formatDateTime(update.created_at)}</Text> : null}
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {items.length > 0 ? (
         <View style={styles.items}>
           <Text style={styles.itemsTitle}>Items</Text>
@@ -119,11 +151,20 @@ function OrderCard({ order }: { order: TrackOrder }) {
 
 export default function TrackScreen() {
   const [phone, setPhone] = useState('');
+  const [trackedPhone, setTrackedPhone] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState('');
   const [fieldError, setFieldError] = useState('');
   const [orders, setOrders] = useState<TrackOrder[]>([]);
   const [emptyMessage, setEmptyMessage] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastChecked, setLastChecked] = useState('');
+
+  const applyPayload = useCallback((payload: TrackPayload) => {
+    setOrders(payload.orders ?? []);
+    setEmptyMessage(payload.message ?? 'No orders found for this phone number.');
+    setLastChecked(new Date().toISOString());
+  }, []);
 
   const submit = async () => {
     const value = phone.trim();
@@ -132,17 +173,69 @@ export default function TrackScreen() {
       return;
     }
     setFieldError('');
+    setError('');
     setPhase('loading');
     try {
       const payload = await trackOrders(value);
-      setOrders(payload.orders ?? []);
-      setEmptyMessage(payload.message ?? 'No orders found for this phone number.');
+      setTrackedPhone(value);
+      applyPayload(payload);
       setPhase('done');
     } catch (e) {
       setError(errorMessage(e));
       setPhase('error');
     }
   };
+
+  /**
+   * Re-read the tracked number. `silent` is the background poll: it never
+   * blanks the results or shows a spinner, so a moment without a signal does
+   * not replace an order the customer is reading with an error page.
+   */
+  const refreshTracked = useCallback(
+    async (silent = false) => {
+      if (!trackedPhone) return;
+
+      if (!silent) setRefreshing(true);
+
+      try {
+        const payload = await trackOrders(trackedPhone);
+        applyPayload(payload);
+        setError('');
+        setPhase('done');
+      } catch (e) {
+        if (!silent) setError(errorMessage(e));
+      } finally {
+        if (!silent) setRefreshing(false);
+      }
+    },
+    [trackedPhone, applyPayload],
+  );
+
+  // Keep checking while the tab is actually visible. Leaving the tab stops
+  // the timer; coming back starts it again with a fresh request.
+  useFocusEffect(
+    useCallback(() => {
+      if (!trackedPhone || phase !== 'done') return undefined;
+
+      const timer = setInterval(() => {
+        refreshTracked(true);
+      }, REFRESH_INTERVAL_MS);
+
+      return () => clearInterval(timer);
+    }, [trackedPhone, phase, refreshTracked]),
+  );
+
+  // A phone left in the background can be stale by the time it is picked up
+  // again, so check once immediately when the app returns to the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && trackedPhone) {
+        refreshTracked(true);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [trackedPhone, refreshTracked]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -156,6 +249,16 @@ export default function TrackScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            trackedPhone ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => refreshTracked()}
+                tintColor={COLORS.gold}
+                colors={[COLORS.gold]}
+              />
+            ) : undefined
+          }
         >
           <View style={styles.intro}>
             <Text style={styles.introTitle}>
@@ -163,7 +266,7 @@ export default function TrackScreen() {
             </Text>
             <Text style={styles.introLead}>
               Enter the phone number you used when placing your order to see its current status,
-              items and timeline.
+              updates, items and timeline.
             </Text>
           </View>
 
@@ -195,20 +298,34 @@ export default function TrackScreen() {
             />
           </View>
 
-          {phase === 'error' ? (
+          {error ? (
             <View style={styles.errorBanner}>
               <Ionicons name="alert-circle-outline" size={18} color={COLORS.danger} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
+          {phase === 'done' && trackedPhone ? (
+            <View style={styles.liveRow}>
+              <Ionicons name="sync-outline" size={13} color={COLORS.goldBright} />
+              <Text style={styles.liveText}>
+                Updates check automatically every {REFRESH_INTERVAL_MS / 1000}s
+                {lastChecked ? ` · last checked ${formatDateTime(lastChecked)}` : ''}
+              </Text>
+            </View>
+          ) : null}
+
           {phase === 'done' ? (
             orders.length === 0 ? (
-              <EmptyView icon="cube-outline" title={emptyMessage} hint="Check the number and try again." />
+              <EmptyView
+                icon="cube-outline"
+                title={emptyMessage}
+                hint="We keep checking while this screen is open."
+              />
             ) : (
               <View style={styles.results}>
                 <Text style={styles.resultsTitle}>
-                  {orders.length} order{orders.length === 1 ? '' : 's'} found
+                  {orders.length} order{orders.length === 1 ? '' : 's'} for {trackedPhone}
                 </Text>
                 {orders.map((order) => (
                   <OrderCard key={order.order_number} order={order} />
@@ -308,6 +425,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8,
+  },
+  liveText: {
+    color: COLORS.textMuted,
+    fontSize: 11.5,
+    flexShrink: 1,
+  },
+
   results: {
     gap: 12,
   },
@@ -396,6 +525,54 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 11.5,
     marginTop: 1,
+  },
+
+  updates: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 10,
+    gap: 7,
+  },
+  updatesHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  updatesTitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  updateCard: {
+    backgroundColor: COLORS.goldSoft,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    gap: 4,
+  },
+  updateText: {
+    color: COLORS.text,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  updateMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  updateAuthor: {
+    color: COLORS.goldBright,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  updateDate: {
+    color: COLORS.textMuted,
+    fontSize: 11,
   },
 
   items: {
