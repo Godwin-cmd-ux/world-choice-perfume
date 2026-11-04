@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CloudinaryService
 {
@@ -261,6 +262,203 @@ class CloudinaryService
     }
 
     /**
+     * Upload the shop's background clip.
+     *
+     * Cloudinary stores video under its own resource type, so the image
+     * endpoint the brand and news uploads use cannot take an mp4 — /video/upload
+     * is the only endpoint that will process it. The public id is timestamped
+     * so a replacement never collides with the clip it replaces, and it is
+     * returned alongside the URL because deleting the old asset later needs it.
+     *
+     * Returns ['url' => ..., 'public_id' => ...], or null with lastError() set.
+     *
+     * @return array{url: string, public_id: string}|null
+     */
+    public function uploadVideo(UploadedFile $file, string $folder = 'shop'): ?array
+    {
+        $this->lastError = null;
+
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        try {
+            $timestamp = now()->timestamp;
+            $publicId = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME) . '_' . $timestamp;
+
+            $signature = sha1($this->buildSignatureString([
+                'folder' => $folder,
+                'public_id' => $publicId,
+                'timestamp' => (string) $timestamp,
+            ]) . $this->apiSecret);
+
+            // A 4K clip takes Cloudinary a while to ingest; the default HTTP
+            // timeout would give up while the upload is still being processed.
+            $response = Http::timeout(300)
+                ->attach('file', file_get_contents($file->getPathname()), $file->getClientOriginalName())
+                ->post("https://api.cloudinary.com/v1_1/{$this->cloudName}/video/upload", [
+                    'api_key' => $this->apiKey,
+                    'timestamp' => $timestamp,
+                    'public_id' => $publicId,
+                    'folder' => $folder,
+                    'signature' => $signature,
+                ]);
+
+            if ($response->successful()) {
+                return [
+                    'url' => (string) $response->json('secure_url'),
+                    'public_id' => (string) $response->json('public_id'),
+                ];
+            }
+
+            $this->lastError = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));
+
+            return null;
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            report($e);
+
+            return null;
+        }
+    }
+
+    /**
+     * Delete an uploaded shop clip. Video lives under its own resource type,
+     * so the image destroy endpoint cannot reach it.
+     *
+     * "not found" counts as success: the caller wanted the asset gone, and
+     * refusing it would leave a URL the designer can never clear.
+     */
+    public function deleteVideo(string $publicId): bool
+    {
+        $this->lastError = null;
+
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
+        try {
+            $timestamp = now()->timestamp;
+
+            $signature = sha1($this->buildSignatureString([
+                'invalidate' => 'true',
+                'public_id' => $publicId,
+                'timestamp' => (string) $timestamp,
+            ]) . $this->apiSecret);
+
+            $response = Http::timeout(60)->post("https://api.cloudinary.com/v1_1/{$this->cloudName}/video/destroy", [
+                'public_id' => $publicId,
+                'api_key' => $this->apiKey,
+                'timestamp' => $timestamp,
+                'invalidate' => 'true',
+                'signature' => $signature,
+            ]);
+
+            if ($response->successful() && in_array($response->json('result'), ['ok', 'not found'], true)) {
+                return true;
+            }
+
+            $this->lastError = (string) ($response->json('error.message')
+                ?? $response->json('result')
+                ?? ('HTTP ' . $response->status()));
+
+            return false;
+        } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
+            report($e);
+
+            return false;
+        }
+    }
+
+    /**
+     * Delete the Cloudinary asset behind a stored URL, when there is one.
+     *
+     * Most tables keep only the secure URL, so the public id has to be read
+     * back out of it. URLs that do not belong to this account's Cloudinary
+     * uploads (the bundled shop clip, a hand-entered external link) return
+     * false and are left alone — this must never delete what the app does not
+     * own.
+     */
+    public function deleteByUrl(?string $url): bool
+    {
+        $publicId = $this->publicIdFromUrl($url);
+
+        if ($publicId === null) {
+            return false;
+        }
+
+        // Video and image live under different resource types, and each has
+        // its own destroy endpoint.
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $isVideo = str_contains($path, '/video/upload/');
+
+        $deleted = $isVideo ? $this->deleteVideo($publicId) : $this->delete($publicId);
+
+        if (! $deleted) {
+            Log::warning('Cloudinary asset could not be deleted', [
+                'url' => $url,
+                'public_id' => $publicId,
+                'error' => $this->lastError,
+            ]);
+        }
+
+        return $deleted;
+    }
+
+    /**
+     * The public id inside a Cloudinary delivery URL.
+     *
+     * https://res.cloudinary.com/<cloud>/image/upload/v1712345678/products/x_1.jpg
+     *   -> products/x_1
+     *
+     * The version segment (v<digits>) and the file extension are not part of
+     * the id, and neither are any transformation segments before the version.
+     * Returns null when the URL is empty or was not served from Cloudinary.
+     */
+    public function publicIdFromUrl(?string $url): ?string
+    {
+        if (! is_string($url) || trim($url) === '') {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! is_string($host) || ! str_contains(strtolower($host), 'res.cloudinary.com')) {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! is_string($path) || ! preg_match('#/(?:image|video)/upload/(.+)$#', $path, $matches)) {
+            return null;
+        }
+
+        $segments = array_values(array_filter(
+            explode('/', trim($matches[1], '/')),
+            fn ($segment) => $segment !== ''
+        ));
+
+        // Drop everything up to and including the version segment: what
+        // follows it is the folder/public-id path the asset was stored under.
+        foreach ($segments as $index => $segment) {
+            if (preg_match('/^v\d+$/', $segment)) {
+                $segments = array_slice($segments, $index + 1);
+                break;
+            }
+        }
+
+        if ($segments === []) {
+            return null;
+        }
+
+        $last = array_pop($segments);
+        $segments[] = pathinfo($last, PATHINFO_FILENAME);
+
+        // secure_url percent-encodes spaces and other characters, while the
+        // destroy endpoint expects the id as it was actually stored.
+        return rawurldecode(implode('/', $segments));
+    }
+
+    /**
      * Upload an image that already exists at a public URL into Cloudinary.
      *
      * This is intentionally a separate method from the file-based upload above.
@@ -332,6 +530,8 @@ class CloudinaryService
 
     public function delete(string $publicId): bool
     {
+        $this->lastError = null;
+
         try {
             $timestamp = now()->timestamp;
             $signature = $this->generateSignature($publicId, $timestamp);
@@ -343,9 +543,17 @@ class CloudinaryService
                 'signature' => $signature,
             ]);
 
-            return $response->successful();
+            if ($response->successful()) {
+                return true;
+            }
+
+            $this->lastError = (string) ($response->json('error.message') ?? $response->json('result') ?? ('HTTP ' . $response->status()));
+
+            return false;
         } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
             report($e);
+
             return false;
         }
     }

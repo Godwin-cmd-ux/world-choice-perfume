@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Services\CompanySettingService;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -138,6 +139,23 @@ class ProductController extends Controller
             ]);
         }
 
+        // The shop header clip belongs to the graphics designer, not the code:
+        // no row means the bundled clip, a URL means their upload, and an empty
+        // value means they removed the video altogether.
+        try {
+            $heroVideoUrl = CompanySettingService::get('shop_hero_video_url');
+        } catch (\Throwable $e) {
+            report($e);
+            $heroVideoUrl = null;
+        }
+
+        if ($heroVideoUrl === null) {
+            $heroVideoUrl = asset('videos/reef_33.mp4');
+        }
+
+        $heroVideoPath = strtolower((string) parse_url($heroVideoUrl, PHP_URL_PATH));
+        $heroVideoType = str_ends_with($heroVideoPath, '.webm') ? 'video/webm' : 'video/mp4';
+
         return view('customer.products.index', [
             ...compact('branches', 'products', 'selectedBranch', 'availableBrands'),
             // In-stock SIZES per branch so an Oil Fragrance card that is sold in
@@ -148,6 +166,8 @@ class ProductController extends Controller
             // A perfume stocked at more than one branch is listed per branch
             // instead of being given one number for the whole country.
             'branchCounts' => $branchCounts,
+            'heroVideoUrl' => $heroVideoUrl,
+            'heroVideoType' => $heroVideoType,
         ]);
     }
 

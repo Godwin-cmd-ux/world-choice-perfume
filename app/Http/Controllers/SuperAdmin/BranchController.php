@@ -159,6 +159,8 @@ class BranchController extends Controller
             abort(404);
         }
 
+        $previousPicture = $branch['profile_picture'] ?? null;
+
         // Access is keyed on the branch name, so no branch may be moved ONTO an
         // exception name. The branch that already holds one keeps it: its edit
         // form resubmits that name on every save, so refusing it here would make
@@ -178,7 +180,10 @@ class BranchController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             $cloudinaryService = new CloudinaryService;
-            $validated['profile_picture'] = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
+            $uploadedPicture = $cloudinaryService->upload($request->file('profile_picture'), 'branches');
+            if ($uploadedPicture) {
+                $validated['profile_picture'] = $uploadedPicture;
+            }
         }
 
         $validated['is_active'] = $request->boolean('is_active');
@@ -199,6 +204,11 @@ class BranchController extends Controller
         // used to re-read the branch after the Supabase write and match on the
         // name it had just been given, so a rename updated nothing.
         Branch::where('name', $currentName)->update($validated);
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($validated['profile_picture']) && $validated['profile_picture'] !== $previousPicture) {
+            (new CloudinaryService)->deleteByUrl($previousPicture);
+        }
 
         return redirect()->route('super-admin.branches.index')->with('success', 'Branch updated successfully.');
     }
@@ -259,13 +269,12 @@ class BranchController extends Controller
         // Read the staff accounts BEFORE the branch row goes. users.branch_id
         // is ON DELETE SET NULL, so once the branch is gone there is nothing
         // left tying these people to it and they could never be found again.
-        $staffIds = array_map(
-            fn ($u) => $u['id'],
-            $this->supabase->query('users', [
-                'select' => 'id',
-                'branch_id' => "eq.{$branchId}",
-            ])
-        );
+        $staffRows = $this->supabase->query('users', [
+            'select' => 'id,profile_picture',
+            'branch_id' => "eq.{$branchId}",
+        ]);
+        $staffIds = array_map(fn ($u) => $u['id'], $staffRows);
+        $staffPictures = array_map(fn ($u) => $u['profile_picture'] ?? null, $staffRows);
 
         // Stock transfers reference the branch ON DELETE RESTRICT, so deleting
         // the branch row while any exist would be rejected outright. Their
@@ -276,22 +285,45 @@ class BranchController extends Controller
         // Neither of these is declared anywhere in the project's SQL, so their
         // cascade behaviour cannot be known from here. Clear them explicitly
         // rather than risk rows left pointing at a branch that no longer exists.
+        $newsPictures = array_map(
+            fn ($p) => $p['image_url'] ?? null,
+            $this->supabase->query('news_posts', [
+                'select' => 'image_url',
+                'branch_id' => "eq.{$branchId}",
+            ])
+        );
+
         $this->supabase->delete('inquiries', ['branch_id' => "eq.{$branchId}"]);
         $this->supabase->delete('news_posts', ['branch_id' => "eq.{$branchId}"]);
+
+        // The posts are gone; release the pictures that belonged to them.
+        foreach ($newsPictures as $picture) {
+            (new CloudinaryService)->deleteByUrl($picture);
+        }
 
         // Everything else — branch_stock, stock_movements, bottle and oil
         // stock, branch_stock_varieties, customers, sales, orders, expenses,
         // cashier accounts and discrepancies — cascades from this one row.
-        if (! $this->supabase->delete('branches', ['id' => $branchId])) {
+        $deleted = $this->supabase->delete('branches', ['id' => $branchId]);
+
+        if (! $deleted) {
             return redirect()->route('super-admin.branches.index')
                 ->with('error', 'The branch could not be deleted, so nothing was removed.');
         }
+
+        // The branch row is gone, so its picture no longer has an owner.
+        (new CloudinaryService)->deleteByUrl($branch['profile_picture'] ?? null);
 
         $stuckStaff = [];
         foreach ($staffIds as $staffId) {
             if (! $this->supabase->delete('users', ['id' => $staffId])) {
                 $stuckStaff[] = $staffId;
             }
+        }
+
+        // Staff accounts went with the branch; their photos should too.
+        foreach ($staffPictures as $picture) {
+            (new CloudinaryService)->deleteByUrl($picture);
         }
 
         // The local mirror, matched on the name the row still has.

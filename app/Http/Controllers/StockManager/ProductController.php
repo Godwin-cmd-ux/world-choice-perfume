@@ -286,6 +286,9 @@ class ProductController extends Controller
         $productId = $image['product_id'];
         $this->supabase->delete('product_images', ['id' => $imageId]);
 
+        // The row is gone; the file behind it must not linger in Cloudinary.
+        (new CloudinaryService)->deleteByUrl($image['image_url'] ?? null);
+
         return redirect()->route('stock-manager.products.edit', $productId)->with('success', 'Image removed.');
     }
 }

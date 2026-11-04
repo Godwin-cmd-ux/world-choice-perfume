@@ -307,6 +307,9 @@ class AdminStaffController extends Controller
             ], 502);
         }
 
+        // The account is gone, so its picture must not keep using Cloudinary space.
+        (new \App\Services\CloudinaryService)->deleteByUrl($user['profile_picture'] ?? null);
+
         // The local mirror: without this the account keeps a row in this app's
         // own users table, so the person is not actually gone from the system.
         try {

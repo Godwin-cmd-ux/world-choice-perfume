@@ -206,6 +206,9 @@ class GdNewsController extends Controller
 
         $this->supabase->delete('news_posts', ['id' => $postId]);
 
+        // The post is gone, so its picture must not keep using Cloudinary space.
+        (new CloudinaryService)->deleteByUrl($post['image_url'] ?? null);
+
         (new AuditService)->recordCriticalAction(
             'content_deleted',
             'news_post_deleted',

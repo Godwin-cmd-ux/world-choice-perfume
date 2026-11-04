@@ -269,6 +269,9 @@ class SmProductController extends SmBaseController
 
         $this->supabase->delete('product_images', ['id' => $imageId]);
 
+        // The row is gone; the file behind it must not linger in Cloudinary.
+        (new CloudinaryService)->deleteByUrl($image['image_url'] ?? null);
+
         return response()->json(['message' => 'Image removed.']);
     }
 }

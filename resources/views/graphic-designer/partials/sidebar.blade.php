@@ -25,6 +25,11 @@
             <i class="fas fa-crown w-5 text-center"></i>
             <span>Brands</span>
         </a>
+        <a href="{{ route('graphic-designer.shop-video.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('graphic-designer.shop-video.*') ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+            <i class="fas fa-film w-5 text-center"></i>
+            <span>Shop Video</span>
+        </a>
 
         <div class="pt-3 mt-3 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Tools</p>

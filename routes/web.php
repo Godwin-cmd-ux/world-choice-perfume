@@ -518,6 +518,12 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::put('/brands/{brand}', [$gbc, 'update'])->name('brands.update');
         Route::delete('/brands/{brand}', [$gbc, 'destroy'])->name('brands.destroy');
 
+        // Shop header background video (public shop page)
+        $gsv = App\Http\Controllers\GraphicDesigner\ShopVideoController::class;
+        Route::get('/shop-video', [$gsv, 'index'])->name('shop-video.index');
+        Route::post('/shop-video', [$gsv, 'store'])->name('shop-video.store');
+        Route::delete('/shop-video', [$gsv, 'destroy'])->name('shop-video.destroy');
+
         // QR Code
         Route::get('/qr-code', [App\Http\Controllers\GraphicDesigner\QrCodeController::class, 'qrCode'])->name('qr-code');
     });

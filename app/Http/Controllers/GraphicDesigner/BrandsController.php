@@ -126,11 +126,21 @@ class BrandsController extends Controller
             'updated_at' => now()->toIso8601String(),
         ];
 
+        $previousLogo = $brand['logo_url'] ?? null;
+
         if ($request->hasFile('logo')) {
-            $data['logo_url'] = (new CloudinaryService)->upload($request->file('logo'), 'brands');
+            $uploadedLogo = (new CloudinaryService)->upload($request->file('logo'), 'brands');
+            if ($uploadedLogo) {
+                $data['logo_url'] = $uploadedLogo;
+            }
         }
 
         $this->supabase->update('brands', $data, ['id' => $brandId]);
+
+        // Replacing the logo must not leave the previous file in Cloudinary.
+        if (! empty($data['logo_url']) && $data['logo_url'] !== $previousLogo) {
+            (new CloudinaryService)->deleteByUrl($previousLogo);
+        }
 
         // Keep product brand strings in sync when the brand is renamed.
         if ($validated['name'] !== $brand['name']) {
@@ -159,6 +169,9 @@ class BrandsController extends Controller
         }
 
         $this->supabase->delete('brands', ['id' => $brandId]);
+
+        // The brand is gone, so its logo must not keep using Cloudinary space.
+        (new CloudinaryService)->deleteByUrl($brand['logo_url'] ?? null);
 
         return redirect()->route('graphic-designer.brands.index')
             ->with('success', 'Brand deleted.');

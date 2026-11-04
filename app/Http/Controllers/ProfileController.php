@@ -42,6 +42,7 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $user = auth()->user();
+        $previousPicture = $user->profile_picture;
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -89,6 +90,11 @@ class ProfileController extends Controller
 
         // Refresh auth session so sidebar shows updated photo immediately
         auth()->login($user->fresh());
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($validated['profile_picture']) && $validated['profile_picture'] !== $previousPicture) {
+            (new CloudinaryService)->deleteByUrl($previousPicture);
+        }
 
         return back()->with('success', 'Profile updated successfully.');
     }

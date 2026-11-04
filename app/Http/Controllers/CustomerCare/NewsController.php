@@ -185,12 +185,22 @@ class NewsController extends Controller
             'updated_at' => now()->toIso8601String(),
         ];
 
+        $previousImage = $this->supabase->find('news_posts', $postId, 'image_url')['image_url'] ?? null;
+
         if ($request->hasFile('image')) {
             $cloudinaryService = new CloudinaryService;
-            $data['image_url'] = $cloudinaryService->upload($request->file('image'), 'news');
+            $uploadedImage = $cloudinaryService->upload($request->file('image'), 'news');
+            if ($uploadedImage) {
+                $data['image_url'] = $uploadedImage;
+            }
         }
 
         $this->supabase->update('news_posts', $data, ['id' => $postId]);
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($data['image_url']) && $data['image_url'] !== $previousImage) {
+            (new CloudinaryService)->deleteByUrl($previousImage);
+        }
 
         return redirect()->route('customer-care.news.index')
             ->with('success', 'Post updated successfully.');
@@ -255,6 +265,9 @@ class NewsController extends Controller
         $post = $this->supabase->find('news_posts', $postId);
 
         $this->supabase->delete('news_posts', ['id' => $postId]);
+
+        // The post is gone, so its picture must not keep using Cloudinary space.
+        (new CloudinaryService)->deleteByUrl($post['image_url'] ?? null);
 
         (new AuditService)->recordCriticalAction(
             'content_deleted',

@@ -70,6 +70,10 @@ class AdminSettingsController extends Controller
         $sessionUser = $request->attributes->get('staff_user');
         $uid = $sessionUser['id'] ?? null;
 
+        $previousPicture = $uid
+            ? ($this->supabase->find('users', $uid, 'profile_picture')['profile_picture'] ?? null)
+            : null;
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -101,6 +105,11 @@ class AdminSettingsController extends Controller
         $validated['updated_at'] = now()->toIso8601String();
 
         $this->supabase->update('users', $validated, ['id' => $uid]);
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($validated['profile_picture']) && $validated['profile_picture'] !== $previousPicture) {
+            (new CloudinaryService)->deleteByUrl($previousPicture);
+        }
 
         try {
             \App\Models\User::where('email', $sessionUser['email'] ?? '')->update($validated);

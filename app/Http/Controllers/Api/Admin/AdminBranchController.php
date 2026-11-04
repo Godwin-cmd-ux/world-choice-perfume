@@ -161,6 +161,8 @@ class AdminBranchController extends Controller
             return response()->json(['message' => 'Branch not found.'], 404);
         }
 
+        $previousPicture = $branch['profile_picture'] ?? null;
+
         // Same exception-name rule as the website: a branch may keep (and
         // resubmit) the name it already holds, but may not move onto one.
         $attempted = (string) $validated['name'];
@@ -176,7 +178,10 @@ class AdminBranchController extends Controller
         }
 
         if ($request->hasFile('profile_picture')) {
-            $validated['profile_picture'] = (new CloudinaryService)->upload($request->file('profile_picture'), 'branches');
+            $uploadedPicture = (new CloudinaryService)->upload($request->file('profile_picture'), 'branches');
+            if ($uploadedPicture) {
+                $validated['profile_picture'] = $uploadedPicture;
+            }
         }
 
         $validated['is_active'] = $request->boolean('is_active');
@@ -190,6 +195,11 @@ class AdminBranchController extends Controller
 
         $this->supabase->update('branches', $validated, ['id' => $branchId]);
         Branch::where('name', $currentName)->update($validated);
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($validated['profile_picture']) && $validated['profile_picture'] !== $previousPicture) {
+            (new CloudinaryService)->deleteByUrl($previousPicture);
+        }
 
         return response()->json(['message' => 'Branch updated successfully.']);
     }
@@ -241,18 +251,30 @@ class AdminBranchController extends Controller
             ], 422);
         }
 
-        $staffIds = array_map(
-            fn ($u) => $u['id'],
-            $this->supabase->query('users', [
-                'select' => 'id',
+        $staffRows = $this->supabase->query('users', [
+            'select' => 'id,profile_picture',
+            'branch_id' => "eq.{$branchId}",
+        ]);
+        $staffIds = array_map(fn ($u) => $u['id'], $staffRows);
+        $staffPictures = array_map(fn ($u) => $u['profile_picture'] ?? null, $staffRows);
+
+        $this->supabase->delete('stock_transfers', ['from_branch_id' => "eq.{$branchId}"]);
+        $this->supabase->delete('stock_transfers', ['to_branch_id' => "eq.{$branchId}"]);
+        $newsPictures = array_map(
+            fn ($p) => $p['image_url'] ?? null,
+            $this->supabase->query('news_posts', [
+                'select' => 'image_url',
                 'branch_id' => "eq.{$branchId}",
             ])
         );
 
-        $this->supabase->delete('stock_transfers', ['from_branch_id' => "eq.{$branchId}"]);
-        $this->supabase->delete('stock_transfers', ['to_branch_id' => "eq.{$branchId}"]);
         $this->supabase->delete('inquiries', ['branch_id' => "eq.{$branchId}"]);
         $this->supabase->delete('news_posts', ['branch_id' => "eq.{$branchId}"]);
+
+        // The posts are gone; release the pictures that belonged to them.
+        foreach ($newsPictures as $picture) {
+            (new CloudinaryService)->deleteByUrl($picture);
+        }
 
         if (! $this->supabase->delete('branches', ['id' => $branchId])) {
             return response()->json([
@@ -260,11 +282,19 @@ class AdminBranchController extends Controller
             ], 500);
         }
 
+        // The branch row is gone, so its picture no longer has an owner.
+        (new CloudinaryService)->deleteByUrl($branch['profile_picture'] ?? null);
+
         $stuckStaff = [];
         foreach ($staffIds as $staffId) {
             if (! $this->supabase->delete('users', ['id' => $staffId])) {
                 $stuckStaff[] = $staffId;
             }
+        }
+
+        // Staff accounts went with the branch; their photos should too.
+        foreach ($staffPictures as $picture) {
+            (new CloudinaryService)->deleteByUrl($picture);
         }
 
         Branch::where('name', $branch['name'])->delete();

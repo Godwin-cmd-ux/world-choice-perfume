@@ -4,19 +4,22 @@
 
 @section('content')
 <!-- Page Header -->
-{{-- The clip (reef_33.mp4) is 4K 16:9, and the header is sized to that shape so
-     the video lands at its natural proportions instead of being zoomed into a
-     short banner. 56.25vw is exactly 16:9 of the viewport width; min() with
-     85vh caps it on short/ultra-wide screens so the products stay reachable.
-     min-height (not a fixed height) lets the heading and search bar grow the
-     box on phones instead of clipping them. A fixed aspect-ratio + max-height
-     pair was avoided on purpose: Chrome then shrinks the width too, leaving a
-     gap to the right of the header. --}}
+{{-- The clip is chosen by the graphics designer on their Shop Video page, so
+     nothing here names a file: a URL from company_settings plays, and an empty
+     value leaves just the dark background. The header is sized to the clip's
+     4K 16:9 shape so the video lands at its natural proportions instead of
+     being zoomed into a short banner. 56.25vw is exactly 16:9 of the viewport
+     width; min() with 85vh caps it on short/ultra-wide screens so the products
+     stay reachable. min-height (not a fixed height) lets the heading and search
+     bar grow the box on phones instead of clipping them. A fixed aspect-ratio
+     + max-height pair was avoided on purpose: Chrome then shrinks the width
+     too, leaving a gap to the right of the header. --}}
 <section class="relative overflow-hidden min-h-[min(56.25vw,85vh)] pt-28 pb-20 bg-dark-900/50 border-b border-dark-700">
-    <!-- Background video (reef_33.mp4) -->
-    <video class="absolute inset-0 w-full h-full object-cover object-center" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
-        <source src="{{ asset('videos/reef_33.mp4') }}" type="video/mp4">
-    </video>
+    @if($heroVideoUrl)
+        <video class="absolute inset-0 w-full h-full object-cover object-center" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+            <source src="{{ $heroVideoUrl }}" type="{{ $heroVideoType }}">
+        </video>
+    @endif
     <!-- Readability overlay so the heading and search stay legible over the video -->
     <div class="absolute inset-0 bg-gradient-to-r from-dark-950/95 via-dark-950/80 to-dark-950/55"></div>
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

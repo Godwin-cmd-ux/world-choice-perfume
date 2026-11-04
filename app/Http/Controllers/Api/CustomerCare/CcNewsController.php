@@ -203,10 +203,18 @@ class CcNewsController extends CcBaseController
         ];
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = (new CloudinaryService)->upload($request->file('image'), 'news');
+            $uploadedImage = (new CloudinaryService)->upload($request->file('image'), 'news');
+            if ($uploadedImage) {
+                $data['image_url'] = $uploadedImage;
+            }
         }
 
         $this->supabase->update('news_posts', $data, ['id' => $postId]);
+
+        // The replaced picture is no longer referenced anywhere.
+        if (! empty($data['image_url']) && $data['image_url'] !== ($post['image_url'] ?? null)) {
+            (new CloudinaryService)->deleteByUrl($post['image_url'] ?? null);
+        }
 
         return response()->json(['message' => 'Post updated successfully.']);
     }
@@ -274,6 +282,9 @@ class CcNewsController extends CcBaseController
         $post = $this->supabase->find('news_posts', $postId);
 
         $this->supabase->delete('news_posts', ['id' => $postId]);
+
+        // The post is gone, so its picture must not keep using Cloudinary space.
+        (new CloudinaryService)->deleteByUrl($post['image_url'] ?? null);
 
         (new AuditService)->recordCriticalAction(
             'content_deleted',
