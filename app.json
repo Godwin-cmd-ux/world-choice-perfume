@@ -4,6 +4,9 @@
       "eas": {
         "projectId": "57f2a202-28c6-4e59-a451-5b04c28235f8"
       }
+    },
+    "android": {
+      "package": "com.franklin19.world_choice_perfumes"
     }
   }
 }
