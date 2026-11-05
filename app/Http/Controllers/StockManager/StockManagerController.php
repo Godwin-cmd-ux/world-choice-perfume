@@ -459,64 +459,102 @@ class StockManagerController extends Controller
         ]);
     }
 
+    /**
+     * Record stock in for one product.
+     *
+     * The form can carry several item lines for the same product (e.g. 30ml
+     * x 5 and 50ml x 3). Every line gets its own movement, bottle deduction
+     * and variety bucket; the aggregate branch_stock row takes the total.
+     */
     public function storeProductStockEntry(Request $request)
-    {            $validated = $request->validate([
-                'product_id' => 'required',
-                'quantity' => 'required|integer|min:1',
-                'selling_price' => 'required|numeric|min:0',
-                'variety_price' => 'nullable|numeric|min:0',
-                'category' => 'required|in:Oil Fragrance,Brand Perfume',
-                'bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
-                'bottle_variant' => 'nullable|string|max:32',
-                'date_received' => 'required|date',
-            ]);
+    {
+        $validated = $request->validate([
+            'product_id' => 'required',
+            'category' => 'required|in:Oil Fragrance,Brand Perfume',
+            'date_received' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.selling_price' => 'required|numeric|min:0',
+            'items.*.variety_price' => 'nullable|numeric|min:0',
+            'items.*.bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
+            'items.*.bottle_variant' => 'nullable|string|max:32',
+        ]);
 
-            $branchId = auth()->user()->branch_id;
-            $category = $validated['category'];
-            $bottleVolume = $validated['bottle_volume'] ?? null;
+        $branchId = auth()->user()->branch_id;
+        $category = $validated['category'];
 
-            // Empty bottles always come from this branch's own bottle stock.
-            $bottleSourceBranchId = $this->bottleSourceBranchId($branchId);
+        // Empty bottles always come from this branch's own bottle stock.
+        $bottleSourceBranchId = $this->bottleSourceBranchId($branchId);
 
-        // Oil fragrance entries consume empty bottles: require the volume and
-        // make sure enough of that volume is in stock before recording the entry.
-        if ($category === 'Oil Fragrance') {
-            if (empty($bottleVolume)) {
-                return back()->withErrors(['bottle_volume' => 'Bottle volume is required for Oil Fragrance entries.'])->withInput();
-            }
+        $variantStock = $category === 'Oil Fragrance'
+            ? $this->bottles->variantStock($bottleSourceBranchId)
+            : [];
 
-            $bottleVolume = (int) $bottleVolume;
+        // Resolve every line before writing anything, so a line that cannot be
+        // bottled leaves the whole entry unrecorded instead of half saved.
+        $lines = [];
+        $bottleDemand = [];
 
-            // 30/50/100ml bottles carry box/logo/color details — the specific
-            // variety must be chosen so the exact bucket is deducted.
+        foreach (array_values($validated['items']) as $index => $item) {
+            $quantity = (int) $item['quantity'];
+            $bottleVolume = isset($item['bottle_volume']) && $item['bottle_volume'] !== ''
+                ? (int) $item['bottle_volume']
+                : null;
             $variant = null;
-            if ($this->bottles->volumeHasDetails($bottleVolume)) {
-                $variant = $validated['bottle_variant'] ?? '';
-                if ($variant === '') {
-                    return back()->withErrors(['bottle_variant' => 'Please choose the bottle variety (box / logo / color) for this volume.'])->withInput();
+
+            // Oil fragrance lines consume empty bottles: require the volume and
+            // make sure enough of that volume is in stock before recording.
+            if ($category === 'Oil Fragrance') {
+                if (empty($bottleVolume)) {
+                    return back()->withErrors(['items.' . $index . '.bottle_volume' => 'Bottle volume is required for Oil Fragrance entries.'])->withInput();
                 }
-            } else {
-                $variant = 'plain';
+
+                // 30/50/100ml bottles carry box/logo/color details — the specific
+                // variety must be chosen so the exact bucket is deducted.
+                if ($this->bottles->volumeHasDetails($bottleVolume)) {
+                    $variant = (string) ($item['bottle_variant'] ?? '');
+                    if ($variant === '') {
+                        return back()->withErrors(['items.' . $index . '.bottle_variant' => 'Please choose the bottle variety (box / logo / color) for this volume.'])->withInput();
+                    }
+                } else {
+                    $variant = 'plain';
+                }
+
+                // Two lines can bottle the same volume and variety; their demand
+                // adds up against the single bucket they both draw from.
+                $bucketKey = $bottleVolume . '|' . $variant;
+                $bottleDemand[$bucketKey] = ($bottleDemand[$bucketKey] ?? 0) + $quantity;
+
+                $available = $variantStock[$bottleVolume][$variant] ?? 0;
+                if ($available < $bottleDemand[$bucketKey]) {
+                    return back()->withErrors([
+                        'items.' . $index . '.bottle_variant' => "Insufficient bottle stock for {$bottleVolume}ml ({$this->bottles->variantLabel($variant, $bottleVolume)}). Available: {$available}.",
+                    ])->withInput();
+                }
             }
 
-            $variantStock = $this->bottles->variantStock($bottleSourceBranchId);
-            $available = $variantStock[$bottleVolume][$variant] ?? 0;
-
-            if ($available < $validated['quantity']) {
-                return back()->withErrors([
-                    'bottle_variant' => "Insufficient bottle stock for {$bottleVolume}ml ({$this->bottles->variantLabel($variant, $bottleVolume)}). Available: {$available}.",
-                ])->withInput();
+            // Per-variety pricing: an oil fragrance bottling carries its own
+            // selling price (50ml ≠ 30ml). When variety_price is filled it wins;
+            // otherwise the line keeps the price typed on it.
+            $varietyPrice = (float) ($item['variety_price'] ?? 0);
+            $effectivePrice = (float) $item['selling_price'];
+            if ($category === 'Oil Fragrance' && $bottleVolume && $varietyPrice > 0) {
+                $effectivePrice = $varietyPrice;
             }
+
+            $lines[] = [
+                'quantity' => $quantity,
+                'bottle_volume' => $bottleVolume,
+                'variant' => $variant,
+                'selling_price' => $effectivePrice,
+            ];
         }
 
-        // Per-variety pricing: an oil fragrance bottling carries its own
-        // selling price (50ml ≠ 30ml). When variety_price is filled it wins;
-        // otherwise the variety inherits the product's selling price.
-        $varietyPrice = (float) ($validated['variety_price'] ?? 0);
-        $effectivePrice = (float) $validated['selling_price'];
-        if ($category === 'Oil Fragrance' && $bottleVolume && $varietyPrice > 0) {
-            $effectivePrice = $varietyPrice;
-        }
+        $totalQuantity = array_sum(array_column($lines, 'quantity'));
+
+        // The aggregate row holds a single price; the last line wins, exactly as
+        // recording the lines one after another would have left it.
+        $aggregatePrice = end($lines)['selling_price'];
 
         $existing = $this->supabase->findOne('branch_stock', [
             'branch_id' => $branchId,
@@ -524,79 +562,82 @@ class StockManagerController extends Controller
         ]);
 
         if ($existing) {
-            $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
+            $newQty = ($existing['quantity'] ?? 0) + $totalQuantity;
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
-                'selling_price' => $effectivePrice,                    'category' => $category,
-                    'date_received' => $validated['date_received'],
-                    'entered_by' => $this->performingUserId(),
-                    'updated_at' => now()->toIso8601String(),
-                ], ['id' => $existing['id']]);
+                'selling_price' => $aggregatePrice,
+                'category' => $category,
+                'date_received' => $validated['date_received'],
+                'entered_by' => $this->performingUserId(),
+                'updated_at' => now()->toIso8601String(),
+            ], ['id' => $existing['id']]);
 
-            if ((float) ($existing['selling_price'] ?? 0) !== (float) $effectivePrice) {
+            if ((float) ($existing['selling_price'] ?? 0) !== (float) $aggregatePrice) {
                 (new \App\Services\AuditService())->recordCriticalAction(
                     'price_customization',
                     'price_change_stock_in',
                     'Price Changed',
-                    "Selling price changed for product #{$validated['product_id']} during stock-in: " . number_format((float) ($existing['selling_price'] ?? 0)) . ' → ' . number_format((float) $effectivePrice) . ' TZS.',
-                    ['branch_stock_id' => $existing['id'], 'product_id' => $validated['product_id'], 'old_price' => $existing['selling_price'] ?? 0, 'new_price' => $effectivePrice],
+                    "Selling price changed for product #{$validated['product_id']} during stock-in: " . number_format((float) ($existing['selling_price'] ?? 0)) . ' → ' . number_format((float) $aggregatePrice) . ' TZS.',
+                    ['branch_stock_id' => $existing['id'], 'product_id' => $validated['product_id'], 'old_price' => $existing['selling_price'] ?? 0, 'new_price' => $aggregatePrice],
                     'branch_stock',
                     (string) $existing['id'],
                     ['selling_price' => $existing['selling_price'] ?? 0],
-                    ['selling_price' => $effectivePrice]
+                    ['selling_price' => $aggregatePrice]
                 );
             }
-            } else {
-                $this->supabase->insert('branch_stock', [
-                    'branch_id' => $branchId,
-                    'product_id' => $validated['product_id'],
-                    'quantity' => $validated['quantity'],
-                    'selling_price' => $effectivePrice,
-                    'category' => $category,
-                    'date_received' => $validated['date_received'],
-                    'entered_by' => $this->performingUserId(),
-                    'created_at' => now()->toIso8601String(),
-                    'updated_at' => now()->toIso8601String(),
-                ]);
+        } else {
+            $this->supabase->insert('branch_stock', [
+                'branch_id' => $branchId,
+                'product_id' => $validated['product_id'],
+                'quantity' => $totalQuantity,
+                'selling_price' => $aggregatePrice,
+                'category' => $category,
+                'date_received' => $validated['date_received'],
+                'entered_by' => $this->performingUserId(),
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        // One movement, bottle deduction and variety bucket per line, so each
+        // volume keeps its own trace.
+        foreach ($lines as $line) {
+            $this->supabase->insert('stock_movements', [
+                'branch_id' => $branchId,
+                'product_id' => $validated['product_id'],
+                'type' => 'entry',
+                'quantity' => $line['quantity'],
+                'unit_price' => $line['selling_price'],
+                'performed_by' => $this->performingUserId(),
+                'notes' => 'Stock entry',
+                'created_at' => now()->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
+            ]);
+
+            // Auto-outstock empty bottles used to bottle this line, from the
+            // exact variety bucket chosen on the form.
+            if ($category === 'Oil Fragrance' && $line['bottle_volume']) {
+                $this->bottles->deduct(
+                    $bottleSourceBranchId,
+                    (int) $line['bottle_volume'],
+                    (int) $line['quantity'],
+                    'Auto outstock for oil fragrance stock entry',
+                    (string) $this->performingUserId(),
+                    (string) $line['variant']
+                );
+
+                // Record the per-product variety breakdown so transfers and stock
+                // outs know how many units of THIS product exist in this exact
+                // bottling (e.g. "Test perfume 50ml With Box · With Logo · Yellow").
+                $this->addProductVarietyStock(
+                    $branchId,
+                    (int) $validated['product_id'],
+                    (int) $line['bottle_volume'],
+                    (string) $line['variant'],
+                    (int) $line['quantity'],
+                    $line['selling_price']
+                );
             }
-
-        $this->supabase->insert('stock_movements', [
-            'branch_id' => $branchId,
-            'product_id' => $validated['product_id'],
-            'type' => 'entry',
-            'quantity' => $validated['quantity'],
-            'unit_price' => $effectivePrice,
-            'performed_by' => $this->performingUserId(),
-            'notes' => 'Stock entry',
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        // Auto-outstock empty bottles used to bottle the oil fragrance entry,
-        // from the exact variety bucket chosen on the form. The deduction and
-        // its availability check are against this branch's own bottle stock.
-        if ($category === 'Oil Fragrance' && $bottleVolume) {
-            $bottleReason = 'Auto outstock for oil fragrance stock entry';
-            $this->bottles->deduct(
-                $bottleSourceBranchId,
-                $bottleVolume,
-                (int) $validated['quantity'],
-                $bottleReason,
-                (string) $this->performingUserId(),
-                $variant
-            );
-
-            // Record the per-product variety breakdown so transfers and stock
-            // outs know how many units of THIS product exist in this exact
-            // bottling (e.g. "Test perfume 50ml With Box · With Logo · Yellow").
-            $this->addProductVarietyStock(
-                $branchId,
-                (int) $validated['product_id'],
-                (int) $bottleVolume,
-                (string) $variant,
-                (int) $validated['quantity'],
-                $effectivePrice
-            );
         }
 
         return redirect()->route('stock-manager.product-stock')->with('success', 'Stock entry recorded successfully.');

@@ -8,6 +8,16 @@
         <form method="POST" action="{{ route('stock-manager.product-stock-entry.store') }}">
             @csrf
 
+            @if ($errors->any())
+                <div class="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200">
+                    <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                 <select name="category" id="category-select" onchange="onCategoryChange()"
@@ -21,9 +31,6 @@
                 <p class="text-[11px] text-gray-400 mt-1">
                     <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products will be listed below.
                 </p>
-                @error('category')
-                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                @enderror
             </div>
 
             <div class="mb-4">
@@ -45,67 +52,32 @@
                 </select>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date Received *</label>
+                <input type="date" name="date_received" required value="{{ old('date_received', date('Y-m-d')) }}"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            </div>
+
+            <div class="flex items-start justify-between mb-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
-                    <input type="number" name="quantity" required min="1"
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <label class="block text-sm font-medium text-gray-700">Item Lines *</label>
+                    <p class="text-[11px] text-gray-400">Record the same product in another volume or quantity — one line per volume.</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date Received *</label>
-                    <input type="date" name="date_received" required value="{{ date('Y-m-d') }}"
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                </div>
+                <button type="button" onclick="addItemLine()"
+                    class="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap">
+                    <i class="fas fa-plus mr-1"></i>Add Item Line
+                </button>
             </div>
 
-            <div id="bottle-volume-field" class="mb-6 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Volume (ml) *</label>
-                <select name="bottle_volume" id="bottle_volume"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    <option value="">Select Bottle Volume</option>
-                    <option value="6" {{ old('bottle_volume') == '6' ? 'selected' : '' }}>6ml</option>
-                    <option value="12" {{ old('bottle_volume') == '12' ? 'selected' : '' }}>12ml</option>
-                    <option value="30" {{ old('bottle_volume') == '30' ? 'selected' : '' }}>30ml</option>
-                    <option value="50" {{ old('bottle_volume') == '50' ? 'selected' : '' }}>50ml</option>
-                    <option value="100" {{ old('bottle_volume') == '100' ? 'selected' : '' }}>100ml</option>
-                </select>
-                <p class="text-[11px] text-gray-400 mt-1">
-                    <i class="fas fa-info-circle mr-1"></i>Selected volume bottles will be auto-outstocked by the quantity you enter above.
+            @if(isset($bottleVariantsBranchName))
+                <p class="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
+                    <i class="fas fa-truck mr-1"></i>Bottle availability comes from the <strong>{{ $bottleVariantsBranchName }}</strong> bottle stock — every oil fragrance line is out-stocked from that stock.
                 </p>
-            </div>
+            @endif
 
-            <div id="bottle-variant-field" class="mb-6 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Variety *</label>
-                <select name="bottle_variant" id="bottle_variant" data-preselect="{{ old('bottle_variant') }}"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    <option value="">Select Variety</option>
-                </select>
-                <p class="text-[11px] text-gray-400 mt-1">
-                    <i class="fas fa-info-circle mr-1"></i>The quantity is deducted from the exact variety you pick (box / logo / color).
-                </p>
-                @if(isset($bottleVariantsBranchName))
-                    <p class="mt-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
-                        <i class="fas fa-truck mr-1"></i>Bottle availability shown here is from the <strong>{{ $bottleVariantsBranchName }}</strong> bottle stock — this entry will be out-stocked from that stock.
-                    </p>
-                @endif
-                @error('bottle_variant')
-                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
+            <div id="item-lines"></div>
 
-            {{-- Price is asked last on purpose: for oil fragrance it is the
-                 price OF the volume and variety chosen above, not a price for
-                 the product on its own. --}}
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (TZS) *</label>
-                <input type="number" name="selling_price" id="selling_price" required min="0" step="0.01"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                <p id="variety-price-hint" class="hidden text-[11px] text-emerald-700 mt-1">
-                    <i class="fas fa-tag mr-1"></i>This is the selling price of the <strong>specific volume and variety</strong> picked above (e.g. 50ml sells differently from 30ml).
-                </p>
-            </div>
-
-            <div class="flex gap-3">
+            <div class="flex gap-3 mt-6">
                 <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
                     <i class="fas fa-save mr-1"></i> Save Entry
                 </button>
@@ -117,10 +89,70 @@
     </div>
 </div>
 
+{{-- One item line: the quantity, its bottle volume/variety and its own price.
+     Cloned for every "Add Item Line" and for each line restored after a
+     validation error. --}}
+<template id="item-line-template">
+    <div class="item-line border border-gray-200 rounded-lg p-4 mb-4" data-item-line>
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Item Line <span data-line-number>1</span></span>
+            <button type="button" class="remove-item-line hidden text-xs font-medium text-red-600 hover:text-red-700" onclick="removeItemLine(this)">
+                <i class="fas fa-times mr-1"></i>Remove
+            </button>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+            <input type="number" name="items[__INDEX__][quantity]" data-field="quantity" required min="1"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+        </div>
+
+        <div class="bottle-volume-field mb-4 hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Volume (ml) *</label>
+            <select name="items[__INDEX__][bottle_volume]" data-field="bottle_volume"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">Select Bottle Volume</option>
+                <option value="6">6ml</option>
+                <option value="12">12ml</option>
+                <option value="30">30ml</option>
+                <option value="50">50ml</option>
+                <option value="100">100ml</option>
+            </select>
+            <p class="text-[11px] text-gray-400 mt-1">
+                <i class="fas fa-info-circle mr-1"></i>Selected volume bottles will be auto-outstocked by the quantity entered on this line.
+            </p>
+        </div>
+
+        <div class="bottle-variant-field mb-4 hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Variety *</label>
+            <select name="items[__INDEX__][bottle_variant]" data-field="bottle_variant"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">Select Variety</option>
+            </select>
+            <p class="text-[11px] text-gray-400 mt-1">
+                <i class="fas fa-info-circle mr-1"></i>The quantity is deducted from the exact variety picked (box / logo / color).
+            </p>
+        </div>
+
+        {{-- Price is asked last on purpose: for oil fragrance it is the
+             price OF the volume and variety chosen on this line, not a price
+             for the product on its own. --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (TZS) *</label>
+            <input type="number" name="items[__INDEX__][selling_price]" data-field="selling_price" required min="0" step="0.01"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            <p class="variety-price-hint hidden text-[11px] text-emerald-700 mt-1">
+                <i class="fas fa-tag mr-1"></i>This is the selling price of the <strong>specific volume and variety</strong> picked on this line (e.g. 50ml sells differently from 30ml).
+            </p>
+        </div>
+    </div>
+</template>
+
 @push('scripts')
 <script>
 const allProducts = @json($products ?? []);
 const bottleVariants = @json($bottleVariants ?? []);
+const oldItems = @json(array_values((array) old('items', [])));
 const VARIANT_LABELS = {
     box_logo_yellow: 'With Box · With Logo · Yellow',
     box_logo_black: 'With Box · With Logo · Black',
@@ -130,16 +162,25 @@ const VARIANT_LABELS = {
     plain: 'Plain (no details)'
 };
 const DETAIL_VOLUMES = ['30', '50', '100'];
+const VARIANT_KEYS = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+
+let lineCounter = 0;
+
+function currentCategory() {
+    return document.getElementById('category-select').value;
+}
 
 function onCategoryChange() {
     const productSelect = document.getElementById('product_id');
     productSelect.value = '';
     filterProducts();
-    toggleBottleVolume();
+    document.querySelectorAll('#item-lines [data-item-line]').forEach(function (line) {
+        toggleBottleVolume(line);
+    });
 }
 
 function filterProducts() {
-    const category = document.getElementById('category-select').value;
+    const category = currentCategory();
     const productSelect = document.getElementById('product_id');
     productSelect.innerHTML = '';
 
@@ -165,37 +206,100 @@ function filterProducts() {
 }
 
 function onProductChange() {
-    toggleBottleVolume();
+    document.querySelectorAll('#item-lines [data-item-line]').forEach(function (line) {
+        toggleBottleVolume(line);
+    });
 }
 
-function toggleBottleVolume() {
-    const category = document.getElementById('category-select').value;
-    const field = document.getElementById('bottle-volume-field');
-    const volumeInput = document.getElementById('bottle_volume');
-    const priceHint = document.getElementById('variety-price-hint');
+function addItemLine(values) {
+    values = values || {};
 
-    if (category === 'Oil Fragrance') {
-        field.classList.remove('hidden');
-        volumeInput.setAttribute('required', 'required');
+    const template = document.getElementById('item-line-template');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = template.innerHTML.replace(/__INDEX__/g, lineCounter++);
+    const line = wrapper.firstElementChild;
+
+    document.getElementById('item-lines').appendChild(line);
+
+    line.querySelector('[data-field="bottle_volume"]').addEventListener('change', function () {
+        refreshVariantOptions(line);
+    });
+
+    setLineValue(line, 'quantity', values.quantity);
+    setLineValue(line, 'bottle_volume', values.bottle_volume);
+    setLineValue(line, 'selling_price', values.selling_price);
+
+    toggleBottleVolume(line, values.bottle_variant || '');
+    renumberLines();
+
+    return line;
+}
+
+function setLineValue(line, field, value) {
+    if (value === null || value === undefined) {
+        return;
+    }
+    const input = line.querySelector('[data-field="' + field + '"]');
+    if (input) {
+        input.value = value;
+    }
+}
+
+function removeItemLine(button) {
+    const line = button.closest('[data-item-line]');
+    if (!line) {
+        return;
+    }
+    line.remove();
+
+    if (!document.querySelector('#item-lines [data-item-line]')) {
+        addItemLine();
+    }
+
+    renumberLines();
+}
+
+function renumberLines() {
+    const lines = document.querySelectorAll('#item-lines [data-item-line]');
+    lines.forEach(function (line, i) {
+        const label = line.querySelector('[data-line-number]');
+        if (label) {
+            label.textContent = i + 1;
+        }
+        const remove = line.querySelector('.remove-item-line');
+        if (remove) {
+            remove.classList.toggle('hidden', lines.length === 1);
+        }
+    });
+}
+
+function toggleBottleVolume(line, preselectVariant) {
+    const volumeField = line.querySelector('.bottle-volume-field');
+    const volumeSelect = line.querySelector('[data-field="bottle_volume"]');
+    const priceHint = line.querySelector('.variety-price-hint');
+
+    if (currentCategory() === 'Oil Fragrance') {
+        volumeField.classList.remove('hidden');
+        volumeSelect.setAttribute('required', 'required');
         if (priceHint) priceHint.classList.remove('hidden');
     } else {
         if (priceHint) priceHint.classList.add('hidden');
-        field.classList.add('hidden');
-        volumeInput.removeAttribute('required');
-        volumeInput.value = '';
-        hideVariantField();
+        volumeField.classList.add('hidden');
+        volumeSelect.removeAttribute('required');
+        volumeSelect.value = '';
+        hideVariantField(line);
     }
-    refreshVariantOptions();
+
+    refreshVariantOptions(line, preselectVariant || '');
 }
 
-function refreshVariantOptions() {
-    const category = document.getElementById('category-select').value;
-    const volume = document.getElementById('bottle_volume').value;
-    const variantField = document.getElementById('bottle-variant-field');
-    const variantSelect = document.getElementById('bottle_variant');
+function refreshVariantOptions(line, preselectVariant) {
+    const volume = line.querySelector('[data-field="bottle_volume"]').value;
+    const variantField = line.querySelector('.bottle-variant-field');
+    const variantSelect = line.querySelector('[data-field="bottle_variant"]');
 
-    if (category !== 'Oil Fragrance' || !volume) {
-        hideVariantField();
+    if (currentCategory() !== 'Oil Fragrance' || !volume) {
+        hideVariantField(line);
         return;
     }
 
@@ -203,49 +307,36 @@ function refreshVariantOptions() {
 
     if (!DETAIL_VOLUMES.includes(volume)) {
         // 6ml / 12ml bottles have no box/logo details — recorded as plain.
-        const opt = document.createElement('option');
-        opt.value = 'plain';
-        opt.textContent = 'Plain (no details)';
-        opt.selected = true;
-        variantSelect.appendChild(opt);
-        hideVariantField();
+        variantSelect.innerHTML = '<option value="plain">Plain (no details)</option>';
+        hideVariantField(line);
         return;
     }
 
-    const buckets = (bottleVariants[volume]) || {};
-    const keys = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
-    keys.forEach(k => {
-        const q = buckets[k] || 0;
+    const buckets = bottleVariants[volume] || {};
+    VARIANT_KEYS.forEach(function (key) {
         const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = (VARIANT_LABELS[k] || k) + ' — ' + q + ' in stock';
-        if (k === variantSelect.dataset.preselect) opt.selected = true;
+        opt.value = key;
+        opt.textContent = (VARIANT_LABELS[key] || key) + ' — ' + (buckets[key] || 0) + ' in stock';
         variantSelect.appendChild(opt);
     });
 
     variantField.classList.remove('hidden');
     variantSelect.setAttribute('required', 'required');
-}
 
-function hideVariantField() {
-    const variantField = document.getElementById('bottle-variant-field');
-    const variantSelect = document.getElementById('bottle_variant');
-    variantField.classList.add('hidden');
-    variantSelect.removeAttribute('required');
-}
-
-// Re-apply the price entered before a validation error.
-(function initPrice () {
-    const oldPrice = @json(old('selling_price'));
-    if (oldPrice !== null && oldPrice !== '') {
-        document.getElementById('selling_price').value = oldPrice;
+    if (preselectVariant) {
+        variantSelect.value = preselectVariant;
     }
-})();
+}
 
-document.getElementById('bottle_volume').addEventListener('change', refreshVariantOptions);
+function hideVariantField(line) {
+    const variantField = line.querySelector('.bottle-variant-field');
+    const variantSelect = line.querySelector('[data-field="bottle_variant"]');
+    if (variantField) variantField.classList.add('hidden');
+    if (variantSelect) variantSelect.removeAttribute('required');
+}
 
 // Rebuild the product list from the chosen category, then restore the
-// previously submitted product after a validation error.
+// previously submitted product and item lines after a validation error.
 (function init () {
     filterProducts();
 
@@ -254,7 +345,13 @@ document.getElementById('bottle_volume').addEventListener('change', refreshVaria
         document.getElementById('product_id').value = productId;
     }
 
-    toggleBottleVolume();
+    if (Array.isArray(oldItems) && oldItems.length) {
+        oldItems.forEach(function (item) {
+            addItemLine(item);
+        });
+    } else {
+        addItemLine();
+    }
 })();
 </script>
 @endpush
