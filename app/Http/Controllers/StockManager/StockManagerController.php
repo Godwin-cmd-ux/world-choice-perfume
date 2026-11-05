@@ -463,8 +463,9 @@ class StockManagerController extends Controller
      * Record stock in for one product.
      *
      * The form can carry several item lines for the same product (e.g. 30ml
-     * x 5 and 50ml x 3). Every line gets its own movement, bottle deduction
-     * and variety bucket; the aggregate branch_stock row takes the total.
+     * x 5 and 50ml x 3), which only applies to oil fragrance. Every line gets
+     * its own movement, bottle deduction and variety bucket; the aggregate
+     * branch_stock row takes the total.
      */
     public function storeProductStockEntry(Request $request)
     {
@@ -482,6 +483,12 @@ class StockManagerController extends Controller
 
         $branchId = auth()->user()->branch_id;
         $category = $validated['category'];
+
+        // Item lines exist for oil fragrance only, where one product is bottled
+        // in several volumes. Brand perfume is always a single entry.
+        if ($category === 'Brand Perfume' && count($validated['items']) > 1) {
+            return back()->withErrors(['items' => 'Brand Perfume entries can only have one item line.'])->withInput();
+        }
 
         // Empty bottles always come from this branch's own bottle stock.
         $bottleSourceBranchId = $this->bottleSourceBranchId($branchId);
