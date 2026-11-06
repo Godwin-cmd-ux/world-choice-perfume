@@ -111,7 +111,8 @@ class MobilePlaceOrderApiTest extends TestCase
 
         $response->assertStatus(201);
         $response->assertJsonPath('order.id', 99);
-        $response->assertJsonPath('order.status', 'pending');
+        // A placed order is held for customer care, not shown to the branch yet.
+        $response->assertJsonPath('order.status', 'awaiting_care');
         $response->assertJsonPath('order.total', 100000);
         $this->assertStringStartsWith('ORD-', $response->json('order.order_number'));
         $this->assertSame(3, (int) $capturedOrder['branch_id']);

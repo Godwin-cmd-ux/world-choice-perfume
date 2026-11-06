@@ -24,7 +24,7 @@ class CcOrderController extends CcBaseController
         $branchId = $this->ownBranchId($request);
         $userId = $this->performingUserId($request);
 
-        $tab = $workflow->resolveTab($request->query('tab'));
+        $tab = $workflow->resolveCareTab($request->query('tab'));
         $orders = $workflow->tabRows($branchId, $tab, $userId, true, $request->query('q'));
 
         return response()->json([
@@ -32,7 +32,8 @@ class CcOrderController extends CcBaseController
             'counts' => $workflow->counts($branchId, $userId),
             'pickers' => $workflow->pickerNames($orders),
             'tab' => $tab,
-            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'tabs' => OrderWorkflowService::CARE_TABS,
+            'transitions' => OrderWorkflowService::TRANSITIONS + OrderWorkflowService::CARE_TRANSITIONS,
             'userId' => $userId,
             'scope' => $this->scopePayload($request),
         ]);
@@ -42,7 +43,7 @@ class CcOrderController extends CcBaseController
     {
         $workflow = $this->workflow();
         $userId = $this->performingUserId($request);
-        $order = $workflow->findForShow($orderId, $this->ownBranchId($request), $userId, true);
+        $order = $workflow->findForShow($orderId, $this->ownBranchId($request), $userId, true, true);
 
         if (! $order) {
             abort(404, 'Order not found.');
@@ -50,7 +51,7 @@ class CcOrderController extends CcBaseController
 
         return response()->json([
             'order' => $order,
-            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'transitions' => OrderWorkflowService::TRANSITIONS + OrderWorkflowService::CARE_TRANSITIONS,
             'userId' => $userId,
             'canName' => $workflow->isOwnedBy((array) $order, $userId),
         ]);
@@ -77,6 +78,32 @@ class CcOrderController extends CcBaseController
         $result = $next === 'picked'
             ? $workflow->pick($orderId, $branchId, $userId, (string) $request->input('note', ''))
             : $workflow->serve($orderId, $branchId, $userId, (string) $request->input('note', ''));
+
+        if (! $result['ok']) {
+            $this->fail(['error' => $result['message']]);
+        }
+
+        return response()->json(['message' => $result['message']]);
+    }
+
+    /**
+     * Customer care's decision on a held order: pending (allow it to the
+     * branch) or failed (trash it, never shown to the branch again).
+     */
+    public function decide(Request $request, int $orderId)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,failed',
+            'note' => 'required|string|max:2000',
+        ]);
+
+        $result = $this->workflow()->decide(
+            $orderId,
+            $this->ownBranchId($request),
+            $this->performingUserId($request),
+            (string) $request->input('status'),
+            (string) $request->input('note')
+        );
 
         if (! $result['ok']) {
             $this->fail(['error' => $result['message']]);

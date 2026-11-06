@@ -458,6 +458,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Orders
         Route::get('/orders', [App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
+        // Customer care's own decision on a held order: allow it to the branch
+        // (pending) or trash it (failed). Branch staff get no such route.
+        Route::post('/orders/{order}/decide', [App\Http\Controllers\CustomerCare\OrderController::class, 'decide'])->name('orders.decide');
         Route::post('/orders/{order}/status', [App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
         Route::post('/orders/{order}/personal-name', [App\Http\Controllers\CustomerCare\OrderController::class, 'personalName'])->name('orders.personal-name');
 

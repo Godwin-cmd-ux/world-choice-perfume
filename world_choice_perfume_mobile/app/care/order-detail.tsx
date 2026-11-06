@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, DataCard, GroupLabel, KV, useAsyncData } from '../../components/adminkit';
 import { ErrorView, LoadingView } from '../../components/ui';
-import { fetchOrder, setOrderPersonalName, updateOrderStatus } from '../../lib/careApi';
+import { decideOrder, fetchOrder, setOrderPersonalName, updateOrderStatus } from '../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../lib/format';
 import { staffSession } from '../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../lib/theme';
@@ -68,7 +68,7 @@ export default function CareOrderDetail() {
     }
   };
 
-  const move = async (next: 'picked' | 'served') => {
+  const move = async (next: 'picked' | 'served' | 'pending' | 'failed') => {
     const note = noteDraft.trim();
     if (!note) {
       setActionError('Please enter a note about this order update before changing the status.');
@@ -78,7 +78,10 @@ export default function CareOrderDetail() {
     setBusyKey(next);
     setActionError(null);
     try {
-      const res = await updateOrderStatus(id, next, note);
+      const res =
+        next === 'pending' || next === 'failed'
+          ? await decideOrder(id, next, note)
+          : await updateOrderStatus(id, next, note);
       setNoteDraft('');
       setNotice(res.message);
       await reload();
@@ -204,10 +207,18 @@ export default function CareOrderDetail() {
                 {allowed.map((s) => (
                   <ActionBtn
                     key={s}
-                    label={busyKey === s ? '…' : `Mark ${s.charAt(0).toUpperCase()}${s.slice(1)}`}
-                    tone={s === 'served' ? 'success' : 'primary'}
+                    label={
+                      busyKey === s
+                        ? '…'
+                        : s === 'pending'
+                          ? 'Allow Order'
+                          : s === 'failed'
+                            ? 'Trash Order'
+                            : `Mark ${s.charAt(0).toUpperCase()}${s.slice(1)}`
+                    }
+                    tone={s === 'pending' || s === 'served' ? 'success' : s === 'failed' ? 'danger' : 'primary'}
                     disabled={busyKey === s}
-                    onPress={() => move(s as 'picked' | 'served')}
+                    onPress={() => move(s as 'picked' | 'served' | 'pending' | 'failed')}
                   />
                 ))}
               </View>
@@ -229,12 +240,26 @@ function ActionBtn({
 }: {
   label: string;
   onPress: () => void;
-  tone: 'primary' | 'success' | 'ghost';
+  tone: 'primary' | 'success' | 'ghost' | 'danger';
   disabled?: boolean;
 }) {
-  const bg = tone === 'success' ? 'rgba(52, 211, 153, 0.14)' : tone === 'primary' ? CC_ACCENT.soft : 'transparent';
-  const border = tone === 'success' ? 'rgba(52, 211, 153, 0.35)' : tone === 'primary' ? CC_ACCENT.border : COLORS.border;
-  const fg = tone === 'success' ? COLORS.success : CC_ACCENT.light;
+  const bg =
+    tone === 'success'
+      ? 'rgba(52, 211, 153, 0.14)'
+      : tone === 'danger'
+        ? 'rgba(248, 113, 113, 0.14)'
+        : tone === 'primary'
+          ? CC_ACCENT.soft
+          : 'transparent';
+  const border =
+    tone === 'success'
+      ? 'rgba(52, 211, 153, 0.35)'
+      : tone === 'danger'
+        ? 'rgba(248, 113, 113, 0.35)'
+        : tone === 'primary'
+          ? CC_ACCENT.border
+          : COLORS.border;
+  const fg = tone === 'success' ? COLORS.success : tone === 'danger' ? '#f87171' : CC_ACCENT.light;
   return (
     <Pressable
       onPress={onPress}

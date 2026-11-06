@@ -10,8 +10,8 @@
                 <h2 class="text-xl font-bold">{{ $order->order_number ?? 'N/A' }}</h2>
                 <p class="text-sm text-gray-500">{{ $order->branch->name }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
-                {{ ucfirst($order->status) }}
+            <span class="px-3 py-1 rounded-full text-sm font-medium {{ match($order->status) { 'awaiting_care' => 'bg-amber-100 text-amber-800', 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'failed' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+                {{ match($order->status) { 'awaiting_care' => 'Awaiting Review', 'failed' => 'Failed', default => ucfirst($order->status) } }}
             </span>
         </div>
         {{-- Staff-only memory aid. The official order number above is unchanged. --}}
@@ -48,7 +48,14 @@
             </div>
         @endif
 
-        @php $allowed = $transitions[$order->status] ?? []; @endphp
+        @php
+            // A held order is decided here — allow it to the branch or trash it;
+            // the branch's own transitions start at pending.
+            $awaiting = $order->status === 'awaiting_care';
+            $allowed = $transitions[$order->status] ?? [];
+            $actionRoute = $awaiting ? 'customer-care.orders.decide' : 'customer-care.orders.update-status';
+            $actionLabels = ['pending' => 'Allow Order', 'failed' => 'Trash Order'];
+        @endphp
         @if($allowed)
             <div class="mt-4 border-t pt-3">
                 <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
@@ -57,12 +64,12 @@
                     placeholder="e.g. Order received and being packed..."></textarea>
                 <div class="flex gap-3 flex-wrap">
                     @foreach($allowed as $s)
-                        <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
+                        <form action="{{ route($actionRoute, $order->id) }}" method="POST" onsubmit="return attachOrderNote(this)">@csrf
                             <input type="hidden" name="status" value="{{ $s }}">
                             <input type="hidden" name="note">
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                                <i class="fas fa-arrow-right mr-1"></i>
-                                Mark {{ ucfirst($s) }}
+                            <button type="submit" class="text-white px-4 py-2 rounded-lg {{ $s === 'failed' ? 'bg-red-600 hover:bg-red-700' : ($s === 'pending' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700') }}">
+                                <i class="fas {{ $s === 'failed' ? 'fa-trash-can' : ($s === 'pending' ? 'fa-check' : 'fa-arrow-right') }} mr-1"></i>
+                                {{ $actionLabels[$s] ?? 'Mark ' . ucfirst($s) }}
                             </button>
                         </form>
                     @endforeach

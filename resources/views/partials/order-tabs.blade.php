@@ -4,7 +4,10 @@
     Expects:
       $tabRoute   route name for the index, e.g. 'cashier.orders.index'
       $tab        the active tab slug: pending | progress | completed
-      $counts     counts keyed by the same three slugs
+      $counts     counts keyed by the same slugs
+    Optional:
+      $tabs       slugs to show, as slug => label. Customer Care passes its own
+                  five (review / pending / progress / completed / trash).
 
     The labels are read from the workflow service so the wording cannot drift
     between roles: Pending Orders / My Orders On Progress / My Completed Orders.
@@ -18,20 +21,25 @@
 --}}
 @php
     $tabIcons = [
+        'review' => 'fa-clipboard-check',
         'pending' => 'fa-clock',
         'progress' => 'fa-box-open',
         'completed' => 'fa-circle-check',
+        'trash' => 'fa-trash-can',
     ];
     $tabLabels = $tabLabels ?? \App\Services\OrderWorkflowService::TAB_LABELS;
+    // Customer Care passes its own five tabs (slug => label); every other role
+    // keeps the branch's three.
+    $tabs = $tabs ?? \App\Services\OrderWorkflowService::TABS;
     $keepQuery = request()->except('tab');
 @endphp
 
 <nav aria-label="Order status tabs" class="border-b border-gray-200 mb-6 -mx-1 px-1 overflow-x-auto">
     <div class="flex items-center gap-1 min-w-max">
-        @foreach(array_keys(\App\Services\OrderWorkflowService::TABS) as $slug)
+        @foreach(array_keys($tabs) as $slug)
             @php
                 $active = $tab === $slug;
-                $label = $tabLabels[$slug];
+                $label = $tabLabels[$slug] ?? $tabs[$slug];
             @endphp
             <a href="{{ route($tabRoute, array_merge($keepQuery, ['tab' => $slug])) }}"
                @if($active) aria-current="page" @endif

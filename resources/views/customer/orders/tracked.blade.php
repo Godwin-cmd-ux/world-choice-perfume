@@ -79,8 +79,8 @@
                         </p>
                     </div>
                     <span class="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
-                        {{ match($order->status) { 'pending' => 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30', 'picked' => 'bg-blue-500/15 text-blue-300 border border-blue-500/30', 'served' => 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30', default => 'bg-gray-500/15 text-gray-300 border border-gray-500/30' } }}">
-                        {{ ucfirst($order->status) }}
+                        {{ match($order->status) { 'awaiting_care' => 'bg-amber-500/15 text-amber-300 border border-amber-500/30', 'pending' => 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30', 'picked' => 'bg-blue-500/15 text-blue-300 border border-blue-500/30', 'served' => 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30', 'failed' => 'bg-red-500/15 text-red-300 border border-red-500/30', default => 'bg-gray-500/15 text-gray-300 border border-gray-500/30' } }}">
+                        {{ match($order->status) { 'awaiting_care' => 'Awaiting confirmation', 'failed' => 'Failed', default => ucfirst($order->status) } }}
                     </span>
                 </div>
 

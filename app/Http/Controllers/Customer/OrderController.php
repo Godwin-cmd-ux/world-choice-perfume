@@ -443,7 +443,9 @@ class OrderController extends Controller
                 'order_number' => $orderNumber,
                 'branch_id' => $validated['branch_id'],
                 'customer_id' => $customerId,
-                'status' => 'pending',
+                // A placed order is held for customer care of this branch:
+                // it is invisible to branch staff until care releases it.
+                'status' => \App\Services\OrderWorkflowService::CARE_STATUS,
                 'total' => $total,
                 'delivery_notes' => $validated['delivery_notes'] ?? null,
                 'payment_status' => 'unpaid',
@@ -492,7 +494,7 @@ class OrderController extends Controller
                         'id' => $order['id'] ?? null,
                         'order_number' => $order['order_number'] ?? $orderNumber,
                         'total' => $order['total'] ?? $total,
-                        'status' => $order['status'] ?? 'pending',
+                        'status' => $order['status'] ?? \App\Services\OrderWorkflowService::CARE_STATUS,
                     ],
                 ], 201);
             }

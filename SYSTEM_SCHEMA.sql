@@ -68,7 +68,10 @@ CREATE TYPE public.user_role AS ENUM ('super_admin', 'branch_admin', 'cashier', 
 CREATE TYPE public.user_status AS ENUM ('pending', 'approved', 'rejected', 'active', 'blocked');
 CREATE TYPE public.stock_movement_type AS ENUM ('entry', 'sale', 'return', 'adjustment', 'damage', 'missing', 'transfer_out', 'transfer_in');
 CREATE TYPE public.payment_status AS ENUM ('pending', 'paid', 'refunded');
-CREATE TYPE public.order_status AS ENUM ('pending', 'picked', 'served');
+-- Order workflow: a placed order is held as awaiting_care for customer care,
+-- which releases it to pending or trashes it as failed; the branch then works
+-- pending -> picked -> served. Branch lists never ask for the care statuses.
+CREATE TYPE public.order_status AS ENUM ('awaiting_care', 'pending', 'picked', 'served', 'failed');
 CREATE TYPE public.expense_category AS ENUM ('electricity', 'water', 'rent', 'transport', 'cleaning', 'packaging', 'other');
 CREATE TYPE public.cashier_account_status AS ENUM ('pending', 'balanced', 'loss', 'surplus');
 CREATE TYPE public.discrepancy_reason AS ENUM ('approved_expense', 'refund', 'discount', 'genuine_shortage', 'surplus', 'damaged_stock', 'missing_stock');

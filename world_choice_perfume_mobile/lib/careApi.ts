@@ -352,6 +352,19 @@ export function updateOrderStatus(id: number | string, status: 'picked' | 'serve
   return apiPost<{ message: string }>(`/care/orders/${id}/status`, { status, note });
 }
 
+/**
+ * POST /care/orders/{id}/decide — a held order's decision: pending releases it
+ * to the branch, failed trashes it so no branch list ever shows it again. The
+ * note is required by the server, exactly like every other status change.
+ */
+export function decideOrder(
+  id: number | string,
+  status: 'pending' | 'failed',
+  note: string,
+): Promise<{ message: string }> {
+  return apiPost<{ message: string }>(`/care/orders/${id}/decide`, { status, note });
+}
+
 export function setOrderPersonalName(id: number | string, personal_order_name: string): Promise<{ message: string }> {
   return apiPost<{ message: string }>(`/care/orders/${id}/personal-name`, { personal_order_name });
 }

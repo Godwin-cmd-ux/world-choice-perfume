@@ -20,15 +20,17 @@ class OrderController extends Controller
     }
 
     /**
-     * The three tabs. Pending is the shared queue anyone can claim; picked and
-     * served orders are only shown to the staff member who picked them.
+     * Customer care owns five tabs: the review queue of held orders, then the
+     * branch's three, then the orders care trashed. Pending is the shared queue
+     * anyone can claim; picked and served orders are only shown to the staff
+     * member who picked them; a held order is only visible here.
      */
     public function index(Request $request)
     {
         $branchId = (int) auth()->user()->branch_id;
         $userId = auth()->user()->supabase_id ?? auth()->id();
 
-        $tab = $this->workflow->resolveTab($request->query('tab'));
+        $tab = $this->workflow->resolveCareTab($request->query('tab'));
         $orders = $this->workflow->tabRows($branchId, $tab, $userId, true, $request->query('q'));
 
         return view('customer-care.orders.index', [
@@ -36,9 +38,10 @@ class OrderController extends Controller
             'counts' => $this->workflow->counts($branchId, $userId),
             'pickers' => $this->workflow->pickerNames($orders),
             'tab' => $tab,
+            'tabs' => OrderWorkflowService::CARE_TABS,
             'tabRoute' => 'customer-care.orders.index',
             'nameRoute' => 'customer-care.orders.personal-name',
-            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'transitions' => OrderWorkflowService::TRANSITIONS + OrderWorkflowService::CARE_TRANSITIONS,
             'userId' => $userId,
         ]);
     }
@@ -46,7 +49,7 @@ class OrderController extends Controller
     public function show($orderId)
     {
         $userId = auth()->user()->supabase_id ?? auth()->id();
-        $order = $this->workflow->findForShow((int) $orderId, (int) auth()->user()->branch_id, $userId);
+        $order = $this->workflow->findForShow((int) $orderId, (int) auth()->user()->branch_id, $userId, true, true);
 
         if (!$order) {
             abort(404);
@@ -54,7 +57,7 @@ class OrderController extends Controller
 
         return view('customer-care.orders.show', [
             'order' => $order,
-            'transitions' => OrderWorkflowService::TRANSITIONS,
+            'transitions' => OrderWorkflowService::TRANSITIONS + OrderWorkflowService::CARE_TRANSITIONS,
             'userId' => $userId,
             'nameRoute' => 'customer-care.orders.personal-name',
             'canName' => $this->workflow->isOwnedBy((array) $order, $userId),
@@ -82,6 +85,31 @@ class OrderController extends Controller
         $result = $next === 'picked'
             ? $this->workflow->pick((int) $orderId, $branchId, $userId, $request->note)
             : $this->workflow->serve((int) $orderId, $branchId, $userId, $request->note);
+
+        return $result['ok']
+            ? back()->with('success', $result['message'])
+            : back()->with('error', $result['message']);
+    }
+
+    /**
+     * Customer care's decision on a held order: allow it (pending) so the
+     * branch can work it, or trash it (failed) so no branch list ever shows it.
+     * Anything else is refused, exactly like the picked/served transitions.
+     */
+    public function decide(Request $request, $orderId)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,failed',
+            'note' => 'required|string|max:2000',
+        ]);
+
+        $result = $this->workflow->decide(
+            (int) $orderId,
+            (int) auth()->user()->branch_id,
+            auth()->user()->supabase_id ?? auth()->id(),
+            $request->status,
+            $request->note
+        );
 
         return $result['ok']
             ? back()->with('success', $result['message'])

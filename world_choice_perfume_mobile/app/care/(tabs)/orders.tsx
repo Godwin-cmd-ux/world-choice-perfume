@@ -5,18 +5,19 @@ import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, SearchInput, useAsyncData } from '../../../components/adminkit';
 import { careMenu } from '../../../components/caresidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
-import { fetchOrders, setOrderPersonalName, updateOrderStatus, type CcOrder } from '../../../lib/careApi';
+import { decideOrder, fetchOrders, setOrderPersonalName, updateOrderStatus, type CcOrder } from '../../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { staffSession } from '../../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 
 /**
- * The three tabs of the website's customer-care Orders page, with the very
- * slugs and labels OrderWorkflowService defines (pending / progress /
- * completed) — the server maps them to the pending, picked and served
- * statuses, so any other slug would silently fall back to the pending
- * queue. Pending is the shared branch queue anyone can claim; progress and
- * completed only ever contain this member's own orders.
+ * Customer care's five tabs, with the very slugs and labels
+ * OrderWorkflowService::CARE_TABS defines (review / pending / progress /
+ * completed / trash) — the server maps them to the awaiting_care, pending,
+ * picked, served and failed statuses. Review is the queue only care can see:
+ * an order sits there until care allows it to the branch or trashes it.
+ * Pending is the shared branch queue anyone can claim; progress and completed
+ * only ever contain this member's own orders; trash holds what care refused.
  *
  * Every status change carries a required note (the website's
  * requireNote prompt), and the personal name is only offered on orders this
@@ -24,9 +25,11 @@ import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
  * the order record (customer-care/orders/{id}).
  */
 const TABS = [
+  { key: 'review', label: 'Awaiting Review' },
   { key: 'pending', label: 'Pending Orders' },
   { key: 'progress', label: 'My Orders On Progress' },
   { key: 'completed', label: 'My Completed Orders' },
+  { key: 'trash', label: 'Trashed Orders' },
 ] as const;
 
 export default function CareOrders() {
@@ -43,7 +46,7 @@ export default function CareOrders() {
   const [nameFor, setNameFor] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [noteFor, setNoteFor] = useState<string | null>(null);
-  const [noteNext, setNoteNext] = useState<'picked' | 'served' | null>(null);
+  const [noteNext, setNoteNext] = useState<'picked' | 'served' | 'pending' | 'failed' | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
 
   const [refreshing, setRefreshing] = useState(false);
@@ -54,7 +57,7 @@ export default function CareOrders() {
     return null;
   }
 
-  const askNote = (key: string, next: 'picked' | 'served') => {
+  const askNote = (key: string, next: 'picked' | 'served' | 'pending' | 'failed') => {
     setNameFor(null);
     setNoteFor(key);
     setNoteNext(next);
@@ -72,7 +75,11 @@ export default function CareOrders() {
     setBusyKey(noteFor);
     setActionError(null);
     try {
-      await updateOrderStatus(noteFor, noteNext, note);
+      if (noteNext === 'pending' || noteNext === 'failed') {
+        await decideOrder(noteFor, noteNext, note);
+      } else {
+        await updateOrderStatus(noteFor, noteNext, note);
+      }
       setNoteFor(null);
       setNoteDraft('');
       await reload();
@@ -117,11 +124,15 @@ export default function CareOrders() {
 
   const emptyHint = q.trim()
     ? 'No orders match your search.'
-    : tab === 'pending'
-      ? 'No orders waiting to be picked.'
-      : tab === 'progress'
-        ? 'You have no orders in progress.'
-        : 'You have not completed any orders yet.';
+    : tab === 'review'
+      ? 'No orders are waiting for review.'
+      : tab === 'trash'
+        ? 'No orders have been trashed.'
+        : tab === 'pending'
+          ? 'No orders waiting to be picked.'
+          : tab === 'progress'
+            ? 'You have no orders in progress.'
+            : 'You have not completed any orders yet.';
 
   return (
     <AdminPage
@@ -163,6 +174,9 @@ export default function CareOrders() {
           const key = String(order.id);
           const mine = isMine(order);
           const status = String(order.status ?? 'pending');
+          // A held order is care's decision, not the branch's: only Allow and
+          // Trash apply until it has been released.
+          const awaiting = status === 'awaiting_care';
           const label = (order.personal_order_name as string | null) ?? null;
           // $canName in the blade: only the picker may name an order they
           // have already picked (or served).
@@ -201,7 +215,22 @@ export default function CareOrders() {
               ) : null}
 
               <View style={styles.actions}>
-                {next ? (
+                {awaiting ? (
+                  <>
+                    <ActionBtn
+                      label={busyKey === key ? '…' : 'Allow'}
+                      tone="success"
+                      disabled={busyKey === key}
+                      onPress={() => askNote(key, 'pending')}
+                    />
+                    <ActionBtn
+                      label={busyKey === key ? '…' : 'Trash'}
+                      tone="danger"
+                      disabled={busyKey === key}
+                      onPress={() => askNote(key, 'failed')}
+                    />
+                  </>
+                ) : next ? (
                   <ActionBtn
                     label={busyKey === key ? '…' : next === 'picked' ? 'Pick' : 'Serve'}
                     tone={next === 'picked' ? 'primary' : 'success'}
@@ -238,8 +267,18 @@ export default function CareOrders() {
                   />
                   <View style={styles.actions}>
                     <ActionBtn
-                      label={busyKey === key ? '…' : `Mark ${next === 'picked' ? 'Picked' : 'Served'}`}
-                      tone="primary"
+                      label={
+                        busyKey === key
+                          ? '…'
+                          : noteNext === 'pending'
+                            ? 'Allow'
+                            : noteNext === 'failed'
+                              ? 'Trash'
+                              : noteNext === 'picked'
+                                ? 'Mark Picked'
+                                : 'Mark Served'
+                      }
+                      tone={noteNext === 'failed' ? 'danger' : 'primary'}
                       disabled={busyKey === key}
                       onPress={confirmNote}
                     />
@@ -289,12 +328,26 @@ function ActionBtn({
 }: {
   label: string;
   onPress: () => void;
-  tone: 'primary' | 'success' | 'ghost';
+  tone: 'primary' | 'success' | 'ghost' | 'danger';
   disabled?: boolean;
 }) {
-  const bg = tone === 'success' ? 'rgba(52, 211, 153, 0.14)' : tone === 'primary' ? CC_ACCENT.soft : 'transparent';
-  const border = tone === 'success' ? 'rgba(52, 211, 153, 0.35)' : tone === 'primary' ? CC_ACCENT.border : COLORS.border;
-  const fg = tone === 'success' ? COLORS.success : CC_ACCENT.light;
+  const bg =
+    tone === 'success'
+      ? 'rgba(52, 211, 153, 0.14)'
+      : tone === 'danger'
+        ? 'rgba(248, 113, 113, 0.14)'
+        : tone === 'primary'
+          ? CC_ACCENT.soft
+          : 'transparent';
+  const border =
+    tone === 'success'
+      ? 'rgba(52, 211, 153, 0.35)'
+      : tone === 'danger'
+        ? 'rgba(248, 113, 113, 0.35)'
+        : tone === 'primary'
+          ? CC_ACCENT.border
+          : COLORS.border;
+  const fg = tone === 'success' ? COLORS.success : tone === 'danger' ? '#f87171' : CC_ACCENT.light;
   return (
     <Pressable
       onPress={onPress}

@@ -7,9 +7,15 @@ use Carbon\Carbon;
 /**
  * The staff order workflow shared by every role that owns an Orders page.
  *
- * An order has exactly three statuses and only ever moves forward:
+ * A placed order is held for customer care first. It is written as
+ * CARE_STATUS ("awaiting_care") and is invisible to the branch: no staff list
+ * or detail page will return it. Customer care at that branch either releases
+ * it — which is the only way an order becomes "pending" — or trashes it as
+ * "failed", a status no staff list ever shows. From pending the branch works
+ * it forward only:
  *
- *     pending -> picked -> served
+ *     awaiting_care -> pending -> picked -> served
+ *                   -> failed  (trashed, never seen by the branch)
  *
  * "picked" is an exclusive claim. It is written as a compare-and-set (a PATCH
  * filtered on id AND status = 'pending'), so if two staff members click Pick on
@@ -41,6 +47,26 @@ class OrderWorkflowService
         'pending' => 'Pending Orders',
         'progress' => 'My Orders On Progress',
         'completed' => 'My Completed Orders',
+    ];
+
+    /** A placed order waiting for customer care. Branch staff never see it. */
+    public const CARE_STATUS = 'awaiting_care';
+
+    /** A trashed order: refused by customer care, never seen by the branch. */
+    public const FAILED_STATUS = 'failed';
+
+    /** Customer care's tabs, in the order they are shown. */
+    public const CARE_TABS = [
+        'review' => 'Awaiting Review',
+        'pending' => 'Pending Orders',
+        'progress' => 'My Orders On Progress',
+        'completed' => 'My Completed Orders',
+        'trash' => 'Trashed Orders',
+    ];
+
+    /** Customer care's own decisions: release the order, or trash it. */
+    public const CARE_TRANSITIONS = [
+        self::CARE_STATUS => ['pending', self::FAILED_STATUS],
     ];
 
     /** The only status changes the system allows. */
@@ -96,9 +122,24 @@ class OrderWorkflowService
         return is_string($slug) && array_key_exists($slug, self::TABS) ? $slug : 'pending';
     }
 
+    /**
+     * Clamp an untrusted tab slug to one of Customer Care's tabs.
+     *
+     * Care starts on the review queue rather than the branch queue: nothing
+     * reaches the branch until care has cleared it.
+     */
+    public function resolveCareTab(?string $slug): string
+    {
+        return is_string($slug) && array_key_exists($slug, self::CARE_TABS) ? $slug : 'review';
+    }
+
     public function statusFor(string $tab): string
     {
-        return self::TABS[$tab] ?? 'pending';
+        return match ($tab) {
+            'review' => self::CARE_STATUS,
+            'trash' => self::FAILED_STATUS,
+            default => self::TABS[$tab] ?? 'pending',
+        };
     }
 
     /**
@@ -131,7 +172,7 @@ class OrderWorkflowService
      */
     public function counts(?int $branchId, $userId, bool $isolated = true): array
     {
-        $counts = ['pending' => 0, 'progress' => 0, 'completed' => 0];
+        $counts = ['pending' => 0, 'progress' => 0, 'completed' => 0, 'review' => 0, 'trash' => 0];
 
         $params = [
             'select' => 'status,assigned_to,cashier_id',
@@ -144,7 +185,11 @@ class OrderWorkflowService
         foreach ($this->supabase->query('orders', $params) as $row) {
             $status = $row['status'] ?? 'pending';
 
-            if ($status === 'pending') {
+            if ($status === self::CARE_STATUS) {
+                $counts['review']++;
+            } elseif ($status === self::FAILED_STATUS) {
+                $counts['trash']++;
+            } elseif ($status === 'pending') {
                 $counts['pending']++;
             } elseif (in_array($status, ['picked', 'served'], true) && (!$isolated || $this->isOwnedBy($row, $userId))) {
                 $counts[$status === 'picked' ? 'progress' : 'completed']++;
@@ -177,9 +222,11 @@ class OrderWorkflowService
         $rows = $this->supabase->query('orders', $params);
 
         // Pending work belongs to whoever gets there first, so it is not
-        // filtered. Picked and served work belongs to the staff member who
-        // picked it, so a colleague's order never reaches this list.
-        if ($isolated && $status !== 'pending') {
+        // filtered, and neither is a status nobody has claimed yet (an order
+        // waiting for care has no owner). Picked and served work belongs to the
+        // staff member who picked it, so a colleague's order never reaches this
+        // list.
+        if ($isolated && in_array($status, ['picked', 'served'], true)) {
             $rows = array_values(array_filter($rows, fn($o) => $this->isOwnedBy($o, $userId)));
         }
 
@@ -417,7 +464,7 @@ class OrderWorkflowService
      * Load one order for a detail page, applying the same isolation rule as the
      * tabs so a staff member cannot reach a colleague's order by guessing an id.
      */
-    public function findForShow(int $orderId, ?int $branchId, $userId, bool $isolated = true): ?object
+    public function findForShow(int $orderId, ?int $branchId, $userId, bool $isolated = true, bool $includeCareOnly = false): ?object
     {
         $order = $this->supabase->find('orders', $orderId, $this->showSelect());
 
@@ -425,11 +472,77 @@ class OrderWorkflowService
             return null;
         }
 
-        if ($isolated && ($order['status'] ?? 'pending') !== 'pending' && !$this->isOwnedBy($order, $userId)) {
+        $status = $order['status'] ?? 'pending';
+        $careOnly = in_array($status, [self::CARE_STATUS, self::FAILED_STATUS], true);
+
+        // An order that has not been released by customer care is invisible to
+        // everyone else, even to someone who knows its id. Only Customer Care
+        // passes $includeCareOnly and gets to open it.
+        if ($careOnly && !$includeCareOnly) {
+            return null;
+        }
+
+        if ($isolated && !$careOnly && $status !== 'pending' && !$this->isOwnedBy($order, $userId)) {
             return null;
         }
 
         return $this->cast($order);
+    }
+
+    /**
+     * Customer care's decision on a held order: release it to the branch as
+     * pending, or trash it as failed.
+     *
+     * Written as a compare-and-set on status = awaiting_care, so a decision is
+     * taken exactly once: a second care member holding the same order open is
+     * told it has already been decided instead of overwriting the first answer.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function decide(int $orderId, ?int $branchId, $userId, string $decision, string $note): array
+    {
+        if (!in_array($decision, ['pending', self::FAILED_STATUS], true)) {
+            return $this->fail('An order can only be released to pending or trashed as failed.');
+        }
+
+        $order = $this->supabase->find('orders', $orderId);
+
+        if (!$order || ($branchId !== null && (int) $order['branch_id'] !== $branchId)) {
+            return $this->fail('Order not found.');
+        }
+
+        if (($order['status'] ?? '') !== self::CARE_STATUS) {
+            return $this->fail($this->staleMessage($order, $order['status'] ?? null));
+        }
+
+        $now = now()->toIso8601String();
+
+        $changes = [
+            'status' => $decision,
+            'updated_at' => $now,
+        ];
+
+        // A trashed order keeps the moment it was refused, using the column
+        // orders already had for it.
+        if ($decision === self::FAILED_STATUS) {
+            $changes['cancelled_at'] = $now;
+        }
+
+        $updated = $this->supabase->update('orders', $changes, ['id' => $orderId, 'status' => self::CARE_STATUS]);
+
+        if (empty($updated)) {
+            return $this->fail($this->staleMessage($this->supabase->find('orders', $orderId) ?: [], null));
+        }
+
+        $this->recordNote($orderId, $note, $userId);
+        $this->audit($order, $decision, self::CARE_STATUS, $orderId, $note);
+
+        return [
+            'ok' => true,
+            'message' => $decision === self::FAILED_STATUS
+                ? 'Order trashed. It is now failed and the branch will not see it.'
+                : 'Order released. It is now in the branch\'s pending queue.',
+        ];
     }
 
     /**
@@ -739,6 +852,14 @@ class OrderWorkflowService
     private function staleMessage(array $order, ?string $knownStatus): string
     {
         $status = $knownStatus ?? ($order['status'] ?? null);
+
+        if ($status === self::CARE_STATUS) {
+            return 'This order is still waiting for customer care to review it.';
+        }
+
+        if ($status === self::FAILED_STATUS) {
+            return 'This order was trashed by customer care.';
+        }
 
         if ($status === 'picked') {
             return 'This order has already been picked by another staff member.';

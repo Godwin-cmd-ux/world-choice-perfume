@@ -44,6 +44,17 @@ interface StatusBadge {
 
 function statusBadge(status?: string): StatusBadge {
   switch ((status ?? '').toLowerCase()) {
+    case 'awaiting_care':
+      // Placed, but not yet confirmed by customer care: the branch has not
+      // picked the order up yet.
+      return {
+        label: 'Awaiting confirmation',
+        fg: COLORS.warning,
+        bg: 'rgba(250, 204, 21, 0.15)',
+        border: 'rgba(250, 204, 21, 0.30)',
+      };
+    case 'failed':
+      return { label: 'Failed', fg: '#f87171', bg: 'rgba(248, 113, 113, 0.15)', border: 'rgba(248, 113, 113, 0.30)' };
     case 'pending':
       return { label: 'Pending', fg: COLORS.warning, bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.30)' };
     case 'picked':

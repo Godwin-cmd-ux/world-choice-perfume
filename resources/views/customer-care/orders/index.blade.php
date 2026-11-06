@@ -3,7 +3,7 @@
 @section('header', 'Orders')
 
 @section('content')
-@include('partials.order-tabs', ['tabRoute' => $tabRoute])
+@include('partials.order-tabs', ['tabRoute' => $tabRoute, 'tabs' => $tabs])
 
 <form method="GET" action="{{ route($tabRoute) }}" class="mb-4 flex justify-end">
     <input type="hidden" name="tab" value="{{ $tab }}">
@@ -36,6 +36,10 @@
                             || (string) ($order->cashier_id ?? '') === $me;
                         $canName = $isMine && in_array($order->status, ['picked', 'served'], true);
                         $next = $order->status === 'pending' ? 'picked' : ($order->status === 'picked' && $isMine ? 'served' : null);
+                        // A held order is care's to release or trash, and only care
+                        // ever sees it: the branch's lists never contain it.
+                        $awaiting = $order->status === 'awaiting_care';
+                        $statusLabel = match($order->status) { 'awaiting_care' => 'Awaiting Review', 'failed' => 'Failed', default => ucfirst($order->status) };
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4 font-medium">{{ $order->order_number }}</td>
@@ -46,8 +50,8 @@
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
                             <span class="px-2 py-1 rounded-full text-xs
-                                {{ match($order->status) { 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', default => 'bg-gray-100' } }}">
-                                {{ ucfirst($order->status) }}
+                                {{ match($order->status) { 'awaiting_care' => 'bg-amber-100 text-amber-800 font-bold', 'pending' => 'bg-yellow-100 text-yellow-700', 'picked' => 'bg-blue-100 text-blue-700', 'served' => 'bg-green-100 text-green-800 font-bold', 'failed' => 'bg-red-100 text-red-700', default => 'bg-gray-100' } }}">
+                                {{ $statusLabel }}
                             </span>
                         </td>
                         <td class="px-4 text-gray-600">
@@ -55,7 +59,24 @@
                         </td>
                         <td class="px-4 text-center">
                             <a href="{{ route('customer-care.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
-                            @if($next)
+                            @if($awaiting)
+                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                    @csrf
+                                    <input type="hidden" name="status" value="pending">
+                                    <input type="hidden" name="note">
+                                    <button type="submit" class="text-green-600 hover:underline font-medium">
+                                        <i class="fas fa-check mr-1"></i>Allow
+                                    </button>
+                                </form>
+                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline ml-2" onsubmit="return requireNote(this)">
+                                    @csrf
+                                    <input type="hidden" name="status" value="failed">
+                                    <input type="hidden" name="note">
+                                    <button type="submit" class="text-red-600 hover:underline font-medium">
+                                        <i class="fas fa-trash-can mr-1"></i>Trash
+                                    </button>
+                                </form>
+                            @elseif($next)
                                 <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
                                     @csrf
                                     <input type="hidden" name="status" value="{{ $next }}">
@@ -72,6 +93,10 @@
                         <td colspan="7" class="py-8 text-center text-gray-400">
                             @if(request('q'))
                                 No orders match "{{ request('q') }}".
+                            @elseif($tab === 'review')
+                                No orders are waiting for review.
+                            @elseif($tab === 'trash')
+                                No orders have been trashed.
                             @elseif($tab === 'pending')
                                 No orders waiting to be picked.
                             @elseif($tab === 'progress')

@@ -421,6 +421,7 @@ Route::middleware(EnsureStaffSessionApi::class.':customer_care')->prefix('care')
     // Orders (three tabs: pending queue / picked / served).
     Route::get('/orders', [CcOrderController::class, 'index']);
     Route::get('/orders/{order}', [CcOrderController::class, 'show']);
+    Route::post('/orders/{order}/decide', [CcOrderController::class, 'decide']);
     Route::post('/orders/{order}/status', [CcOrderController::class, 'updateStatus']);
     Route::post('/orders/{order}/personal-name', [CcOrderController::class, 'personalName']);
 

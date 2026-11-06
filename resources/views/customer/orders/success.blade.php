@@ -16,11 +16,11 @@
             <i class="fas fa-check text-4xl text-green-600"></i>
         </div>
         <h1 class="text-2xl font-bold text-gray-800 mb-2">Order Placed Successfully!</h1>
-        <p class="text-gray-500 mb-4">Your order has been received and is being processed. Payment will be settled at the branch.</p>
+        <p class="text-gray-500 mb-4">Your order has been received and is waiting for our customer care team to confirm it. Payment will be settled at the branch.</p>
         <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
             <p class="text-sm"><strong>Order Number:</strong> {{ $order->order_number }}</p>
             <p class="text-sm"><strong>Total:</strong> TZS {{ number_format($order->total) }}</p>
-            <p class="text-sm"><strong>Status:</strong> <span class="text-yellow-600">Pending</span></p>
+            <p class="text-sm"><strong>Status:</strong> <span class="text-yellow-600">Awaiting confirmation</span></p>
             <p class="text-sm text-gray-500 mt-1">Your contact details have been saved. We may reach out regarding your order.</p>
         </div>
         <div class="flex flex-col gap-2">
