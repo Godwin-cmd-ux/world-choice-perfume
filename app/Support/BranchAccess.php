@@ -5,14 +5,16 @@ namespace App\Support;
 /**
  * The two branches whose staff are not ordinary branch staff.
  *
- * Every capability gate in the app is a positive allowlist keyed on the branch
- * NAME, and each one names only these two. That is what makes Dodoma — named
- * by none of them — the baseline: a branch created tomorrow inherits Dodoma's
- * access purely by existing, with nothing to configure.
+ * Every capability gate in the app is a positive allowlist, and each one names
+ * only these two branches. The depot rules are matched by branch NAME; the Head
+ * Quarters capabilities — the company mailbox with inquiries and news, and
+ * cross-branch sales monitoring — are carried by the branch ID
+ * (HEAD_QUARTERS_ID), so renaming that branch keeps them.
  *
- * The flip side is that these privileges are carried by the name rather than by
- * a flag, so a branch created with one of these names would silently inherit
- * them. BranchController refuses such a name for that reason.
+ * Dodoma is named by none of them, which makes it the baseline: a branch
+ * created tomorrow inherits Dodoma's access purely by existing, with nothing to
+ * configure. The name-keyed privileges would be inherited by a branch created
+ * with one of those names, so BranchController refuses such a name.
  *
  * Nothing new may be added here without a decision of its own; a third
  * exception is a policy change, not a default.
@@ -22,8 +24,15 @@ class BranchAccess
     /** The depot, and the only stock manager who may monitor other branches. */
     public const KINONDONI = 'Kinondoni branch';
 
-    /** Runs the company mailbox, public inquiries and news moderation. */
+    /** The branch's original name; a few lookup rules still match on it. */
     public const HEAD_QUARTERS = 'Head Quarters-Mikocheni';
+
+    /**
+     * The branch row that carries the Head Quarters capabilities: the company
+     * mailbox with news and inquiries, and cross-branch sales monitoring for
+     * its cashier. Keyed on the id, so a rename keeps them.
+     */
+    public const HEAD_QUARTERS_ID = 10;
 
     /**
      * The branches that hold an exception, in the order they are named to

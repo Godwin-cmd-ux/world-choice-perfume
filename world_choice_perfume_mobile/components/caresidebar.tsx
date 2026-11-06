@@ -68,7 +68,7 @@ const MAIN_ITEMS: NavItem[] = [
   { label: 'Orders', icon: 'clipboard-outline', href: '/care/orders' },
 ];
 
-/** Head Quarters-Mikocheni only — the blade's isHqCustomerCare block. */
+/** The MIKOCHENI BRANCH HQ branch only — the blade's isHqCustomerCare block. */
 const HQ_ITEMS: NavItem[] = [
   { label: 'News', icon: 'newspaper-outline', href: '/care/news' },
   { label: 'Inquiries', icon: 'mail-open-outline', href: '/care/inquiries' },

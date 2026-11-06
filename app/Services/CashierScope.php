@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class CashierScope
 {
-    public const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
-
     private SupabaseService $supabase;
 
     public function __construct(?SupabaseService $supabase = null)
@@ -66,13 +64,10 @@ class CashierScope
         return ($this->user()->role ?? null) === 'cashier';
     }
 
-    private function matches(string $branchName, string $target): bool
-    {
-        return mb_strtolower(trim($branchName)) === mb_strtolower(trim($target));
-    }
-
     /**
-     * The HQ cashier is the only one allowed to monitor other branches.
+     * The HQ cashier — the cashier on the branch row with the Head Quarters id
+     * — is the only one allowed to monitor other branches. Keyed on the id, so
+     * renaming the branch does not take the capability away.
      */
     public function isHqCashier(): bool
     {
@@ -80,9 +75,7 @@ class CashierScope
             return false;
         }
 
-        $name = $this->branchName((int) $this->user()->branch_id);
-
-        return $name !== null && $this->matches($name, self::HQ_BRANCH_NAME);
+        return (int) ($this->user()->branch_id ?? 0) === BranchAccess::HEAD_QUARTERS_ID;
     }
 
     public function isSuperAdmin(): bool

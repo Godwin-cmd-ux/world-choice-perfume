@@ -10,6 +10,7 @@ use App\Services\InfoMailService;
 use App\Services\ProductVarietyStockService;
 use App\Services\RawEmailParser;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -77,8 +78,8 @@ abstract class CcBaseController extends Controller
     }
 
     /**
-     * Head Quarters customer care: role customer_care on the
-     * Head Quarters-Mikocheni branch — the same branch-name comparison
+     * Head Quarters customer care: role customer_care on the branch row whose
+     * id is BranchAccess::HEAD_QUARTERS_ID — the same check
      * CustomerCareScope::isHqCustomerCare() makes for the website, but read
      * from the session's staff row instead of Auth::user().
      */
@@ -89,17 +90,14 @@ abstract class CcBaseController extends Controller
             return false;
         }
 
-        $name = $this->hq->branchName((int) ($user['branch_id'] ?? 0));
-
-        return $name !== null
-            && mb_strtolower(trim($name)) === mb_strtolower(trim(CustomerCareScope::HQ_BRANCH_NAME));
+        return (int) ($user['branch_id'] ?? 0) === BranchAccess::HEAD_QUARTERS_ID;
     }
 
     /** Website: the `customer-care.hq` middleware. */
     protected function assertHq(Request $request): void
     {
         if (! $this->isHq($request)) {
-            abort(403, 'Only customer care from Head Quarters-Mikocheni can access this page.');
+            abort(403, 'Only customer care from MIKOCHENI BRANCH HQ can access this page.');
         }
     }
 

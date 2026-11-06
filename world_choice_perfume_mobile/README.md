@@ -306,7 +306,7 @@ role re-verification, in two tiers exactly like the website:
 - **branch tier (every member)** — clients, sales and orders of their own
   branch. Customer care has no cross-branch mode at all.
 - **Head Quarters tier (`assertHq`)** — inquiries, news moderation and the
-  info@ mailbox answer 403 ("Only customer care from Head Quarters-Mikocheni
+  info@ mailbox answer 403 ("Only customer care from MIKOCHENI BRANCH HQ
   can access this page.") for anyone else, mirroring the website's
   `customer-care.hq` middleware. The app's More hub hides those tiles until
   `scope.is_hq` says otherwise.

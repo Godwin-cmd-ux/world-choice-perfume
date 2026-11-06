@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Auth;
 
 class CustomerCareScope
 {
-    public const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
-
     private SupabaseService $supabase;
 
     public function __construct(?SupabaseService $supabase = null)
@@ -47,8 +45,6 @@ class CustomerCareScope
             return false;
         }
 
-        $name = $this->branchName((int) $this->user()->branch_id);
-
-        return $name !== null && mb_strtolower(trim($name)) === mb_strtolower(trim(self::HQ_BRANCH_NAME));
+        return (int) ($this->user()->branch_id ?? 0) === BranchAccess::HEAD_QUARTERS_ID;
     }
 }

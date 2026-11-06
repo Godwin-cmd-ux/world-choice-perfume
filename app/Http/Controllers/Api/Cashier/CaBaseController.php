@@ -85,10 +85,7 @@ abstract class CaBaseController extends Controller
             return false;
         }
 
-        $branch = $this->supabase->find('branches', (int) ($user['branch_id'] ?? 0), 'id,name');
-        $name = mb_strtolower(trim((string) ($branch['name'] ?? '')));
-
-        return $name !== '' && $name === mb_strtolower(trim(BranchAccess::HEAD_QUARTERS));
+        return (int) ($user['branch_id'] ?? 0) === BranchAccess::HEAD_QUARTERS_ID;
     }
 
     /**

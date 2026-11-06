@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 
 class InquiryController extends Controller
 {
-    private const HQ_BRANCH_NAME = BranchAccess::HEAD_QUARTERS;
-
     private SupabaseService $supabase;
 
     public function __construct()
@@ -19,8 +17,8 @@ class InquiryController extends Controller
     }
 
     /**
-     * Public contact form submission — routed straight to Head Quarters-Mikocheni
-     * customer care. Fields: email, phone, heading (subject), message.
+     * Public contact form submission — routed straight to the MIKOCHENI BRANCH
+     * HQ customer care. Fields: email, phone, heading (subject), message.
      */
     public function store(Request $request)
     {
@@ -66,20 +64,19 @@ class InquiryController extends Controller
         return back()->with('success', $success);
     }
 
+    /**
+     * The branch that receives public inquiries — the Head Quarters branch row,
+     * found by id so a rename cannot send inquiries nowhere.
+     */
     private function hqBranchId(): ?int
     {
         $rows = $this->supabase->query('branches', [
-            'select' => 'id,name',
+            'select' => 'id',
+            'id' => 'eq.' . BranchAccess::HEAD_QUARTERS_ID,
             'is_active' => 'eq.true',
-            'order' => 'id.asc',
+            'limit' => 1,
         ]);
 
-        foreach ($rows as $branch) {
-            if (mb_strtolower(trim($branch['name'] ?? '')) === mb_strtolower(trim(self::HQ_BRANCH_NAME))) {
-                return (int) $branch['id'];
-            }
-        }
-
-        return null;
+        return isset($rows[0]['id']) ? (int) $rows[0]['id'] : null;
     }
 }

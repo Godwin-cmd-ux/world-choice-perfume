@@ -13,11 +13,13 @@ use Tests\TestCase;
 /**
  * Branch access parity.
  *
- * The remaining capability gates are a positive allowlist keyed on the branch
- * NAME, and every one of them names only two branches: Kinondoni (cross-branch
- * stock monitoring) and Head Quarters-Mikocheni (cross-branch cashier
- * monitoring and the company mailbox). Dodoma is named by none of them, which
- * makes it the baseline.
+ * The remaining capability gates are a positive allowlist naming only two
+ * branches: Kinondoni (cross-branch stock monitoring) and the Head Quarters
+ * branch (cross-branch cashier monitoring and the company mailbox). The depot
+ * rules match on the branch NAME; the Head Quarters capabilities match on the
+ * branch ID (BranchAccess::HEAD_QUARTERS_ID), so the branch keeps them when it
+ * is renamed — as it has been, to "MIKOCHENI BRANCH HQ". Dodoma is named by
+ * none of them, which makes it the baseline.
  *
  * The products-only stock rule is NOT in that list any more. It is decided by
  * the branch's stored CATEGORY, because a branch created as products-based must
@@ -133,6 +135,51 @@ class BranchAccessParityTest extends TestCase
         $this->assertFalse($this->flag(self::KINONDONI, 'customer_care', 'isHqCustomerCare'));
         $this->assertFalse($this->flag(self::DODOMA, 'customer_care', 'isHqCustomerCare'));
         $this->assertFalse($this->flag(self::FUTURE_BRANCH, 'customer_care', 'isHqCustomerCare'));
+    }
+
+    /**
+     * The Head Quarters capabilities follow the branch ROW, not its name: the
+     * branch now called "MIKOCHENI BRANCH HQ" keeps them, and another branch
+     * that merely carries the old name gets nothing.
+     */
+    public function test_the_head_quarters_capabilities_follow_the_branch_id_not_the_name(): void
+    {
+        $supabase = $this->fakeBranchRows([
+            [
+                'id' => self::HEAD_QUARTERS,
+                'name' => 'MIKOCHENI BRANCH HQ',
+                'category' => BranchCategory::PRODUCTS_BASED,
+            ],
+            [
+                'id' => 40,
+                'name' => 'Head Quarters-Mikocheni',
+                'category' => BranchCategory::AUTONOMOUS,
+            ],
+        ]);
+
+        $this->loginAs('cashier', self::HEAD_QUARTERS);
+        $this->assertTrue(
+            (new CashierScope($supabase))->isCrossBranchMonitor(),
+            'The renamed Head Quarters cashier must still monitor other branches.'
+        );
+
+        $this->loginAs('customer_care', self::HEAD_QUARTERS);
+        $this->assertTrue(
+            (new CustomerCareScope($supabase))->isHqCustomerCare(),
+            'The renamed Head Quarters member must still hold the mailbox tiers.'
+        );
+
+        $this->loginAs('cashier', 40);
+        $this->assertFalse(
+            (new CashierScope($supabase))->isCrossBranchMonitor(),
+            'A different branch must not inherit the capability from the old name.'
+        );
+
+        $this->loginAs('customer_care', 40);
+        $this->assertFalse(
+            (new CustomerCareScope($supabase))->isHqCustomerCare(),
+            'A different branch must not inherit the mailbox from the old name.'
+        );
     }
 
     /**
@@ -258,19 +305,30 @@ class BranchAccessParityTest extends TestCase
      */
     private function fakeBranches(array $categoryOverrides = []): SupabaseService
     {
-        $branches = [];
+        $rows = [];
         foreach (self::BRANCHES as $id => $name) {
-            $branches[] = [
+            $rows[] = [
                 'id' => $id,
                 'name' => $name,
                 'category' => $categoryOverrides[$id] ?? self::CATEGORIES[$id],
             ];
         }
 
-        return new class($branches) extends SupabaseService
+        return $this->fakeBranchRows($rows);
+    }
+
+    /**
+     * The same fake over arbitrary branch rows, for a test that needs a branch
+     * outside the live set.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function fakeBranchRows(array $rows): SupabaseService
+    {
+        return new class($rows) extends SupabaseService
         {
-            /** @param array<int, array<string, mixed>> $branches */
-            public function __construct(private array $branches)
+            /** @param array<int, array<string, mixed>> $rows */
+            public function __construct(private array $rows)
             {
             }
 
@@ -286,10 +344,10 @@ class BranchAccessParityTest extends TestCase
                     : null;
 
                 if ($wanted === null) {
-                    return $this->branches;
+                    return $this->rows;
                 }
 
-                return array_values(array_filter($this->branches, fn ($b) => (int) $b['id'] === $wanted));
+                return array_values(array_filter($this->rows, fn ($b) => (int) $b['id'] === $wanted));
             }
         };
     }

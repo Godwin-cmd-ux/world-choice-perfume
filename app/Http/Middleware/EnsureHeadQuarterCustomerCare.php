@@ -11,7 +11,7 @@ class EnsureHeadQuarterCustomerCare
     public function handle(Request $request, Closure $next)
     {
         if (!(new CustomerCareScope())->isHqCustomerCare()) {
-            abort(403, 'Only customer care from Head Quarters-Mikocheni can access this page.');
+            abort(403, 'Only customer care from MIKOCHENI BRANCH HQ can access this page.');
         }
 
         return $next($request);

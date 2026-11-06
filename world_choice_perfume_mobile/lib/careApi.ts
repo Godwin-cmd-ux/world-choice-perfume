@@ -8,9 +8,9 @@
  * endpoints and types their responses.
  *
  * One server rule shows up everywhere: `scope.is_hq` — true only for the
- * Head Quarters-Mikocheni member. The app hides inquiries/news/mails for
- * everyone else, and those endpoints answer 403 if called anyway
- * ("Only customer care from Head Quarters-Mikocheni can access this page.").
+ * MIKOCHENI BRANCH HQ member (branch id 10). The app hides inquiries, news and
+ * mails for everyone else, and those endpoints answer 403 if called anyway
+ * ("Only customer care from MIKOCHENI BRANCH HQ can access this page.").
  */
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
