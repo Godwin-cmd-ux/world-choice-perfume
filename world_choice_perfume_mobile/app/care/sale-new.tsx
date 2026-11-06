@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, useAsyncData } from '../../components/adminkit';
 import { EmptyView, GoldButton, LoadingView, ErrorView } from '../../components/ui';
+import { SaleSteps, StepFooter } from '../../components/salewizard';
 import { createSale, fetchSaleOptions, type CcEmptyBottleLine, type CcSaleItemInput } from '../../lib/careApi';
 import { formatMoney } from '../../lib/format';
 import { lineSellable, productSellable, volumeSellable } from '../../lib/saleRules';
@@ -57,6 +58,10 @@ export default function CareSaleNew() {
 
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Which step of the sale flow is on screen: 0 type, 1 customer, 2 products, 3 payment.
+  const [step, setStep] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const buckets = useMemo(() => data?.productVarieties ?? {}, [data]);
   const products = useMemo(() => data?.products ?? [], [data]);
@@ -196,6 +201,24 @@ export default function CareSaleNew() {
     productLines.length + bottleLines.length > 0 &&
     (paymentMode === 'single' || Math.abs(paymentSum - total) <= 0.01);
 
+  // Forward moves are one step at a time; going back is always free.
+  const goToStep = (next: number) => {
+    const target = Math.max(0, Math.min(3, next));
+    if (target > step + 1) return;
+    // Payment only opens once something is actually being sold.
+    if (target === 3 && lines.length === 0) return;
+    setStep(target);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  // Walk-in: clear anything typed on the customer step and move on.
+  const skipCustomer = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setStep(2);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   // Switching sale type can strand lines the new type does not sell — drop
   // them, and the picked product too, instead of submitting them.
   const pickSaleType = (next: 'retail' | 'wholesale') => {
@@ -219,18 +242,28 @@ export default function CareSaleNew() {
   };
 
   return (
-    <AdminPage title="New Sale" eyebrow="Customer Care" accent={CC_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage scrollRef={scrollRef} title="New Sale" eyebrow="Customer Care" accent={CC_ACCENT.main} onBack={() => router.back()}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
       {loading && !data ? <LoadingView label="Loading stock…" /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}
 
       {data ? (
         <>
-          <GroupLabel>Sale type</GroupLabel>
-          <ChipRow>
-            <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
-            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
-          </ChipRow>
+          <SaleSteps step={step} accent={CC_ACCENT.main} onGo={goToStep} />
+
+          {step === 0 ? (
+            <>
+              <GroupLabel>Sale type</GroupLabel>
+              <ChipRow>
+                <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
+                <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
+              </ChipRow>
+              <StepFooter continueLabel="Customer" onContinue={() => goToStep(1)} />
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <>
 
           <GroupLabel>Products</GroupLabel>
           <AuthField
@@ -362,11 +395,33 @@ export default function CareSaleNew() {
             ))
           )}
 
-          <GroupLabel>Customer</GroupLabel>
-          <AuthField label="Name (optional)" value={customerName} onChangeText={setCustomerName} placeholder="Walk-in by default" icon="person-outline" autoCapitalize="words" />
-          <AuthField label="Phone (optional)" value={customerPhone} onChangeText={setCustomerPhone} placeholder="07…" icon="call-outline" keyboardType="phone-pad" />
+              <StepFooter
+                continueLabel="Payment"
+                onBack={() => goToStep(1)}
+                continueDisabled={lines.length === 0}
+                onContinue={() => goToStep(3)}
+              />
+            </>
+          ) : null}
 
-          <GroupLabel>Payment</GroupLabel>
+          {step === 1 ? (
+            <>
+              <GroupLabel>Customer</GroupLabel>
+              <AuthField label="Name (optional)" value={customerName} onChangeText={setCustomerName} placeholder="Walk-in by default" icon="person-outline" autoCapitalize="words" />
+              <AuthField label="Phone (optional)" value={customerPhone} onChangeText={setCustomerPhone} placeholder="07…" icon="call-outline" keyboardType="phone-pad" />
+              <StepFooter
+                continueLabel="Products"
+                onBack={() => goToStep(0)}
+                onSkip={skipCustomer}
+                skipLabel="Skip — walk-in"
+                onContinue={() => goToStep(2)}
+              />
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              <GroupLabel>Payment</GroupLabel>
           <ChipRow>
             <Chip label="Single" active={paymentMode === 'single'} onPress={() => setPaymentMode('single')} />
             <Chip label="Split" active={paymentMode === 'multi'} onPress={() => setPaymentMode('multi')} />
@@ -390,14 +445,17 @@ export default function CareSaleNew() {
             </>
           ) : null}
 
-          <GoldButton
-            label={busy ? 'Completing…' : `Complete sale · ${formatMoney(total)}`}
-            icon="checkmark-circle-outline"
-            loading={busy}
-            disabled={!canSubmit}
-            onPress={submit}
-            style={{ marginTop: 14 }}
-          />
+              <GoldButton
+                label={busy ? 'Completing…' : `Complete sale · ${formatMoney(total)}`}
+                icon="checkmark-circle-outline"
+                loading={busy}
+                disabled={!canSubmit}
+                onPress={submit}
+                style={{ marginTop: 14 }}
+              />
+              <StepFooter onBack={() => goToStep(2)} />
+            </>
+          ) : null}
         </>
       ) : null}
 

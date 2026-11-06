@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, StatGrid, StatTile, useAsyncData, messageOf } from '../../components/adminkit';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { createSale, fetchSaleOptions, type SmSaleFields, type SmVarietyBuckets } from '../../lib/smApi';
 import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
+import { SaleSteps, StepFooter } from '../../components/salewizard';
 import { lineSellable, productSellable, volumeSellable } from '../../lib/saleRules';
 
 interface Line {
@@ -53,6 +54,10 @@ export default function SmSaleNew() {
 
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Which step of the sale flow is on screen: 0 type, 1 customer, 2 products, 3 payment.
+  const [step, setStep] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const buckets = useMemo<SmVarietyBuckets>(() => data?.productVarieties ?? {}, [data]);
   const products = useMemo(() => data?.products ?? [], [data]);
@@ -139,6 +144,24 @@ export default function SmSaleNew() {
   const canSubmit =
     lines.length > 0 && payments.length > 0 && (paymentMode === 'single' || Math.abs(paymentTotal - subtotal) < 0.01);
 
+  // Forward moves are one step at a time; going back is always free.
+  const goToStep = (next: number) => {
+    const target = Math.max(0, Math.min(3, next));
+    if (target > step + 1) return;
+    // Payment only opens once something is actually being sold.
+    if (target === 3 && lines.length === 0) return;
+    setStep(target);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  // Walk-in: clear anything typed on the customer step and move on.
+  const skipCustomer = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setStep(2);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   // Switching sale type can strand lines the new type does not sell — drop
   // them, and the picked product too, instead of submitting them.
   const pickSaleType = (next: 'retail' | 'wholesale') => {
@@ -189,7 +212,7 @@ export default function SmSaleNew() {
   };
 
   return (
-    <AdminPage title="New Sale" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
+    <AdminPage scrollRef={scrollRef} title="New Sale" eyebrow="Stock Manager" onMenu={smMenu.open} accent={SM_ACCENT.main} onBack={() => router.back()}>
       {error ? <Banner kind="error" message={error} /> : null}
       {submitError ? <Banner kind="error" message={submitError} /> : null}
 
@@ -199,17 +222,37 @@ export default function SmSaleNew() {
         <ErrorView message={error} onRetry={reload} />
       ) : (
         <>
-          <GroupLabel>Sale type</GroupLabel>
-          <ChipRow>
-            <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
-            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
-          </ChipRow>
+          <SaleSteps step={step} accent={SM_ACCENT.main} onGo={goToStep} />
 
-          <GroupLabel>Customer (optional)</GroupLabel>
-          <AuthField label="Name" value={customerName} onChangeText={setCustomerName} placeholder="Walk-in customer" icon="person-outline" />
-          <AuthField label="Phone" value={customerPhone} onChangeText={setCustomerPhone} placeholder="07…" icon="call-outline" keyboardType="phone-pad" />
+          {step === 0 ? (
+            <>
+              <GroupLabel>Sale type</GroupLabel>
+              <ChipRow>
+                <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
+                <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
+              </ChipRow>
+              <StepFooter continueLabel="Customer" onContinue={() => goToStep(1)} />
+            </>
+          ) : null}
 
-          <GroupLabel>Add product</GroupLabel>
+          {step === 1 ? (
+            <>
+              <GroupLabel>Customer (optional)</GroupLabel>
+              <AuthField label="Name" value={customerName} onChangeText={setCustomerName} placeholder="Walk-in customer" icon="person-outline" />
+              <AuthField label="Phone" value={customerPhone} onChangeText={setCustomerPhone} placeholder="07…" icon="call-outline" keyboardType="phone-pad" />
+              <StepFooter
+                continueLabel="Products"
+                onBack={() => goToStep(0)}
+                onSkip={skipCustomer}
+                skipLabel="Skip — walk-in"
+                onContinue={() => goToStep(2)}
+              />
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <>
+              <GroupLabel>Add product</GroupLabel>
           <AuthField label="Search" value={productSearch} onChangeText={setProductSearch} placeholder="Product or brand…" icon="search-outline" />
           <ChipRow>
             {filtered.slice(0, 30).map((p) => (
@@ -318,7 +361,18 @@ export default function SmSaleNew() {
             </>
           ) : null}
 
-          <GroupLabel>Payment</GroupLabel>
+              <StepFooter
+                continueLabel="Payment"
+                onBack={() => goToStep(1)}
+                continueDisabled={lines.length === 0}
+                onContinue={() => goToStep(3)}
+              />
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              <GroupLabel>Payment</GroupLabel>
           <ChipRow>
             <Chip label="Single payment" active={paymentMode === 'single'} onPress={() => setPaymentMode('single')} />
             <Chip label="Split payments" active={paymentMode === 'multi'} onPress={() => setPaymentMode('multi')} />
@@ -345,14 +399,17 @@ export default function SmSaleNew() {
             <StatTile label="Total" value={formatMoney(subtotal)} tone="success" />
           </StatGrid>
 
-          <Pressable
-            onPress={submit}
-            style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, !canSubmit && styles.disabled]}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-          >
-            <Text style={styles.submitText}>Complete sale</Text>
-          </Pressable>
+              <Pressable
+                onPress={submit}
+                style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, !canSubmit && styles.disabled]}
+                disabled={!canSubmit}
+                accessibilityRole="button"
+              >
+                <Text style={styles.submitText}>Complete sale</Text>
+              </Pressable>
+              <StepFooter onBack={() => goToStep(2)} />
+            </>
+          ) : null}
         </>
       )}
 

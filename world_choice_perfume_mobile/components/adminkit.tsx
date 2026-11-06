@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import {
   Modal,
   Pressable,
@@ -39,6 +39,7 @@ export function AdminPage({
   action,
   refreshing,
   onRefresh,
+  scrollRef,
   children,
 }: {
   title: string;
@@ -50,6 +51,8 @@ export function AdminPage({
   action?: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** Lets multi-step screens return the body to the top when the step changes. */
+  scrollRef?: RefObject<ScrollView | null>;
   children: ReactNode;
 }) {
   // Every module screen hides the native header and draws edge-to-edge (Expo
@@ -81,6 +84,7 @@ export function AdminPage({
         {action}
       </View>
       <ScrollView
+        ref={scrollRef}
         style={styles.body}
         contentContainerStyle={styles.bodyContent}
         keyboardShouldPersistTaps="handled"

@@ -396,7 +396,12 @@
     }
 
     function calculateTotal() {
-        document.getElementById('grand-total').textContent = formatMoney(computeSaleTotal());
+        const total = computeSaleTotal();
+        document.getElementById('grand-total').textContent = formatMoney(total);
+        // The payment step repeats the amount due, so the figure follows the
+        // cart even while the products step is off screen.
+        const paymentTotal = document.getElementById('payment-grand-total');
+        if (paymentTotal) paymentTotal.textContent = formatMoney(total);
         validatePayments();
     }
 
@@ -526,6 +531,12 @@
         const form = document.getElementById('saleForm');
         if (!form) return;
         form.addEventListener('submit', function (e) {
+            // Enter in an early field (or any programmatic submit) must not
+            // post a sale before the payment step has been reached.
+            if (saleStep !== 4) {
+                e.preventDefault();
+                return;
+            }
             const missing = [];
             document.querySelectorAll('.cart-row').forEach(row => {
                 // A bottled line is one that carries a variety at all; the
@@ -545,9 +556,100 @@
         });
     })();
 
+    // ===================== STEP WIZARD =====================
+    // The sale is answered in one fixed order: sale type, customer, products,
+    // payment. Only the current step is on screen, so nothing can be skipped
+    // or filled in out of sequence, and the server sees exactly the same
+    // field names it always did — the steps are presentation only.
+    const SALE_LAST_STEP = 4;
+    let saleStep = 1;
+
+    function saleStepPanels() {
+        return Array.from(document.querySelectorAll('.sale-step'));
+    }
+
+    // A wholesale sale may be empty bottles only, so a filled bottle line
+    // counts as a sale line exactly like a product in the cart does.
+    function bottleLineReady(row) {
+        const volume = row.querySelector('.bottle-volume-select');
+        const qty = row.querySelector('.bottle-qty-input');
+        const price = row.querySelector('.bottle-price-input');
+        return !!(volume && volume.value && qty && (parseInt(qty.value, 10) || 0) > 0 && price && price.value !== '');
+    }
+
+    function saleHasLines() {
+        if (document.getElementById('cart-rows').querySelectorAll('.cart-row').length > 0) return true;
+        return Array.from(document.querySelectorAll('.bottle-item-row')).some(bottleLineReady);
+    }
+
+    function validateSaleStep(step) {
+        if (step === 3 && !saleHasLines()) {
+            if (window.wcpToast && typeof window.wcpToast.show === 'function') {
+                window.wcpToast.show('Add at least one product or empty bottle to continue.', 'warning');
+            } else {
+                alert('Add at least one product or empty bottle to continue.');
+            }
+            return false;
+        }
+        return true;
+    }
+
+    function paintSaleSteps() {
+        document.querySelectorAll('[data-step-go]').forEach(btn => {
+            const step = Number(btn.dataset.stepGo);
+            const active = step === saleStep;
+            const done = step < saleStep;
+            const dot = btn.querySelector('.sale-step-dot');
+            const label = btn.querySelector('.sale-step-label');
+            if (dot) {
+                dot.className = 'sale-step-dot flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ' +
+                    (active ? 'bg-' + ACCENT + '-600 text-white shadow'
+                        : done ? 'bg-' + ACCENT + '-100 text-' + ACCENT + '-700'
+                        : 'bg-gray-100 text-gray-400');
+            }
+            if (label) {
+                label.className = 'sale-step-label hidden sm:block truncate text-xs font-semibold ' +
+                    (active ? 'text-' + ACCENT + '-700' : done ? 'text-gray-600' : 'text-gray-400');
+            }
+            btn.setAttribute('aria-current', active ? 'step' : 'false');
+            btn.classList.toggle('cursor-default', step > saleStep);
+        });
+    }
+
+    function goToStep(step, initial) {
+        step = Math.max(1, Math.min(SALE_LAST_STEP, Number(step) || 1));
+        // Forward moves are one step at a time and only after the current step
+        // is answered; going back is always free.
+        if (!initial && step > saleStep) {
+            if (step > saleStep + 1) return;
+            if (!validateSaleStep(saleStep)) return;
+        }
+        saleStep = step;
+        saleStepPanels().forEach(panel => {
+            panel.classList.toggle('hidden', Number(panel.dataset.step) !== saleStep);
+        });
+        paintSaleSteps();
+        if (!initial) window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (saleStep === 4) {
+            calculateTotal();
+            validatePayments();
+        }
+    }
+
+    // Small screens have no room for both actions, so the skip is explicit:
+    // it clears the customer fields and books the sale as walk-in.
+    function skipCustomer() {
+        clearCustomer();
+        document.getElementById('newCustomerForm').classList.add('hidden');
+        document.getElementById('newCustomerName').value = '';
+        document.getElementById('newCustomerPhone').value = '';
+        goToStep(3);
+    }
+
     // ===================== INIT =====================
     bindBottleEvents();
     document.querySelectorAll('.bottle-item-row').forEach(row => refreshBottleVariant(row));
     togglePaymentMode('single');
     setSaleType(document.getElementById('sale_type').value);
+    goToStep(1, true);
 </script>
