@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Banner } from '../../components/authkit';
 import {
@@ -53,6 +53,15 @@ export default function Staff() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
+
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+
 
   const [confirmDelete, setConfirmDelete] = useState<AdminUserRow | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -128,12 +137,6 @@ export default function Staff() {
           {failure ? <Banner kind="error" message={failure} /> : null}
 
           <SearchInput value={search} onChangeText={setSearch} placeholder="Name, email or phone…" />
-          {search !== query ? (
-            <Text style={styles.applyHint} onPress={() => setQuery(search)}>
-              Tap to apply “{search}”
-            </Text>
-          ) : null}
-
           <ChipRow>
             {ROLES.map((r) => (
               <Chip key={r.key || 'all'} label={r.label} active={role === r.key} onPress={() => setRole(r.key)} />

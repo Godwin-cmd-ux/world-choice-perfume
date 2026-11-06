@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
@@ -23,6 +23,15 @@ export default function AdminOrders() {
   const [branchId, setBranchId] = useState('');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
+
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+
 
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData<AdminOrdersPayload>(
     () => fetchAdminOrders({ tab, branch_id: branchId || undefined, q: query || undefined }),
@@ -82,12 +91,6 @@ export default function AdminOrders() {
           onChangeText={setSearch}
           placeholder="Order number or customer…"
         />
-        {search !== query ? (
-          <Text style={styles.applyHint} onPress={() => setQuery(search)}>
-            Tap to apply “{search}”
-          </Text>
-        ) : null}
-
         {(data?.orders ?? []).length === 0 ? (
           <EmptyView icon="bag-handle-outline" title="No orders here" hint="Nothing matches this tab and filter." />
         ) : (

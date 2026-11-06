@@ -383,5 +383,6 @@
     @include('partials.swipe-nav')
     @include('partials.toast')
     @stack('scripts')
+    @include('partials.live-search')
 </body>
 </html>

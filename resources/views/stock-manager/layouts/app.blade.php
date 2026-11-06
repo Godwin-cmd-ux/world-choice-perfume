@@ -122,5 +122,6 @@
     </div>
     @include('partials.toast')
     @stack('scripts')
+    @include('partials.live-search')
 </body>
 </html>

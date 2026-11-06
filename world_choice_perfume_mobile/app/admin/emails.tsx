@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../components/authkit';
 import { AdminPage, Chip, ChipRow, DataCard, GroupLabel, SearchInput, useAsyncData } from '../../components/adminkit';
@@ -27,6 +27,19 @@ export default function Emails() {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      // A new search starts at the newest page again.
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+
 
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData(
     () => fetchMails({ box, search: query || undefined, page }),
@@ -62,12 +75,6 @@ export default function Emails() {
           </ChipRow>
 
           <SearchInput value={search} onChangeText={setSearch} placeholder="Sender, subject or content…" />
-          {search !== query ? (
-            <Text style={styles.applyHint} onPress={() => { setQuery(search); setPage(1); }}>
-              Tap to apply “{search}”
-            </Text>
-          ) : null}
-
           <GroupLabel right={<Text style={styles.count}>Page {data.page}</Text>}>Inbox</GroupLabel>
 
           {mails.length === 0 ? (

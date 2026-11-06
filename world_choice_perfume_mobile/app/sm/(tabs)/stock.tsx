@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner } from '../../../components/authkit';
@@ -25,7 +25,20 @@ export default function SmStock() {
   // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
-  const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData(() => fetchProductStock({ search }), [search]);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+
+  const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData(
+    () => fetchProductStock({ search: debouncedSearch }),
+    [debouncedSearch],
+  );
 
   const [pendingDelete, setPendingDelete] = useState<SmStockRow | null>(null);
   const [busy, setBusy] = useState(false);

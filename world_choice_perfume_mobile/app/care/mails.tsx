@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, SearchInput, useAsyncData } from '../../components/adminkit';
@@ -22,6 +22,16 @@ export default function CareMails() {
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(1);
+
+  // Typing filters the mailbox as it goes; the request waits for a short pause.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebounced(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
 
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
     () => fetchMails({ box, search: debounced || undefined, page }),
@@ -49,7 +59,7 @@ export default function CareMails() {
         <>
           <SearchInput
             value={search}
-            onChangeText={(t) => { setSearch(t); setDebounced(t); setPage(1); }}
+            onChangeText={setSearch}
             placeholder="Search sender or subject…"
           />
           <ChipRow>

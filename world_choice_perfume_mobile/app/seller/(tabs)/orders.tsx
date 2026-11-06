@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, SearchInput, useAsyncData } from '../../../components/adminkit';
@@ -26,12 +26,20 @@ const TABS = [
 export default function SellerOrders() {
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('pending');
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
+    return () => clearTimeout(t);
+  }, [q]);
+
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
-    () => fetchSellerOrders({ tab, q: q.trim() || undefined }),
-    [tab, q],
+    () => fetchSellerOrders({ tab, q: debouncedQ || undefined }),
+    [tab, debouncedQ],
   );
 
   const [nameFor, setNameFor] = useState<string | null>(null);

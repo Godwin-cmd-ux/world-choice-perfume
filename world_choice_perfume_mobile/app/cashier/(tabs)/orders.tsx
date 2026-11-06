@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useSyncExternalStore, useState } from 'react';
+import { useSyncExternalStore, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthField, Banner } from '../../../components/authkit';
 import { AdminPage, BusyOverlay, Chip, ChipRow, SearchInput, useAsyncData } from '../../../components/adminkit';
@@ -36,12 +36,20 @@ export default function CashierOrders() {
 
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('pending');
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
+    return () => clearTimeout(t);
+  }, [q]);
+
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
-    () => fetchCashierOrders({ tab, q: q.trim() || undefined, monitor_branch: monitor?.id }),
-    [tab, q, monitor?.id],
+    () => fetchCashierOrders({ tab, q: debouncedQ || undefined, monitor_branch: monitor?.id }),
+    [tab, debouncedQ, monitor?.id],
   );
 
   // The note row: which order is acting, and what kind of action.

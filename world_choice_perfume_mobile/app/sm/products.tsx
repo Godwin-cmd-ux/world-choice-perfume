@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '../../components/authkit';
 import { AdminPage, Chip, ChipRow, ConfirmDialog, DataCard, SearchInput, useAsyncData, messageOf } from '../../components/adminkit';
@@ -15,10 +15,20 @@ import { smMenu } from '../../components/smsidebar';
  */
 export default function SmProducts() {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Typing filters the list as it goes; the request waits for a short pause
+  // so the server is not hit on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+
   const [includeInactive, setIncludeInactive] = useState(false);
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
-    () => fetchProducts({ search: search || undefined, include_inactive: includeInactive }),
-    [search, includeInactive],
+    () => fetchProducts({ search: debouncedSearch || undefined, include_inactive: includeInactive }),
+    [debouncedSearch, includeInactive],
   );
 
   const [pendingDeactivate, setPendingDeactivate] = useState<SmCatalogueProduct | null>(null);

@@ -159,6 +159,7 @@
     </div>
     @include('partials.toast')
     @stack('scripts')
+    @include('partials.live-search')
     <script>
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
