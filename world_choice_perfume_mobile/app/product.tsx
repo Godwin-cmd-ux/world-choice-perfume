@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CartButton } from '../components/CartButton';
@@ -38,7 +38,7 @@ type Status = 'loading' | 'error' | 'ready';
 export default function ProductScreen() {
   const params = useLocalSearchParams<{ id?: string; branch_id?: string }>();
   const id = params.id ?? '';
-  const { addItem } = useCart();
+  const { items, count: cartCount, putItem } = useCart();
 
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<ProductDetailPayload | null>(null);
@@ -111,18 +111,39 @@ export default function ProductScreen() {
   const orderable = selectedStock != null && available > 0;
   const productImage = (data?.product.images ?? []).map((img) => img?.image_url).find(Boolean) ?? null;
 
+  // The one cart line this card edits: branch + product + bottling.
+  const cartKey = `${branchId}-${id}-${picked ? picked.volume : 'plain'}`;
+  const inCart = useMemo(
+    () => items.find((item) => item.key === cartKey) ?? null,
+    [items, cartKey],
+  );
+
+  // Re-opening a perfume already in the cart shows the quantity it was saved
+  // with rather than starting again at 1. Only when the chosen line changes —
+  // after that the stepper belongs to the customer.
+  const syncedKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (syncedKey.current === cartKey) return;
+    syncedKey.current = cartKey;
+    setQuantity(inCart ? inCart.quantity : 1);
+  }, [cartKey, inCart]);
+
   // Switching branch or bottling can lower what is available — never leave the
   // stepper above it.
   useEffect(() => {
     if (available > 0 && quantity > available) setQuantity(available);
   }, [available, quantity]);
 
-  const onAddToCart = () => {
+  /**
+   * Park this card's line, then go where the customer asked: `cart` checks out
+   * what is in the basket, `shop` keeps browsing for more perfume.
+   */
+  const parkItem = (after: 'cart' | 'shop') => {
     const product = data?.product;
     if (!orderable || !product || !selectedStock) return;
 
     const item = {
-      key: `${branchId}-${id}-${picked ? picked.volume : 'plain'}`,
+      key: cartKey,
       productId: id,
       productName: product.name ?? 'Unnamed product',
       brand: product.brand ?? null,
@@ -136,7 +157,9 @@ export default function ProductScreen() {
       available,
     };
 
-    const result = addItem(item);
+    const go = () => router.push(after === 'cart' ? '/cart' : '/shop');
+
+    const result = putItem(item);
     if (result === 'branch-conflict') {
       Alert.alert(
         'Start a new cart?',
@@ -147,8 +170,8 @@ export default function ProductScreen() {
             text: 'Start new',
             style: 'destructive',
             onPress: () => {
-              addItem(item, { replace: true });
-              router.push('/cart');
+              putItem(item, { replace: true });
+              go();
             },
           },
         ],
@@ -156,10 +179,7 @@ export default function ProductScreen() {
       return;
     }
 
-    Alert.alert('Added to cart', `${item.productName} is in your cart.`, [
-      { text: 'Keep shopping', style: 'cancel' },
-      { text: 'View cart', onPress: () => router.push('/cart') },
-    ]);
+    go();
   };
 
   const body = () => {
@@ -409,12 +429,20 @@ export default function ProductScreen() {
       {body()}
       <View style={styles.footerBar}>
         {orderable ? (
-          <GoldButton
-            label={quantity > 1 ? `Add ${quantity} to Cart` : 'Add to Cart'}
-            icon="cart-outline"
-            onPress={onAddToCart}
-            style={styles.footerButton}
-          />
+          <>
+            <GoldButton
+              label={unitPrice > 0 ? `Place Order · ${formatMoney(unitPrice * quantity)}` : 'Place Order'}
+              icon="checkmark-circle-outline"
+              onPress={() => parkItem('cart')}
+              style={styles.footerButton}
+            />
+            <OutlineButton
+              label={cartCount > 0 ? `Choose More Products · ${cartCount} in cart` : 'Choose More Products'}
+              icon="bag-add-outline"
+              onPress={() => parkItem('shop')}
+              style={styles.footerButton}
+            />
+          </>
         ) : (
           <OutlineButton
             label="Find a Branch"
@@ -674,6 +702,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.bg,
+    gap: 8,
   },
   footerButton: {
     width: '100%',

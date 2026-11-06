@@ -53,6 +53,13 @@ interface CartValue {
   ready: boolean;
   /** `replace: true` discards a cart from another branch and starts fresh. */
   addItem: (item: CartItem, options?: { replace?: boolean }) => AddResult;
+  /**
+   * Park one line at an exact quantity: a line already holding this
+   * product+branch+size takes the new quantity instead of stacking on top of
+   * it. The product screen owns its own line, so re-opening a perfume that is
+   * already in the cart must not silently double it.
+   */
+  putItem: (item: CartItem, options?: { replace?: boolean }) => AddResult;
   setQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
@@ -146,6 +153,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return 'added';
   }, []);
 
+  const putItem = useCallback((item: CartItem, options?: { replace?: boolean }): AddResult => {
+    const replace = options?.replace ?? false;
+    const current = itemsRef.current;
+    if (!replace && current.length > 0 && String(current[0].branchId) !== String(item.branchId)) {
+      return 'branch-conflict';
+    }
+
+    setItems((list) => {
+      const base = replace ? [] : list;
+      const line = { ...item, quantity: clampQuantity(item.quantity, item.available) };
+      return base.some((i) => i.key === item.key)
+        ? base.map((i) => (i.key === item.key ? line : i))
+        : [...base, line];
+    });
+
+    return 'added';
+  }, []);
+
   const setQuantity = useCallback((key: string, quantity: number) => {
     setItems((list) =>
       list.map((i) => (i.key === key ? { ...i, quantity: clampQuantity(quantity, i.available) } : i)),
@@ -169,11 +194,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal,
       ready,
       addItem,
+      putItem,
       setQuantity,
       removeItem,
       clear,
     };
-  }, [items, ready, addItem, setQuantity, removeItem, clear]);
+  }, [items, ready, addItem, putItem, setQuantity, removeItem, clear]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

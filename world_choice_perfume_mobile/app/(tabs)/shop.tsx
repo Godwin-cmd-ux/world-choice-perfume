@@ -17,6 +17,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SwipeHoldScrollView } from '../../components/swipetabs';
 import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { errorMessage, fetchProducts, type ProductsPayload, type StockItem } from '../../lib/api';
+import { useCart } from '../../lib/cart';
 import { formatMoney } from '../../lib/format';
 import { COLORS, RADIUS } from '../../lib/theme';
 
@@ -124,6 +125,9 @@ function ProductCard({
 
 export default function ShopScreen() {
   const params = useLocalSearchParams<{ sex_category?: string; brand?: string }>();
+  // "Choose More Products" lands here — keep the basket in sight so the
+  // customer can check out after browsing another perfume.
+  const { count: cartCount, subtotal: cartSubtotal, branchName: cartBranch } = useCart();
 
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<ProductsPayload | null>(null);
@@ -290,6 +294,26 @@ export default function ShopScreen() {
         <ChipRow options={brandOptions} value={brand} onChange={setBrand} />
       </View>
 
+      {cartCount > 0 ? (
+        <Pressable
+          onPress={() => router.push('/cart')}
+          style={({ pressed }) => [styles.cartStrip, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Cart, ${cartCount} items, checkout`}
+        >
+          <Ionicons name="cart-outline" size={18} color={COLORS.goldBright} />
+          <View style={styles.cartStripText}>
+            <Text style={styles.cartStripTitle}>
+              {cartCount} {cartCount === 1 ? 'item' : 'items'} · {formatMoney(cartSubtotal)}
+            </Text>
+            <Text style={styles.cartStripMeta} numberOfLines={1}>
+              {cartBranch ? `From ${cartBranch}` : 'Ready to check out'}
+            </Text>
+          </View>
+          <Text style={styles.cartStripCta}>Checkout</Text>
+        </Pressable>
+      ) : null}
+
       {body()}
     </SafeAreaView>
   );
@@ -357,6 +381,35 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
   },
+  cartStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.goldSoft,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+  },
+  cartStripText: { flex: 1, gap: 2 },
+  cartStripTitle: {
+    color: COLORS.goldBright,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  cartStripMeta: {
+    color: COLORS.textSecondary,
+    fontSize: 11.5,
+  },
+  cartStripCta: {
+    color: COLORS.goldBright,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
   count: {
     color: COLORS.textMuted,
     fontSize: 12.5,
