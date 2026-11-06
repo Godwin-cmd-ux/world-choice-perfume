@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    /** The only brand whose oil fragrance is offered to customers. */
+    private const OWN_OIL_BRAND = 'world choice perfumes';
+
     private SupabaseService $supabase;
 
     private ProductVarietyStockService $varieties;
@@ -38,6 +41,11 @@ class ProductController extends Controller
             'is_active' => 'eq.true',
             'order' => 'created_at.desc',
         ]);
+
+        // Oil fragrance sold under another house is not ours to sell, so the
+        // shop lists only oil fragrance carrying the WORLD CHOICE PERFUMES
+        // name. Brand perfumes are unaffected.
+        $allProducts = array_values(array_filter($allProducts, fn ($p) => $this->visibleOnShop($p)));
 
         // Distinct brands across the catalogue for the "Brand" shop filter.
         $availableBrands = collect($allProducts)
@@ -323,8 +331,28 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Whether a product may appear on the customer shop. Oil fragrance the
+     * company does not make is hidden there; every other product is shown as
+     * before. The back office still sees the whole catalogue.
+     */
+    private function visibleOnShop($product): bool
+    {
+        if (data_get($product, 'category') !== 'Oil Fragrance') {
+            return true;
+        }
+
+        return self::OWN_OIL_BRAND === strtolower(trim((string) data_get($product, 'brand', '')));
+    }
+
     private function applyFilters($stockCollection, Request $request)
     {
+        // A branch can still hold oil fragrance from another house — it must
+        // not reach the shop, whether the customer is browsing or filtering.
+        $stockCollection = $stockCollection->filter(
+            fn ($item) => $this->visibleOnShop(data_get($item, 'product'))
+        );
+
         // Search filter
         if ($request->search) {
             $search = strtolower($request->search);
