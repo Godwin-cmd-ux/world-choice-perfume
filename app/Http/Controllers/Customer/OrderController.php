@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Services\CustomerOrderCart;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
@@ -13,15 +14,18 @@ class OrderController extends Controller
 
     private ProductVarietyStockService $varieties;
 
-    public function __construct(SupabaseService $supabase)
+    private CustomerOrderCart $cart;
+
+    public function __construct(SupabaseService $supabase, CustomerOrderCart $cart)
     {
         $this->supabase = $supabase;
         $this->varieties = new ProductVarietyStockService($supabase);
+        $this->cart = $cart;
     }
 
     public function create(Request $request)
     {
-        $branchId = $request->branch_id;
+        $branchId = (int) $request->branch_id;
 
         if (!$branchId) {
             return redirect()->route('customer.products.index')->with('error', 'Please select a branch first.');
@@ -35,43 +39,256 @@ class OrderController extends Controller
 
         $branch = (object) $branch;
 
-        // Fetch products with stock at this branch (unit cost excluded — internal only)
-        $rawStock = $this->supabase->query('branch_stock', [
-            'select' => 'id,branch_id,product_id,quantity,selling_price,product:products(id,name,description,brand,category,sex_category,images:product_images(*))',
-            'branch_id' => "eq.{$branchId}",
-            'quantity' => 'gt.0',
+        // A cart is packed from one branch — an order has one branch_id. Opening
+        // a product at another branch starts a fresh cart instead of mixing two
+        // branches into an order that could never be packed.
+        if ($this->cart->items() !== [] && $this->cart->branchId() !== $branchId) {
+            $this->cart->clear();
+            session()->flash('error', 'Your cart was for another branch, so it was emptied. An order can only come from one branch.');
+        }
+
+        $cartItems = $this->cart->items();
+
+        // The page is about the ONE perfume the customer tapped in the shop, plus
+        // whatever was already added on an earlier "choose more products" trip —
+        // never the whole catalogue.
+        $line = null;
+        $productId = (int) ($request->product_id ?? 0);
+
+        if ($productId > 0) {
+            $offer = $this->offer($branchId, $productId);
+
+            if ($offer === null || $offer['available'] < 1) {
+                return redirect()
+                    ->route('customer.products.index', ['branch_id' => $branchId])
+                    ->with('error', 'That product is no longer available at this branch.');
+            }
+
+            // Coming from the details page the size is already chosen; without
+            // one, the first size in stock is offered.
+            $volume = $offer['is_variety'] ? (int) $offer['buckets'][0]['volume'] : 0;
+            $requestedVolume = (int) ($request->volume ?? 0);
+            if ($offer['is_variety'] && $requestedVolume > 0 && $this->availableFor($offer, $requestedVolume) > 0) {
+                $volume = $requestedVolume;
+            }
+
+            // Already in the cart? The card edits that line, so it is shown once
+            // (with its quantity) instead of twice on the same page.
+            $quantity = 1;
+            foreach ($cartItems as $index => $item) {
+                if ((int) ($item['product_id'] ?? 0) === $productId
+                    && (int) ($item['volume'] ?? 0) === $volume) {
+                    $quantity = (int) ($item['quantity'] ?? 1);
+                    unset($cartItems[$index]);
+                    break;
+                }
+            }
+            $cartItems = array_values($cartItems);
+
+            $available = $this->availableFor($offer, $volume);
+
+            $line = [
+                'product_id' => $offer['product_id'],
+                'name' => $offer['name'],
+                'brand' => $offer['brand'],
+                'image' => $offer['image'],
+                'is_variety' => $offer['is_variety'],
+                'buckets' => $offer['buckets'],
+                'volume' => $volume,
+                'variety_label' => $volume > 0 ? $this->varieties->volumeLabel($volume) : '',
+                'unit_price' => $this->unitPriceFor($offer, $volume),
+                'available' => $available,
+                'quantity' => max(1, min($quantity, $available)),
+            ];
+        }
+
+        // The card is posted after the cart lines that are already in the form.
+        $lineIndex = count($cartItems);
+
+        $cartSubtotal = 0.0;
+        foreach ($cartItems as $item) {
+            $cartSubtotal += (float) ($item['unit_price'] ?? 0) * max(1, (int) ($item['quantity'] ?? 1));
+        }
+
+        return view('customer.orders.create', [
+            'branch' => $branch,
+            'cartItems' => $cartItems,
+            'contact' => $this->cart->contact(),
+            'line' => $line,
+            'lineIndex' => $lineIndex,
+            'cartSubtotal' => $cartSubtotal,
+        ]);
+    }
+
+    /**
+     * "Choose more products": park this selection in the cart, keep the
+     * customer details already typed, and go back to the shop.
+     */
+    public function addToCart(Request $request)
+    {
+        $validated = $request->validate([
+            'branch_id' => 'required',
+            'current_index' => 'nullable|integer|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.volume' => 'nullable|integer',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_phone' => 'nullable|string|max:20',
+            'customer_email' => 'nullable|email',
+            'delivery_notes' => 'nullable|string',
         ]);
 
-        $products = collect($rawStock)->map(function ($item) {                return (object) [
-                'id' => $item['id'],
-                'branch_id' => $item['branch_id'],
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'selling_price' => $item['selling_price'],
-                'product' => (object) array_merge($item['product'] ?? [], [
-                    // Cast each image to an object so views can use ->image_url.
-                    'images' => collect($item['product']['images'] ?? [])->map(fn ($img) => (object) $img),
-                ]),
-            ];
-        });
+        $branchId = (int) $validated['branch_id'];
 
-        // Oil fragrance products are bottled in several sizes, each with its
-        // own price, so the form offers the sizes in stock at this branch and
-        // the customer picks one. The box/logo/colour of the bottling is the
-        // branch's to pack and never changes the price, so it is not offered.
-        $productVarieties = $this->varieties->volumeBucketsForProducts(
-            (int) $branchId,
-            $products->map(fn ($p) => (int) $p->product_id)->all()
-        );
+        $branch = $this->supabase->find('branches', $branchId);
 
-        // Coming from the details page the size is already chosen, so keep it
-        // selected instead of making the customer choose it a second time.
-        $preselect = [
-            'product_id' => (int) ($request->product_id ?? 0),
-            'volume' => (int) ($request->volume ?? 0),
+        if (!$branch) {
+            abort(404);
+        }
+
+        // The form also carries the lines already in the cart; only the product
+        // card the customer is looking at is being added here.
+        $index = (int) ($validated['current_index'] ?? 0);
+        $item = $validated['items'][$index] ?? null;
+
+        if ($item === null) {
+            return back()->withInput()->withErrors(['items' => 'Choose a product before adding it to your cart.']);
+        }
+
+        $offer = $this->offer($branchId, (int) $item['product_id']);
+
+        if ($offer === null) {
+            return back()->withInput()->withErrors(['items' => 'That product is no longer available at this branch.']);
+        }
+
+        // A size that sold out since the page loaded falls back to one that is
+        // still on the shelf; only a product with nothing left is refused.
+        $volume = (int) ($item['volume'] ?? 0);
+        if ($offer['is_variety'] && $this->availableFor($offer, $volume) < 1) {
+            $volume = (int) $offer['buckets'][0]['volume'];
+        }
+
+        $available = $this->availableFor($offer, $volume);
+
+        if ($available < 1) {
+            return back()->withInput()->withErrors(['items' => $offer['name'] . ' is out of stock at this branch.']);
+        }
+
+        $this->cart->rememberContact([
+            'name' => $validated['customer_name'] ?? '',
+            'phone' => $validated['customer_phone'] ?? '',
+            'email' => $validated['customer_email'] ?? '',
+            'notes' => $validated['delivery_notes'] ?? '',
+        ]);
+
+        $this->cart->put([
+            'key' => CustomerOrderCart::keyFor((int) $offer['product_id'], $volume),
+            'product_id' => (int) $offer['product_id'],
+            'name' => $offer['name'],
+            'brand' => $offer['brand'],
+            'image' => $offer['image'],
+            'branch_id' => $branchId,
+            'branch_name' => (string) ($branch['name'] ?? ''),
+            'quantity' => max(1, min((int) $item['quantity'], $available)),
+            'unit_price' => $this->unitPriceFor($offer, $volume),
+            'volume' => $volume,
+            'variety_label' => $volume > 0 ? $this->varieties->volumeLabel($volume) : '',
+            'available' => $available,
+        ]);
+
+        return redirect()
+            ->route('customer.products.index', ['branch_id' => $branchId])
+            ->with('success', $offer['name'] . ' is in your cart. Pick another perfume, or check out when you are ready.');
+    }
+
+    /** Drop one line from the cart without leaving the order page. */
+    public function removeFromCart(Request $request)
+    {
+        $validated = $request->validate([
+            'key' => 'required|string|max:64',
+        ]);
+
+        $this->cart->forget($validated['key']);
+
+        return back()->with('success', 'Item removed from your cart.');
+    }
+
+    /**
+     * What this branch can sell of one product: its sizes, stock and price.
+     * Packaging never reaches the customer — the branch packs whichever of its
+     * buckets fits the size that was ordered.
+     */
+    private function offer(int $branchId, int $productId): ?array
+    {
+        $rows = $this->supabase->query('branch_stock', [
+            'select' => 'id,branch_id,product_id,quantity,selling_price,product:products(id,name,brand,category,images:product_images(*))',
+            'branch_id' => "eq.{$branchId}",
+            'product_id' => "eq.{$productId}",
+            'limit' => 1,
+        ]);
+
+        $stock = $rows[0] ?? null;
+
+        if (!$stock) {
+            return null;
+        }
+
+        $product = $stock['product'] ?? [];
+        $buckets = $this->varieties->volumeBucketsForProducts($branchId, [$productId])[(string) $productId] ?? [];
+        $isVariety = ($product['category'] ?? '') === 'Oil Fragrance' && $buckets !== [];
+
+        $image = null;
+        foreach (($product['images'] ?? []) as $img) {
+            if (!empty($img['image_url'])) {
+                $image = $img['image_url'];
+                break;
+            }
+        }
+
+        return [
+            'product_id' => $productId,
+            'name' => (string) ($product['name'] ?? 'Product'),
+            'brand' => $product['brand'] ?? null,
+            'image' => $image,
+            'is_variety' => $isVariety,
+            'buckets' => $buckets,
+            'base_price' => (float) ($stock['selling_price'] ?? 0),
+            // Without size tracking the branch's shelf count is the whole offer.
+            'available' => $isVariety ? (int) $buckets[0]['available'] : (int) ($stock['quantity'] ?? 0),
         ];
+    }
 
-        return view('customer.orders.create', compact('branch', 'products', 'productVarieties', 'preselect'));
+    /** Units of the chosen size the branch holds. */
+    private function availableFor(array $offer, int $volume): int
+    {
+        if (!$offer['is_variety']) {
+            return (int) $offer['available'];
+        }
+
+        foreach ($offer['buckets'] as $bucket) {
+            if ((int) $bucket['volume'] === $volume) {
+                return (int) $bucket['available'];
+            }
+        }
+
+        return 0;
+    }
+
+    /** What one unit of the chosen size costs (0 means "use the branch price"). */
+    private function unitPriceFor(array $offer, int $volume): float
+    {
+        if ($offer['is_variety']) {
+            foreach ($offer['buckets'] as $bucket) {
+                if ((int) $bucket['volume'] === $volume) {
+                    return (float) ($bucket['price'] ?? 0) > 0
+                        ? (float) $bucket['price']
+                        : (float) $offer['base_price'];
+                }
+            }
+        }
+
+        return (float) $offer['base_price'];
     }
 
     public function store(Request $request)
@@ -258,6 +475,12 @@ class OrderController extends Controller
                 return $row;
             }, $orderItems);
             $this->supabase->insertMany('order_items', $itemsToInsert);
+
+            // The order now holds every line the cart carried, so the cart is
+            // emptied. API clients post without a session, hence the guard.
+            if ($request->hasSession()) {
+                $this->cart->clear();
+            }
 
             // 7. Confirm the order — payment is settled at the branch. The
             // mobile app (Accept: application/json) gets the same confirmation

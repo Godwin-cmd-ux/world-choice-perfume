@@ -87,6 +87,17 @@
 
                 <!-- Auth Buttons -->
                 <div class="hidden md:flex items-center gap-4">
+                    {{-- The order in progress ("Choose more products" on the
+                         order page fills it), visible from every public page. --}}
+                    @php $wcpNavCart = app(\App\Services\CustomerOrderCart::class); @endphp
+                    <a href="{{ $wcpNavCart->branchId() ? route('customer.orders.create', ['branch_id' => $wcpNavCart->branchId()]) : route('customer.products.index') }}"
+                       class="relative inline-flex items-center justify-center w-10 h-10 rounded-full border border-gold-500/20 bg-gold-500/10 text-gold-400 hover:bg-gold-500/20 transition"
+                       title="Your order" aria-label="Your order">
+                        <i class="fas fa-shopping-bag"></i>
+                        @if($wcpNavCart->count() > 0)
+                            <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gold-500 text-dark-900 text-[10px] font-bold flex items-center justify-center">{{ $wcpNavCart->count() }}</span>
+                        @endif
+                    </a>
                     {{-- The app listing lives in config/app_download.php so the
                          desktop bar and the mobile menu cannot disagree. --}}
                     <a href="{{ config('app_download.url') }}" data-app-download
@@ -122,6 +133,12 @@
                 <a href="{{ route('customer.news') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-newspaper mr-2"></i> News</a>
                 <a href="{{ request()->routeIs('home') ? '#contact' : route('home').'#contact' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-envelope mr-2"></i> Contact</a>
                 <a href="{{ request()->routeIs('home') ? '#branches' : route('home').'#branches' }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition"><i class="fas fa-store mr-2"></i> Branches</a>
+                <a href="{{ $wcpNavCart->branchId() ? route('customer.orders.create', ['branch_id' => $wcpNavCart->branchId()]) : route('customer.products.index') }}" class="block px-4 py-3 rounded-lg text-gray-300 hover:bg-dark-800 hover:text-gold-400 transition">
+                    <i class="fas fa-shopping-bag mr-2"></i> Your Order
+                    @if($wcpNavCart->count() > 0)
+                        <span class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-gold-500 text-dark-900 text-[11px] font-bold">{{ $wcpNavCart->count() }}</span>
+                    @endif
+                </a>
                 {{-- Same listing as the desktop button above. --}}
                 <a href="{{ config('app_download.url') }}" data-app-download
                    class="block px-4 py-3 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 text-center font-semibold text-dark-900 shadow-lg shadow-gold-500/25">

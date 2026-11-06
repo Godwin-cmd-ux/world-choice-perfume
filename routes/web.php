@@ -116,6 +116,9 @@ Route::post('/contact', [InquiryController::class, 'store'])->name('customer.con
 Route::prefix('orders')->name('customer.orders.')->group(function () {
     Route::get('/create', [OrderController::class, 'create'])->name('create');
     Route::post('/', [OrderController::class, 'store'])->name('store');
+    // "Choose more products": park the selection in the cart and go shopping.
+    Route::post('/cart', [OrderController::class, 'addToCart'])->name('cart.add');
+    Route::post('/cart/remove', [OrderController::class, 'removeFromCart'])->name('cart.remove');
     Route::get('/track', [OrderController::class, 'track'])->name('track');
     Route::post('/track', [OrderController::class, 'trackByPhone'])->name('track-by-phone');
 });

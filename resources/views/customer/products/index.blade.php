@@ -69,6 +69,34 @@
     </div>
 </section>
 
+{{-- The cart gathered with "Choose more products": where it came from, what
+     it costs, and the one link back to checkout. --}}
+@php $wcpCart = app(\App\Services\CustomerOrderCart::class); @endphp
+@if($wcpCart->items() !== [])
+<section class="bg-dark-900/80 border-b border-gold-500/20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                <i class="fas fa-shopping-bag text-gold-400"></i>
+            </span>
+            <div class="text-sm leading-tight">
+                <p class="text-gray-300">
+                    <strong class="text-white">{{ $wcpCart->count() }}</strong>
+                    {{ $wcpCart->count() === 1 ? 'item' : 'items' }} in your order
+                    <span class="text-gray-600 mx-1">·</span>
+                    <span class="text-gold-400 font-semibold">TZS {{ number_format($wcpCart->subtotal()) }}</span>
+                </p>
+                <p class="text-[11px] text-gray-500">From {{ $wcpCart->branchName() }} — keep shopping or check out when ready.</p>
+            </div>
+        </div>
+        <a href="{{ route('customer.orders.create', ['branch_id' => $wcpCart->branchId()]) }}"
+           class="px-5 py-2.5 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-sm font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition">
+            <i class="fas fa-credit-card mr-1"></i> Checkout
+        </a>
+    </div>
+</section>
+@endif
+
 <section class="py-12 bg-dark-950 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col lg:flex-row gap-6 sm:gap-8">
