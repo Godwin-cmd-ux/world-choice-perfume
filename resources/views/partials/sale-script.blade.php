@@ -33,6 +33,9 @@
         // Price customization is available on retail AND wholesale
         document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.remove('hidden'));
         @endif
+        // The picker only lists what this sale type sells: retail keeps oil
+        // fragrance from 50ml up, wholesale keeps oil fragrance only.
+        filterProducts();
         calculateTotal();
     }
 
@@ -123,16 +126,49 @@
     // ===================== PRODUCT PICKER (searchable checkboxes) =====================
     const productSearch = document.getElementById('productSearch');
 
+    // Retail bottles oil fragrance from 50ml up, so the 6ml, 12ml and 30ml
+    // rows are not sold retail. Wholesale buys oil fragrance in every size but
+    // never brand perfumes. A row the sale type does not sell is hidden AND
+    // taken out of the cart — hiding it alone would still post it.
+    const RETAIL_MIN_OIL_ML = 50;
+
+    function rowSellable(label) {
+        const type = document.getElementById('sale_type').value;
+        const category = label.dataset.category || '';
+        const volume = Number(label.dataset.volume || 0);
+        if (type === 'wholesale') return category === 'Oil Fragrance';
+        if (category === 'Oil Fragrance' && volume > 0) return volume >= RETAIL_MIN_OIL_ML;
+        return true;
+    }
+
     function filterProducts() {
         const q = (productSearch.value || '').trim().toLowerCase();
         let visible = 0;
         document.querySelectorAll('.product-pick').forEach(label => {
             const name = (label.querySelector('.product-check').dataset.name || '').toLowerCase();
-            const show = !q || name.includes(q);
+            const sellable = rowSellable(label);
+            const show = sellable && (!q || name.includes(q));
             label.style.display = show ? '' : 'none';
             if (show) visible++;
+            if (!sellable) {
+                const box = label.querySelector('.product-check');
+                if (box && box.checked) removeFromCartRow(box.dataset.rowKey);
+            }
         });
-        document.getElementById('product-no-match').classList.toggle('hidden', visible > 0);
+
+        const noMatch = document.getElementById('product-no-match');
+        if (visible === 0) {
+            noMatch.innerHTML = '<i class="fas fa-info-circle mr-1"></i> '
+                + (q ? 'No products match your search.' : 'Nothing in stock sells as this sale type.');
+        }
+        noMatch.classList.toggle('hidden', visible > 0);
+
+        const rule = document.getElementById('product-sale-rule');
+        if (rule) {
+            rule.innerHTML = document.getElementById('sale_type').value === 'wholesale'
+                ? '<i class="fas fa-info-circle mr-1"></i> Wholesale: oil fragrance only, any size. Brand perfumes are not sold wholesale.'
+                : '<i class="fas fa-info-circle mr-1"></i> Retail: oil fragrance from 50ml up. 6ml, 12ml and 30ml are wholesale only.';
+        }
     }
     productSearch.addEventListener('input', filterProducts);
 

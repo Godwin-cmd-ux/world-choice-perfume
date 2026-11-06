@@ -7,6 +7,7 @@ import { EmptyView, ErrorView, LoadingView } from '../../components/ui';
 import { createSale, fetchSaleOptions, type SmSaleFields, type SmVarietyBuckets } from '../../lib/smApi';
 import { BUTTON, COLORS, RADIUS, SM_ACCENT } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
+import { lineSellable, productSellable, volumeSellable } from '../../lib/saleRules';
 
 interface Line {
   key: string;
@@ -53,20 +54,39 @@ export default function SmSaleNew() {
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const buckets: SmVarietyBuckets = data?.productVarieties ?? {};
+  const buckets = useMemo<SmVarietyBuckets>(() => data?.productVarieties ?? {}, [data]);
   const products = useMemo(() => data?.products ?? [], [data]);
+
+  // Retail never offers oil fragrance below 50ml and wholesale never offers
+  // brand perfumes, so the picker only lists what this sale type sells.
+  const saleProducts = useMemo(
+    () =>
+      products.filter((p) =>
+        productSellable(
+          p.product?.category,
+          (buckets[String(p.product_id)] ?? []).map((b) => b.volume),
+          saleType,
+        ),
+      ),
+    [products, buckets, saleType],
+  );
 
   const filtered = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
-    const list = products.filter((p) => (p.quantity ?? 0) > 0);
+    const list = saleProducts.filter((p) => (p.quantity ?? 0) > 0);
     if (!q) return list;
     return list.filter(
       (p) => (p.product?.name ?? '').toLowerCase().includes(q) || (p.product?.brand ?? '').toLowerCase().includes(q),
     );
-  }, [products, productSearch]);
+  }, [saleProducts, productSearch]);
 
   const pickedProduct = products.find((p) => String(p.product_id) === pickedProductId) ?? null;
-  const pickedBuckets = pickedProductId ? (buckets[pickedProductId] ?? []) : [];
+  // Only the sizes this sale type sells: retail hides 6ml, 12ml and 30ml.
+  const pickedBuckets = pickedProductId
+    ? (buckets[pickedProductId] ?? []).filter((b) =>
+        volumeSellable(pickedProduct?.product?.category, b.volume, saleType),
+      )
+    : [];
   const pickedBucket = pickedBuckets.find((b) => b.volume === pickedVolume) ?? null;
   const pickedVariantRow = pickedBucket?.variants.find((v) => v.key === pickedVariant) ?? null;
 
@@ -119,6 +139,26 @@ export default function SmSaleNew() {
   const canSubmit =
     lines.length > 0 && payments.length > 0 && (paymentMode === 'single' || Math.abs(paymentTotal - subtotal) < 0.01);
 
+  // Switching sale type can strand lines the new type does not sell — drop
+  // them, and the picked product too, instead of submitting them.
+  const pickSaleType = (next: 'retail' | 'wholesale') => {
+    setSaleType(next);
+    setLines((prev) =>
+      prev.filter((line) =>
+        lineSellable(
+          products.find((p) => String(p.product_id) === line.product_id)?.product?.category,
+          line.volume,
+          next,
+        ),
+      ),
+    );
+    if (!productSellable(pickedProduct?.product?.category, pickedBuckets.map((b) => b.volume), next)) {
+      setPickedProductId('');
+      setPickedVolume(undefined);
+      setPickedVariant(undefined);
+    }
+  };
+
   const submit = async () => {
     if (busy || !canSubmit) return;
     setBusy(true);
@@ -161,8 +201,8 @@ export default function SmSaleNew() {
         <>
           <GroupLabel>Sale type</GroupLabel>
           <ChipRow>
-            <Chip label="Retail" active={saleType === 'retail'} onPress={() => setSaleType('retail')} />
-            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => setSaleType('wholesale')} />
+            <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
+            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
           </ChipRow>
 
           <GroupLabel>Customer (optional)</GroupLabel>

@@ -18,6 +18,7 @@
                         'key' => $stock->product_id . '|' . $vol['volume'] . '|' . $v['key'],
                         'name' => $name . ' - ' . $vol['label'] . ' ' . $v['label'],
                         'product_id' => $stock->product_id,
+                        'category' => $category,
                         'volume' => $vol['volume'],
                         'variant' => $v['key'],
                         'price' => $price > 0 ? $price : (float) $stock->selling_price,
@@ -33,6 +34,7 @@
             'key' => $stock->product_id . '||',
             'name' => $name,
             'product_id' => $stock->product_id,
+            'category' => $category,
             'volume' => '',
             'variant' => '',
             'price' => (float) $stock->selling_price,
@@ -50,9 +52,15 @@
     <input type="text" id="productSearch" placeholder="Search products..." autocomplete="off"
         class="w-full px-3 py-2 border rounded-lg text-sm mb-3 focus:ring-2 focus:ring-{{ $accent }}-500">
 
+    {{-- What the current sale type sells: retail keeps oil fragrance from
+         50ml up, wholesale keeps oil fragrance only. --}}
+    <p id="product-sale-rule" class="text-[11px] text-gray-400 mb-3"></p>
+
     <div id="product-list" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 mb-3">
         @foreach($saleRows as $row)
-            <label class="product-pick flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-{{ $accent }}-50/40 transition">
+            <label class="product-pick flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-{{ $accent }}-50/40 transition"
+                data-category="{{ $row['category'] }}"
+                data-volume="{{ $row['volume'] }}">
                 <input type="checkbox" class="product-check rounded text-{{ $accent }}-600 focus:ring-{{ $accent }}-500"
                     value="{{ $row['product_id'] }}"
                     data-row-key="{{ $row['key'] }}"

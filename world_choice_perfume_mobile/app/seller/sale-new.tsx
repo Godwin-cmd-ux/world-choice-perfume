@@ -6,6 +6,7 @@ import { AdminPage, BusyOverlay, Chip, ChipRow, GroupLabel, useAsyncData } from 
 import { EmptyView, GoldButton, LoadingView, ErrorView } from '../../components/ui';
 import { createSellerSale, fetchSellerSaleOptions, type SellerEmptyBottleLine, type SellerSaleItemInput } from '../../lib/sellerApi';
 import { formatMoney } from '../../lib/format';
+import { lineSellable, productSellable, volumeSellable } from '../../lib/saleRules';
 import { COLORS, RADIUS, SELLER_ACCENT } from '../../lib/theme';
 import { sellerMenu } from '../../components/sellersidebar';
 
@@ -58,20 +59,39 @@ export default function SellerSaleNew() {
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const buckets = data?.productVarieties ?? {};
+  const buckets = useMemo(() => data?.productVarieties ?? {}, [data]);
   const products = useMemo(() => data?.products ?? [], [data]);
+
+  // Retail never offers oil fragrance below 50ml and wholesale never offers
+  // brand perfumes, so the picker only lists what this sale type sells.
+  const saleProducts = useMemo(
+    () =>
+      products.filter((p) =>
+        productSellable(
+          p.product?.category,
+          (buckets[String(p.product_id)] ?? []).map((b) => b.volume),
+          saleType,
+        ),
+      ),
+    [products, buckets, saleType],
+  );
 
   const filtered = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
-    const list = products.filter((p) => (p.quantity ?? 0) > 0);
+    const list = saleProducts.filter((p) => (p.quantity ?? 0) > 0);
     if (!q) return list;
     return list.filter(
       (p) => (p.product?.name ?? '').toLowerCase().includes(q) || (p.product?.brand ?? '').toLowerCase().includes(q),
     );
-  }, [products, productSearch]);
+  }, [saleProducts, productSearch]);
 
   const pickedProduct = products.find((p) => String(p.product_id) === pickedProductId) ?? null;
-  const pickedBuckets = pickedProductId ? (buckets[pickedProductId] ?? []) : [];
+  // Only the sizes this sale type sells: retail hides 6ml, 12ml and 30ml.
+  const pickedBuckets = pickedProductId
+    ? (buckets[pickedProductId] ?? []).filter((b) =>
+        volumeSellable(pickedProduct?.product?.category, b.volume, saleType),
+      )
+    : [];
   const pickedBucket = pickedBuckets.find((b) => b.volume === pickedVolume) ?? null;
   const pickedVariantRow = pickedBucket?.variants.find((v) => v.key === pickedVariant) ?? null;
   const defaultPrice = pickedVariantRow?.price ?? pickedProduct?.selling_price ?? 0;
@@ -177,6 +197,28 @@ export default function SellerSaleNew() {
     productLines.length + bottleLines.length > 0 &&
     (paymentMode === 'single' || Math.abs(paymentSum - total) <= 0.01);
 
+  // Switching sale type can strand lines the new type does not sell — drop
+  // them, and the picked product too, instead of submitting them.
+  const pickSaleType = (next: 'retail' | 'wholesale') => {
+    setSaleType(next);
+    setLines((prev) =>
+      prev.filter((line) =>
+        line.kind === 'product'
+          ? lineSellable(
+              products.find((p) => String(p.product_id) === line.product_id)?.product?.category,
+              line.volume,
+              next,
+            )
+          : next === 'wholesale',
+      ),
+    );
+    if (!productSellable(pickedProduct?.product?.category, pickedBuckets.map((b) => b.volume), next)) {
+      setPickedProductId('');
+      setPickedVolume(undefined);
+      setPickedVariant(undefined);
+    }
+  };
+
   return (
     <AdminPage title="New Sale" eyebrow="Seller" accent={SELLER_ACCENT.main} onBack={() => router.back()} onMenu={sellerMenu.open}>
       {error ? <ErrorView message={error} onRetry={reload} /> : null}
@@ -187,8 +229,8 @@ export default function SellerSaleNew() {
         <>
           <GroupLabel>Sale type</GroupLabel>
           <ChipRow>
-            <Chip label="Retail" active={saleType === 'retail'} onPress={() => setSaleType('retail')} />
-            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => setSaleType('wholesale')} />
+            <Chip label="Retail" active={saleType === 'retail'} onPress={() => pickSaleType('retail')} />
+            <Chip label="Wholesale" active={saleType === 'wholesale'} onPress={() => pickSaleType('wholesale')} />
           </ChipRow>
 
           <GroupLabel>Products</GroupLabel>
