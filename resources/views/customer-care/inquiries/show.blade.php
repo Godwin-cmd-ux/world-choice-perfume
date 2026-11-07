@@ -15,23 +15,10 @@
                 <p>{{ $inquiry->message ?? 'No message content.' }}</p>
             </div>
 
-            @if(!empty($inquiry->reply_message))
-                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                    <h4 class="font-semibold text-green-800 mb-2"><i class="fas fa-reply mr-1"></i> Your Reply</h4>
-                    <p class="text-sm text-green-700">{{ $inquiry->reply_message }}</p>
-                </div>
-            @endif
-
-            @if(($inquiry->status ?? '') !== 'replied')
-                <div class="border-t mt-6 pt-4">
-                    <h4 class="font-semibold mb-3">Reply</h4>
-                    <form method="POST" action="{{ route('customer-care.inquiries.reply', $inquiry->id) }}">
-                        @csrf
-                        <textarea name="reply_message" rows="4" required placeholder="Type your reply..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"></textarea>
-                        <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2 rounded-lg text-sm font-medium"><i class="fas fa-paper-plane mr-1"></i> Send Reply</button>
-                    </form>
-                </div>
-            @endif
+            <div class="border-t mt-6 pt-4 text-sm text-gray-500">
+                <i class="fas fa-circle-info mr-1 text-amber-500"></i>
+                Replies are handled outside the system. Use the customer's phone or email in Details to follow up.
+            </div>
         </div>
     </div>
 
@@ -68,8 +55,24 @@
             <h3 class="font-semibold mb-3">Details</h3>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between"><span class="text-gray-500">From:</span><span>{{ $inquiry->name ?? $inquiry->user?->name ?? 'Customer' }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Email:</span><span>{{ $inquiry->email ?? '—' }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Phone:</span><span>{{ $inquiry->phone ?? '—' }}</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-500">Email:</span>
+                    <span class="text-right">
+                        @if($inquiry->email)
+                            <a href="mailto:{{ $inquiry->email }}" class="text-blue-600 hover:underline">{{ $inquiry->email }}</a>
+                        @else
+                            —
+                        @endif
+                    </span>
+                </div>
+                <div class="flex justify-between gap-4"><span class="text-gray-500">Phone:</span>
+                    <span class="text-right">
+                        @if($inquiry->phone)
+                            <a href="tel:{{ preg_replace('/\s+/', '', $inquiry->phone) }}" class="text-blue-600 hover:underline">{{ $inquiry->phone }}</a>
+                        @else
+                            —
+                        @endif
+                    </span>
+                </div>
                 <div class="flex justify-between"><span class="text-gray-500">Date:</span><span>{{ $inquiry->created_at ? \Carbon\Carbon::parse($inquiry->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') : '—' }}</span></div>
             </div>
         </div>

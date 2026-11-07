@@ -19,6 +19,7 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('graphic-designer.news.*') ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-newspaper w-5 text-center"></i>
             <span>News</span>
+            @include('partials.nav-badge', ['key' => 'news', 'class' => 'bg-purple-500'])
         </a>
         <a href="{{ route('graphic-designer.brands.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('graphic-designer.brands.*') ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">

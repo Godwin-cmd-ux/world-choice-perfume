@@ -1,13 +1,4 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
-    @php
-        $sbPendingOrders = 0;
-        try {
-            $sbPendingOrders = (new \App\Services\SupabaseService())->count('orders', [
-                'branch_id' => 'eq.' . (auth()->user()->branch_id ?? 0),
-                'status' => 'eq.pending',
-            ]);
-        } catch (\Throwable $e) {}
-    @endphp
     {{-- Logo --}}
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('branch-admin.dashboard') }}" class="flex items-center gap-3">
@@ -30,24 +21,25 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.sales.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-receipt w-5 text-center"></i>
             <span>Sales</span>
+            @include('partials.nav-badge', ['key' => 'sales', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('branch-admin.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.orders.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-shopping-bag w-5 text-center"></i>
             <span>Orders</span>
-            @if($sbPendingOrders > 0)
-                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingOrders }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('branch-admin.staffs.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.staffs.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-users w-5 text-center"></i>
             <span>Staffs</span>
+            @include('partials.nav-badge', ['key' => 'staff', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('branch-admin.expenses.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.expenses.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-money-bill-wave w-5 text-center"></i>
             <span>Expenses</span>
+            @include('partials.nav-badge', ['key' => 'expenses', 'class' => 'bg-amber-500'])
         </a>
         <div class="pt-4 mt-4 border-t border-gray-700">
             <p class="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Account</p>

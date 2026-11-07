@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 /**
  * JSON twin of the customer-care Inquiries screens — Head Quarters-Mikocheni
  * customer care only, the same `customer-care.hq` gate the website applies.
- * Reading an inquiry marks it read, replying sets status=replied, and the
- * "homepage remark" action pins it as featured — all the website's writes.
+ * Reading an inquiry marks it read, and the "homepage remark" action pins it
+ * as featured. Replies are handled outside the system.
  */
 class CcInquiryController extends CcBaseController
 {
@@ -101,30 +101,6 @@ class CcInquiryController extends CcBaseController
         }
 
         return response()->json(['inquiry' => $inquiry]);
-    }
-
-    public function reply(Request $request, int $inquiryId)
-    {
-        $this->assertHq($request);
-
-        $validated = $request->validate([
-            'reply_message' => 'required|string',
-        ]);
-
-        $inquiry = $this->supabase->find('inquiries', $inquiryId, 'id');
-        if (! $inquiry) {
-            abort(404, 'Inquiry not found.');
-        }
-
-        $this->supabase->update('inquiries', [
-            'reply_message' => $validated['reply_message'],
-            'replied_by' => $this->performingUserId($request),
-            'replied_at' => now()->toIso8601String(),
-            'status' => 'replied',
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $inquiryId]);
-
-        return response()->json(['message' => 'Reply sent successfully.']);
     }
 
     public function markAsRead(Request $request, int $inquiryId)

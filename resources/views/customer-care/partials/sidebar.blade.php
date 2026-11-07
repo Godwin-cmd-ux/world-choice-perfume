@@ -1,21 +1,6 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
     @php
-        $sbPendingOrders = 0;
-        try {
-            $sbPendingOrders = (new \App\Services\SupabaseService())->count('orders', [
-                'branch_id' => 'eq.' . (auth()->user()->branch_id ?? 0),
-                'status' => 'eq.pending',
-            ]);
-        } catch (\Throwable $e) {}
-        $sbUnreadMails = 0;
-        if ((new \App\Services\CustomerCareScope())->isHqCustomerCare()) {
-            try {
-                $sbUnreadMails = (new \App\Services\InfoMailService(
-                    new \App\Services\SupabaseService(),
-                    new \App\Services\RawEmailParser(),
-                ))->unreadCount();
-            } catch (\Throwable $e) {}
-        }
+        $isHqCustomerCare = (new \App\Services\CustomerCareScope())->isHqCustomerCare();
     @endphp
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('customer-care.dashboard') }}" class="flex items-center gap-3">
@@ -37,38 +22,38 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.customers.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-users w-5 text-center"></i>
             <span>Clients</span>
+            @include('partials.nav-badge', ['key' => 'customers', 'class' => 'bg-blue-500'])
         </a>
         <a href="{{ route('customer-care.sales.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.sales.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-shopping-cart w-5 text-center"></i>
             <span>Sales</span>
+            @include('partials.nav-badge', ['key' => 'sales', 'class' => 'bg-blue-500'])
         </a>
         <a href="{{ route('customer-care.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.orders.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-clipboard-list w-5 text-center"></i>
             <span>Orders</span>
-            @if($sbPendingOrders > 0)
-                <span class="ml-auto bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingOrders }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-blue-500'])
         </a>
-        @if((new \App\Services\CustomerCareScope())->isHqCustomerCare())
+        @if($isHqCustomerCare)
         <a href="{{ route('customer-care.news.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.news.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-newspaper w-5 text-center"></i>
             <span>News</span>
+            @include('partials.nav-badge', ['key' => 'news', 'class' => 'bg-blue-500'])
         </a>
         <a href="{{ route('customer-care.inquiries.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.inquiries.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-envelope w-5 text-center"></i>
             <span>Inquiries</span>
+            @include('partials.nav-badge', ['key' => 'inquiries', 'class' => 'bg-blue-500'])
         </a>
         <a href="{{ route('customer-care.mails.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('customer-care.mails.*') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-paper-plane w-5 text-center"></i>
             <span>Mails</span>
-            @if($sbUnreadMails > 0)
-                <span class="ml-auto bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbUnreadMails }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'mails', 'class' => 'bg-blue-500'])
         </a>
         @endif
 

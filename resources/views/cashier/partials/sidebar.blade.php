@@ -4,13 +4,6 @@
         $cashierIsCrossBranchMonitor = $ccScope->isCrossBranchMonitor();
         $cashierInCrossBranch = $ccScope->inCrossBranchMode();
         $cashierActiveBranch = $ccScope->activeBranchName();
-        $sbPendingOrders = 0;
-        try {
-            $sbPendingOrders = (new \App\Services\SupabaseService())->count('orders', [
-                'branch_id' => 'eq.' . $ccScope->activeBranchId(),
-                'status' => 'eq.pending',
-            ]);
-        } catch (\Throwable $e) {}
     @endphp
 
     {{-- Logo --}}
@@ -45,19 +38,19 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.sales.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-receipt w-5 text-center"></i>
             <span>Sales</span>
+            @include('partials.nav-badge', ['key' => 'sales', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('cashier.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.orders.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-shopping-bag w-5 text-center"></i>
             <span>Orders</span>
-            @if($sbPendingOrders > 0)
-                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingOrders }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('cashier.expenses.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.expenses.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-money-bill-wave w-5 text-center"></i>
             <span>Expenses</span>
+            @include('partials.nav-badge', ['key' => 'expenses', 'class' => 'bg-amber-500'])
         </a>
 
         @if($cashierIsCrossBranchMonitor)
@@ -68,7 +61,7 @@
             </a>
             <a href="{{ route('cashier.cross-branch') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('cashier.cross-branch*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                <i class="fas fa-code-branch w-5 text-center"></i>                <span>Cross-Branch Monitoring</span>
+                <i class="fas fa-code-branch w-5 text-center"></i>                <span>Cross-Branch Monitoring</span>
             </a>
         @endif
 

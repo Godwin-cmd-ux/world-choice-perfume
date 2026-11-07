@@ -10,6 +10,7 @@ use App\Http\Controllers\Customer\NavigationController;
 use App\Http\Controllers\Customer\NewsController;
 use App\Http\Controllers\Customer\OrderController;
 use App\Http\Controllers\Customer\ProductController;
+use App\Http\Controllers\LiveCountsController;
 use App\Http\Controllers\CustomerCare\CustomerController;
 use App\Http\Controllers\CustomerCare\LoyalCustomerController;
 use App\Http\Controllers\GraphicDesigner\BrandsController;
@@ -243,6 +244,12 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password');
     Route::post('/profile/branch-location', [ProfileController::class, 'updateBranchLocation'])->name('profile.branch-location');
 
+    // Live sidebar counts for the signed-in role. Polled by live-updates.js;
+    // it returns numbers only, never records.
+    Route::get('/live/nav-counts', [LiveCountsController::class, 'index'])
+        ->middleware('throttle:120,1')
+        ->name('live.nav-counts');
+
     // ========================
     // SUPER ADMIN ROUTES
     // ========================
@@ -467,7 +474,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::middleware('customer-care.hq')->group(function () {
             Route::get('/inquiries', [App\Http\Controllers\CustomerCare\InquiryController::class, 'index'])->name('inquiries.index');
             Route::get('/inquiries/{inquiry}', [App\Http\Controllers\CustomerCare\InquiryController::class, 'show'])->name('inquiries.show');
-            Route::post('/inquiries/{inquiry}/reply', [App\Http\Controllers\CustomerCare\InquiryController::class, 'reply'])->name('inquiries.reply');
             Route::post('/inquiries/{inquiry}/read', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsRead'])->name('inquiries.mark-read');
             Route::post('/inquiries/{inquiry}/comment', [App\Http\Controllers\CustomerCare\InquiryController::class, 'markAsComment'])->name('inquiries.comment');
             Route::delete('/inquiries/{inquiry}', [App\Http\Controllers\CustomerCare\InquiryController::class, 'destroy'])->name('inquiries.destroy');

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Services\AuditService;
 use App\Services\BottleStockService;
 use App\Services\ProductVarietyStockService;
@@ -78,36 +77,20 @@ class StockTransferController extends Controller
 
     private function resolveUserNames(array $ids): array
     {
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-        $ids = array_filter($ids, fn ($id) => $id > 0);
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));
         $map = [];
         if (empty($ids)) {
             return $map;
         }
 
-        $supById = [];
-        $supRows = $this->supabase->query('users', [
+        // The app reads the same users table it writes to, so ids on
+        // stock_transfer_items resolve directly — no supabase_id hop.
+        foreach ($this->supabase->query('users', [
             'select' => 'id,name',
             'id' => 'in.('.implode(',', $ids).')',
             'limit' => 100,
-        ]);
-        foreach ($supRows as $u) {
-            $supById[(int) $u['id']] = $u['name'];
-        }
-
-        $localUsers = User::whereIn('id', $ids)
-            ->get(['id', 'name', 'supabase_id'])
-            ->keyBy('id');
-
-        foreach ($ids as $id) {
-            $local = $localUsers->get($id);
-            if ($local && ! empty($local->supabase_id) && (int) $local->supabase_id !== $id && isset($supById[(int) $local->supabase_id])) {
-                $map[$id] = $supById[(int) $local->supabase_id];
-            } elseif (isset($supById[$id])) {
-                $map[$id] = $supById[$id];
-            } elseif ($local && $local->name) {
-                $map[$id] = $local->name;
-            }
+        ]) as $u) {
+            $map[(int) $u['id']] = $u['name'];
         }
 
         return $map;

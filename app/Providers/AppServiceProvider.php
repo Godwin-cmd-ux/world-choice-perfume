@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
-use App\Services\SupabaseService;
+use App\Models\User;
+use App\Services\NavigationCountsService;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\View\View as ViewInstance;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,22 +23,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Share pending approval count with all super-admin views (for sidebar badge)
-        View::composer('super-admin.*', function ($view) {
-            try {
-                $supabase = new SupabaseService();
-                $pendingCount = $supabase->count('users', [
-                    'role' => 'in.(cashier,branch_admin,stock_manager,customer_care,seller,graphic_designer)',
-                    'status' => 'eq.pending',
-                ]);
-                $view->with('pendingCount', $pendingCount);
-                $view->with('unreadNotifications', (int) $supabase->count('admin_notifications', [
-                    'is_read' => 'eq.false',
-                ]));
-            } catch (\Exception $e) {
-                $view->with('pendingCount', 0);
-                $view->with('unreadNotifications', 0);
-            }
+        // One place computes the sidebar numbers, so every role sees the same
+        // counts on a page and from the live polling endpoint. Layouts only —
+        // the public site must not touch staff tables.
+        View::composer(['layouts.app', 'stock-manager.layouts.app'], function (ViewInstance $view) {
+            $user = auth()->user();
+            $route = request()->route()?->getName();
+            $counts = app(NavigationCountsService::class);
+
+            $navCounts = $counts->forUser($user instanceof User ? $user : null);
+
+            $view->with([
+                'navCounts' => $navCounts,
+                'liveKeys' => $counts->keysForRoute($route),
+                'liveRefresh' => $counts->shouldAutoRefresh($route),
+            ]);
         });
     }
 }

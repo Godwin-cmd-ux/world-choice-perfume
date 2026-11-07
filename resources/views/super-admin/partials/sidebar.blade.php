@@ -1,12 +1,4 @@
 <aside id="sidebar" class="sidebar bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex-shrink-0 flex flex-col">
-    @php
-        $sbPendingOrders = 0;
-        try {
-            $sbPendingOrders = (new \App\Services\SupabaseService())->count('orders', [
-                'status' => 'eq.pending',
-            ]);
-        } catch (\Throwable $e) {}
-    @endphp
     {{-- Logo --}}
     <div class="p-5 border-b border-gray-700">
         <a href="{{ route('super-admin.dashboard') }}" class="flex items-center gap-3">
@@ -29,6 +21,7 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.daily-sales') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-chart-line w-5 text-center"></i>
             <span>Daily Sales Overview</span>
+            @include('partials.nav-badge', ['key' => 'sales', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('super-admin.branches.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.branches.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
@@ -49,29 +42,27 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.cashiers.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-user-check w-5 text-center"></i>
             <span>Approvals</span>
-            @if(isset($pendingCount) && $pendingCount > 0)
-                <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">{{ $pendingCount }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'approvals', 'class' => 'bg-red-500'])
         </a>
 
         <a href="{{ route('super-admin.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.orders.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-shopping-bag w-5 text-center"></i>
             <span>Orders</span>
-            @if($sbPendingOrders > 0)
-                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $sbPendingOrders }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-amber-500'])
         </a>
         <a href="{{ route('super-admin.emails.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.emails.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-envelope w-5 text-center"></i>
             <span>Emails</span>
+            @include('partials.nav-badge', ['key' => 'mails', 'class' => 'bg-amber-500'])
         </a>
 
         <a href="{{ route('super-admin.returned-stock.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.returned-stock.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-box-open w-5 text-center"></i>
             <span>Returned Stock</span>
+            @include('partials.nav-badge', ['key' => 'returns', 'class' => 'bg-rose-500'])
         </a>
 
         <a href="{{ route('super-admin.backups.index') }}"
@@ -84,9 +75,7 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('super-admin.notifications.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-bell w-5 text-center"></i>
             <span>Notifications</span>
-            @if(isset($unreadNotifications) && $unreadNotifications > 0)
-                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">{{ $unreadNotifications }}</span>
-            @endif
+            @include('partials.nav-badge', ['key' => 'notifications', 'class' => 'bg-amber-500'])
         </a>
 
         <a href="{{ route('super-admin.reports.index') }}"

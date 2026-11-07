@@ -106,6 +106,10 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
+                    <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600" title="New data appears automatically">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live
+                    </span>
                     @yield('header-actions')
                 </div>
             </header>
@@ -160,6 +164,7 @@
     @include('partials.toast')
     @stack('scripts')
     @include('partials.live-search')
+    @include('partials.live-updates')
     <script>
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {

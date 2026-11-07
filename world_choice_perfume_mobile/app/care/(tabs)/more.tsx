@@ -58,7 +58,7 @@ export default function CareMore() {
         <>
           <GroupLabel>Head Quarters only</GroupLabel>
           <View style={styles.grid}>
-            <Tile icon="chatbubble-ellipses-outline" label="Inquiries" hint="Reply, feature, delete" onPress={() => router.push('/care/inquiries')} />
+            <Tile icon="chatbubble-ellipses-outline" label="Inquiries" hint="View, feature, delete" onPress={() => router.push('/care/inquiries')} />
             <Tile icon="newspaper-outline" label="News" hint="Moderate + publish" onPress={() => router.push('/care/news')} />
             <Tile icon="mail-outline" label="info@ Mails" hint="Company inbox" onPress={() => router.push('/care/mails')} />
           </View>

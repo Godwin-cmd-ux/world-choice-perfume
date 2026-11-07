@@ -43,7 +43,6 @@ export interface CcInquiryRow {
   id: number | string;
   subject?: string | null;
   message?: string | null;
-  reply_message?: string | null;
   status?: string;
   is_read?: boolean;
   is_featured?: boolean;
@@ -381,10 +380,6 @@ export function fetchInquiries(params: { status?: 'read' | 'unread' } = {}): Pro
 
 export function fetchInquiry(id: number | string): Promise<{ inquiry: CcInquiryRow }> {
   return apiGet<{ inquiry: CcInquiryRow }>(`/care/inquiries/${id}`);
-}
-
-export function replyToInquiry(id: number | string, reply_message: string): Promise<{ message: string }> {
-  return apiPost<{ message: string }>(`/care/inquiries/${id}/reply`, { reply_message });
 }
 
 export function markInquiryRead(id: number | string): Promise<{ message: string }> {

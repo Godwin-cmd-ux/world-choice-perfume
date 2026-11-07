@@ -427,7 +427,6 @@ Route::middleware(EnsureStaffSessionApi::class.':customer_care')->prefix('care')
 
     // Inquiries — Head Quarters-Mikocheni customer care only (assertHq).
     Route::get('/inquiries', [CcInquiryController::class, 'index']);
-    Route::post('/inquiries/{inquiry}/reply', [CcInquiryController::class, 'reply']);
     Route::post('/inquiries/{inquiry}/read', [CcInquiryController::class, 'markAsRead']);
     Route::post('/inquiries/{inquiry}/comment', [CcInquiryController::class, 'markAsComment']);
     Route::delete('/inquiries/{inquiry}', [CcInquiryController::class, 'destroy']);

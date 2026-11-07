@@ -91,23 +91,6 @@ class InquiryController extends Controller
         return view('customer-care.inquiries.show', ['inquiry' => (object) $inquiry]);
     }
 
-    public function reply(Request $request, $inquiryId)
-    {
-        $validated = $request->validate([
-            'reply_message' => 'required|string',
-        ]);
-
-        $this->supabase->update('inquiries', [
-            'reply_message' => $validated['reply_message'],
-            'replied_by' => auth()->user()->supabase_id ?? auth()->id(),
-            'replied_at' => now()->toIso8601String(),
-            'status' => 'replied',
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $inquiryId]);
-
-        return back()->with('success', 'Reply sent successfully.');
-    }
-
     public function markAsRead($inquiryId)
     {
         $inquiry = $this->supabase->find('inquiries', $inquiryId);
