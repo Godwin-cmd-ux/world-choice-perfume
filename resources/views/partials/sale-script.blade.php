@@ -54,38 +54,110 @@
     // ===================== CUSTOMER SEARCH =====================
     const customerSearch = document.getElementById('customerSearch');
     const customerResults = document.getElementById('customerResults');
+    const customerSearchBtn = document.getElementById('customerSearchBtn');
     let searchTimeout;
+    let customerSearchSeq = 0;
+
+    function setCustomerSearchBusy(busy) {
+        if (!customerSearchBtn) return;
+        customerSearchBtn.disabled = busy;
+        customerSearchBtn.innerHTML = busy
+            ? '<i class="fas fa-spinner fa-spin"></i>'
+            : '<i class="fas fa-search"></i>';
+    }
+
+    // The one fetch behind both the typing and the search icon, so results are
+    // identical whichever way the search was started.
+    function runCustomerSearch(query, keepOpen, highlightId) {
+        const q = String(query || '').trim();
+        if (q.length < 2) { customerResults.classList.add('hidden'); return; }
+
+        const seq = ++customerSearchSeq;
+        setCustomerSearchBusy(true);
+
+        fetch(`{{ route('api.customers.search') }}?q=${encodeURIComponent(q)}`, {
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (seq !== customerSearchSeq) return;
+                renderCustomerResults(Array.isArray(data) ? data : [], highlightId);
+                customerResults.classList.toggle('hidden', !keepOpen);
+            })
+            .catch(() => {
+                if (seq === customerSearchSeq && window.wcpToast) {
+                    window.wcpToast.show('Could not search customers. Please try again.', 'error');
+                }
+            })
+            .finally(() => {
+                if (seq === customerSearchSeq) setCustomerSearchBusy(false);
+            });
+    }
+
+    // Results are built with data attributes and one delegated handler, so a
+    // name containing an apostrophe can never break the row's markup.
+    function renderCustomerResults(data, highlightId) {
+        if (!data.length) {
+            customerResults.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No customers found. <button type="button" onclick="createCustomerFromSearch()" class="text-' + ACCENT + '-700 hover:underline">Create new</button></div>';
+            return;
+        }
+
+        customerResults.innerHTML = data.map(c => {
+            const id = Number(c.id);
+            const name = c.name || 'Unnamed';
+            const phone = c.phone || '';
+            const active = highlightId != null && id === Number(highlightId);
+
+            return `<button type="button" data-customer-id="${id}"
+                        data-customer-name="${escapeHtml(name)}"
+                        data-customer-phone="${escapeHtml(phone)}"
+                        class="w-full px-3 py-2 text-sm text-left hover:bg-${ACCENT}-50 border-b last:border-0 ${active ? 'bg-' + ACCENT + '-50' : ''}">
+                        <span class="font-medium">${escapeHtml(name)}</span>
+                        ${phone ? `<span class="text-gray-500 ml-2">${escapeHtml(phone)}</span>` : ''}
+                        ${active ? '<i class="fas fa-check text-emerald-600 ml-2"></i>' : ''}
+                    </button>`;
+        }).join('');
+    }
 
     customerSearch.addEventListener('input', function () {
         clearTimeout(searchTimeout);
         const q = this.value.trim();
         if (q.length < 2) { customerResults.classList.add('hidden'); return; }
-        searchTimeout = setTimeout(() => {
-            fetch(`{{ route('api.customers.search') }}?q=${encodeURIComponent(q)}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.length === 0) {
-                        customerResults.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No customers found. <button type="button" onclick="createCustomerFromSearch()" class="text-' + ACCENT + '-700 hover:underline">Create new</button></div>';
-                    } else {
-                        customerResults.innerHTML = data.map(c =>
-                            `<div class="px-3 py-2 text-sm hover:bg-${ACCENT}-50 cursor-pointer border-b last:border-0" onclick="selectCustomer(${c.id}, '${(c.name || '').replace(/'/g,"\\'")}', '${(c.phone || '').replace(/'/g,"\\'")}')">
-                                <span class="font-medium">${c.name || 'Unnamed'}</span>
-                                ${c.phone ? `<span class="text-gray-500 ml-2">${c.phone}</span>` : ''}
-                            </div>`
-                        ).join('');
-                    }
-                    customerResults.classList.remove('hidden');
-                });
-        }, 300);
+        searchTimeout = setTimeout(() => runCustomerSearch(q, true), 300);
+    });
+
+    customerSearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); searchCustomers(); }
+    });
+
+    if (customerSearchBtn) customerSearchBtn.addEventListener('click', searchCustomers);
+
+    function searchCustomers() {
+        const q = customerSearch.value.trim();
+        if (q.length < 2) {
+            if (window.wcpToast) window.wcpToast.show('Type at least two characters or digits to search.', 'warning');
+            customerSearch.focus();
+            return;
+        }
+        clearTimeout(searchTimeout);
+        runCustomerSearch(q, true);
+    }
+
+    customerResults.addEventListener('click', function (e) {
+        const row = e.target.closest('[data-customer-id]');
+        if (!row) return;
+        selectCustomer(Number(row.dataset.customerId), row.dataset.customerName || '', row.dataset.customerPhone || '');
     });
 
     function selectCustomer(id, name, phone) {
         document.getElementById('customer_id').value = id;
-        document.getElementById('selectedCustomerName').textContent = name;
+        document.getElementById('selectedCustomerName').textContent = name || 'Unnamed';
         document.getElementById('selectedCustomerPhone').textContent = phone || '';
         document.getElementById('selectedCustomer').classList.remove('hidden');
         document.getElementById('newCustomerForm').classList.add('hidden');
         document.getElementById('newCustomerBtn').classList.add('hidden');
+        const newCustomerError = document.getElementById('newCustomerError');
+        if (newCustomerError) newCustomerError.classList.add('hidden');
         customerSearch.value = '';
         customerResults.classList.add('hidden');
         document.getElementById('newCustomerName').value = '';
@@ -97,28 +169,126 @@
         document.getElementById('selectedCustomer').classList.add('hidden');
         document.getElementById('newCustomerBtn').classList.remove('hidden');
         document.getElementById('newCustomerForm').classList.add('hidden');
+        const newCustomerError = document.getElementById('newCustomerError');
+        if (newCustomerError) newCustomerError.classList.add('hidden');
     }
 
     function toggleNewCustomer() {
         const form = document.getElementById('newCustomerForm');
         form.classList.toggle('hidden');
+        const newCustomerError = document.getElementById('newCustomerError');
+        if (newCustomerError) newCustomerError.classList.add('hidden');
         if (!form.classList.contains('hidden')) {
             document.getElementById('selectedCustomer').classList.add('hidden');
             document.getElementById('customer_id').value = '';
+            document.getElementById('newCustomerName').focus();
         }
     }
 
     function createCustomerFromSearch() {
         const q = customerSearch.value.trim();
+        const nameEl = document.getElementById('newCustomerName');
+        const phoneEl = document.getElementById('newCustomerPhone');
+
         document.getElementById('newCustomerForm').classList.remove('hidden');
-        document.getElementById('newCustomerName').value = q;
+        document.getElementById('newCustomerBtn').classList.remove('hidden');
+        document.getElementById('selectedCustomer').classList.add('hidden');
         document.getElementById('customer_id').value = '';
+
+        // A phone-like query fills the phone field instead of the name.
+        if (q !== '' && /^[+\d][\d\s\-()]+$/.test(q)) {
+            phoneEl.value = q;
+            nameEl.value = '';
+            nameEl.focus();
+        } else {
+            nameEl.value = q;
+            phoneEl.value = '';
+            phoneEl.focus();
+        }
+
         customerResults.classList.add('hidden');
         customerSearch.value = '';
     }
 
+    function showNewCustomerError(message) {
+        const box = document.getElementById('newCustomerError');
+        if (!box) return;
+        box.textContent = message;
+        box.classList.remove('hidden');
+    }
+
+    // Create the customer before the sale is submitted, then keep them
+    // selected: the user never has to search for what they just saved.
+    function saveNewCustomer() {
+        const nameEl = document.getElementById('newCustomerName');
+        const phoneEl = document.getElementById('newCustomerPhone');
+        const button = document.getElementById('saveCustomerBtn');
+        const name = nameEl.value.trim();
+        const phone = phoneEl.value.trim();
+
+        const errorBox = document.getElementById('newCustomerError');
+        if (errorBox) errorBox.classList.add('hidden');
+
+        if (name === '') { showNewCustomerError('Enter the customer name.'); nameEl.focus(); return; }
+        if (phone === '') { showNewCustomerError('Enter the customer phone number.'); phoneEl.focus(); return; }
+
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+
+        fetch(`{{ route('api.customers.store') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ name: name, phone: phone })
+        })
+            .then(async response => {
+                let payload = {};
+                try { payload = await response.json(); } catch (e) { payload = {}; }
+
+                if (!response.ok) {
+                    const first = payload.errors ? Object.values(payload.errors)[0] : null;
+                    const message = Array.isArray(first) ? first[0] : (first || payload.message || 'Could not save the customer. Please try again.');
+                    throw new Error(message);
+                }
+
+                return payload;
+            })
+            .then(payload => {
+                const customer = payload.customer || {};
+                if (!customer.id) throw new Error('Could not save the customer. Please try again.');
+
+                const savedName = customer.name || name;
+                const savedPhone = customer.phone || phone;
+
+                if (window.wcpToast) {
+                    window.wcpToast.show(
+                        payload.message || 'Customer successfully saved.',
+                        payload.duplicate ? 'warning' : 'success'
+                    );
+                }
+
+                // Close the form, select the saved customer for the sale, and
+                // refresh the suggestion list with them visible in it.
+                selectCustomer(customer.id, savedName, savedPhone);
+                customerSearch.value = savedName;
+                customerResults.classList.remove('hidden');
+                runCustomerSearch(savedName, true, customer.id);
+            })
+            .catch(error => {
+                showNewCustomerError(error.message || 'Could not save the customer. Please try again.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = original;
+            });
+    }
+
     document.addEventListener('click', function (e) {
-        if (!e.target.closest('#customerSearch') && !e.target.closest('#customerResults')) {
+        if (!e.target.closest('#customerSearch') && !e.target.closest('#customerResults') && !e.target.closest('#customerSearchBtn')) {
             customerResults.classList.add('hidden');
         }
     });

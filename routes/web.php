@@ -27,8 +27,10 @@ use App\Http\Controllers\SuperAdmin\ReportController;
 use App\Http\Controllers\SuperAdmin\ReturnedStockController;
 use App\Http\Controllers\SuperAdmin\SettingsController;
 use App\Http\Controllers\SuperAdmin\StaffController;
+use App\Services\CustomerService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Route;
 
 // ========================
@@ -126,55 +128,52 @@ Route::prefix('orders')->name('customer.orders.')->group(function () {
 // Twende Dukani — Navigate to branch
 Route::get('/twende-dukani/{branch}', [NavigationController::class, 'show'])->name('customer.twende-dukani');
 
-// Customer search API (for sales)
+// Customer search API (for sales). Customers are found by name or phone;
+// a formatted phone query finds the canonical row saved by the create call.
 Route::get('/api/customers/search', function (Request $request) {
-    $q = $request->q ?? '';
-    if (strlen($q) < 2) {
+    $q = trim((string) $request->q);
+    if (mb_strlen($q) < 2) {
         return response()->json([]);
     }
-    $sb = new SupabaseService;
 
-    // Search by name first
-    $byName = $sb->query('customers', [
-        'select' => '*',
-        'name' => 'ilike.*'.urlencode($q).'*',
-        'limit' => 10,
-        'order' => 'name.asc',
-    ]);
-
-    // Search by phone
-    $byPhone = $sb->query('customers', [
-        'select' => '*',
-        'phone' => 'ilike.*'.urlencode($q).'*',
-        'limit' => 10,
-        'order' => 'name.asc',
-    ]);
-
-    // Merge and deduplicate by id
-    $merged = [];
-    foreach (array_merge($byName, $byPhone) as $c) {
-        $merged[$c['id']] = $c;
-    }
-    ksort($merged);
-
-    return response()->json(array_values(array_slice($merged, 0, 10)));
+    return response()->json(app(CustomerService::class)->search($q, 10));
 })->name('api.customers.search');
 
+// Create a customer, or return the one already holding this phone number.
+// The phone is the identity: a different name never creates a duplicate.
 Route::post('/api/customers', function (Request $request) {
-    $request->validate([
+    $validated = $request->validate([
         'name' => 'nullable|string|max:255',
-        'phone' => 'nullable|string|max:20',
-    ]);
-    $sb = new SupabaseService;
-    $customer = $sb->insert('customers', [
-        'name' => $request->name ?? null,
-        'phone' => $request->phone ?? null,
-        'whatsapp' => $request->phone ?? null,
-        'created_at' => now()->toIso8601String(),
-        'updated_at' => now()->toIso8601String(),
+        'phone' => 'nullable|string|max:32',
+        'email' => 'nullable|email|max:255',
     ]);
 
-    return response()->json($customer);
+    try {
+        $result = app(CustomerService::class)->createOrRetrieve(
+            $validated['name'] ?? null,
+            $validated['phone'] ?? null,
+            ['email' => $validated['email'] ?? null]
+        );
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => collect($e->errors())->flatten()->first(),
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Throwable $e) {
+        report($e);
+
+        return response()->json([
+            'message' => 'Could not save the customer. Please try again.',
+        ], 500);
+    }
+
+    return response()->json([
+        'message' => $result['duplicate']
+            ? 'This phone number already exists. The existing customer has been retrieved.'
+            : 'Customer successfully saved.',
+        'duplicate' => $result['duplicate'],
+        'customer' => $result['customer'],
+    ]);
 })->name('api.customers.store');
 
 // ========================

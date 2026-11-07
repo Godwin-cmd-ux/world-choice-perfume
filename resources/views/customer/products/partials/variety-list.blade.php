@@ -21,7 +21,11 @@
         <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-dark-800 border border-dark-600">
             <div class="min-w-0">
                 <p class="text-sm font-medium text-white">{{ $bucket['label'] }}</p>
-                <p class="text-[11px] text-gray-500">{{ $bucket['available'] }} in stock</p>
+                @if(($bucket['available'] ?? 0) > 0)
+                    <p class="text-[11px] font-semibold text-emerald-400">Available</p>
+                @else
+                    <p class="text-[11px] font-semibold text-red-400">Out of Stock</p>
+                @endif
             </div>
             <div class="flex items-center gap-3">
                 <p class="text-base font-bold text-gold-400">TZS {{ number_format($bucketPrice) }}</p>

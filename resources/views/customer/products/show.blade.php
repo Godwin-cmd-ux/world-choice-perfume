@@ -122,7 +122,7 @@
                                     @endif
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500 py-3">Not currently in stock at any branch.</p>
+                                <p class="text-sm font-medium text-red-400 py-3">Out of Stock — not currently available at any branch.</p>
                             @endforelse
                         </div>
                     </div>
@@ -177,7 +177,7 @@
                         <div>
                             <p class="text-xs text-gray-500 mb-1">Availability</p>
                             <p class="text-sm font-medium {{ $branchStocks->filter(fn($s) => $s->quantity > 0)->count() ? 'text-green-400' : 'text-red-400' }}">
-                                {{ $branchStocks->filter(fn($s) => $s->quantity > 0)->count() ? 'In Stock' : 'Out of Stock' }}
+                                {{ $branchStocks->filter(fn($s) => $s->quantity > 0)->count() ? 'Available' : 'Out of Stock' }}
                             </p>
                         </div>
                     </div>
@@ -216,7 +216,7 @@
                                             @if($branchFrom > 0)
                                                 from TZS {{ number_format($branchFrom) }} ·
                                             @endif
-                                            {{ $bs->quantity }} in stock
+                                            Available
                                         </span>
                                     </a>
                                     @if(!empty($bs->branch->latitude) && !empty($bs->branch->longitude))

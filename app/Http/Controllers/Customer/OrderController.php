@@ -309,22 +309,15 @@ class OrderController extends Controller
         ]);
 
         try {
-            // 1. Create or find customer (1 HTTP call)
-            $existingCustomer = $this->supabase->findOne('customers', [
-                'phone' => $validated['customer_phone'],
-            ]);
+            // 1. Create or find customer. The phone number is the identity,
+            // so a formatted variant of a known number reuses that record.
+            $result = (new \App\Services\CustomerService($this->supabase))->createOrRetrieve(
+                $validated['customer_name'],
+                $validated['customer_phone'],
+                ['email' => $validated['customer_email'] ?? null]
+            );
 
-            if ($existingCustomer) {
-                $customerId = $existingCustomer['id'];
-            } else {
-                $customer = $this->supabase->insert('customers', [
-                    'name' => $validated['customer_name'],
-                    'phone' => $validated['customer_phone'],
-                    'email' => $validated['customer_email'] ?? null,
-                    'whatsapp' => $validated['customer_phone'],
-                ]);
-                $customerId = $customer['id'];
-            }
+            $customerId = $result['customer']['id'];
 
             // 2. Fetch ALL stock for this branch in ONE query (instead of N)
             $allStock = collect($this->supabase->query('branch_stock', [

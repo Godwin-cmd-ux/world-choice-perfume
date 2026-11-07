@@ -194,7 +194,7 @@ class CustomerSizeOrderTest extends TestCase
      * customer commits to one — including when they arrived from a branch that
      * does not stock it.
      */
-    public function test_the_website_product_page_lists_every_stocked_branch_with_its_price_and_stock(): void
+    public function test_the_website_product_page_lists_every_stocked_branch_with_its_price_and_availability(): void
     {
         $this->fakeSupabase();
 
@@ -204,11 +204,13 @@ class CustomerSizeOrderTest extends TestCase
         $response->assertSee('Choose a branch');
         $response->assertSee('Kariakoo');
         $response->assertSee('Mikocheni');
-        // Each option carries that branch's own price and shelf count.
+        // Each option carries that branch's own price and availability — the
+        // actual quantities stay internal.
         $response->assertSee('from TZS 30,000');
         $response->assertSee('from TZS 60,000');
-        $response->assertSee('5 in stock');
-        $response->assertSee('4 in stock');
+        $response->assertSee('Available');
+        $response->assertDontSee('5 in stock');
+        $response->assertDontSee('4 in stock');
         $response->assertDontSee('With Box');
         $response->assertDontSee('box_logo_black');
     }

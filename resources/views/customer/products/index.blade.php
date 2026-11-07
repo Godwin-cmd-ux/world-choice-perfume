@@ -325,10 +325,14 @@
                                                 <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                             </div>
                                         @endif
-                                        <!-- Availability -->
+                                        <!-- Availability: stock counts stay internal; the shop shows the state. -->
                                         @if($stock->quantity <= 0)
                                             <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                                 Out of Stock
+                                            </span>
+                                        @else
+                                            <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-emerald-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-emerald-900/50">
+                                                Available
                                             </span>
                                         @endif
                                         <!-- Category Badges: product type + sex category -->
@@ -355,7 +359,7 @@
                                         <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                             <div>
                                                 @if($stock->quantity <= 0)
-                                                    <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                                    <p class="text-sm font-semibold text-red-400">Out of Stock</p>
                                                 @elseif($cardOptionCount > 0 && $cardDependsOnBranch)
                                                     {{-- Priced per branch and per size: the
                                                          details page lists both. --}}
@@ -363,7 +367,7 @@
                                                     <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} · {{ $cardBranchCount }} branches</p>
                                                 @elseif($cardOptionCount > 0)
                                                     <p class="text-sm font-bold text-gold-400">Depends on size</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} available</p>
                                                 @elseif($cardDependsOnBranch)
                                                     <p class="text-sm font-bold text-gold-400">Depends on branch</p>
                                                     <p class="text-[10px] text-gray-500 mt-1">{{ $cardBranchCount }} branches</p>
@@ -419,10 +423,14 @@
                                             <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                         </div>
                                     @endif
-                                    <!-- Availability -->
+                                    <!-- Availability: the sex/category badge owns the top-right corner. -->
                                     @if($stock->quantity <= 0)
-                                        <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
+                                        <span class="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                             Out of Stock
+                                        </span>
+                                    @else
+                                        <span class="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-emerald-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-emerald-900/50">
+                                            Available
                                         </span>
                                     @endif
                                     <!-- Category Badge -->
@@ -442,10 +450,10 @@
                                     <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                         <div>
                                             @if($stock->quantity <= 0)
-                                                <p class="text-sm font-medium text-gray-500">Check availability</p>
+                                                <p class="text-sm font-semibold text-red-400">Out of Stock</p>
                                             @elseif($cardOptionCount > 0)
                                                 <p class="text-sm font-bold text-gold-400">Depends on size</p>
-                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} in stock</p>
+                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} available</p>
                                             @else
                                                 <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                             @endif

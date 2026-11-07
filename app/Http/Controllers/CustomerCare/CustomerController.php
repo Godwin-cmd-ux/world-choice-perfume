@@ -4,6 +4,7 @@ namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
+use App\Services\CustomerService;
 use App\Services\SupabaseService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -127,31 +128,40 @@ class CustomerController extends Controller
             'email' => 'nullable|email|max:255',
         ]);
 
-        // Avoid duplicate customers with the same phone number
-        if (!empty($validated['phone'])) {
-            $existing = $this->supabase->findOne('customers', ['phone' => $validated['phone']]);
-            if ($existing) {
-                return redirect()->route('customer-care.customers.show', $existing['id'])
-                    ->with('error', 'A customer with this phone number already exists. Showing their record instead.');
-            }
-        }
+        try {
+            // The phone number is the identity: 0682601154 and +255682601154
+            // are the same customer, whatever name is submitted alongside.
+            $result = (new CustomerService($this->supabase))->createOrRetrieve(
+                $validated['name'],
+                $validated['phone'] ?? null,
+                [
+                    'whatsapp' => $validated['whatsapp'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                ]
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
+            report($e);
 
-        $customer = $this->supabase->insert('customers', [
-            'name' => $validated['name'],
-            'phone' => $validated['phone'] ?? null,
-            'whatsapp' => $validated['whatsapp'] ?? ($validated['phone'] ?? null),
-            'email' => $validated['email'] ?? null,
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        if (!$customer) {
             return back()->with('error', 'Could not create the customer. Please try again.')
                 ->withInput();
         }
 
+        $customer = $result['customer'];
+
+        if (empty($customer['id'])) {
+            return back()->with('error', 'Could not create the customer. Please try again.')
+                ->withInput();
+        }
+
+        if ($result['duplicate']) {
+            return redirect()->route('customer-care.customers.show', $customer['id'])
+                ->with('error', 'This phone number already exists. The existing customer has been retrieved.');
+        }
+
         return redirect()->route('customer-care.customers.show', $customer['id'])
-            ->with('success', 'Customer created successfully.');
+            ->with('success', 'Customer successfully saved.');
     }
 
     /**

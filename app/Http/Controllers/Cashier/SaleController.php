@@ -153,31 +153,19 @@ class SaleController extends Controller
         $branchId = auth()->user()->branch_id;
 
         try {
-            // 1. Determine customer
+            // 1. Determine customer. A new customer typed on the form is saved
+            // through CustomerService, which treats the phone number as the
+            // identity: a known number reuses its record, whatever name was
+            // typed, so a sale can never create a duplicate.
             $customerId = null;
             if (!empty($validated['customer_id'])) {
                 $customerId = $validated['customer_id'];
             } elseif (!empty($validated['customer_name']) || !empty($validated['customer_phone'])) {
-                $typedName = trim((string) ($validated['customer_name'] ?? ''));
-                $typedPhone = trim((string) ($validated['customer_phone'] ?? ''));
-                $existingCustomer = null;
-                if ($typedPhone !== '') {
-                    $existingCustomer = $this->supabase->findOne('customers', [
-                        'phone' => $typedPhone,
-                    ]);
-                }
-                $nameAgrees = $typedName === ''
-                    || (isset($existingCustomer['name']) && mb_strtolower(trim((string) $existingCustomer['name'])) === mb_strtolower($typedName));
-                if ($existingCustomer && $nameAgrees) {
-                    $customerId = $existingCustomer['id'];
-                } else {
-                    $customer = $this->supabase->insert('customers', [
-                        'name' => $typedName !== '' ? $typedName : ($existingCustomer['name'] ?? null),
-                        'phone' => $typedPhone !== '' ? $typedPhone : ($existingCustomer['phone'] ?? null),
-                        'whatsapp' => $typedPhone !== '' ? $typedPhone : ($existingCustomer['whatsapp'] ?? null),
-                    ]);
-                    $customerId = $customer['id'] ?? null;
-                }
+                $customer = (new \App\Services\CustomerService($this->supabase))->createOrRetrieve(
+                    $validated['customer_name'] ?? null,
+                    $validated['customer_phone'] ?? null
+                );
+                $customerId = $customer['customer']['id'] ?? null;
             }
 
             // 2. Generate sale number (use timestamp for uniqueness)
@@ -505,6 +493,8 @@ class SaleController extends Controller
             return redirect()->route('cashier.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Sale failed: ' . $e->getMessage()])->withInput();
         }

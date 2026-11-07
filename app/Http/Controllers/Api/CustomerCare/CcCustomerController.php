@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\CustomerCare;
 
+use App\Services\CustomerService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 
@@ -108,34 +109,28 @@ class CcCustomerController extends CcBaseController
             'email' => 'nullable|email|max:255',
         ]);
 
-        if (! empty($validated['phone'])) {
-            $existing = $this->supabase->findOne('customers', ['phone' => $validated['phone']]);
-            if ($existing) {
-                return response()->json([
-                    'message' => 'A customer with this phone number already exists. Showing their record instead.',
-                    'duplicate' => true,
-                    'customer' => $existing,
-                ]);
-            }
-        }
-
-        $customer = $this->supabase->insert('customers', [
-            'name' => $validated['name'],
-            'phone' => $validated['phone'] ?? null,
-            'whatsapp' => $validated['whatsapp'] ?? ($validated['phone'] ?? null),
-            'email' => $validated['email'] ?? null,
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
-
-        if (! $customer) {
+        try {
+            $result = (new CustomerService($this->supabase))->createOrRetrieve(
+                $validated['name'],
+                $validated['phone'] ?? null,
+                [
+                    'whatsapp' => $validated['whatsapp'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                ]
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->fail($e->errors());
+        } catch (\Throwable $e) {
+            report($e);
             $this->fail(['error' => 'Could not create the customer. Please try again.']);
         }
 
         return response()->json([
-            'message' => 'Customer created successfully.',
-            'duplicate' => false,
-            'customer' => $customer,
+            'message' => $result['duplicate']
+                ? 'This phone number already exists. The existing customer has been retrieved.'
+                : 'Customer successfully saved.',
+            'duplicate' => $result['duplicate'],
+            'customer' => $result['customer'],
         ]);
     }
 

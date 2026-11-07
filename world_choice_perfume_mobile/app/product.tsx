@@ -290,7 +290,7 @@ export default function ProductScreen() {
                           </Text>
                           <Text style={[styles.chipSub, active && styles.chipTextActive]}>
                             {fromPrice ? `from ${formatMoney(fromPrice)} · ` : ''}
-                            {stock.quantity ?? 0} in stock
+                            Available
                           </Text>
                         </Pressable>
                       );
@@ -300,7 +300,7 @@ export default function ProductScreen() {
               ) : (
                 <Text style={styles.branchHint}>
                   At {selectedStock?.branch?.name ?? 'this branch'} ·{' '}
-                  {selectedStock?.quantity ?? 0} in stock
+                  Available
                 </Text>
               )}
 
@@ -322,7 +322,7 @@ export default function ProductScreen() {
                           </Text>
                           <Text style={[styles.chipSub, active && styles.chipTextActive]}>
                             {option.price > 0 ? formatMoney(option.price) : 'Price at branch'} ·{' '}
-                            {option.available} left
+                            {option.available > 0 ? 'Available' : 'Out of Stock'}
                           </Text>
                         </Pressable>
                       );
@@ -401,7 +401,7 @@ export default function ProductScreen() {
                       ) : null}
                     </View>
                     <View style={styles.stockPill}>
-                      <Text style={styles.stockPillText}>{stock.quantity} in stock</Text>
+                      <Text style={styles.stockPillText}>Available</Text>
                     </View>
                   </View>
 
@@ -410,7 +410,7 @@ export default function ProductScreen() {
                       <Text style={styles.varietyLabel}>{option.label}</Text>
                       <Text style={styles.varietyPrice}>
                         {option.price > 0 ? formatMoney(option.price) : '—'}
-                        {option.available > 0 ? ` · ${option.available} left` : ''}
+                        {option.available > 0 ? ' · Available' : ' · Out of Stock'}
                       </Text>
                     </View>
                   ))}
