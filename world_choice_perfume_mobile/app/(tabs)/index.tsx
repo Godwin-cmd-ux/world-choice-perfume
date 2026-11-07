@@ -522,8 +522,9 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.copyright}>
-          © {new Date().getFullYear()} World Choice Perfume · worldchoiceperfume.com
+          © {new Date().getFullYear()} World Choice Perfume. All rights reserved.
         </Text>
+        <Text style={styles.tagline}>"Be Smart, Nukia Kijanja"</Text>
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -1067,6 +1068,12 @@ const styles = StyleSheet.create({
   },
 
   copyright: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  tagline: {
     color: COLORS.textMuted,
     fontSize: 11,
     textAlign: 'center',
