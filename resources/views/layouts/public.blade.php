@@ -209,7 +209,6 @@
             <div class="border-t border-dark-700 mt-12 pt-8 text-center">
                 <p class="text-sm text-gray-500">&copy; {{ date('Y') }} World Choice Perfume. All rights reserved.</p>
                 <p class="text-xs text-gray-600 mt-1">"Be Smart, Nukia Kijanja"</p>
-                <p class="text-xs text-gray-600 mt-2">Developed by gTech Solution <a href="https://wa.me/255769010940" target="_blank" rel="noopener" class="text-gold-500 hover:text-gold-400 transition-colors">+255616675940</a></p>
             </div>
         </div>
     </footer>
