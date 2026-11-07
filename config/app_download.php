@@ -19,6 +19,6 @@
 
 return [
 
-    'url' => 'https://expo.dev/artifacts/eas/f3xSD2XNjHRXZ60R0rGvKp5NO8j_I062ZspTcxrtCXA.apk',
+    'url' => 'https://expo.dev/artifacts/eas/-50Cb2LWGbfUcbWWzrh7xm_SVKvK8hMQmXfPhjzTZcI.apk',
 
 ];
