@@ -45,7 +45,6 @@
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.sales.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-receipt w-5 text-center"></i>
             <span>Sales</span>
-            @include('partials.nav-badge', ['key' => 'sales', 'class' => 'bg-emerald-500'])
         </a>
 
         <a href="{{ route('stock-manager.orders.index') }}"
