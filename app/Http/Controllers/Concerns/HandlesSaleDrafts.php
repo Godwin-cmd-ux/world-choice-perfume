@@ -49,7 +49,7 @@ trait HandlesSaleDrafts
      */
     public function deleteDraft($draftId)
     {
-        $branchId = (int) auth()->user()->branch_id;
+        $branchId = $this->saleDraftBranchId();
         $draftId = (int) $draftId;
 
         if ($draftId <= 0 || $this->findSaleDraft($draftId, $branchId) === null) {
@@ -57,14 +57,31 @@ trait HandlesSaleDrafts
         }
 
         try {
-            $this->supabase->delete('sale_drafts', ['id' => $draftId]);
+            $deleted = $this->supabase->delete('sale_drafts', ['id' => $draftId]);
         } catch (\Throwable $e) {
             report($e);
 
             return back()->with('error', 'Could not delete the draft. Please try again.');
         }
 
+        if (! $deleted) {
+            $reason = trim((string) $this->supabase->lastErrorMessage());
+            $reason = $reason === '' ? '' : ' ' . Str::limit(preg_replace('/\s+/', ' ', $reason), 190);
+
+            return back()->with('error', 'Could not delete the draft.' . $reason);
+        }
+
         return back()->with('success', 'Draft sale deleted.');
+    }
+
+    /**
+     * The branch whose drafts this request may act on. Roles that can monitor
+     * another branch override this with their scope's active branch, so a draft
+     * shown on the list can also be deleted from it.
+     */
+    protected function saleDraftBranchId(): int
+    {
+        return (int) auth()->user()->branch_id;
     }
 
     /**

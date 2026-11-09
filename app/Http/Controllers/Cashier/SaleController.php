@@ -146,6 +146,15 @@ class SaleController extends Controller
         return 'cashier.sales.create';
     }
 
+    /**
+     * Drafts shown while monitoring another branch belong to that branch, so
+     * deleting one must use the same active branch as the list.
+     */
+    protected function saleDraftBranchId(): int
+    {
+        return $this->scope->activeBranchId();
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

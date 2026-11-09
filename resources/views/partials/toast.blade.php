@@ -1,5 +1,5 @@
 {{-- Centered confirm + toast component --}}
-<div id="toastConfirm" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+<div id="toastConfirm" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-4">
     <div class="toast-dismiss absolute inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
     <div class="relative w-full max-w-sm rounded-2xl bg-white px-6 py-8 text-center shadow-2xl">
         <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
