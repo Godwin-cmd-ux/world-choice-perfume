@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\StockManager;
 
+use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
 use App\Services\ProductVarietyStockService;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class SalesController extends Controller
 {
+    use HandlesSaleDrafts;
+
     private SupabaseService $supabase;
     private BottleStockService $bottles;
     private StockManagerScope $scope;
@@ -72,9 +75,23 @@ class SalesController extends Controller
             return (object) $s;
         });
 
+        // Unfinished sales parked from the New Sale form: this manager's own
+        // drafts, or the branch's when a Super Admin is overseeing.
+        $draftParams = [
+            'select' => 'id,customer_label,total,item_count,created_by,created_at,updated_at',
+            'branch_id' => "eq.{$branchId}",
+            'order' => 'updated_at.desc',
+            'limit' => 20,
+        ];
+        if ($ownId !== null) {
+            $draftParams['created_by'] = "eq.{$ownId}";
+        }
+        $drafts = collect($this->supabase->query('sale_drafts', $draftParams));
+
         return view('stock-manager.sales.index', [
             'sales' => $sales,
             'totalSales' => $totalSales,
+            'drafts' => $drafts,
             'activeBranchName' => $this->scope->activeBranchName(),
             'inCrossBranch' => $this->scope->inCrossBranchMode(),
         ]);
@@ -96,7 +113,7 @@ class SalesController extends Controller
         return auth()->user()->supabase_id ?? auth()->id();
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $branchId = $this->scope->activeBranchId();
 
@@ -129,12 +146,24 @@ class SalesController extends Controller
             $products->pluck('product_id')->all()
         );
 
+        // Drafts belong to the branch the completed sale will be written to.
+        $draft = $this->resumeSaleDraft($request, (int) auth()->user()->branch_id, 'stock-manager.sales.index');
+        if ($draft instanceof \Illuminate\Http\RedirectResponse) {
+            return $draft;
+        }
+
         return view('stock-manager.sales.create', [
             'products' => $products,
             'bottleStock' => $bottleStock,
             'bottleVariants' => $bottleVariants,
             'productVarieties' => $productVarieties,
+            'draft' => $draft,
         ]);
+    }
+
+    protected function saleCreateRouteName(): string
+    {
+        return 'stock-manager.sales.create';
     }
 
     public function store(Request $request)
@@ -160,6 +189,7 @@ class SalesController extends Controller
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
+            'draft_id' => 'nullable|integer',
         ]);
 
         // Normalize product rows and never sell empty bottles on retail sales
@@ -529,6 +559,10 @@ class SalesController extends Controller
                     ['discount_applied' => true]
                 );
             }
+
+            // A completed draft becomes the sale just written, so it must not
+            // stay in the draft list.
+            $this->completeSaleDraft($request, (int) $branchId);
 
             return redirect()->route('stock-manager.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");

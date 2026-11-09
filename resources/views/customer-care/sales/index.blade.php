@@ -14,6 +14,12 @@
     <p class="text-sm text-gray-500">Total Revenue: <strong class="text-lg text-green-600">TZS {{ number_format($totalRevenue) }}</strong></p>
 </div>
 
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts,
+    'draftCreateRoute' => 'customer-care.sales.create',
+    'accent' => 'amber',
+])
+
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -29,7 +35,7 @@
             <tbody>
                 @forelse($sales as $sale)
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="py-3 px-4 text-gray-700 font-medium">{{ $sale->customer?->name ?? '—' }}</td>
+                        <td class="py-3 px-4 text-gray-700 font-medium">{{ $sale->customer?->name ?? '—' }}@include('partials.loyal-crown', ['loyal' => !empty($sale->customer_id) && in_array((int) $sale->customer_id, $loyalIds, true)])</td>
                         <td class="px-4 text-gray-500">{{ $sale->cashier?->name ?? '—' }}</td>
                         <td class="px-4">
                             @php

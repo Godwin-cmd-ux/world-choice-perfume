@@ -550,7 +550,7 @@ class OrderWorkflowService
      *
      * @return array{ok: bool, message: string}
      */
-    public function pick(int $orderId, ?int $branchId, $userId, string $note): array
+    public function pick(int $orderId, ?int $branchId, $userId, ?string $note): array
     {
         $order = $this->supabase->find('orders', $orderId);
 
@@ -592,7 +592,7 @@ class OrderWorkflowService
      *
      * @return array{ok: bool, message: string}
      */
-    public function serve(int $orderId, ?int $branchId, $userId, string $note): array
+    public function serve(int $orderId, ?int $branchId, $userId, ?string $note): array
     {
         $order = $this->supabase->find('orders', $orderId);
 
@@ -810,10 +810,19 @@ class OrderWorkflowService
     }
 
     /**
-     * Store the note that every status change is required to carry.
+     * Store the note that travels with a status change, when one was written.
+     *
+     * Customer care may move an order forward without an update, so an empty
+     * note writes no order_notes row at all rather than a blank one.
      */
-    private function recordNote(int $orderId, string $note, $userId): void
+    private function recordNote(int $orderId, ?string $note, $userId): void
     {
+        $note = trim((string) $note);
+
+        if ($note === '') {
+            return;
+        }
+
         $now = now()->toIso8601String();
 
         $this->supabase->insert('order_notes', [
@@ -825,7 +834,7 @@ class OrderWorkflowService
         ]);
     }
 
-    private function audit(array $order, string $next, string $previous, int $orderId, string $note): void
+    private function audit(array $order, string $next, string $previous, int $orderId, ?string $note): void
     {
         (new \App\Services\AuditService())->recordCriticalAction(
             'order_status_changed',

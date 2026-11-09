@@ -54,10 +54,12 @@
                         $visit = $visits[(int) $customer->id] ?? ['last_visit' => null, 'branches' => []];
                         $recordUrl = route('customer-care.customers.show', $customer->id)
                             . ($tab === 0 ? '' : '?branch=' . $tab);
+                        $isLoyal = in_array((int) $customer->id, $loyalIds, true);
+                        $assignedBranchId = (int) ($customer->branch_id ?? 0);
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4">
-                            <div class="font-medium text-gray-700">{{ $customer->name ?? 'Unnamed' }}</div>
+                            <div class="font-medium text-gray-700">{{ $customer->name ?? 'Unnamed' }}@include('partials.loyal-crown', ['loyal' => $isLoyal])</div>
                             @if($customer->email)
                                 <div class="text-xs text-gray-400">{{ $customer->email }}</div>
                             @endif
@@ -66,9 +68,17 @@
                         <td class="px-4 text-gray-500">{{ $customer->whatsapp ?? '—' }}</td>
                         <td class="px-4">
                             @php $visited = array_keys($visit['branches']); @endphp
-                            @if($visited)
+                            @if($visited || $assignedBranchId)
                                 <div class="flex flex-wrap gap-1">
+                                    @if($assignedBranchId)
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-700 border border-amber-200" title="Assigned branch">
+                                            <i class="fas fa-store text-[10px]"></i>
+                                            {{ $branchNames[$assignedBranchId] ?? 'Branch #' . $assignedBranchId }}
+                                            <span class="text-[9px] uppercase tracking-wide text-amber-500">Assigned</span>
+                                        </span>
+                                    @endif
                                     @foreach($visited as $branchId)
+                                        @continue($assignedBranchId === (int) $branchId)
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
                                             <i class="fas fa-store text-[10px] text-gray-400"></i>
                                             {{ $branchNames[$branchId] ?? 'Branch #' . $branchId }}
@@ -103,7 +113,7 @@
                             @elseif($tab === 0)
                                 No clients recorded yet.
                             @else
-                                No clients have transacted at this branch yet.
+                                No clients at this branch yet.
                             @endif
                         </td>
                     </tr>
@@ -117,9 +127,9 @@
                 Showing {{ $customers->count() }} of {{ $totalCustomers }} clients
                 @if($q)(matching your search)@endif.
             @elseif($truncated)
-                Showing the {{ $customers->count() }} most recent visitors at {{ $tabName }}.
+                Showing the {{ $customers->count() }} most recent clients at {{ $tabName }}.
             @else
-                Showing {{ $customers->count() }} clients with transactions at {{ $tabName }}@if($q) (matching your search)@endif.
+                Showing {{ $customers->count() }} clients at {{ $tabName }}@if($q) (matching your search)@endif.
             @endif
         </div>
     @endif

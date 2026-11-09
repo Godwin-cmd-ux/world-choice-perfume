@@ -130,7 +130,7 @@
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4">
                             <div class="font-medium text-gray-700">
-                                <i class="fas fa-star text-amber-500 text-xs mr-1.5"></i>{{ $customer->name ?? 'Unnamed' }}
+                                {{ $customer->name ?? 'Unnamed' }}@include('partials.loyal-crown', ['loyal' => true])
                             </div>
                             @if($customer->email)
                                 <div class="text-xs text-gray-400">{{ $customer->email }}</div>

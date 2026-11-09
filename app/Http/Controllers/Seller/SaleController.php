@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
 use App\Services\ProductVarietyStockService;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
+    use HandlesSaleDrafts;
+
     private SupabaseService $supabase;
     private BottleStockService $bottles;
 
@@ -57,10 +60,19 @@ class SaleController extends Controller
 
         $totalSales = $sales->sum('total');
 
-        return view('seller.sales.index', ['sales' => $sales, 'totalSales' => $totalSales]);
+        // Unfinished sales this seller parked from the New Sale form.
+        $drafts = collect($this->supabase->query('sale_drafts', [
+            'select' => 'id,customer_label,total,item_count,created_by,created_at,updated_at',
+            'branch_id' => 'eq.' . auth()->user()->branch_id,
+            'created_by' => "eq.{$userId}",
+            'order' => 'updated_at.desc',
+            'limit' => 20,
+        ]));
+
+        return view('seller.sales.index', ['sales' => $sales, 'totalSales' => $totalSales, 'drafts' => $drafts]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $branchId = auth()->user()->branch_id;
 
@@ -94,7 +106,17 @@ class SaleController extends Controller
             $products->pluck('product_id')->all()
         );
 
-        return view('seller.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties'));
+        $draft = $this->resumeSaleDraft($request, (int) $branchId, 'seller.sales.index');
+        if ($draft instanceof \Illuminate\Http\RedirectResponse) {
+            return $draft;
+        }
+
+        return view('seller.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties', 'draft'));
+    }
+
+    protected function saleCreateRouteName(): string
+    {
+        return 'seller.sales.create';
     }
 
     public function store(Request $request)
@@ -119,6 +141,7 @@ class SaleController extends Controller
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
+            'draft_id' => 'nullable|integer',
         ]);
 
         // Normalize product rows and never sell empty bottles on retail sales
@@ -464,6 +487,10 @@ class SaleController extends Controller
                     ['custom_price_applied' => true]
                 );
             }
+
+            // A completed draft becomes the sale just written, so it must not
+            // stay in the draft list.
+            $this->completeSaleDraft($request, (int) $branchId);
 
             return redirect()->route('seller.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");

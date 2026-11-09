@@ -14,7 +14,7 @@
                     </div>
                 @endif
                 <div>
-                    <h3 class="font-semibold text-gray-800">{{ $customer->name ?? 'Unnamed Client' }}</h3>
+                    <h3 class="font-semibold text-gray-800">{{ $customer->name ?? 'Unnamed Client' }}@include('partials.loyal-crown', ['loyal' => $isLoyal])</h3>
                     <p class="text-xs text-gray-400">Customer ID: {{ $customer->id }}</p>
                 </div>
             </div>
@@ -52,6 +52,18 @@
                         @endif
                     </div>
                 </div>
+                @if($assignedBranch)
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-store text-gray-400 mt-0.5"></i>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Branch</p>
+                            <p class="font-medium">
+                                {{ $assignedBranch['name'] }}
+                                <span class="ml-1 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Assigned</span>
+                            </p>
+                        </div>
+                    </div>
+                @endif
                 <div class="flex items-start gap-3">
                     <i class="fas fa-calendar-plus text-gray-400 mt-0.5"></i>
                     <div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
 use App\Services\CustomerCareScope;
 use App\Services\FinancialService;
 use App\Services\InfoMailService;
@@ -11,6 +12,8 @@ use App\Support\BusinessDay;
 
 class DashboardController extends Controller
 {
+    use ResolvesClientRecords;
+
     private FinancialService $financials;
 
     public function __construct(
@@ -196,6 +199,13 @@ class DashboardController extends Controller
         $clientsTotal = $clients->count();
         $clientsWithPhone = $clients->filter(fn ($c) => ! empty($c->phone))->count();
 
+        // Loyal clients on this screen get a crown beside their name — in the
+        // sales rows, the order rows and the clients list alike.
+        $loyalIds = $this->loyalIdsFor($clients->pluck('id')
+            ->merge($sales->map(fn ($s) => $s->customer_id ?? null))
+            ->merge($orders->map(fn ($o) => $o->customer->id ?? null))
+            ->all());
+
         return view('customer-care.dashboard', compact(
             'inquiriesCount',
             'unreadInquiries',
@@ -216,6 +226,7 @@ class DashboardController extends Controller
             'clientsTotal',
             'clientsWithPhone',
             'dailySummary',
+            'loyalIds',
         ));
     }
 }

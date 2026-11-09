@@ -24,6 +24,12 @@
     <p class="text-sm text-gray-500">Total Sales: <strong class="text-lg text-green-700">TZS {{ number_format($totalSales) }}</strong></p>
 </div>
 
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'branch-admin.sales.create',
+    'accent' => 'amber',
+])
+
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

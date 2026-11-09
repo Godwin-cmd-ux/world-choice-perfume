@@ -46,7 +46,7 @@
                         <td class="px-4">
                             @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
                         </td>
-                        <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}</td>
+                        <td class="px-4">{{ $order->customer?->name ?? 'N/A' }}@include('partials.loyal-crown', ['loyal' => in_array((int) ($order->customer->id ?? 0), $loyalIds, true)])</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($order->total) }}</td>
                         <td class="px-4 text-center">
                             <span class="px-2 py-1 rounded-full text-xs
@@ -77,10 +77,11 @@
                                     </button>
                                 </form>
                             @elseif($next)
-                                <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                {{-- The order update note is optional: the button moves
+                                     the order without asking for one. --}}
+                                <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
                                     @csrf
                                     <input type="hidden" name="status" value="{{ $next }}">
-                                    <input type="hidden" name="note">
                                     <button type="submit" class="{{ $next === 'picked' ? 'text-green-600' : 'text-green-700 font-bold' }} hover:underline font-medium">
                                         <i class="fas {{ $next === 'picked' ? 'fa-hand-pointer' : 'fa-hand-holding' }} mr-1"></i>{{ ucfirst($next) }}
                                     </button>

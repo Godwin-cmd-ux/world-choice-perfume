@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\CustomerCare;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
 use App\Services\OrderWorkflowService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    use ResolvesClientRecords;
+
     private SupabaseService $supabase;
 
     private OrderWorkflowService $workflow;
@@ -43,6 +46,10 @@ class OrderController extends Controller
             'nameRoute' => 'customer-care.orders.personal-name',
             'transitions' => OrderWorkflowService::TRANSITIONS + OrderWorkflowService::CARE_TRANSITIONS,
             'userId' => $userId,
+            // Loyal crowns next to the customers on this tab.
+            'loyalIds' => $this->loyalIdsFor(
+                collect($orders)->map(fn ($order) => (int) ($order->customer->id ?? 0))->all()
+            ),
         ]);
     }
 
@@ -61,6 +68,7 @@ class OrderController extends Controller
             'userId' => $userId,
             'nameRoute' => 'customer-care.orders.personal-name',
             'canName' => $this->workflow->isOwnedBy((array) $order, $userId),
+            'isLoyal' => $this->loyalIdsFor([(int) ($order->customer->id ?? 0)]) !== [],
         ]);
     }
 
@@ -71,9 +79,16 @@ class OrderController extends Controller
      */
     public function updateStatus(Request $request, $orderId)
     {
-        $request->validate($this->workflow->statusChangeRules());
+        // The status still has to be a real move forward, but the update note is
+        // this role's to skip: customer care can pick or serve an order without
+        // describing the step. Other roles keep the service's required-note rules.
+        $rules = $this->workflow->statusChangeRules();
+        $rules['note'] = 'nullable|string|max:2000';
+
+        $request->validate($rules);
 
         $next = $request->status;
+        $note = (string) ($request->note ?? '');
 
         if (!in_array($next, ['picked', 'served'], true)) {
             return back()->with('error', 'An order can only move to picked or served.');
@@ -83,8 +98,8 @@ class OrderController extends Controller
         $branchId = (int) auth()->user()->branch_id;
 
         $result = $next === 'picked'
-            ? $this->workflow->pick((int) $orderId, $branchId, $userId, $request->note)
-            : $this->workflow->serve((int) $orderId, $branchId, $userId, $request->note);
+            ? $this->workflow->pick((int) $orderId, $branchId, $userId, $note)
+            : $this->workflow->serve((int) $orderId, $branchId, $userId, $note);
 
         return $result['ok']
             ? back()->with('success', $result['message'])

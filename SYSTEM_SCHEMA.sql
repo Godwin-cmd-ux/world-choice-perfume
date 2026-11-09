@@ -26,6 +26,7 @@ DROP TABLE IF EXISTS public.order_notes CASCADE;
 DROP TABLE IF EXISTS public.order_items CASCADE;
 DROP TABLE IF EXISTS public.orders CASCADE;
 DROP TABLE IF EXISTS public.sale_items CASCADE;
+DROP TABLE IF EXISTS public.sale_drafts CASCADE;
 DROP TABLE IF EXISTS public.sales CASCADE;
 DROP TABLE IF EXISTS public.stock_movements CASCADE;
 DROP TABLE IF EXISTS public.branch_stock_varieties CASCADE;
@@ -228,12 +229,16 @@ CREATE TABLE public.company_settings (
 );
 
 -- customers
+-- branch_id is the branch the client was assigned to on the New Customer
+-- form ("Assign to"). It is optional: a client with no assignment still
+-- belongs to every branch they transact at, through sales.branch_id.
 CREATE TABLE public.customers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255),
     phone VARCHAR(255),
     email VARCHAR(255),
     whatsapp VARCHAR(255),
+    branch_id BIGINT REFERENCES public.branches(id) ON DELETE SET NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
@@ -419,6 +424,22 @@ CREATE TABLE public.sale_items (
     updated_at TIMESTAMP,
     volume INTEGER,
     variant TEXT
+);
+
+-- sale_drafts
+-- A sale parked before it is finished. Kept out of sales so no revenue,
+-- stock or receipt query ever sees an unfinished sale; completing the draft
+-- writes the real sale and deletes the draft.
+CREATE TABLE public.sale_drafts (
+    id BIGSERIAL PRIMARY KEY,
+    branch_id BIGINT NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE,
+    created_by BIGINT,
+    customer_label VARCHAR(255),
+    total NUMERIC(12, 2) DEFAULT 0 NOT NULL,
+    item_count INTEGER DEFAULT 0 NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
 -- orders
@@ -766,6 +787,8 @@ CREATE INDEX idx_loyal_customers_customer ON loyal_customers(customer_id);
 CREATE INDEX idx_stock_movements_branch_product_type ON stock_movements(branch_id, product_id, type);
 CREATE INDEX idx_stock_movements_reference ON stock_movements(reference_type, reference_id);
 CREATE INDEX idx_sales_branch_created ON sales(branch_id, created_at);
+CREATE INDEX idx_sale_drafts_branch_updated ON sale_drafts(branch_id, updated_at);
+CREATE INDEX idx_customers_branch ON customers(branch_id);
 CREATE INDEX idx_sales_cashier_created ON sales(cashier_id, created_at);
 CREATE INDEX idx_orders_branch_status ON orders(branch_id, status);
 CREATE INDEX idx_orders_assigned_status ON orders(assigned_to, status);

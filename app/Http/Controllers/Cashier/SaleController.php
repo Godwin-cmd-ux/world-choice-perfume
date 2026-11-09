@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cashier;
 
+use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
 use App\Services\CashierScope;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
+    use HandlesSaleDrafts;
+
     private SupabaseService $supabase;
     private BottleStockService $bottles;
     private CashierScope $scope;
@@ -72,13 +75,26 @@ class SaleController extends Controller
             return (object) $s;
         });
 
-        return view('cashier.sales.index', compact('sales') + [
+        // Unfinished sales parked from the New Sale form. A cashier sees their
+        // own drafts; while monitoring a branch, that branch's drafts.
+        $draftParams = [
+            'select' => 'id,customer_label,total,item_count,created_by,created_at,updated_at',
+            'branch_id' => "eq.{$activeBranchId}",
+            'order' => 'updated_at.desc',
+            'limit' => 20,
+        ];
+        if (!$inCrossBranch) {
+            $draftParams['created_by'] = "eq.{$supabaseUserId}";
+        }
+        $drafts = collect($this->supabase->query('sale_drafts', $draftParams));
+
+        return view('cashier.sales.index', compact('sales', 'drafts') + [
             'inCrossBranch' => $inCrossBranch,
             'activeBranchName' => $this->scope->activeBranchName(),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         if ($this->scope->inCrossBranchMode()) {
             return redirect()->route('cashier.sales.index')
@@ -117,7 +133,17 @@ class SaleController extends Controller
             $products->pluck('product_id')->all()
         );
 
-        return view('cashier.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties'));
+        $draft = $this->resumeSaleDraft($request, (int) $branchId, 'cashier.sales.index');
+        if ($draft instanceof \Illuminate\Http\RedirectResponse) {
+            return $draft;
+        }
+
+        return view('cashier.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties', 'draft'));
+    }
+
+    protected function saleCreateRouteName(): string
+    {
+        return 'cashier.sales.create';
     }
 
     public function store(Request $request)
@@ -142,6 +168,7 @@ class SaleController extends Controller
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
+            'draft_id' => 'nullable|integer',
         ]);
 
         // Normalize product rows and never sell empty bottles on retail sales
@@ -489,6 +516,10 @@ class SaleController extends Controller
                     ['custom_price_applied' => true]
                 );
             }
+
+            // A completed draft becomes the sale just written, so it must not
+            // stay in the draft list.
+            $this->completeSaleDraft($request, (int) $branchId);
 
             return redirect()->route('cashier.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");

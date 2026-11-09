@@ -20,7 +20,7 @@
         @foreach($tabs as $t)
             <a href="{{ route('customer-care.customers.index', array_filter(['q' => $q, 'branch' => $t->id])) }}"
                class="px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap {{ $view === 'all' && $tab === $t->id ? 'border-amber-600 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700' }}"
-               @if($showCounts) title="{{ $t->count }} {{ \Illuminate\Support\Str::plural('client', $t->count) }} with transactions at this branch" @endif>
+               @if($showCounts) title="{{ $t->count }} {{ \Illuminate\Support\Str::plural('client', $t->count) }} at this branch" @endif>
                 <i class="fas fa-store mr-1"></i> {{ $t->name }}
                 @if($showCounts)
                     <span class="ml-1 px-2 py-0.5 rounded-full text-xs {{ $view === 'all' && $tab === $t->id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600' }}">{{ $t->count }}</span>

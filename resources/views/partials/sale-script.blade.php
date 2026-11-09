@@ -816,10 +816,110 @@
         goToStep(3);
     }
 
+    // ===================== DRAFT RESUME =====================
+    // A parked sale reopens with the customer, cart, bottles and payments it
+    // was saved with. The draft is the payload the server stored.
+    function hydrateDraft(draft) {
+        if (!draft || typeof draft !== 'object') return;
+
+        // Sale type first — switching to retail resets the bottle lines.
+        setSaleType(draft.sale_type === 'wholesale' ? 'wholesale' : 'retail');
+
+        if (draft.customer_id) {
+            selectCustomer(draft.customer_id, draft.customer_name || 'Customer', draft.customer_phone || '');
+        } else if (draft.customer_name || draft.customer_phone) {
+            document.getElementById('newCustomerForm').classList.remove('hidden');
+            document.getElementById('newCustomerName').value = draft.customer_name || '';
+            document.getElementById('newCustomerPhone').value = draft.customer_phone || '';
+            document.getElementById('selectedCustomer').classList.add('hidden');
+            document.getElementById('customer_id').value = '';
+        }
+
+        (draft.items || []).forEach(function (item) {
+            const volume = item.volume ? String(item.volume) : '';
+            const variant = item.variant || '';
+            const cb = document.querySelector('.product-check[data-row-key="' + item.product_id + '|' + volume + '|' + variant + '"]');
+            if (!cb) return;
+
+            cb.checked = true;
+            addToCart(cb);
+
+            const row = document.querySelector('.cart-row[data-row-key="' + cb.dataset.rowKey + '"]');
+            if (!row) return;
+
+            const qty = parseInt(item.quantity || 1, 10) || 1;
+            row.querySelector('.cart-qty').textContent = qty;
+            row.querySelector('.cart-qty-hidden').value = qty;
+
+            const price = row.querySelector('.cart-custom-price');
+            if (price && item.custom_price !== null && item.custom_price !== undefined && item.custom_price !== '') {
+                price.value = item.custom_price;
+            }
+
+            // A manual retail discount (stock manager forms) is part of the
+            // parked sale too, or the resumed total would change.
+            const discount = row.querySelector('.cart-discount-price');
+            if (discount && item.discount_price !== null && item.discount_price !== undefined && item.discount_price !== '') {
+                discount.value = item.discount_price;
+            }
+        });
+
+        (draft.empty_bottles || []).forEach(function (bottle, i) {
+            const container = document.getElementById('bottle-items-container');
+            if (i > 0) addBottleRow();
+            const row = container.querySelectorAll('.bottle-item-row')[i];
+            if (!row) return;
+
+            row.querySelector('.bottle-volume-select').value = String(bottle.volume || '');
+            refreshBottleVariant(row);
+
+            const variant = row.querySelector('.bottle-variant-select');
+            if (variant && bottle.variant) variant.value = bottle.variant;
+
+            row.querySelector('.bottle-qty-input').value = bottle.quantity || 1;
+            row.querySelector('.bottle-price-input').value = (bottle.price !== null && bottle.price !== undefined) ? bottle.price : '';
+        });
+
+        // Payments last: the mode decides which of the rows below are posted.
+        const mode = draft.payment_mode === 'multi' ? 'multi' : 'single';
+        const radio = document.querySelector('input[name="payment_mode"][value="' + mode + '"]');
+        if (radio) {
+            radio.checked = true;
+            togglePaymentMode(mode);
+        }
+
+        const payments = draft.payments || [];
+        if (mode === 'single') {
+            const method = document.querySelector('#singlePayment select[name="payments[0][method]"]');
+            if (method && payments[0]) method.value = payments[0].method || 'cash';
+        } else {
+            payments.forEach(function (payment, i) { if (i > 0) addPaymentRow(); });
+
+            const rows = document.querySelectorAll('#payment-rows .payment-row');
+            payments.forEach(function (payment, i) {
+                const row = rows[i];
+                if (!row) return;
+                const method = row.querySelector('select');
+                const amount = row.querySelector('input');
+                if (method) method.value = payment.method || 'cash';
+                if (amount && payment.amount !== null && payment.amount !== undefined) amount.value = payment.amount;
+            });
+        }
+
+        calculateTotal();
+    }
+
     // ===================== INIT =====================
     bindBottleEvents();
     document.querySelectorAll('.bottle-item-row').forEach(row => refreshBottleVariant(row));
     togglePaymentMode('single');
     setSaleType(document.getElementById('sale_type').value);
     goToStep(1, true);
+
+    // Open a resumed draft straight on the payment step, with everything
+    // already filled in.
+    if (window.SALE_DRAFT) {
+        hydrateDraft(window.SALE_DRAFT);
+        goToStep(4, true);
+    }
 </script>

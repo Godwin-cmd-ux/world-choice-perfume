@@ -352,6 +352,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Sales
         Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [SalesController::class, 'create'])->name('sales.create');
+        Route::post('/sales/draft', [SalesController::class, 'saveDraft'])->name('sales.draft');
         Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show');
 
@@ -398,6 +399,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Sales
         Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
+        Route::post('/sales/draft', [SaleController::class, 'saveDraft'])->name('sales.draft');
         Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
 
@@ -425,6 +427,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Sales
         Route::get('/sales', [$selSale, 'index'])->name('sales.index');
         Route::get('/sales/create', [$selSale, 'create'])->name('sales.create');
+        Route::post('/sales/draft', [$selSale, 'saveDraft'])->name('sales.draft');
         Route::post('/sales', [$selSale, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
 
@@ -458,6 +461,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Sales
         Route::get('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [App\Http\Controllers\CustomerCare\SalesController::class, 'create'])->name('sales.create');
+        // Park the sale being typed as a draft; resuming goes back through
+        // /sales/create?draft=<id>, so no extra page is needed.
+        Route::post('/sales/draft', [App\Http\Controllers\CustomerCare\SalesController::class, 'saveDraft'])->name('sales.draft');
         Route::post('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
@@ -623,6 +629,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         $smSales = App\Http\Controllers\StockManager\SalesController::class;
         Route::get('/sales', [$smSales, 'index'])->name('sales.index');
         Route::get('/sales/create', [$smSales, 'create'])->name('sales.create');
+        Route::post('/sales/draft', [$smSales, 'saveDraft'])->name('sales.draft');
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
 

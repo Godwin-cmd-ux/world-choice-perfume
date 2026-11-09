@@ -19,7 +19,7 @@
             @include('partials.order-personal-name', ['order' => $order, 'nameRoute' => $nameRoute, 'canName' => $canName])
         </div>
         <div class="border-t border-b py-3 mb-4 text-sm space-y-1">
-            <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}</span></div>
+            <div class="flex justify-between"><span>Customer:</span><span>{{ $order->customer?->name ?? 'N/A' }}@include('partials.loyal-crown', ['loyal' => $isLoyal])</span></div>
             <div class="flex justify-between"><span>Phone:</span><span>{{ $order->customer?->phone ?? 'N/A' }}</span></div>
             @if($order->cashier?->name)<div class="flex justify-between"><span>Served By:</span><span>{{ $order->cashier->name }}</span></div>@endif
             @if($order->delivery_notes)<div class="flex justify-between"><span>Notes:</span><span>{{ $order->delivery_notes }}</span></div>@endif
@@ -58,8 +58,8 @@
         @endphp
         @if($allowed)
             <div class="mt-4 border-t pt-3">
-                <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note <span class="text-red-500">*</span></label>
-                <p class="text-xs text-gray-400 mb-2">Enter what point you have reached for this order before changing the status.</p>
+                <label for="order-note-input" class="block text-sm font-medium text-gray-700 mb-1">Order Note</label>
+                <p class="text-xs text-gray-400 mb-2">What point you have reached for this order — saved with the status change.</p>
                 <textarea id="order-note-input" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3"
                     placeholder="e.g. Order received and being packed..."></textarea>
                 <div class="flex gap-3 flex-wrap">
@@ -80,13 +80,11 @@
     <a href="{{ route('customer-care.orders.index', ['tab' => request('tab') ?: 'pending']) }}" class="mt-4 inline-block text-blue-700 hover:underline">&larr; Back to Orders</a>
 </div>
 <script>
+// The note rides along when one was typed and is left empty otherwise, so the
+// order can be moved without writing an update.
 function attachOrderNote(form) {
     var ta = document.getElementById('order-note-input');
-    if (!ta || !ta.value.trim()) {
-        alert('Please enter a note about this order update before changing the status.');
-        return false;
-    }
-    form.querySelector('input[name="note"]').value = ta.value.trim();
+    form.querySelector('input[name="note"]').value = ta ? ta.value.trim() : '';
     return true;
 }
 </script>

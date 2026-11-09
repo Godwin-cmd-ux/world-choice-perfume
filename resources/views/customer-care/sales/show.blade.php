@@ -20,7 +20,7 @@
             @endif
             <div class="flex justify-between"><span>Payment:</span><span class="text-sm">{{ $sale->payment_summary ?? str_replace('_', ' ', ucfirst($sale->payment_method ?? 'N/A')) }}</span></div>
             @if($sale->customer)
-                <div class="flex justify-between"><span>Customer:</span><span>{{ $sale->customer->name }}</span></div>
+                <div class="flex justify-between"><span>Customer:</span><span>{{ $sale->customer->name }}@include('partials.loyal-crown', ['loyal' => $isLoyal])</span></div>
                 <div class="flex justify-between"><span>Phone:</span><span>{{ $sale->customer->phone }}</span></div>
             @endif
         </div>

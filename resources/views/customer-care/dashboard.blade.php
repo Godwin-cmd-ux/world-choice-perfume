@@ -176,7 +176,7 @@
                             <td class="py-3 px-4 font-medium">
                                 <a href="{{ route('customer-care.sales.show', $sale->id) }}" class="hover:text-emerald-700">{{ $sale->sale_number ?? 'N/A' }}</a>
                             </td>
-                            <td class="px-4 text-gray-700">{{ $sale->customer?->name ?? '—' }}</td>
+                            <td class="px-4 text-gray-700">{{ $sale->customer?->name ?? '—' }}@include('partials.loyal-crown', ['loyal' => in_array((int) ($sale->customer_id ?? 0), $loyalIds, true)])</td>
                             <td class="px-4 text-gray-500">{{ $sale->cashier?->name ?? '—' }}</td>
                             <td class="px-4">
                                 @php
@@ -235,7 +235,7 @@
                             <td class="py-3 px-4 font-medium">
                                 <a href="{{ route('customer-care.orders.show', $order->id) }}" class="hover:text-blue-700">{{ $order->order_number ?? 'N/A' }}</a>
                             </td>
-                            <td class="px-4 text-gray-700">{{ $order->customer?->name ?? '—' }}</td>
+                            <td class="px-4 text-gray-700">{{ $order->customer?->name ?? '—' }}@include('partials.loyal-crown', ['loyal' => in_array((int) ($order->customer->id ?? 0), $loyalIds, true)])</td>
                             <td class="px-4 text-gray-500">{{ $order->cashier?->name ?? '—' }}</td>
                             <td class="px-4 text-right font-medium text-blue-700">TZS {{ number_format($order->total) }}</td>
                             <td class="px-4 text-center">
@@ -289,7 +289,7 @@
                             $purchases = $sales->where('customer_id', $client->id)->count();
                         @endphp
                         <tr class="border-t hover:bg-gray-50">
-                            <td class="py-3 px-4 font-medium text-gray-700">{{ $client->name ?? 'Unnamed' }}</td>
+                            <td class="py-3 px-4 font-medium text-gray-700">{{ $client->name ?? 'Unnamed' }}@include('partials.loyal-crown', ['loyal' => in_array((int) $client->id, $loyalIds, true)])</td>
                             <td class="px-4 text-gray-500">{{ $client->phone ?? '—' }}</td>
                             <td class="px-4 text-gray-500">{{ $client->whatsapp ?? '—' }}</td>
                             <td class="px-4 text-gray-500">{{ $client->email ?? '—' }}</td>

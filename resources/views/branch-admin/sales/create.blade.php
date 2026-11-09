@@ -5,6 +5,7 @@
 @section('content')
 @include('partials.sale-form', [
     'formAction' => route('branch-admin.sales.store'),
+    'draftRoute' => route('branch-admin.sales.draft'),
     'accent' => 'amber',
 ])
 @endsection

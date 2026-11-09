@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\CustomerCare;
 
+use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
 use App\Services\BottleStockService;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
@@ -10,6 +12,9 @@ use Illuminate\Http\Request;
 
 class SalesController extends Controller
 {
+    use HandlesSaleDrafts;
+    use ResolvesClientRecords;
+
     private SupabaseService $supabase;
     private BottleStockService $bottles;
 
@@ -90,13 +95,24 @@ class SalesController extends Controller
 
         $totalRevenue = $sales->sum('total');
 
+        // Unfinished sales wait here until they are completed. They live in
+        // their own table, so they never reach revenue or the sales list above.
+        $drafts = collect($this->supabase->query('sale_drafts', [
+            'select' => 'id,customer_label,total,item_count,created_by,created_at,updated_at',
+            'branch_id' => "eq.{$branchId}",
+            'order' => 'updated_at.desc',
+            'limit' => 20,
+        ]));
+
         return view('customer-care.sales.index', [
             'sales' => $sales,
             'totalRevenue' => $totalRevenue,
+            'drafts' => $drafts,
+            'loyalIds' => $this->loyalIdsFor($customerIds),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $branchId = auth()->user()->branch_id;
 
@@ -130,7 +146,19 @@ class SalesController extends Controller
             $products->pluck('product_id')->all()
         );
 
-        return view('customer-care.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties'));
+        // ?draft=<id> resumes a parked sale: the form is redisplayed with the
+        // saved customer, items, bottles and payments already in place.
+        $draft = $this->resumeSaleDraft($request, (int) $branchId, 'customer-care.sales.index');
+        if ($draft instanceof \Illuminate\Http\RedirectResponse) {
+            return $draft;
+        }
+
+        return view('customer-care.sales.create', compact('products', 'bottleStock', 'bottleVariants', 'productVarieties', 'draft'));
+    }
+
+    protected function saleCreateRouteName(): string
+    {
+        return 'customer-care.sales.create';
     }
 
     public function store(Request $request)
@@ -155,6 +183,7 @@ class SalesController extends Controller
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
             'sale_type' => 'required|in:retail,wholesale',
+            'draft_id' => 'nullable|integer',
         ]);
 
         // Normalize product rows and never sell empty bottles on retail sales
@@ -503,6 +532,10 @@ class SalesController extends Controller
                 );
             }
 
+            // The draft has become a real sale (stock deducted, payment
+            // recorded), so it must not stay in the draft list.
+            $this->completeSaleDraft($request, (int) $branchId);
+
             return redirect()->route('customer-care.sales.show', $sale['id'])
                 ->with('success', "Sale {$saleNumber} completed successfully!");
 
@@ -532,6 +565,9 @@ class SalesController extends Controller
             });
         }
 
-        return view('customer-care.sales.show', ['sale' => (object) $sale]);
+        return view('customer-care.sales.show', [
+            'sale' => (object) $sale,
+            'isLoyal' => $this->loyalIdsFor([(int) ($sale['customer_id'] ?? 0)]) !== [],
+        ]);
     }
 }

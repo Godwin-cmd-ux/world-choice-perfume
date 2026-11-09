@@ -9,6 +9,12 @@
 
 @section('content')
 @include('cashier.partials.cross-branch-banner')
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'cashier.sales.create',
+    'accent' => 'amber',
+])
+
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

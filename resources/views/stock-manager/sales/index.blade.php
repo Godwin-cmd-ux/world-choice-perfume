@@ -19,6 +19,12 @@
     </form>
 </div>
 
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'stock-manager.sales.create',
+    'accent' => 'emerald',
+])
+
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-4 py-3 border-b flex items-center justify-between">
         <span class="text-sm text-gray-500">Total: TZS {{ number_format($totalSales) }}</span>

@@ -7,6 +7,7 @@
 @php
     $accent = $accent ?? 'amber';
     $backRoute = $backRoute ?? null;
+    $draftRoute = $draftRoute ?? null;
     $steps = [1 => 'Sale type', 2 => 'Customer', 3 => 'Products', 4 => 'Payment'];
 @endphp
 
@@ -24,6 +25,7 @@
     @csrf
     <input type="hidden" name="customer_id" id="customer_id" value="">
     <input type="hidden" name="sale_type" id="sale_type" value="retail">
+    @include('partials.sale-draft-fields', ['draft' => $draft ?? null])
 
     {{-- Progress rail. Later steps unlock one at a time; finished ones stay
          clickable so a wrong choice can be corrected without losing the cart. --}}
@@ -200,9 +202,16 @@
             <button type="button" onclick="goToStep(3)" class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition">
                 <i class="fas fa-arrow-left mr-1"></i> Back
             </button>
-            <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition" id="submitBtn">
-                <i class="fas fa-check-circle mr-1"></i> Complete Sale
-            </button>
+            @if($draftRoute)
+                @include('partials.sale-draft-actions', [
+                    'draftRoute' => $draftRoute,
+                    'accent' => $accent,
+                ])
+            @else
+                <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition" id="submitBtn">
+                    <i class="fas fa-check-circle mr-1"></i> Complete Sale
+                </button>
+            @endif
         </div>
     </section>
 </form>
