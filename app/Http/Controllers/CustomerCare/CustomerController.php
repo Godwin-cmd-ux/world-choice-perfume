@@ -240,8 +240,8 @@ class CustomerController extends Controller
                     break;
                 }
             }
-            if ($selected === 'all' && $branchTabs) {
-                $selected = (string) $branchTabs[0]->id;
+            if ($selected === 'all' && $branchTabs->isNotEmpty()) {
+                $selected = (string) $branchTabs->first()->id;
             }
         }
 

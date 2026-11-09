@@ -21,7 +21,8 @@ class NavigationCountsRouteTest extends TestCase
         $this->assertSame(['returns'], $counts->keysForRoute('stock-manager.stock-transfers.returns'));
         $this->assertSame(['returns'], $counts->keysForRoute('stock-manager.returned-stock.index'));
         $this->assertSame(['news'], $counts->keysForRoute('graphic-designer.news.index'));
-        $this->assertSame(['customers'], $counts->keysForRoute('customer-care.customers.index'));
+        $this->assertSame([], $counts->keysForRoute('customer-care.customers.index'));
+        $this->assertSame([], $counts->keysForRoute('customer-care.customers.loyal'));
     }
 
     public function test_dashboards_watch_every_panel_they_show(): void
@@ -34,7 +35,7 @@ class NavigationCountsRouteTest extends TestCase
         );
 
         $this->assertSame(
-            ['orders', 'inquiries', 'mails', 'news', 'customers', 'sales'],
+            ['orders', 'inquiries', 'mails', 'news', 'sales'],
             $counts->keysForRoute('customer-care.dashboard')
         );
 

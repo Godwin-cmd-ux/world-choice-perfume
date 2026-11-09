@@ -13,7 +13,7 @@ use Throwable;
  *
  * Every count here is work the signed-in person can act on: unread mail and
  * inquiries, orders waiting for their role, incoming transfers, pending
- * approvals, and the business day's new sales/expenses/customers. Counts are
+ * approvals, and the business day's new sales/expenses. Counts are
  * scoped with the same branch rules as the pages themselves, so a badge never
  * promises a row the page will not show.
  */
@@ -29,7 +29,6 @@ class NavigationCountsService
         'transfers',
         'returns',
         'news',
-        'customers',
         'sales',
         'expenses',
     ];
@@ -38,8 +37,7 @@ class NavigationCountsService
     private const EXACT_ROUTE_KEYS = [
         'super-admin.dashboard' => ['orders', 'approvals', 'notifications', 'mails', 'returns'],
         'super-admin.daily-sales' => ['sales'],
-        'customer-care.dashboard' => ['orders', 'inquiries', 'mails', 'news', 'customers', 'sales'],
-        'customer-care.customers.loyal' => ['customers'],
+        'customer-care.dashboard' => ['orders', 'inquiries', 'mails', 'news', 'sales'],
         'seller.dashboard' => ['orders', 'sales'],
         'cashier.dashboard' => ['orders', 'sales', 'expenses'],
         'cashier.daily-sales-overview' => ['sales'],
@@ -60,7 +58,6 @@ class NavigationCountsService
         'customer-care.inquiries.' => ['inquiries'],
         'customer-care.mails.' => ['mails'],
         'customer-care.news.' => ['news'],
-        'customer-care.customers.' => ['customers'],
         'customer-care.sales.' => ['sales'],
         'seller.orders.' => ['orders'],
         'seller.sales.' => ['sales'],
@@ -157,7 +154,6 @@ class NavigationCountsService
         return in_array($route, [
             'cashier.daily-sales-overview',
             'super-admin.daily-sales',
-            'customer-care.customers.loyal',
             'stock-manager.stock-transfers.incoming',
             'stock-manager.stock-transfers.returns',
         ], true);
@@ -195,7 +191,6 @@ class NavigationCountsService
             'status' => 'eq.'.OrderWorkflowService::CARE_STATUS,
         ]);
 
-        $counts['customers'] = $this->countToday('customers');
         $counts['sales'] = $this->countToday('sales', ['branch_id' => 'eq.'.$branchId]);
 
         $isHq = (new CustomerCareScope($this->supabase))->isHqCustomerCare();
