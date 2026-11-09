@@ -32,7 +32,15 @@ export default function CareCustomerNew() {
         whatsapp: whatsapp.trim() || undefined,
         email: email.trim() || undefined,
       });
-      router.replace({ pathname: '/care/customer-detail', params: { id: String(res.customer.id), notice: res.message } });
+      // A newly added customer needs no notice — the record itself shows them.
+      // Only a duplicate phone warns that the existing record was used.
+      router.replace({
+        pathname: '/care/customer-detail',
+        params: {
+          id: String(res.customer.id),
+          ...(res.duplicate ? { notice: res.message } : {}),
+        },
+      });
     } catch (e) {
       const err = e as { message?: string; fields?: Record<string, string> };
       setError(err.message ?? 'Could not save the client. Please try again.');
