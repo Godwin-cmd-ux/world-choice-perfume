@@ -229,16 +229,12 @@ CREATE TABLE public.company_settings (
 );
 
 -- customers
--- branch_id is the branch the client was assigned to on the New Customer
--- form ("Assign to"). It is optional: a client with no assignment still
--- belongs to every branch they transact at, through sales.branch_id.
 CREATE TABLE public.customers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255),
     phone VARCHAR(255),
     email VARCHAR(255),
     whatsapp VARCHAR(255),
-    branch_id BIGINT REFERENCES public.branches(id) ON DELETE SET NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
@@ -788,7 +784,6 @@ CREATE INDEX idx_stock_movements_branch_product_type ON stock_movements(branch_i
 CREATE INDEX idx_stock_movements_reference ON stock_movements(reference_type, reference_id);
 CREATE INDEX idx_sales_branch_created ON sales(branch_id, created_at);
 CREATE INDEX idx_sale_drafts_branch_updated ON sale_drafts(branch_id, updated_at);
-CREATE INDEX idx_customers_branch ON customers(branch_id);
 CREATE INDEX idx_sales_cashier_created ON sales(cashier_id, created_at);
 CREATE INDEX idx_orders_branch_status ON orders(branch_id, status);
 CREATE INDEX idx_orders_assigned_status ON orders(assigned_to, status);

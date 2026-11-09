@@ -499,7 +499,7 @@ class OrderWorkflowService
      *
      * @return array{ok: bool, message: string}
      */
-    public function decide(int $orderId, ?int $branchId, $userId, string $decision, string $note): array
+    public function decide(int $orderId, ?int $branchId, $userId, string $decision, ?string $note): array
     {
         if (!in_array($decision, ['pending', self::FAILED_STATUS], true)) {
             return $this->fail('An order can only be released to pending or trashed as failed.');

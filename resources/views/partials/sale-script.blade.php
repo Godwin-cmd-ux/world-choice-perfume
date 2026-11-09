@@ -264,10 +264,13 @@
                 const savedName = customer.name || name;
                 const savedPhone = customer.phone || phone;
 
-                if (window.wcpToast) {
+                // A newly added customer needs no notice; the selected card above
+                // already shows them. Only a duplicate phone warns that the
+                // existing record was used.
+                if (window.wcpToast && payload.duplicate) {
                     window.wcpToast.show(
-                        payload.message || 'Customer successfully saved.',
-                        payload.duplicate ? 'warning' : 'success'
+                        payload.message || 'This phone number already exists. The existing customer has been retrieved.',
+                        'warning'
                     );
                 }
 

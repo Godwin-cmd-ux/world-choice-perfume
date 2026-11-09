@@ -3,6 +3,12 @@
 @section('header', 'Sales History')
 @section('header-actions')
     <a href="{{ route('branch-admin.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-1"></i> New Sale</a>
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'branch-admin.sales.create',
+    'draftDeleteRoute' => 'branch-admin.sales.draft.destroy',
+    'accent' => 'amber',
+])
 @endsection
 
 @section('content')
@@ -24,11 +30,6 @@
     <p class="text-sm text-gray-500">Total Sales: <strong class="text-lg text-green-700">TZS {{ number_format($totalSales) }}</strong></p>
 </div>
 
-@include('partials.sale-drafts-panel', [
-    'drafts' => $drafts ?? [],
-    'draftCreateRoute' => 'branch-admin.sales.create',
-    'accent' => 'amber',
-])
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">

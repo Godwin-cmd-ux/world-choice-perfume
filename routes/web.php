@@ -353,6 +353,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [SalesController::class, 'create'])->name('sales.create');
         Route::post('/sales/draft', [SalesController::class, 'saveDraft'])->name('sales.draft');
+        Route::delete('/sales/draft/{draft}', [SalesController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show');
 
@@ -400,6 +401,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
         Route::post('/sales/draft', [SaleController::class, 'saveDraft'])->name('sales.draft');
+        Route::delete('/sales/draft/{draft}', [SaleController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
 
@@ -428,6 +430,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales', [$selSale, 'index'])->name('sales.index');
         Route::get('/sales/create', [$selSale, 'create'])->name('sales.create');
         Route::post('/sales/draft', [$selSale, 'saveDraft'])->name('sales.draft');
+        Route::delete('/sales/draft/{draft}', [$selSale, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [$selSale, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
 
@@ -464,6 +467,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Park the sale being typed as a draft; resuming goes back through
         // /sales/create?draft=<id>, so no extra page is needed.
         Route::post('/sales/draft', [App\Http\Controllers\CustomerCare\SalesController::class, 'saveDraft'])->name('sales.draft');
+        Route::delete('/sales/draft/{draft}', [App\Http\Controllers\CustomerCare\SalesController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
@@ -630,6 +634,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/sales', [$smSales, 'index'])->name('sales.index');
         Route::get('/sales/create', [$smSales, 'create'])->name('sales.create');
         Route::post('/sales/draft', [$smSales, 'saveDraft'])->name('sales.draft');
+        Route::delete('/sales/draft/{draft}', [$smSales, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
 

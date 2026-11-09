@@ -64,7 +64,10 @@ class CcOrderController extends CcBaseController
     public function updateStatus(Request $request, int $orderId)
     {
         $workflow = $this->workflow();
-        $request->validate($workflow->statusChangeRules());
+        // Customer care may move an order without describing the step.
+        $rules = $workflow->statusChangeRules();
+        $rules['note'] = 'nullable|string|max:2000';
+        $request->validate($rules);
 
         $next = $request->input('status');
 
@@ -94,7 +97,7 @@ class CcOrderController extends CcBaseController
     {
         $request->validate([
             'status' => 'required|in:pending,failed',
-            'note' => 'required|string|max:2000',
+            'note' => 'nullable|string|max:2000',
         ]);
 
         $result = $this->workflow()->decide(
@@ -102,7 +105,7 @@ class CcOrderController extends CcBaseController
             $this->ownBranchId($request),
             $this->performingUserId($request),
             (string) $request->input('status'),
-            (string) $request->input('note')
+            (string) ($request->input('note') ?? '')
         );
 
         if (! $result['ok']) {

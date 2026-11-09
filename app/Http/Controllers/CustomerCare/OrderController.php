@@ -115,7 +115,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'status' => 'required|in:pending,failed',
-            'note' => 'required|string|max:2000',
+            'note' => 'nullable|string|max:2000',
         ]);
 
         $result = $this->workflow->decide(
@@ -123,7 +123,7 @@ class OrderController extends Controller
             (int) auth()->user()->branch_id,
             auth()->user()->supabase_id ?? auth()->id(),
             $request->status,
-            $request->note
+            (string) ($request->note ?? '')
         );
 
         return $result['ok']

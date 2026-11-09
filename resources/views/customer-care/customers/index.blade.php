@@ -55,7 +55,6 @@
                         $recordUrl = route('customer-care.customers.show', $customer->id)
                             . ($tab === 0 ? '' : '?branch=' . $tab);
                         $isLoyal = in_array((int) $customer->id, $loyalIds, true);
-                        $assignedBranchId = (int) ($customer->branch_id ?? 0);
                     @endphp
                     <tr class="border-t hover:bg-gray-50">
                         <td class="py-3 px-4">
@@ -68,17 +67,9 @@
                         <td class="px-4 text-gray-500">{{ $customer->whatsapp ?? '—' }}</td>
                         <td class="px-4">
                             @php $visited = array_keys($visit['branches']); @endphp
-                            @if($visited || $assignedBranchId)
+                            @if($visited)
                                 <div class="flex flex-wrap gap-1">
-                                    @if($assignedBranchId)
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-700 border border-amber-200" title="Assigned branch">
-                                            <i class="fas fa-store text-[10px]"></i>
-                                            {{ $branchNames[$assignedBranchId] ?? 'Branch #' . $assignedBranchId }}
-                                            <span class="text-[9px] uppercase tracking-wide text-amber-500">Assigned</span>
-                                        </span>
-                                    @endif
                                     @foreach($visited as $branchId)
-                                        @continue($assignedBranchId === (int) $branchId)
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
                                             <i class="fas fa-store text-[10px] text-gray-400"></i>
                                             {{ $branchNames[$branchId] ?? 'Branch #' . $branchId }}

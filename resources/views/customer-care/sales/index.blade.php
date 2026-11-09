@@ -7,6 +7,12 @@
    class="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-sm font-medium transition">
     <i class="fas fa-plus"></i> New Sale
 </a>
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'customer-care.sales.create',
+    'draftDeleteRoute' => 'customer-care.sales.draft.destroy',
+    'accent' => 'amber',
+])
 @endsection
 
 @section('content')
@@ -14,11 +20,6 @@
     <p class="text-sm text-gray-500">Total Revenue: <strong class="text-lg text-green-600">TZS {{ number_format($totalRevenue) }}</strong></p>
 </div>
 
-@include('partials.sale-drafts-panel', [
-    'drafts' => $drafts,
-    'draftCreateRoute' => 'customer-care.sales.create',
-    'accent' => 'amber',
-])
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="overflow-x-auto">

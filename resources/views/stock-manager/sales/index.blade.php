@@ -8,6 +8,12 @@
             <i class="fas fa-plus mr-1"></i> New Sale
         </a>
     @endif
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'stock-manager.sales.create',
+    'draftDeleteRoute' => 'stock-manager.sales.draft.destroy',
+    'accent' => 'emerald',
+])
 @endsection
 
 @section('content')
@@ -19,11 +25,6 @@
     </form>
 </div>
 
-@include('partials.sale-drafts-panel', [
-    'drafts' => $drafts ?? [],
-    'draftCreateRoute' => 'stock-manager.sales.create',
-    'accent' => 'emerald',
-])
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-4 py-3 border-b flex items-center justify-between">

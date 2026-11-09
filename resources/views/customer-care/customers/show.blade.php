@@ -52,18 +52,6 @@
                         @endif
                     </div>
                 </div>
-                @if($assignedBranch)
-                    <div class="flex items-start gap-3">
-                        <i class="fas fa-store text-gray-400 mt-0.5"></i>
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Branch</p>
-                            <p class="font-medium">
-                                {{ $assignedBranch['name'] }}
-                                <span class="ml-1 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Assigned</span>
-                            </p>
-                        </div>
-                    </div>
-                @endif
                 <div class="flex items-start gap-3">
                     <i class="fas fa-calendar-plus text-gray-400 mt-0.5"></i>
                     <div>

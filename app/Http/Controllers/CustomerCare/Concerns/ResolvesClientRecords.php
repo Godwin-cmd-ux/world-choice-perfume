@@ -58,9 +58,6 @@ trait ResolvesClientRecords
     /**
      * Distinct customers per branch, from a single scan of the sales history.
      *
-     * Clients assigned to a branch on the New Customer form (customers.branch_id)
-     * count for that branch too, even before their first sale.
-     *
      * Returns an empty map when the history is larger than the scan window so the
      * caller can hide the tab counters rather than show an undercount.
      */
@@ -83,45 +80,9 @@ trait ResolvesClientRecords
             $counts[$branchId][$customerId] = true;
         }
 
-        if ($this->supabase->tableHasColumn('customers', 'branch_id')) {
-            foreach ($this->supabase->query('customers', [
-                'select' => 'id,branch_id',
-                'branch_id' => 'not.is.null',
-                'limit' => 2000,
-            ]) as $row) {
-                $branchId = (int) ($row['branch_id'] ?? 0);
-                $customerId = (int) ($row['id'] ?? 0);
-                if (!$branchId || !$customerId) continue;
-                $counts[$branchId][$customerId] = true;
-            }
-        }
-
         return array_map(fn ($set) => count($set), $counts);
     }
 
-    /**
-     * Ids of the clients assigned to a branch on the New Customer form.
-     *
-     * Empty until the customers.branch_id migration has run, so the branch tabs
-     * keep working (from sales alone) on an installation that has not migrated.
-     *
-     * @return array<int, int>
-     */
-    private function assignedCustomerIds(int $branchId, int $limit = 200): array
-    {
-        if (!$this->supabase->tableHasColumn('customers', 'branch_id')) {
-            return [];
-        }
-
-        $rows = $this->supabase->query('customers', [
-            'select' => 'id',
-            'branch_id' => 'eq.' . $branchId,
-            'order' => 'created_at.desc',
-            'limit' => $limit,
-        ]);
-
-        return array_values(array_filter(array_map(fn ($row) => (int) ($row['id'] ?? 0), $rows)));
-    }
 
     /**
      * Which of the given clients are flagged as loyal — used for the crown next

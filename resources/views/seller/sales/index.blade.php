@@ -6,6 +6,12 @@
     <a href="{{ route('seller.sales.create') }}" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <i class="fas fa-plus mr-1"></i> New Sale
     </a>
+@include('partials.sale-drafts-panel', [
+    'drafts' => $drafts ?? [],
+    'draftCreateRoute' => 'seller.sales.create',
+    'draftDeleteRoute' => 'seller.sales.draft.destroy',
+    'accent' => 'amber',
+])
 @endsection
 
 @section('content')
@@ -16,11 +22,6 @@
         <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
     </form>
 </div>
-@include('partials.sale-drafts-panel', [
-    'drafts' => $drafts ?? [],
-    'draftCreateRoute' => 'seller.sales.create',
-    'accent' => 'amber',
-])
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-4 py-3 border-b flex items-center justify-between">

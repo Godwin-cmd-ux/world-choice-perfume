@@ -60,25 +60,21 @@
                         <td class="px-4 text-center">
                             <a href="{{ route('customer-care.orders.show', $order->id) }}" class="text-blue-600 hover:underline mr-2"><i class="fas fa-eye"></i></a>
                             @if($awaiting)
-                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline" onsubmit="return requireNote(this)">
+                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline">
                                     @csrf
                                     <input type="hidden" name="status" value="pending">
-                                    <input type="hidden" name="note">
                                     <button type="submit" class="text-green-600 hover:underline font-medium">
                                         <i class="fas fa-check mr-1"></i>Allow
                                     </button>
                                 </form>
-                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline ml-2" onsubmit="return requireNote(this)">
+                                <form action="{{ route('customer-care.orders.decide', $order->id) }}" method="POST" class="inline ml-2">
                                     @csrf
                                     <input type="hidden" name="status" value="failed">
-                                    <input type="hidden" name="note">
                                     <button type="submit" class="text-red-600 hover:underline font-medium">
                                         <i class="fas fa-trash-can mr-1"></i>Trash
                                     </button>
                                 </form>
                             @elseif($next)
-                                {{-- The order update note is optional: the button moves
-                                     the order without asking for one. --}}
                                 <form action="{{ route('customer-care.orders.update-status', $order->id) }}" method="POST" class="inline">
                                     @csrf
                                     <input type="hidden" name="status" value="{{ $next }}">
@@ -112,15 +108,4 @@
         </table>
     </div>
 </div>
-<script>
-function requireNote(form) {
-    var note = form.querySelector('input[name="note"]');
-    if (!note || !note.value.trim()) {
-        var val = prompt('Enter a note about this order update (what point you have reached):');
-        if (val === null) return false;
-        note.value = val;
-    }
-    return note.value.trim() !== '';
-}
-</script>
 @endsection

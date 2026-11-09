@@ -62,23 +62,15 @@ class CustomerController extends Controller
                     'limit' => self::LIST_LIMIT,
                 ]))->map(fn ($c) => (object) $c);
         } else {
-            // A client belongs to a branch two ways: they were assigned to it
-            // on the New Customer form, or they transacted there.
-            $assigned = $this->assignedCustomerIds($tab, self::LIST_LIMIT);
-
             if ($searching) {
-                // Keep only the matches assigned to, or transacted at, this branch
+                // Keep only the matches that really transacted at this branch
                 $matches = $this->searchCustomers($q);
                 $visitors = $this->visitorsAmong($matches->pluck('id')->all(), $tab);
-                $customers = $matches->filter(fn ($c) => isset($visitors[(int) $c->id])
-                    || in_array((int) $c->id, $assigned, true))->values();
+                $customers = $matches->filter(fn ($c) => isset($visitors[(int) $c->id]))->values();
             } else {
-                // Assigned clients first, then the most recent visitors
-                $ids = array_values(array_unique(array_merge(
-                    $assigned,
-                    $this->recentVisitors($tab, self::LIST_LIMIT, $truncated)
-                )));
-                $customers = $this->customersByIds(array_slice($ids, 0, self::LIST_LIMIT));
+                // Most recent visitors to this branch, newest first
+                $ids = $this->recentVisitors($tab, self::LIST_LIMIT, $truncated);
+                $customers = $this->customersByIds($ids);
             }
         }
 
@@ -125,16 +117,7 @@ class CustomerController extends Controller
 
     public function create()
     {
-        // The branches the "Assign to" picker offers — active ones only, so a
-        // closed branch is never handed a new client.
-        $branches = collect($this->supabase->query('branches', [
-            'select' => 'id,name,is_active',
-            'order' => 'name.asc',
-        ]))->filter(fn ($b) => $b['is_active'] ?? true)
-            ->map(fn ($b) => (object) $b)
-            ->values();
-
-        return view('customer-care.customers.create', ['branches' => $branches]);
+        return view('customer-care.customers.create');
     }
 
     public function store(Request $request)
@@ -144,12 +127,7 @@ class CustomerController extends Controller
             'phone' => 'nullable|string|max:255',
             'whatsapp' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
-            'branch_id' => 'nullable|integer',
         ]);
-
-        // The branch picked in "Assign to", if it is still a real active branch.
-        $branch = $this->selectedBranch($validated['branch_id'] ?? null);
-        $assign = $branch && $this->supabase->tableHasColumn('customers', 'branch_id');
 
         try {
             // The phone number is the identity: 0682601154 and +255682601154
@@ -157,11 +135,10 @@ class CustomerController extends Controller
             $result = (new CustomerService($this->supabase))->createOrRetrieve(
                 $validated['name'],
                 $validated['phone'] ?? null,
-                array_filter([
+                [
                     'whatsapp' => $validated['whatsapp'] ?? null,
                     'email' => $validated['email'] ?? null,
-                    'branch_id' => $assign ? $branch['id'] : null,
-                ], fn ($value) => $value !== null)
+                ]
             );
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
@@ -179,41 +156,16 @@ class CustomerController extends Controller
                 ->withInput();
         }
 
-        // A phone match sends the member to the existing record; the branch
-        // they picked is still honoured, so it is not silently dropped.
-        if ($assign && (int) ($customer['branch_id'] ?? 0) !== (int) $branch['id']) {
-            $this->supabase->update('customers', [
-                'branch_id' => $branch['id'],
-                'updated_at' => now()->toIso8601String(),
-            ], ['id' => $customer['id']]);
-        }
-
         if ($result['duplicate']) {
             return redirect()->route('customer-care.customers.show', $customer['id'])
-                ->with('error', 'This phone number already exists. The existing customer has been retrieved.'
-                    . ($branch ? ' Assigned to ' . $branch['name'] . '.' : ''));
+                ->with('error', 'This phone number already exists. The existing customer has been retrieved.');
         }
 
-        return redirect()->route('customer-care.customers.show', $customer['id'])
-            ->with('success', 'Customer successfully saved.'
-                . ($branch ? ' Assigned to ' . $branch['name'] . '.' : ''));
+        // Saving a client redirects to their record without a flash notice:
+        // adding a customer does not raise a notification.
+        return redirect()->route('customer-care.customers.show', $customer['id']);
     }
 
-    /**
-     * The branch the form asked for, or null when none was picked or it is no
-     * longer a real, active branch. An invalid id is ignored rather than
-     * failing the whole form — the client record still gets created.
-     */
-    private function selectedBranch($branchId): ?array
-    {
-        if (!$branchId) {
-            return null;
-        }
-
-        $branch = $this->supabase->find('branches', (int) $branchId, 'id,name,is_active');
-
-        return $branch && ($branch['is_active'] ?? true) ? $branch : null;
-    }
     /**
      * Client record with the transactions they made at one branch.
      *
@@ -380,11 +332,6 @@ class CustomerController extends Controller
             }
         }
 
-        // The branch the record was assigned to on the New Customer form.
-        $assignedBranch = null;
-        if (!empty($customer['branch_id'])) {
-            $assignedBranch = $this->supabase->find('branches', (int) $customer['branch_id'], 'id,name');
-        }
 
         return view('customer-care.customers.show', [
             'customer' => (object) $customer,
@@ -396,7 +343,6 @@ class CustomerController extends Controller
             'transactions' => $transactions,
             'itemSummary' => $itemSummary,
             'totalSpent' => $transactions->sum('total'),
-            'assignedBranch' => $assignedBranch,
             'isLoyal' => $this->loyalIdsFor([$customer['id']]) !== [],
         ]);
     }

@@ -40,6 +40,29 @@ trait HandlesSaleDrafts
     }
 
     /**
+     * Delete a parked sale without completing it, from the Drafts list.
+     */
+    public function deleteDraft($draftId)
+    {
+        $branchId = (int) auth()->user()->branch_id;
+        $draftId = (int) $draftId;
+
+        if ($draftId <= 0 || $this->findSaleDraft($draftId, $branchId) === null) {
+            return back()->with('error', 'That draft sale could not be found. It may already have been completed.');
+        }
+
+        try {
+            $this->supabase->delete('sale_drafts', ['id' => $draftId]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Could not delete the draft. Please try again.');
+        }
+
+        return back()->with('success', 'Draft sale deleted.');
+    }
+
+    /**
      * The draft a create page was asked to resume.
      *
      * Null means "open a fresh form". A draft id that no longer exists (or
