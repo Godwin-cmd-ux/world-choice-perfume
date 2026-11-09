@@ -1,7 +1,7 @@
 <?php
 
+use App\Support\SaleDraftSchema;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -20,19 +20,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('sale_drafts')) {
-            Schema::create('sale_drafts', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('branch_id')->constrained('branches')->cascadeOnDelete();
-                $table->unsignedBigInteger('created_by')->nullable();
-                $table->string('customer_label')->nullable();
-                $table->decimal('total', 12, 2)->default(0);
-                $table->unsignedInteger('item_count')->default(0);
-                $table->json('payload');
-                $table->timestamps();
-                $table->index(['branch_id', 'updated_at']);
-            });
-        }
+        SaleDraftSchema::ensure();
     }
 
     public function down(): void

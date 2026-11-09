@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Support\SaleDraftSchema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Draft sales, shared by every role that records a sale.
@@ -29,9 +31,12 @@ trait HandlesSaleDrafts
         $draftId = $this->persistSaleDraft($request, (int) auth()->user()->branch_id);
 
         if ($draftId === null) {
+            $reason = trim((string) $this->supabase->lastErrorMessage());
+            $reason = $reason === '' ? '' : ' ' . Str::limit(preg_replace('/\s+/', ' ', $reason), 190);
+
             return back()->withInput()->with(
                 'error',
-                'Could not save the draft. If this is the first draft, run the sale_drafts migration.'
+                'Could not save the draft.' . $reason
             );
         }
 
@@ -145,7 +150,8 @@ trait HandlesSaleDrafts
 
     /**
      * Validate and write the draft. Returns its id, or null when the write
-     * failed (the usual cause being the sale_drafts migration not being run).
+     * failed. On a local database the table is created first when a deployment
+     * has not run the migration yet.
      */
     protected function persistSaleDraft(Request $request, int $branchId): ?int
     {
@@ -245,6 +251,14 @@ trait HandlesSaleDrafts
         ];
 
         $draftId = (int) ($validated['draft_id'] ?? 0);
+
+        if (!$this->supabase->isRemote()) {
+            try {
+                SaleDraftSchema::ensure();
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
 
         try {
             if ($draftId > 0 && $this->findSaleDraft($draftId, $branchId)) {

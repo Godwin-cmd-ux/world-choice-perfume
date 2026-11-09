@@ -224,11 +224,13 @@ class SupabaseRestService
                 $response = $this->request()->post("{$this->url}/rest/v1/{$table}", $data);
             }
         } catch (\Exception $e) {
+            $this->lastErrorMessage = $e->getMessage();
             Log::error("Supabase insert failed for table {$table}: " . $e->getMessage());
             return null;
         }
 
         if ($response->failed()) {
+            $this->lastErrorMessage = $response->body();
             Log::warning("Supabase insert error for table {$table}: " . $response->body());
             return null;
         }
@@ -704,6 +706,10 @@ class SupabaseRestService
             // loyal_customers table in SYSTEM_SCHEMA.sql.
             'loyal_customers' => [
                 'customer_id','assigned_by','assigned_at','created_at',
+            ],
+            'sale_drafts' => [
+                'branch_id','created_by','customer_label','total','item_count','payload',
+                'created_at','updated_at',
             ],
         ];
 
