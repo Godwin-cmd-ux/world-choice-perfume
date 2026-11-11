@@ -39,5 +39,12 @@
         <h3 class="font-semibold text-lg">Product Performance</h3>
         <p class="text-sm text-gray-500">Top sellers, slow movers</p>
     </a>
+    <a href="{{ route('super-admin.reports.profit') }}" class="bg-white rounded-xl shadow p-6 hover:shadow-lg transition group">
+        <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-teal-200">
+            <i class="fas fa-sack-dollar text-teal-700 text-xl"></i>
+        </div>
+        <h3 class="font-semibold text-lg">Profit Report</h3>
+        <p class="text-sm text-gray-500">Unit cost, selling price &amp; profit per product</p>
+    </a>
 </div>
 @endsection

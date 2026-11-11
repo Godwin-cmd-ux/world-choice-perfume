@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProfitReportService;
 use App\Services\SupabaseService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -275,6 +276,26 @@ class ReportController extends Controller
         $branches = collect($this->supabase->query('branches', ['select' => 'id,name', 'order' => 'name.asc']))->map(fn($b) => (object) $b);
 
         return view('super-admin.reports.stock', ['report' => $report, 'branches' => $branches]);
+    }
+
+    /**
+     * Unit cost, selling price and profit for every product in stock, plus a
+     * summary of all the products listed. Same figures the branch admin and
+     * cashier report modules show, only across every branch.
+     */
+    public function profit(Request $request)
+    {
+        $branchId = $request->branch_id ? (int) $request->branch_id : null;
+
+        $stock = (new ProfitReportService())->stockProfit($branchId);
+
+        $branches = collect($this->supabase->query('branches', ['select' => 'id,name', 'order' => 'name.asc']))->map(fn($b) => (object) $b);
+
+        return view('super-admin.reports.profit', [
+            'report' => $stock['rows'],
+            'summary' => $stock['summary'],
+            'branches' => $branches,
+        ]);
     }
 
     public function staffPerformance(Request $request)

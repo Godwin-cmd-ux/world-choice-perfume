@@ -123,6 +123,15 @@
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
         </div>
 
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Unit Cost (TZS) *</label>
+            <input type="number" name="items[__INDEX__][unit_cost]" data-field="unit_cost" required min="0" step="0.01"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            <p class="text-[11px] text-gray-400 mt-1">
+                <i class="fas fa-info-circle mr-1"></i>What this product costs you per unit — profit is calculated from this.
+            </p>
+        </div>
+
         <div class="bottle-variant-field mb-4 hidden">
             <label class="block text-sm font-medium text-gray-700 mb-1">Bottle Variety *</label>
             <select name="items[__INDEX__][bottle_variant]" data-field="bottle_variant"
@@ -143,6 +152,9 @@
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             <p class="variety-price-hint hidden text-[11px] text-emerald-700 mt-1">
                 <i class="fas fa-tag mr-1"></i>This is the selling price of the <strong>specific volume and variety</strong> picked on this line (e.g. 50ml sells differently from 30ml).
+            </p>
+            <p class="hidden text-[11px] font-medium mt-2" data-profit-preview>
+                Profit per unit: <span data-profit-value>TZS 0</span>
             </p>
         </div>
     </div>
@@ -238,15 +250,43 @@ function addItemLine(values) {
         refreshVariantOptions(line);
     });
 
+    line.querySelector('[data-field="unit_cost"]').addEventListener('input', function () {
+        refreshLineProfit(line);
+    });
+    line.querySelector('[data-field="selling_price"]').addEventListener('input', function () {
+        refreshLineProfit(line);
+    });
+
     setLineValue(line, 'quantity', values.quantity);
+    setLineValue(line, 'unit_cost', values.unit_cost);
     setLineValue(line, 'bottle_volume', values.bottle_volume);
     setLineValue(line, 'selling_price', values.selling_price);
 
     toggleBottleVolume(line, values.bottle_variant || '');
+    refreshLineProfit(line);
     renumberLines();
     updateItemLineControls();
 
     return line;
+}
+
+function refreshLineProfit(line) {
+    const costInput = line.querySelector('[data-field="unit_cost"]');
+    const priceInput = line.querySelector('[data-field="selling_price"]');
+    const preview = line.querySelector('[data-profit-preview]');
+    const value = line.querySelector('[data-profit-value]');
+
+    if (!costInput || !priceInput || !preview || !value) {
+        return;
+    }
+
+    const hasValue = costInput.value !== '' || priceInput.value !== '';
+    const profit = (parseFloat(priceInput.value) || 0) - (parseFloat(costInput.value) || 0);
+
+    preview.classList.toggle('hidden', !hasValue);
+    value.textContent = 'TZS ' + profit.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    value.classList.toggle('text-emerald-700', profit >= 0);
+    value.classList.toggle('text-red-600', profit < 0);
 }
 
 function setLineValue(line, field, value) {

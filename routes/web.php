@@ -300,6 +300,7 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/sales/print/pdf', [ReportController::class, 'streamSalesReport'])->name('stream-sales-report');
             Route::get('/expenses', [ReportController::class, 'expenses'])->name('expenses');
             Route::get('/stock', [ReportController::class, 'stock'])->name('stock');
+            Route::get('/profit', [ReportController::class, 'profit'])->name('profit');
             Route::get('/staff-performance', [ReportController::class, 'staffPerformance'])->name('staff-performance');
             Route::get('/product-performance', [ReportController::class, 'productPerformance'])->name('product-performance');
         });
@@ -367,6 +368,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('/expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
 
+        // Reports — sales, expenses and profit for this branch
+        Route::get('/reports', [App\Http\Controllers\BranchAdmin\ReportController::class, 'index'])->name('reports.index');
+
         // Staff Management (stock managers, sellers, customer care, cashiers)
         $baStaff = App\Http\Controllers\BranchAdmin\StaffController::class;
         Route::get('/staffs/create', [$baStaff, 'create'])->name('staffs.create');
@@ -409,6 +413,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/expenses', [App\Http\Controllers\Cashier\ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('/expenses/create', [App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
         Route::post('/expenses', [App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
+
+        // Reports — sales, expenses and profit for the active branch
+        Route::get('/reports', [App\Http\Controllers\Cashier\ReportController::class, 'index'])->name('reports.index');
 
         // Orders
         Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');

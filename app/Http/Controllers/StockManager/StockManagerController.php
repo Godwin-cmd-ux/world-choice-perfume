@@ -335,9 +335,12 @@ class StockManagerController extends Controller
             $brand = (string) ($product->brand ?? '');
             $category = $stock->category ?? ($product->category ?? '');
             $buckets = $bucketsByProduct[(int) ($stock->product_id ?? 0)] ?? [];
+            $unitCost = (float) ($stock->buying_cost ?? 0);
 
             if (!empty($buckets)) {
                 foreach ($buckets as $bucket) {
+                    $sellingPrice = $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0);
+
                     $rows[] = [
                         'kind' => 'variety',
                         'label' => $name . ' - ' . $bucket['label'],
@@ -347,7 +350,9 @@ class StockManagerController extends Controller
                         'quantity' => $bucket['quantity'],
                         // 50ml can be priced differently from 30ml; fall back
                         // to the product price when the bucket has none.
-                        'selling_price' => $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0),
+                        'selling_price' => $sellingPrice,
+                        'unit_cost' => $unitCost,
+                        'unit_profit' => $sellingPrice - $unitCost,
                         'category' => $category,
                         'date_received' => $stock->date_received ?? null,
                         'variety' => $bucket,
@@ -356,6 +361,8 @@ class StockManagerController extends Controller
                 continue;
             }
 
+            $sellingPrice = (float) ($stock->selling_price ?? 0);
+
             $rows[] = [
                 'kind' => 'product',
                 'label' => $name,
@@ -363,7 +370,9 @@ class StockManagerController extends Controller
                 'product' => $product,
                 'stock_id' => $stock->id ?? null,
                 'quantity' => (int) ($stock->quantity ?? 0),
-                'selling_price' => (float) ($stock->selling_price ?? 0),
+                'selling_price' => $sellingPrice,
+                'unit_cost' => $unitCost,
+                'unit_profit' => $sellingPrice - $unitCost,
                 'category' => $category,
                 'date_received' => $stock->date_received ?? null,
                 'variety' => null,
@@ -475,6 +484,7 @@ class StockManagerController extends Controller
             'date_received' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.selling_price' => 'required|numeric|min:0',
             'items.*.variety_price' => 'nullable|numeric|min:0',
             'items.*.bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
@@ -551,6 +561,7 @@ class StockManagerController extends Controller
 
             $lines[] = [
                 'quantity' => $quantity,
+                'unit_cost' => (float) $item['unit_cost'],
                 'bottle_volume' => $bottleVolume,
                 'variant' => $variant,
                 'selling_price' => $effectivePrice,
@@ -559,9 +570,11 @@ class StockManagerController extends Controller
 
         $totalQuantity = array_sum(array_column($lines, 'quantity'));
 
-        // The aggregate row holds a single price; the last line wins, exactly as
-        // recording the lines one after another would have left it.
-        $aggregatePrice = end($lines)['selling_price'];
+        // The aggregate row holds a single price and cost; the last line wins,
+        // exactly as recording the lines one after another would have left it.
+        $lastLine = end($lines);
+        $aggregatePrice = $lastLine['selling_price'];
+        $aggregateCost = $lastLine['unit_cost'];
 
         $existing = $this->supabase->findOne('branch_stock', [
             'branch_id' => $branchId,
@@ -572,6 +585,7 @@ class StockManagerController extends Controller
             $newQty = ($existing['quantity'] ?? 0) + $totalQuantity;
             $this->supabase->update('branch_stock', [
                 'quantity' => $newQty,
+                'buying_cost' => $aggregateCost,
                 'selling_price' => $aggregatePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
@@ -597,6 +611,7 @@ class StockManagerController extends Controller
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $totalQuantity,
+                'buying_cost' => $aggregateCost,
                 'selling_price' => $aggregatePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
@@ -614,6 +629,7 @@ class StockManagerController extends Controller
                 'product_id' => $validated['product_id'],
                 'type' => 'entry',
                 'quantity' => $line['quantity'],
+                'unit_cost' => $line['unit_cost'],
                 'unit_price' => $line['selling_price'],
                 'performed_by' => $this->performingUserId(),
                 'notes' => 'Stock entry',
@@ -736,6 +752,7 @@ class StockManagerController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:0',
+            'unit_cost' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
         ]);
 
@@ -752,11 +769,13 @@ class StockManagerController extends Controller
 
         $oldQty = $stock['quantity'] ?? 0;
         $newQty = $validated['quantity'];
+        $newCost = (float) $validated['unit_cost'];
         $oldPrice = $stock['selling_price'] ?? 0;
         $newPrice = $validated['selling_price'];
 
         $this->supabase->update('branch_stock', [
             'quantity' => $newQty,
+            'buying_cost' => $newCost,
             'selling_price' => $newPrice,
             'updated_at' => now()->toIso8601String(),
         ], ['id' => $stockId]);
@@ -817,6 +836,7 @@ class StockManagerController extends Controller
                 'product_id' => $stock['product_id'],
                 'type' => $newQty > $oldQty ? 'entry' : 'sale',
                 'quantity' => $newQty - $oldQty,
+                'unit_cost' => $newCost,
                 'unit_price' => $oldPrice,
                 'performed_by' => $this->performingUserId(),
                 'notes' => 'Manual stock adjustment',
@@ -868,6 +888,7 @@ class StockManagerController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:0',
+            'unit_cost' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
         ]);
 
@@ -884,11 +905,26 @@ class StockManagerController extends Controller
         $newQty = (int) $validated['quantity'];
         $oldPrice = (float) ($bucket['selling_price'] ?? 0);
         $newPrice = (float) $validated['selling_price'];
+        $newCost = (float) $validated['unit_cost'];
         $productId = (int) $bucket['product_id'];
         $label = $varietyService->pickLabel((int) $bucket['volume'], (string) $bucket['variant']);
 
         $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice);
         $varietyService->syncAggregateQuantity($branchId, $productId, $newQty - $oldQty);
+
+        // Unit cost is kept on the product's branch_stock row, so editing it
+        // from any variety updates the cost used for that product's profit.
+        $parentStock = $this->supabase->findOne('branch_stock', [
+            'branch_id' => $branchId,
+            'product_id' => $productId,
+        ]);
+
+        if ($parentStock) {
+            $this->supabase->update('branch_stock', [
+                'buying_cost' => $newCost,
+                'updated_at' => now()->toIso8601String(),
+            ], ['id' => $parentStock['id']]);
+        }
 
         if ($newQty !== $oldQty) {
             $this->supabase->insert('stock_movements', [
@@ -896,6 +932,7 @@ class StockManagerController extends Controller
                 'product_id' => $productId,
                 'type' => 'adjustment',
                 'quantity' => $newQty - $oldQty,
+                'unit_cost' => $newCost,
                 'unit_price' => $oldPrice,
                 'performed_by' => $this->performingUserId(),
                 'notes' => "Manual variety adjustment — {$label}",

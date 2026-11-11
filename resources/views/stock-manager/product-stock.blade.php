@@ -41,7 +41,9 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Product</th>
                 <th class="text-right px-4">Quantity</th>
+                <th class="text-right px-4">Unit Cost</th>
                 <th class="text-right px-4">Selling Price</th>
+                <th class="text-right px-4">Profit / Unit</th>
                 <th class="text-right px-4">Stock Value</th>
                 <th class="text-left px-4">Category</th>
                 <th class="text-left px-4">Last Received</th>
@@ -65,7 +67,9 @@
                         <td class="px-4 text-right">
                             <span class="{{ $lowQty ? 'text-red-600 font-bold' : '' }}">{{ $row['quantity'] }}</span>
                         </td>
+                        <td class="px-4 text-right">TZS {{ number_format($row['unit_cost']) }}</td>
                         <td class="px-4 text-right">TZS {{ number_format($row['selling_price']) }}</td>
+                        <td class="px-4 text-right font-medium {{ $row['unit_profit'] >= 0 ? 'text-emerald-700' : 'text-red-600' }}">TZS {{ number_format($row['unit_profit']) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($stockValue) }}</td>
                         <td class="px-4">@if(!empty($row['category']))<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">{{ $row['category'] }}</span>@else <span class="text-gray-400">—</span> @endif</td>
                         <td class="px-4 text-gray-500">{{ $row['date_received'] ? \Carbon\Carbon::parse($row['date_received'])->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') : '-' }}</td>
@@ -78,6 +82,7 @@
                                         data-update-url="{{ $row['kind'] === 'variety' ? route('stock-manager.product-stock.variety-update', ['variety' => $row['variety']['id']]) : route('stock-manager.product-stock.update', ['stock' => $row['stock_id']]) }}"
                                         data-product="{{ $row['label'] }}"
                                         data-quantity="{{ $row['quantity'] }}"
+                                        data-cost="{{ $row['unit_cost'] }}"
                                         data-price="{{ $row['selling_price'] }}">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
@@ -95,7 +100,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
+                    <tr><td colspan="9" class="py-8 text-center text-gray-400">No stock records yet</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -132,6 +137,13 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit Cost (TZS)</label>
+                    <input type="text" inputmode="decimal" name="unit_cost" id="editStockCost" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 no-spinner">
+                    <p class="text-[11px] text-gray-400 mt-1">Used to calculate this product's profit.</p>
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (TZS)</label>
                     <input type="text" inputmode="decimal" name="selling_price" id="editStockPrice" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 no-spinner">
@@ -140,6 +152,11 @@
                 <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
                     <span class="text-sm text-gray-500">New stock value:</span>
                     <span id="editStockPreview" class="text-sm font-bold text-emerald-700">TZS 0</span>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Profit per unit:</span>
+                    <span id="editStockProfit" class="text-sm font-bold text-emerald-700">TZS 0</span>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-1">
@@ -173,8 +190,10 @@
         var form = document.getElementById('editStockForm');
         var productEl = document.getElementById('editStockProduct');
         var qtyInput = document.getElementById('editStockQuantity');
+        var costInput = document.getElementById('editStockCost');
         var priceInput = document.getElementById('editStockPrice');
         var preview = document.getElementById('editStockPreview');
+        var profitPreview = document.getElementById('editStockProfit');
 
         function formatTzs(value) {
             var n = parseFloat(value) || 0;
@@ -182,7 +201,15 @@
         }
 
         function refreshPreview() {
-            preview.textContent = formatTzs((parseFloat(qtyInput.value) || 0) * (parseFloat(priceInput.value) || 0));
+            var qty = parseFloat(qtyInput.value) || 0;
+            var cost = parseFloat(costInput.value) || 0;
+            var price = parseFloat(priceInput.value) || 0;
+            var unitProfit = price - cost;
+
+            preview.textContent = formatTzs(qty * price);
+            profitPreview.textContent = formatTzs(unitProfit);
+            profitPreview.classList.toggle('text-emerald-700', unitProfit >= 0);
+            profitPreview.classList.toggle('text-red-600', unitProfit < 0);
         }
 
         function openModal(btn) {
@@ -191,6 +218,7 @@
             form.setAttribute('action', btn.getAttribute('data-update-url'));
             productEl.textContent = btn.getAttribute('data-product') || '';
             qtyInput.value = btn.getAttribute('data-quantity') || '0';
+            costInput.value = btn.getAttribute('data-cost') || '0';
             priceInput.value = btn.getAttribute('data-price') || '0';
             refreshPreview();
             modal.classList.remove('hidden');
@@ -223,6 +251,10 @@
         // Strip anything that isn't a digit / decimal point as the user types.
         qtyInput.addEventListener('input', function () {
             this.value = this.value.replace(/[^\d]/g, '');
+            refreshPreview();
+        });
+        costInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^\d.]/g, '');
             refreshPreview();
         });
         priceInput.addEventListener('input', function () {
