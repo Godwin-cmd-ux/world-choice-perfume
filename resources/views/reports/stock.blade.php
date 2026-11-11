@@ -31,6 +31,7 @@
                     <th class="text-left py-3 px-4">Product</th>
                     <th class="text-left px-4">Branch</th>
                     <th class="text-right px-4">Quantity</th>
+                    <th class="text-right px-4">Unit Cost</th>
                     <th class="text-right px-4">Selling Price</th>
                     <th class="text-right px-4">Stock Value</th>
                 </tr>
@@ -41,11 +42,12 @@
                         <td class="py-3 px-4 font-medium">{{ $item['product'] }}</td>
                         <td class="px-4 text-gray-500">{{ $item['branch'] }}</td>
                         <td class="px-4 text-right {{ $item['quantity'] <= 5 ? 'text-red-600 font-bold' : '' }}">{{ $item['quantity'] }}</td>
+                        <td class="px-4 text-right">TZS {{ number_format($item['unit_cost']) }}</td>
                         <td class="px-4 text-right">TZS {{ number_format($item['selling_price']) }}</td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($item['stock_value']) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No stock data</td></tr>
+                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No stock data</td></tr>
                 @endforelse
             </tbody>
             @if(count($report))
@@ -53,6 +55,7 @@
                     <tr>
                         <td colspan="2" class="py-3 px-4 text-right">Total</td>
                         <td class="px-4 text-right">{{ number_format(array_sum(array_column($report, 'quantity'))) }}</td>
+                        <td class="px-4 text-right">—</td>
                         <td class="px-4 text-right">—</td>
                         <td class="px-4 text-right">TZS {{ number_format(array_sum(array_column($report, 'stock_value'))) }}</td>
                     </tr>

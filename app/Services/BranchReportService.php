@@ -137,6 +137,7 @@ class BranchReportService
                 'product' => $s['product']['name'] ?? 'Unknown',
                 'branch' => $s['branch']['name'] ?? 'Unknown',
                 'quantity' => $s['quantity'] ?? 0,
+                'unit_cost' => $s['buying_cost'] ?? 0,
                 'selling_price' => $s['selling_price'] ?? 0,
                 'stock_value' => ($s['quantity'] ?? 0) * ($s['selling_price'] ?? 0),
             ];
