@@ -319,6 +319,138 @@ class StaffController extends Controller
     }
 
     /**
+     * Change the email a member signs in with. The super admin owns this
+     * credential: members see it on their profile but cannot edit it there.
+     */
+    public function updateEmail(Request $request, $userId)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:255',
+        ], [
+            'email.required' => 'Enter the email address this account should sign in with.',
+        ]);
+
+        $user = $this->supabase->find('users', $userId);
+        if (!$user) abort(404);
+
+        // Sign-in matches the email exactly, so store it as typed.
+        $email = trim($validated['email']);
+
+        $existing = $this->supabase->findOne('users', ['email' => $email]);
+        if ($existing && (string) ($existing['id'] ?? '') !== (string) $userId) {
+            return back()->withErrors(['email' => 'This email is already used by another account.'])->withInput();
+        }
+
+        $result = $this->supabase->update('users', [
+            'email' => $email,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $userId]);
+
+        if (empty($result)) {
+            return back()->with('error', 'Could not update the email: the database rejected the change. Please try again.');
+        }
+
+        // Keep the local mirror in step so the sign-in flow finds this account
+        // under its new address.
+        try {
+            User::query()
+                ->where(function ($query) use ($userId, $user) {
+                    $query->where('supabase_id', $userId);
+                    if (!empty($user['email'])) {
+                        $query->orWhere('email', $user['email']);
+                    }
+                })
+                ->update(['email' => $email]);
+        } catch (\Exception $e) {
+            // The database row is already updated; a local miss must not mask that.
+        }
+
+        try {
+            (new \App\Services\AuditService())->recordCriticalAction(
+                'staff_email_changed',
+                'changed_user_email',
+                'Staff Email Changed',
+                "Email for {$user['name']} changed from {$user['email']} to {$email}.",
+                ['user_id' => $userId, 'user_name' => $user['name'], 'before' => $user['email'], 'after' => $email],
+                'users',
+                (string) $userId,
+                ['email' => $user['email']],
+                ['email' => $email]
+            );
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
+
+        // If the super admin just changed their own address, refresh the
+        // session so later profile saves still match the account.
+        $signedIn = auth()->user();
+        $signedInId = $signedIn?->supabase_id ?? $signedIn?->id ?? auth()->id();
+        if ($signedIn && $signedInId && (string) $signedInId === (string) $userId) {
+            auth()->login($signedIn->fresh());
+        }
+
+        return back()->with('success', "Email updated. {$user['name']} now signs in with {$email}.");
+    }
+
+    /**
+     * Set a new password for a member. No current password is asked for —
+     * the super admin is resetting it on the account's behalf.
+     */
+    public function updatePassword(Request $request, $userId)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'password.confirmed' => 'The password confirmation does not match.',
+        ]);
+
+        $user = $this->supabase->find('users', $userId);
+        if (!$user) abort(404);
+
+        $newPassword = Hash::make($validated['password']);
+
+        $result = $this->supabase->update('users', [
+            'password' => $newPassword,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $userId]);
+
+        if (empty($result)) {
+            return back()->with('error', 'Could not change the password: the database rejected the update. Please try again.');
+        }
+
+        try {
+            User::query()
+                ->where(function ($query) use ($userId, $user) {
+                    $query->where('supabase_id', $userId);
+                    if (!empty($user['email'])) {
+                        $query->orWhere('email', $user['email']);
+                    }
+                })
+                ->update(['password' => $newPassword]);
+        } catch (\Exception $e) {
+            // The database row is already updated; a local miss must not mask that.
+        }
+
+        try {
+            (new \App\Services\AuditService())->recordCriticalAction(
+                'staff_password_changed',
+                'changed_user_password',
+                'Staff Password Changed',
+                "Password for {$user['name']} was reset by the super admin.",
+                ['user_id' => $userId, 'user_name' => $user['name']],
+                'users',
+                (string) $userId,
+                [],
+                ['password_changed' => true]
+            );
+        } catch (\Exception $e) {
+            // Audit log failure should not block the action
+        }
+
+        return back()->with('success', "Password updated. {$user['name']} can now sign in with the new password.");
+    }
+
+    /**
      * Delete a staff account completely.
      *
      * Two records make up an account: the user row in the database the app

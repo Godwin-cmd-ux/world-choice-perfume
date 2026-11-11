@@ -239,9 +239,11 @@ Route::get('/backup/run', [BackupController::class, 'run'])->name('backup.run');
 Route::middleware(['auth', 'cashier.approved'])->group(function () {
 
     // Profile (all roles)
+    // A member edits their own details here. Email and password are not
+    // editable: both are the sign-in credentials the super admin sets on the
+    // account, so they live on the staff detail page instead.
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::put('/profile/password', [ProfileController::class, 'changePassword'])->name('profile.password');
     Route::post('/profile/branch-location', [ProfileController::class, 'updateBranchLocation'])->name('profile.branch-location');
 
     // Live sidebar counts for the signed-in role. Polled by live-updates.js;
@@ -327,6 +329,9 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/staff/{user}', [StaffController::class, 'show'])->name('staff.show');
         Route::post('/staff/{user}/toggle-status', [StaffController::class, 'toggleStatus'])->name('staff.toggle-status');
         Route::post('/staff/{user}/status', [StaffController::class, 'changeStatus'])->name('staff.change-status');
+        // Sign-in credentials — only the super admin changes these.
+        Route::post('/staff/{user}/email', [StaffController::class, 'updateEmail'])->name('staff.update-email');
+        Route::post('/staff/{user}/password', [StaffController::class, 'updatePassword'])->name('staff.update-password');
         Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
 
         // Backups — the nightly SQL snapshots filed in Cloudinary. The page

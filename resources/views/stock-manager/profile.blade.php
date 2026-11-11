@@ -1,7 +1,7 @@
 @extends('stock-manager.layouts.app')
 @section('title', 'My Profile')
 @section('header', 'My Profile')
-@section('header-subtitle', 'Manage your personal information and password')
+@section('header-subtitle', 'Manage your personal information')
 
 @section('content')
 <div class="max-w-2xl">
@@ -25,8 +25,9 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input type="email" name="email" value="{{ old('email', $user->email) }}" required
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
+                <input type="email" value="{{ $user->email }}" disabled readonly
+                    class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed">
+                <p class="text-xs text-gray-400 mt-1">Set by the super admin — contact them to change your email or password.</p>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
@@ -44,30 +45,5 @@
         </button>
     </form>
 
-    {{-- Change Password --}}
-    <form method="POST" action="{{ route('profile.password') }}" class="bg-white rounded-xl shadow p-6 mb-6">
-        @csrf @method('PUT')
-        <h3 class="font-semibold mb-4 text-gray-800">Change Password</h3>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                <input type="password" name="current_password" placeholder="Current Password" required
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                <input type="password" name="password" placeholder="New Password" required minlength="8"
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                <input type="password" name="password_confirmation" placeholder="Confirm New Password" required minlength="8"
-                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
-            </div>
-        </div>
-        <button type="submit" class="mt-6 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-2.5 rounded-lg hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-500/25">
-            <i class="fas fa-key mr-2"></i> Change Password
-        </button>
-    </form>
 </div>
 @endsection

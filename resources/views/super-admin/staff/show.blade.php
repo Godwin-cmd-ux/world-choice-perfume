@@ -71,6 +71,36 @@
                 </div>
             @endif
         </div>
+
+        {{-- Sign-in credentials — the super admin is the only one who sets these. --}}
+        <div class="bg-white rounded-xl shadow p-6 mt-6">
+            <h3 class="font-semibold text-gray-800 mb-1"><i class="fas fa-key mr-1 text-amber-600"></i> Login Credentials</h3>
+            <p class="text-xs text-gray-500 mb-4">These are the details this member uses to sign in. On their profile they can change everything else, but not the email or password.</p>
+
+            <form method="POST" action="{{ route('super-admin.staff.update-email', $user->id) }}" class="space-y-2 mb-4">
+                @csrf
+                <label class="block text-xs font-medium text-gray-500">Email Address</label>
+                <div class="flex gap-2">
+                    <input type="email" name="email" value="{{ old('email', $user->email) }}" required
+                        class="flex-1 min-w-0 px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500 @error('email') border-red-400 @enderror">
+                    <button type="submit" style="background-color: #F89A1E;" class="px-4 py-2 hover:opacity-90 text-white rounded-lg text-sm font-medium whitespace-nowrap">
+                        <i class="fas fa-save mr-1"></i> Save
+                    </button>
+                </div>
+            </form>
+
+            <form method="POST" action="{{ route('super-admin.staff.update-password', $user->id) }}" class="space-y-2 border-t pt-4">
+                @csrf
+                <label class="block text-xs font-medium text-gray-500">New Password</label>
+                <input type="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password"
+                    class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500 @error('password') border-red-400 @enderror">
+                <input type="password" name="password_confirmation" placeholder="Confirm new password" required minlength="8" autocomplete="new-password"
+                    class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500">
+                <button type="submit" style="background-color: #F89A1E;" class="w-full px-4 py-2 hover:opacity-90 text-white rounded-lg text-sm font-medium">
+                    <i class="fas fa-lock mr-1"></i> Change Password
+                </button>
+            </form>
+        </div>
     </div>
 
     {{-- Activity Tabs --}}

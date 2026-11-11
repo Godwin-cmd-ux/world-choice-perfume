@@ -6,7 +6,6 @@ use App\Models\Branch;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -44,10 +43,12 @@ class ProfileController extends Controller
         $user = auth()->user();
         $previousPicture = $user->profile_picture;
 
+        // Email and password are deliberately absent: they are the sign-in
+        // credentials the super admin sets on the staff detail page, so a
+        // member can change everything here except those two.
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'email' => 'required|email',
             'profile_picture' => 'nullable|image|max:51200',
         ]);
 
@@ -97,31 +98,6 @@ class ProfileController extends Controller
         }
 
         return back()->with('success', 'Profile updated successfully.');
-    }
-
-    public function changePassword(Request $request)
-    {
-        $validated = $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        if (! Hash::check($validated['current_password'], auth()->user()->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
-        }
-
-        $newPassword = Hash::make($validated['password']);
-
-        // Update in Supabase
-        $this->supabase->update('users', [
-            'password' => $newPassword,
-            'updated_at' => now()->toIso8601String(),
-        ], ['email' => auth()->user()->email]);
-
-        // Update local SQLite
-        auth()->user()->update(['password' => $newPassword]);
-
-        return back()->with('success', 'Password changed successfully.');
     }
 
     public function updateBranchLocation(Request $request)
