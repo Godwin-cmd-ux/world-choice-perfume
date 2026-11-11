@@ -118,9 +118,15 @@
                             @if($item->item->status === 'received')
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800"><i class="fas fa-check mr-1"></i>Received</span>
                             @elseif($item->item->status === 'returned')
-                                <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800" title="{{ $item->item->return_reason ?? '' }}"><i class="fas fa-undo mr-1"></i>Returned</span>
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800"><i class="fas fa-undo mr-1"></i>Returned</span>
+                                @if(!empty($item->item->return_reason))
+                                    <span class="block text-left text-[11px] text-red-600 mt-1 min-w-[180px] max-w-[260px] whitespace-normal break-words">{{ $item->item->return_reason }}</span>
+                                @endif
                             @elseif($item->item->status === 'lost')
-                                <span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600" title="{{ $item->item->loss_reason ?? '' }}"><i class="fas fa-question-circle mr-1"></i>Lost</span>
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600"><i class="fas fa-question-circle mr-1"></i>Lost</span>
+                                @if(!empty($item->item->loss_reason))
+                                    <span class="block text-left text-[11px] text-gray-500 mt-1 min-w-[180px] max-w-[260px] whitespace-normal break-words">{{ $item->item->loss_reason }}</span>
+                                @endif
                             @else
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">In Transit</span>
                             @endif

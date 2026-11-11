@@ -60,6 +60,7 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="text-left py-3 px-4">Transfer #</th>
+                    <th class="text-center px-4">View</th>
                     <th class="text-left px-4">Item</th>
                     <th class="text-right px-4">Qty</th>
                     <th class="text-left px-4">Rejection</th>
@@ -76,13 +77,20 @@
                     @endphp
                     <tr class="border-t hover:bg-gray-50 {{ $reported ? 'bg-emerald-50/40' : '' }}">
                         <td class="py-3 px-4 font-mono text-xs font-semibold text-emerald-700">{{ $row->transfer_number }}</td>
+                        <td class="px-4 text-center">
+                            <a href="{{ route('stock-manager.stock-transfers.show', $row->transfer_id) }}"
+                               class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                               title="View transfer {{ $row->transfer_number }}" aria-label="View transfer {{ $row->transfer_number }}">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
                         <td class="px-4">
                             <p class="font-medium text-gray-800">{{ $row->item_label }}</p>
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-600">{{ $row->stock_type_label }}</span>
                         </td>
                         <td class="px-4 text-right text-gray-700">{{ $row->item->quantity }}</td>
-                        <td class="px-4 max-w-[220px]">
-                            <span class="block truncate text-gray-600" title="{{ $row->return_reason }}">{{ $row->return_reason ?? '—' }}</span>
+                        <td class="px-4 min-w-[200px] max-w-[320px]">
+                            <span class="block whitespace-normal break-words text-gray-600" title="{{ $row->return_reason }}">{{ $row->return_reason ?? '—' }}</span>
                             <span class="block text-[11px] text-gray-400">{{ $row->returned_at ? \Carbon\Carbon::parse($row->returned_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '' }}</span>
                         </td>
                         <td class="px-4 text-gray-600">
@@ -93,7 +101,7 @@
                             @if($reported)
                                 @php $damageBadge = ($row->damage_type ?? '') === 'lost' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'; @endphp
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $damageBadge }}">{{ ucfirst($row->damage_type ?? 'reported') }}</span>
-                                <span class="block text-[11px] text-gray-500 mt-0.5 max-w-[200px] truncate" title="{{ $row->damage_reason }}">{{ $row->damage_reason }}</span>
+                                <span class="block text-[11px] text-gray-500 mt-0.5 whitespace-normal break-words" title="{{ $row->damage_reason }}">{{ $row->damage_reason }}</span>
                                 <span class="block text-[11px] text-gray-400">{{ $row->damage_reported_by_name }} · {{ $row->damage_reported_at ? \Carbon\Carbon::parse($row->damage_reported_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '' }}</span>
                             @elseif($resent)
                                 <span class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">Re-sent</span>
@@ -116,7 +124,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-14 text-center">
+                        <td colspan="8" class="py-14 text-center">
                             <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-emerald-50 flex items-center justify-center">
                                 <i class="fas fa-undo text-2xl text-emerald-300"></i>
                             </div>

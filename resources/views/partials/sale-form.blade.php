@@ -1,9 +1,10 @@
 {{-- Shared sale wizard: Sale type → Customer (skippable) → Products → Payment.
      One flow for cashier, seller, customer care, branch admin and stock manager,
-     so every role is asked for the same things in the same order.
+     so every role is asked for the same things in the same order. Saving a
+     draft is offered on the Products step, where the cart already exists.
 
      Params: $formAction (POST target), $accent, $hasDiscount (stock manager),
-     $backRoute (optional link back to the sales list). --}}
+     $backRoute (optional link back to the sales list), $draftRoute. --}}
 @php
     $accent = $accent ?? 'amber';
     $backRoute = $backRoute ?? null;
@@ -137,14 +138,24 @@
     <section class="sale-step mt-6 hidden" data-step="3">
         @include('partials.sale-products-card', ['accent' => $accent])
 
-        <div class="mt-4 flex items-center justify-between gap-2">
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
             <button type="button" onclick="goToStep(2)" class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition">
                 <i class="fas fa-arrow-left mr-1"></i> Back
             </button>
-            <button type="button" onclick="goToStep(4)" style="background-color: #F89A1E;"
-                class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition">
-                Continue to Payment <i class="fas fa-arrow-right ml-1"></i>
-            </button>
+            <div class="flex flex-wrap items-center gap-2 ml-auto">
+                {{-- Drafts are parked here, once the cart exists, instead of
+                     waiting until the payment step. --}}
+                @if($draftRoute)
+                    @include('partials.sale-draft-actions', [
+                        'draftRoute' => $draftRoute,
+                        'accent' => $accent,
+                    ])
+                @endif
+                <button type="button" onclick="goToStep(4)" style="background-color: #F89A1E;"
+                    class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition">
+                    Continue to Payment <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </div>
         </div>
     </section>
 
@@ -202,16 +213,9 @@
             <button type="button" onclick="goToStep(3)" class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200 transition">
                 <i class="fas fa-arrow-left mr-1"></i> Back
             </button>
-            @if($draftRoute)
-                @include('partials.sale-draft-actions', [
-                    'draftRoute' => $draftRoute,
-                    'accent' => $accent,
-                ])
-            @else
-                <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition" id="submitBtn">
-                    <i class="fas fa-check-circle mr-1"></i> Complete Sale
-                </button>
-            @endif
+            <button type="submit" style="background-color: #F89A1E;" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition" id="submitBtn">
+                <i class="fas fa-check-circle mr-1"></i> Complete Sale
+            </button>
         </div>
     </section>
 </form>

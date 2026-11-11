@@ -704,6 +704,11 @@
         const form = document.getElementById('saleForm');
         if (!form) return;
         form.addEventListener('submit', function (e) {
+            // The Save as Draft button lives on the products step now, so it
+            // must be allowed to submit before the payment step is reached.
+            const isDraft = e.submitter && e.submitter.hasAttribute('data-save-draft');
+            if (isDraft) return;
+
             // Enter in an early field (or any programmatic submit) must not
             // post a sale before the payment step has been reached.
             if (saleStep !== 4) {

@@ -1553,7 +1553,10 @@ class StockTransferController extends Controller
         $branchId = $this->scope->activeBranchId();
         $fromId = (int) ($transfer['from_branch_id'] ?? 0);
         $toId = (int) ($transfer['to_branch_id'] ?? 0);
-        if ($fromId !== $branchId && $toId !== $branchId && ! $this->scope->isSuperAdmin()) {
+        // Cross-branch monitoring is read-only but covers every branch, so a
+        // transfer surfaced on the monitor's Returned Items list stays viewable.
+        if ($fromId !== $branchId && $toId !== $branchId
+            && ! $this->scope->isSuperAdmin() && ! $this->scope->inCrossBranchMode()) {
             abort(403);
         }
 
@@ -2547,6 +2550,7 @@ class StockTransferController extends Controller
             $rows[] = (object) [
                 'item' => (object) $it,
                 'item_label' => $this->itemLabel($it, $productNames),
+                'transfer_id' => (int) ($it['transfer_id'] ?? 0),
                 'transfer_number' => $t['transfer_number'] ?? null,
                 'stock_type_label' => $this->typeLabel((string) ($t['stock_type'] ?? '')),
                 'from_branch_id' => (int) ($t['from_branch_id'] ?? 0),
