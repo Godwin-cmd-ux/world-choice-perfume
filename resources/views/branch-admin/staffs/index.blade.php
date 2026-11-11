@@ -37,7 +37,6 @@
             <thead class="bg-gray-50"><tr>
                 <th class="text-left py-3 px-4">Staff</th>
                 <th class="text-left px-4">Role</th>
-                <th class="text-right px-4">Total Sales</th>
                 <th class="text-center px-4">Status</th>
                 <th class="text-center px-4">Actions</th>
             </tr></thead>
@@ -51,7 +50,6 @@
                         <td class="px-4">
                             <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ ucwords(str_replace('_', ' ', $member->role)) }}</span>
                         </td>
-                        <td class="px-4 text-right font-medium">TZS {{ number_format($member->total_sales) }}</td>
                         <td class="px-4 text-center">
                             <span class="px-2 py-1 rounded-full text-xs
                                 {{ match($member->status) { 'approved' => 'bg-green-100 text-green-700', 'rejected' => 'bg-red-100 text-red-700', default => 'bg-yellow-100 text-yellow-700' } }}">
@@ -74,7 +72,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No staff found</td></tr>
+                    <tr><td colspan="4" class="py-8 text-center text-gray-400">No staff found</td></tr>
                 @endforelse
             </tbody>
         </table>

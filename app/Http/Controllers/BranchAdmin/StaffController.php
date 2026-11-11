@@ -39,12 +39,10 @@ class StaffController extends Controller
             $params['status'] = "eq.{$request->status}";
         }
 
-        $staff = $this->supabase->query('users', $params);
-
-        foreach ($staff as &$member) {
-            $member['total_sales'] = $this->countStaffSales($member['id'], $branchId);
-            $member = (object) $member;
-        }
+        $staff = array_map(
+            fn ($member) => (object) $member,
+            $this->supabase->query('users', $params)
+        );
 
         return view('branch-admin.staffs.index', [
             'staff' => collect($staff),
@@ -178,13 +176,4 @@ class StaffController extends Controller
         return back()->with('success', "{$user['name']} has been rejected.");
     }
 
-    private function countStaffSales(int $userId, int $branchId): float
-    {
-        $sales = $this->supabase->query('sales', [
-            'cashier_id' => "eq.{$userId}",
-            'branch_id' => "eq.{$branchId}",
-            'payment_status' => 'eq.paid',
-        ]);
-        return array_sum(array_map(fn($s) => $s['total'] ?? 0, $sales));
-    }
 }
