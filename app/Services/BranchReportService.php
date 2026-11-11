@@ -144,46 +144,6 @@ class BranchReportService
     }
 
     /**
-     * Sales performance for the branch's staff members.
-     */
-    public function staffPerformance(int $branchId, Carbon $startDate, Carbon $endDate): array
-    {
-        $staff = $this->supabase->query('users', [
-            'select' => 'id,name,role,branch_id,branch:branches(id,name)',
-            'role' => 'in.(cashier,stock_manager,branch_admin)',
-            'status' => 'in.(active,approved)',
-            'branch_id' => "eq.{$branchId}",
-            'order' => 'name.asc',
-        ]);
-
-        $results = [];
-
-        foreach ($staff as $member) {
-            $sales = $this->supabase->query('sales', [
-                'cashier_id' => "eq.{$member['id']}",
-                'select' => '*, items:sale_items(quantity,total)',
-                'created_at' => BusinessDay::rangeFilter($startDate, $endDate),
-            ]);
-
-            $totalItems = array_sum(array_map(function ($sale) {
-                return array_sum(array_map(fn ($item) => $item['quantity'] ?? 0, $sale['items'] ?? []));
-            }, $sales));
-
-            $results[] = [
-                'user_id' => $member['id'],
-                'user_name' => $member['name'],
-                'role' => $member['role'],
-                'branch_name' => $member['branch']['name'] ?? $this->branchName($branchId),
-                'total_sales' => array_sum(array_map(fn ($sale) => $sale['total'] ?? 0, $sales)),
-                'transaction_count' => count($sales),
-                'items_sold' => $totalItems,
-            ];
-        }
-
-        return $results;
-    }
-
-    /**
      * Product sell-through and revenue contribution for the branch.
      */
     public function productPerformance(int $branchId, Carbon $startDate, Carbon $endDate): array

@@ -379,7 +379,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/expenses', [$baReports, 'expenses'])->name('expenses');
             Route::get('/stock', [$baReports, 'stock'])->name('stock');
             Route::get('/profit', [$baReports, 'profit'])->name('profit');
-            Route::get('/staff-performance', [$baReports, 'staffPerformance'])->name('staff-performance');
             Route::get('/product-performance', [$baReports, 'productPerformance'])->name('product-performance');
         });
 
@@ -437,7 +436,6 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/expenses', [$cashierReports, 'expenses'])->name('expenses');
             Route::get('/stock', [$cashierReports, 'stock'])->name('stock');
             Route::get('/profit', [$cashierReports, 'profit'])->name('profit');
-            Route::get('/staff-performance', [$cashierReports, 'staffPerformance'])->name('staff-performance');
             Route::get('/product-performance', [$cashierReports, 'productPerformance'])->name('product-performance');
         });
 

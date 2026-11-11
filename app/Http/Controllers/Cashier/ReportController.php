@@ -59,20 +59,6 @@ class ReportController extends Controller
         ));
     }
 
-    public function staffPerformance(Request $request)
-    {
-        [$startDate, $endDate] = $this->dateRange($request);
-
-        return view('reports.staff-performance', array_merge(
-            [
-                'report' => $this->branchReports->staffPerformance($this->branchId(), $startDate, $endDate),
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-            ],
-            $this->pageContext()
-        ));
-    }
-
     public function productPerformance(Request $request)
     {
         [$startDate, $endDate] = $this->dateRange($request);

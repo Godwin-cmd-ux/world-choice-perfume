@@ -20,13 +20,6 @@
         <h3 class="font-semibold text-lg">Stock Report</h3>
         <p class="text-sm text-gray-500">Current stock levels and values</p>
     </a>
-    <a href="{{ route($routePrefix . '.staff-performance') }}" class="bg-white rounded-xl shadow p-6 hover:shadow-lg transition group">
-        <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-amber-200">
-            <i class="fas fa-user-tie text-amber-700 text-xl"></i>
-        </div>
-        <h3 class="font-semibold text-lg">Staff Performance</h3>
-        <p class="text-sm text-gray-500">Sales &amp; activity by all staff members</p>
-    </a>
     <a href="{{ route($routePrefix . '.product-performance') }}" class="bg-white rounded-xl shadow p-6 hover:shadow-lg transition group">
         <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-indigo-200">
             <i class="fas fa-star text-indigo-700 text-xl"></i>
