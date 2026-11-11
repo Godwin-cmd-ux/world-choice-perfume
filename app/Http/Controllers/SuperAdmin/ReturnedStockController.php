@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ReturnedStockNotifications;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -10,9 +11,12 @@ class ReturnedStockController extends Controller
 {
     private SupabaseService $supabase;
 
+    private ReturnedStockNotifications $notifications;
+
     public function __construct()
     {
         $this->supabase = new SupabaseService();
+        $this->notifications = new ReturnedStockNotifications($this->supabase);
     }
 
     /**
@@ -35,6 +39,86 @@ class ReturnedStockController extends Controller
         $data = $this->buildRows($request, 500);
 
         return view('super-admin.returned-stock.report', $data);
+    }
+
+    /**
+     * One rejected item in full. Opening this page is the Super Admin's "I
+     * have seen it" action, so the matching alerts are marked read here and
+     * the Returned Stock badge immediately counts down.
+     */
+    public function show($itemId)
+    {
+        $item = $this->supabase->find('stock_transfer_items', (int) $itemId);
+
+        if (! $item || ($item['status'] ?? '') !== 'returned') {
+            abort(404);
+        }
+
+        $transfer = $this->supabase->find('stock_transfers', (int) ($item['transfer_id'] ?? 0));
+
+        if (! $transfer) {
+            abort(404);
+        }
+
+        $markedRead = $this->notifications->markReadForItem($item, $transfer);
+
+        $branchIds = [
+            (int) ($transfer['from_branch_id'] ?? 0),
+            (int) ($transfer['to_branch_id'] ?? 0),
+        ];
+        $userIds = [];
+        foreach (['returned_by', 'damage_reported_by'] as $key) {
+            if (! empty($item[$key])) {
+                $userIds[] = (int) $item[$key];
+            }
+        }
+
+        $branchNames = $this->nameMap('branches', $branchIds);
+        $userNames = $this->nameMap('users', $userIds);
+
+        $productNames = [];
+        $productId = (int) ($item['product_id'] ?? 0);
+        if ($productId > 0) {
+            foreach ($this->nameMap('products', [$productId], 'name') as $pid => $pname) {
+                $productNames[(int) $pid] = ['name' => $pname];
+            }
+        }
+
+        return view('super-admin.returned-stock.show', [
+            'row' => $this->makeRow($item, $transfer, $branchNames, $userNames, $productNames, false),
+            'markedRead' => $markedRead,
+        ]);
+    }
+
+    private function makeRow(
+        array $item,
+        array $transfer,
+        array $branchNames,
+        array $userNames,
+        array $productNames,
+        bool $isUnread = false
+    ): object {
+        return (object) [
+            'item' => (object) $item,
+            'item_label' => $this->itemLabel($item, $productNames),
+            'transfer_id' => $transfer['id'] ?? null,
+            'transfer_number' => $transfer['transfer_number'] ?? null,
+            'stock_type_label' => $this->typeLabel((string) ($transfer['stock_type'] ?? '')),
+            'from_branch_name' => $branchNames[(int) ($transfer['from_branch_id'] ?? 0)] ?? ('Branch #'.($transfer['from_branch_id'] ?? '?')),
+            'to_branch_name' => $branchNames[(int) ($transfer['to_branch_id'] ?? 0)] ?? ('Branch #'.($transfer['to_branch_id'] ?? '?')),
+            'officer_name' => $transfer['officer_name'] ?? null,
+            'officer_phone' => $transfer['officer_phone'] ?? null,
+            'officer_id' => $transfer['officer_id'] ?? null,
+            'returned_by_name' => $userNames[(int) ($item['returned_by'] ?? 0)] ?? null,
+            'return_reason' => $item['return_reason'] ?? null,
+            'return_status' => $item['return_status'] ?? 'pending',
+            'damage_type' => $item['damage_type'] ?? null,
+            'damage_reason' => $item['damage_reason'] ?? null,
+            'damage_reported_by_name' => $userNames[(int) ($item['damage_reported_by'] ?? 0)] ?? null,
+            'damage_reported_at' => $item['damage_reported_at'] ?? null,
+            'returned_at' => $item['returned_at'] ?? null,
+            'is_unread' => $isUnread,
+        ];
     }
 
     private function buildRows(Request $request, int $limit = 300): array
@@ -122,30 +206,22 @@ class ReturnedStockController extends Controller
         }
 
         $rows = [];
+        $unread = $this->notifications->unread();
         foreach ($items as $it) {
             $t = $transferMap[(int) ($it['transfer_id'] ?? 0)] ?? null;
             if (! $t) {
                 continue;
             }
 
-            $rows[] = (object) [
-                'item' => (object) $it,
-                'item_label' => $this->itemLabel($it, $productNames),
-                'transfer_number' => $t['transfer_number'] ?? null,
-                'stock_type_label' => $this->typeLabel((string) ($t['stock_type'] ?? '')),
-                'from_branch_name' => $branchNames[(int) ($t['from_branch_id'] ?? 0)] ?? ('Branch #'.($t['from_branch_id'] ?? '?')),
-                'to_branch_name' => $branchNames[(int) ($t['to_branch_id'] ?? 0)] ?? ('Branch #'.($t['to_branch_id'] ?? '?')),
-                'officer_name' => $t['officer_name'] ?? null,
-                'officer_phone' => $t['officer_phone'] ?? null,
-                'officer_id' => $t['officer_id'] ?? null,
-                'return_reason' => $it['return_reason'] ?? null,
-                'return_status' => $it['return_status'] ?? 'pending',
-                'damage_type' => $it['damage_type'] ?? null,
-                'damage_reason' => $it['damage_reason'] ?? null,
-                'damage_reported_by_name' => $userNames[(int) ($it['damage_reported_by'] ?? 0)] ?? null,
-                'damage_reported_at' => $it['damage_reported_at'] ?? null,
-                'returned_at' => $it['returned_at'] ?? null,
-            ];
+            $isUnread = false;
+            foreach ($unread as $notification) {
+                if ($this->notifications->isForItem($notification, $it, $t)) {
+                    $isUnread = true;
+                    break;
+                }
+            }
+
+            $rows[] = $this->makeRow($it, $t, $branchNames, $userNames, $productNames, $isUnread);
         }
 
         usort($rows, fn ($a, $b) => strcmp((string) ($b->returned_at ?? ''), (string) ($a->returned_at ?? '')));

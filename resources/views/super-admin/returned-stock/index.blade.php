@@ -76,13 +76,19 @@
                     <th class="text-left px-4">Rejection reason</th>
                     <th class="text-left px-4">Damage report</th>
                     <th class="text-left px-4">Transfer officer</th>
+                    <th class="text-right px-4">View</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($rows as $row)
                     @php $reported = ($row->return_status ?? '') === 'reported' || ! empty($row->damage_reported_at); @endphp
-                    <tr class="border-t hover:bg-gray-50 {{ $reported ? 'bg-emerald-50/40' : '' }}">
-                        <td class="py-3 px-4 font-mono text-xs font-semibold text-emerald-700">{{ $row->transfer_number }}</td>
+                    <tr class="border-t hover:bg-gray-50 {{ $row->is_unread ? 'bg-amber-50/60' : ($reported ? 'bg-emerald-50/40' : '') }}">
+                        <td class="py-3 px-4 font-mono text-xs font-semibold text-emerald-700">
+                            @if($row->is_unread)
+                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1 align-middle" title="Unviewed"></span>
+                            @endif
+                            {{ $row->transfer_number }}
+                        </td>
                         <td class="px-4">
                             <p class="font-medium text-gray-800">{{ $row->item_label }}</p>
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-600">{{ $row->stock_type_label }}</span>
@@ -116,10 +122,18 @@
                                 <span class="text-gray-400">—</span>
                             @endif
                         </td>
+                        <td class="px-4 text-right">
+                            <a href="{{ route('super-admin.returned-stock.show', $row->item->id) }}"
+                               title="View this rejected item in full"
+                               aria-label="View rejected item details"
+                               class="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors {{ $row->is_unread ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700' }}">
+                                <i class="fas fa-eye text-xs"></i>
+                            </a>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-12 text-center text-gray-400">
+                        <td colspan="8" class="py-12 text-center text-gray-400">
                             <i class="fas fa-undo text-3xl mb-2 block"></i>
                             No rejected stock found.
                         </td>

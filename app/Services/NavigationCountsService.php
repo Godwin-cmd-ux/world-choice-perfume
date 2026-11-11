@@ -180,7 +180,11 @@ class NavigationCountsService
         ]);
 
         $counts['mails'] = $this->unreadMails();
-        $counts['returns'] = $this->pendingDamageReports();
+
+        // The badge clears when the Super Admin opens a rejected item, so it
+        // counts unread returned-stock alerts rather than pending reports.
+        // The Kinondoni stock manager keeps the pending-report count below.
+        $counts['returns'] = $this->unreadReturnedStockAlerts();
 
         return $counts;
     }
@@ -363,6 +367,19 @@ class NavigationCountsService
             }
 
             return $this->count('news_posts', $conditions);
+        } catch (Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Unread returned-stock alerts for the Super Admin. Viewing a rejected
+     * item marks its alerts read, which is what makes the badge count down.
+     */
+    private function unreadReturnedStockAlerts(): int
+    {
+        try {
+            return (new ReturnedStockNotifications($this->supabase))->countUnread();
         } catch (Throwable $e) {
             return 0;
         }

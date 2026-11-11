@@ -314,6 +314,11 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         // Returned Stock module (lost / broken reports)
         Route::get('/returned-stock', [ReturnedStockController::class, 'index'])->name('returned-stock.index');
         Route::get('/returned-stock/report', [ReturnedStockController::class, 'printableReport'])->name('returned-stock.report');
+        // One rejected item in full. Opening it marks its alerts read, so the
+        // Returned Stock badge counts down as soon as the eye is clicked.
+        Route::get('/returned-stock/{item}', [ReturnedStockController::class, 'show'])
+            ->whereNumber('item')
+            ->name('returned-stock.show');
 
         // Staff Management
         Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
