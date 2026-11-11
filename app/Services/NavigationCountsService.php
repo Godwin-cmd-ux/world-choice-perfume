@@ -161,8 +161,11 @@ class NavigationCountsService
 
     private function forSuperAdmin(array $counts): array
     {
+        // Only orders the branch can actually work: awaiting_care belongs to
+        // customer care, and picking an order moves it out of pending, which
+        // is what makes this badge count down.
         $counts['orders'] = $this->count('orders', [
-            'status' => 'in.(pending,awaiting_care)',
+            'status' => 'eq.pending',
         ]);
 
         $counts['sales'] = $this->countToday('sales');
