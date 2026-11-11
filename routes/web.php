@@ -368,8 +368,20 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('/expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
 
-        // Reports — sales, expenses and profit for this branch
-        Route::get('/reports', [App\Http\Controllers\BranchAdmin\ReportController::class, 'index'])->name('reports.index');
+        // Reports — sales, expenses, stock, staff, product and profit for this branch
+        $baReports = App\Http\Controllers\BranchAdmin\ReportController::class;
+        Route::prefix('reports')->name('reports.')->group(function () use ($baReports) {
+            Route::get('/', [$baReports, 'index'])->name('index');
+            Route::get('/sales', [$baReports, 'sales'])->name('sales');
+            Route::get('/sales/generate', [$baReports, 'generateSalesReport'])->name('generate-sales-report');
+            Route::get('/sales/print', [$baReports, 'printSalesReport'])->name('print-sales-report');
+            Route::get('/sales/print/pdf', [$baReports, 'streamSalesReport'])->name('stream-sales-report');
+            Route::get('/expenses', [$baReports, 'expenses'])->name('expenses');
+            Route::get('/stock', [$baReports, 'stock'])->name('stock');
+            Route::get('/profit', [$baReports, 'profit'])->name('profit');
+            Route::get('/staff-performance', [$baReports, 'staffPerformance'])->name('staff-performance');
+            Route::get('/product-performance', [$baReports, 'productPerformance'])->name('product-performance');
+        });
 
         // Staff Management (stock managers, sellers, customer care, cashiers)
         $baStaff = App\Http\Controllers\BranchAdmin\StaffController::class;
@@ -414,8 +426,20 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::get('/expenses/create', [App\Http\Controllers\Cashier\ExpenseController::class, 'create'])->name('expenses.create');
         Route::post('/expenses', [App\Http\Controllers\Cashier\ExpenseController::class, 'store'])->name('expenses.store');
 
-        // Reports — sales, expenses and profit for the active branch
-        Route::get('/reports', [App\Http\Controllers\Cashier\ReportController::class, 'index'])->name('reports.index');
+        // Reports — sales, expenses, stock, staff, product and profit for the active branch
+        $cashierReports = App\Http\Controllers\Cashier\ReportController::class;
+        Route::prefix('reports')->name('reports.')->group(function () use ($cashierReports) {
+            Route::get('/', [$cashierReports, 'index'])->name('index');
+            Route::get('/sales', [$cashierReports, 'sales'])->name('sales');
+            Route::get('/sales/generate', [$cashierReports, 'generateSalesReport'])->name('generate-sales-report');
+            Route::get('/sales/print', [$cashierReports, 'printSalesReport'])->name('print-sales-report');
+            Route::get('/sales/print/pdf', [$cashierReports, 'streamSalesReport'])->name('stream-sales-report');
+            Route::get('/expenses', [$cashierReports, 'expenses'])->name('expenses');
+            Route::get('/stock', [$cashierReports, 'stock'])->name('stock');
+            Route::get('/profit', [$cashierReports, 'profit'])->name('profit');
+            Route::get('/staff-performance', [$cashierReports, 'staffPerformance'])->name('staff-performance');
+            Route::get('/product-performance', [$cashierReports, 'productPerformance'])->name('product-performance');
+        });
 
         // Orders
         Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
