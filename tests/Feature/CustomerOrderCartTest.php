@@ -21,10 +21,12 @@ use Tests\TestCase;
  *     visible with a checkout link;
  *  2. the order page shows the picked perfume's quantity card and the cart —
  *     never the catalogue — with both actions available;
- *  3. placing the order sends every line and empties the cart.
+ *  3. every cart line and every posted order is directed to Mikocheni HQ, even
+ *     when the request still carries an older, non-HQ branch id or the product
+ *     is stocked only at that other branch.
  *
- * PostgREST is faked at the HTTP layer, applying the `eq.` filters a real
- * PostgREST would, exactly as CustomerSizeOrderTest does.
+ * PostgREST is faked at the HTTP layer, applying the `eq.` and `in.` filters a
+ * real PostgREST would, exactly as CustomerSizeOrderTest does.
  */
 class CustomerOrderCartTest extends TestCase
 {
@@ -45,17 +47,18 @@ class CustomerOrderCartTest extends TestCase
     }
 
     /**
-     * One branch with two perfumes: Reef 33 bottled in 30ml and 50ml, Oud
-     * Royale sold as a plain bottle, plus a third perfume nobody asked for.
+     * HQ stocks two perfumes plus one nobody asked for; branch 3 alone stocks
+     * a fourth, to prove a browse-only branch can still supply an HQ order.
      */
     private function fakeSupabase(?array &$writes = null): void
     {
         $reef = ['id' => 7, 'name' => 'Reef 33', 'description' => 'A woody floral', 'brand' => 'Reef', 'category' => 'Oil Fragrance', 'sex_category' => 'unisex', 'fundamental_ingredient' => 'Wood', 'is_active' => true, 'images' => []];
         $oud = ['id' => 8, 'name' => 'Oud Royale', 'description' => 'Deep oud', 'brand' => 'Lattafa', 'category' => 'Brand Perfume', 'sex_category' => 'male', 'fundamental_ingredient' => 'Oud', 'is_active' => true, 'images' => []];
         $unasked = ['id' => 9, 'name' => 'Never Listed', 'description' => '', 'brand' => 'Nope', 'category' => 'Brand Perfume', 'sex_category' => 'female', 'fundamental_ingredient' => 'Floral', 'is_active' => true, 'images' => []];
+        $distant = ['id' => 10, 'name' => 'Only In Dodoma', 'description' => 'Far away', 'brand' => 'Lattafa', 'category' => 'Brand Perfume', 'sex_category' => 'unisex', 'fundamental_ingredient' => 'Wood', 'is_active' => true, 'images' => []];
 
         $tables = [
-            'products' => [$reef, $oud, $unasked],
+            'products' => [$reef, $oud, $unasked, $distant],
             'branches' => [
                 ['id' => 10, 'name' => 'Mikocheni HQ', 'address' => 'Mikocheni', 'latitude' => -6.8, 'longitude' => 39.2],
                 ['id' => 3, 'name' => 'Kariakoo', 'address' => 'Kariakoo Market', 'latitude' => -6.8, 'longitude' => 39.2],
@@ -64,6 +67,7 @@ class CustomerOrderCartTest extends TestCase
                 ['id' => 11, 'branch_id' => 10, 'product_id' => 7, 'quantity' => 5, 'selling_price' => 50000, 'product' => $reef],
                 ['id' => 12, 'branch_id' => 10, 'product_id' => 8, 'quantity' => 4, 'selling_price' => 65000, 'product' => $oud],
                 ['id' => 13, 'branch_id' => 10, 'product_id' => 9, 'quantity' => 4, 'selling_price' => 70000, 'product' => $unasked],
+                ['id' => 14, 'branch_id' => 3, 'product_id' => 10, 'quantity' => 2, 'selling_price' => 80000, 'product' => $distant],
             ],
             'branch_stock_varieties' => self::VARIETY_ROWS,
             'customers' => [],
@@ -94,14 +98,18 @@ class CustomerOrderCartTest extends TestCase
             $rows = $tables[$table] ?? [];
             $rows = array_values(array_filter($rows, function ($row) use ($query) {
                 foreach ($query as $key => $value) {
-                    if (! is_string($value) || ! preg_match('/^eq\.(.*)$/', $value, $matches)) {
+                    if (! is_string($value) || ! array_key_exists($key, $row)) {
                         continue;
                     }
-                    if (! array_key_exists($key, $row)) {
-                        continue;
-                    }
-                    if ((string) $row[$key] !== $matches[1]) {
+                    if (preg_match('/^eq\.(.*)$/', $value, $matches)
+                        && (string) $row[$key] !== $matches[1]) {
                         return false;
+                    }
+                    if (preg_match('/^in\.\((.*)\)$/', $value, $matches)) {
+                        $allowed = array_map('trim', explode(',', $matches[1]));
+                        if (! in_array((string) $row[$key], $allowed, true)) {
+                            return false;
+                        }
                     }
                 }
 
@@ -130,13 +138,14 @@ class CustomerOrderCartTest extends TestCase
             ],
         ]);
 
-        $response->assertRedirect(route('customer.products.index', ['branch_id' => 10]));
+        $response->assertRedirect(route('customer.products.index'));
         $response->assertSessionHas('success');
 
         $cart = session('customer_order_cart');
         $this->assertCount(1, $cart, 'the picked perfume is parked in the cart');
         $this->assertSame(2, (int) $cart[0]['quantity']);
         $this->assertSame(50, (int) $cart[0]['volume']);
+        $this->assertSame(10, (int) $cart[0]['branch_id']);
         // The size's own price, not the branch's fallback.
         $this->assertSame(45000.0, (float) $cart[0]['unit_price']);
         // The details typed before leaving are kept for the trip back.
@@ -212,21 +221,22 @@ class CustomerOrderCartTest extends TestCase
         // Both lines are on the order: 65,000 + (2 x 45,000).
         $this->assertCount(2, $writes['order_items']);
         $this->assertSame(155000.0, (float) $response->viewData('order')->total);
+        $this->assertSame(10, (int) $writes['orders'][0]['branch_id']);
 
         // The order now holds everything, so nothing is left waiting.
         $this->assertArrayNotHasKey('customer_order_cart', session()->all());
     }
 
-    /** Other branches keep browsing the shop, but cannot start an order. */
-    public function test_a_non_hq_branch_cannot_use_the_order_flow(): void
+    /** A stale non-HQ branch id cannot pull the order flow away from HQ. */
+    public function test_stale_non_hq_branch_ids_are_ignored_throughout_the_flow(): void
     {
         $writes = [];
         $this->fakeSupabase($writes);
 
         $create = $this->get('/orders/create?branch_id=3&product_id=7&volume=50');
 
-        $create->assertRedirect(route('customer.products.index', ['branch_id' => 3]));
-        $create->assertSessionHas('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
+        $create->assertOk();
+        $create->assertSee('name="branch_id" value="10"', false);
 
         $cart = $this->post('/orders/cart', [
             'branch_id' => 3,
@@ -234,9 +244,8 @@ class CustomerOrderCartTest extends TestCase
             'items' => [['product_id' => 7, 'quantity' => 2, 'volume' => 50]],
         ]);
 
-        $cart->assertRedirect();
-        $cart->assertSessionHas('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
-        $this->assertEmpty(session('customer_order_cart', []));
+        $cart->assertRedirect(route('customer.products.index'));
+        $this->assertSame(10, (int) session('customer_order_cart.0.branch_id'));
 
         $store = $this->post('/orders', [
             'branch_id' => 3,
@@ -245,8 +254,26 @@ class CustomerOrderCartTest extends TestCase
             'items' => [['product_id' => 7, 'quantity' => 2, 'volume' => 50]],
         ]);
 
-        $store->assertRedirect();
-        $store->assertSessionHasErrors(['branch_id' => 'Orders are currently available only at MIKOCHENI BRANCH HQ.']);
-        $this->assertArrayNotHasKey('orders', $writes);
+        $store->assertOk();
+        $this->assertSame(10, (int) $writes['orders'][0]['branch_id']);
+    }
+
+    /** Availability is company-wide, so a non-HQ-only product is orderable. */
+    public function test_a_product_stocked_only_at_another_branch_can_be_ordered_for_hq(): void
+    {
+        $writes = [];
+        $this->fakeSupabase($writes);
+
+        $response = $this->postJson('/api/orders', [
+            'branch_id' => 3,
+            'customer_name' => 'Amina',
+            'customer_phone' => '0712345678',
+            'items' => [['product_id' => 10, 'quantity' => 1]],
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertSame(80000.0, (float) $response->json('order.total'));
+        $this->assertSame(10, (int) $writes['orders'][0]['branch_id']);
+        $this->assertSame(10, (int) $writes['order_items'][0]['product_id']);
     }
 }

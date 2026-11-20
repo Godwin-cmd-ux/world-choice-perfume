@@ -256,26 +256,18 @@ export interface ProductsPayload {
   branches: Branch[];
   products: StockItem[];
   brands: string[];
-  branch_counts: Record<string, number>;
+  /** Products on any shelf, including shelves other than HQ. */
+  available_product_ids: number[];
   selected_branch: Branch | null;
 }
 
-export interface BranchStock {
-  id?: number | string;
-  branch_id?: number | string;
-  quantity?: number;
-  selling_price?: number | string | null;
-  branch?: { id?: number | string; name?: string } | null;
-}
-
 /**
- * One size a product is bottled in at a branch — GET /api/products/{id}.
+ * One size a product is bottled in — GET /api/products/{id}.
  *
- * The box, logo and colour behind a bottling decide what the branch packs,
- * never what the customer pays (every 50ml of a product costs the same), so
- * the customer endpoint collapses those buckets into one entry per volume.
- * `available` is therefore the whole volume's stock. Staff sale screens read
- * their own payload, which still breaks each size down by packaging.
+ * Sizes from every branch are merged into one company-wide list. The box,
+ * logo and colour behind a bottling decide who packs it, never what the
+ * customer pays (every 50ml of a product costs the same), so they are absent
+ * here. `available` is internal: it clamps the stepper but is never shown.
  */
 export interface ProductSize {
   volume: number;
@@ -286,17 +278,13 @@ export interface ProductSize {
 
 export interface ProductDetailPayload {
   product: Product;
-  branches: Branch[];
-  branch_stocks: BranchStock[];
-  selected_branch: Branch | null;
+  /** One company-wide availability answer, with no source branch attached. */
+  is_available: boolean;
+  /** Mikocheni HQ — the only destination a customer order can use. */
+  order_branch_id: number;
   price: number | string | null;
-  /**
-   * `varieties[branchId]` = this product's sizes at that branch (one entry per
-   * volume). The detail endpoint loads a single product, so the branch level is
-   * already the list of sizes — it is NOT nested again by product id.
-   */
-  varieties: Record<string, ProductSize[]>;
-  in_stock_branch_count: number;
+  /** Flat list of in-stock sizes. No branch, variant or stock keys. */
+  varieties: ProductSize[];
 }
 
 /** One line of POST /api/orders — a product and, for bottled sizes, the size
@@ -307,7 +295,11 @@ export interface PlaceOrderItem {
   volume?: number;
 }
 
+/** Mikocheni HQ (branch 10) — the only branch a customer order belongs to. */
+export const CUSTOMER_ORDER_BRANCH_ID = 10;
+
 export interface PlaceOrderInput {
+  /** Kept in the payload for older servers; always HQ, never a source branch. */
   branch_id: number | string;
   customer_name: string;
   customer_phone: string;
@@ -421,23 +413,23 @@ export function fetchBrands(): Promise<BrandsPayload> {
   return apiGet<BrandsPayload>('/brands');
 }
 
-/** GET /api/products — same filters as the website shop. */
+/** GET /api/products — company-wide availability with the same search/filters
+ * as the website shop. Browsing no longer selects an order destination. */
 export function fetchProducts(params: {
   search?: string;
   sex_category?: string;
-  branch_id?: string;
   brand?: string;
 } = {}): Promise<ProductsPayload> {
   return apiGet<ProductsPayload>('/products', params);
 }
 
-/** GET /api/products/{id} — detail with per-branch stock and sizes. */
-export function fetchProduct(id: string, branchId?: string): Promise<ProductDetailPayload> {
-  return apiGet<ProductDetailPayload>(`/products/${encodeURIComponent(id)}`, { branch_id: branchId });
+/** GET /api/products/{id} — one availability answer and flat company sizes. */
+export function fetchProduct(id: string): Promise<ProductDetailPayload> {
+  return apiGet<ProductDetailPayload>(`/products/${encodeURIComponent(id)}`);
 }
 
 /**
- * POST /api/orders — place an order for a branch. The very same
+ * POST /api/orders — place an order for Mikocheni HQ. The very same
  * Customer\OrderController@store the website checkout posts to, so the
  * order number, stock checks and variety pricing all come from the server.
  */

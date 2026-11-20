@@ -14,6 +14,9 @@ use Tests\TestCase;
  * (Customer\OrderController@store), which validates before touching
  * Supabase, so the field-level validation contract can be pinned here
  * without a live project.
+ *
+ * A branch_id may still arrive from an older app build, but it is no longer a
+ * destination: HQ is the only branch a customer order can belong to.
  */
 class MobilePlaceOrderApiTest extends TestCase
 {
@@ -32,7 +35,9 @@ class MobilePlaceOrderApiTest extends TestCase
         $response = $this->postJson('/api/orders', []);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['branch_id', 'customer_name', 'customer_phone', 'items']);
+        // branch_id is accepted for older clients but is never required: the
+        // server always records the order against Mikocheni HQ.
+        $response->assertJsonValidationErrors(['customer_name', 'customer_phone', 'items']);
     }
 
     public function test_each_order_line_is_validated(): void
@@ -49,11 +54,10 @@ class MobilePlaceOrderApiTest extends TestCase
     }
 
     /**
-     * The app parses the order number and total out of the response, so a
-     * placed order has to come back as JSON (the website gets a view) with
-     * those fields from the row the server actually created.
+     * A plain (non-bottled) product on the shelf, with the order insert
+     * captured so the destination can be checked without reading Supabase.
      */
-    public function test_a_placed_order_answers_json_with_the_created_order(): void
+    private function fakeSupabase(?array &$capturedOrder = null): void
     {
         $supabase = Mockery::mock(SupabaseService::class);
 
@@ -67,14 +71,15 @@ class MobilePlaceOrderApiTest extends TestCase
             ->once()
             ->andReturn(['id' => 55]);
 
-        // One product on the shelf at the branch, priced at 50,000.
+        // One product on the shelf, priced at 50,000.
         $supabase->shouldReceive('query')->andReturnUsing(function (string $table): array {
             if ($table === 'branch_stock') {
                 return [[
+                    'branch_id' => 10,
                     'product_id' => 7,
                     'quantity' => 10,
                     'selling_price' => 50000,
-                    'product' => ['name' => 'Reef 33'],
+                    'product' => ['id' => 7, 'name' => 'Reef 33'],
                 ]];
             }
             if ($table === 'products') {
@@ -86,7 +91,6 @@ class MobilePlaceOrderApiTest extends TestCase
         $supabase->shouldReceive('queryFresh')->andReturn([]);
         $supabase->shouldReceive('tableHasColumn')->andReturn(false);
 
-        $capturedOrder = null;
         $supabase->shouldReceive('insert')
             ->with('orders', Mockery::type('array'))
             ->once()
@@ -101,9 +105,21 @@ class MobilePlaceOrderApiTest extends TestCase
             ->andReturn([]);
 
         $this->app->instance(SupabaseService::class, $supabase);
+    }
+
+    /**
+     * The app parses the order number and total out of the response, so a
+     * placed order has to come back as JSON (the website gets a view) with
+     * those fields from the row the server actually created. A stale non-HQ
+     * branch id from an older build must not move that order away from HQ.
+     */
+    public function test_a_non_hq_branch_id_is_ignored_and_a_placed_order_answers_json_with_the_created_order(): void
+    {
+        $capturedOrder = null;
+        $this->fakeSupabase($capturedOrder);
 
         $response = $this->postJson('/api/orders', [
-            'branch_id' => 10,
+            'branch_id' => 3,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 2]],
@@ -119,17 +135,19 @@ class MobilePlaceOrderApiTest extends TestCase
         $this->assertSame(55, (int) $capturedOrder['customer_id']);
     }
 
-    /** Other branches can browse the shop, but cannot place an order. */
-    public function test_a_non_hq_branch_cannot_place_an_order(): void
+    /** A newer client that omits branch_id entirely still orders from HQ. */
+    public function test_an_omitted_branch_id_is_also_placed_for_hq(): void
     {
+        $capturedOrder = null;
+        $this->fakeSupabase($capturedOrder);
+
         $response = $this->postJson('/api/orders', [
-            'branch_id' => 3,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
-            'items' => [['product_id' => 7, 'quantity' => 2]],
+            'items' => [['product_id' => 7, 'quantity' => 1]],
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonPath('errors.branch_id.0', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
+        $response->assertStatus(201);
+        $this->assertSame(10, (int) $capturedOrder['branch_id']);
     }
 }

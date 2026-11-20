@@ -15,7 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Card, EmptyView, GoldButton, LoadingView, OutlineButton } from '../components/ui';
-import { errorMessage, fetchProduct, placeOrder, type PlacedOrder } from '../lib/api';
+import {
+  CUSTOMER_ORDER_BRANCH_ID,
+  errorMessage,
+  fetchProduct,
+  placeOrder,
+  type PlacedOrder,
+} from '../lib/api';
 import { useCart } from '../lib/cart';
 import { formatMoney } from '../lib/format';
 import { COLORS, RADIUS } from '../lib/theme';
@@ -25,12 +31,11 @@ import { COLORS, RADIUS } from '../lib/theme';
  *
  * The whole basket is posted to POST /api/orders — the very controller the
  * website's checkout uses — with the customer's name and phone. The server
- * re-checks stock and prices and returns the order number, so what the app
- * shows is always what the branch received.
+ * re-checks company-wide stock and prices and returns the order number. Every
+ * line is sent with Mikocheni HQ as its destination; no source branch is shown.
  */
 export default function CartScreen() {
-  const { items, branchId, branchName, count, subtotal, ready, setQuantity, removeItem, clear } =
-    useCart();
+  const { items, count, subtotal, ready, setQuantity, removeItem, clear } = useCart();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -57,8 +62,8 @@ export default function CartScreen() {
       for (const item of unchecked) {
         let needs = false;
         try {
-          const detail = await fetchProduct(String(item.productId), String(item.branchId));
-          needs = (detail.varieties?.[String(item.branchId)] ?? []).length > 0;
+          const detail = await fetchProduct(String(item.productId));
+          needs = detail.varieties.length > 0;
         } catch {
           // Unknown from here — leave the line alone and let the server decide.
         }
@@ -76,17 +81,13 @@ export default function CartScreen() {
     removeItem(item.key);
     router.push({
       pathname: '/product',
-      params: { id: String(item.productId), branch_id: String(item.branchId) },
+      params: { id: String(item.productId) },
     });
   };
 
   const canSubmit = items.length > 0 && name.trim() !== '' && phone.trim() !== '' && !submitting;
 
   const submit = async () => {
-    if (!branchId) {
-      setError('Your cart is missing a branch. Please add the item again.');
-      return;
-    }
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
     if (!trimmedName) {
@@ -108,7 +109,7 @@ export default function CartScreen() {
     setError('');
     try {
       const payload = await placeOrder({
-        branch_id: branchId,
+        branch_id: CUSTOMER_ORDER_BRANCH_ID,
         customer_name: trimmedName,
         customer_phone: trimmedPhone,
         customer_email: email.trim() || undefined,
@@ -141,8 +142,8 @@ export default function CartScreen() {
           </View>
           <Text style={styles.successTitle}>Order placed successfully!</Text>
           <Text style={styles.successText}>
-            Your order has been received and is being processed. Payment will be settled at the
-            branch.
+            Your order has been received and is being processed. We will contact you about
+            payment and delivery.
           </Text>
           <Card style={styles.summaryCard}>
             <View style={styles.summaryRow}>
@@ -219,18 +220,6 @@ export default function CartScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Card style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Branch</Text>
-              <Ionicons name="storefront-outline" size={16} color={COLORS.gold} />
-            </View>
-            <Text style={styles.branchName}>{branchName ?? 'Branch'}</Text>
-            <Text style={styles.hint}>
-              An order is placed with one branch. Adding items from another branch starts a new
-              cart.
-            </Text>
-          </Card>
-
           <Card style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>
@@ -412,11 +401,6 @@ const styles = StyleSheet.create({
   clearText: {
     color: COLORS.danger,
     fontSize: 12.5,
-    fontWeight: '700',
-  },
-  branchName: {
-    color: COLORS.gold,
-    fontSize: 15,
     fontWeight: '700',
   },
   hint: {

@@ -26,19 +26,10 @@ class OrderController extends Controller
 
     public function create(Request $request)
     {
-        $branchId = (int) $request->branch_id;
-
-        if (!$branchId) {
-            return redirect()->route('customer.products.index')->with('error', 'Please select a branch first.');
-        }
-
-        // Orders are a Mikocheni HQ module: other branches can still browse the
-        // catalogue, but they cannot start an order here.
-        if (!BranchAccess::canAccessOrders($branchId)) {
-            return redirect()->route('customer.products.index', ['branch_id' => $branchId])
-                ->with('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
-        }
-
+        // Customers may browse any branch, but every order is recorded against
+        // Mikocheni HQ. A branch_id in the query string is never trusted as a
+        // destination — the HQ id is the only value this controller uses.
+        $branchId = BranchAccess::HEAD_QUARTERS_ID;
         $branch = $this->supabase->find('branches', $branchId);
 
         if (!$branch) {
@@ -47,12 +38,11 @@ class OrderController extends Controller
 
         $branch = (object) $branch;
 
-        // A cart is packed from one branch — an order has one branch_id. Opening
-        // a product at another branch starts a fresh cart instead of mixing two
-        // branches into an order that could never be packed.
-        if ($this->cart->items() !== [] && $this->cart->branchId() !== $branchId) {
+        // A cart saved by an older build may still carry a non-HQ branch. It
+        // cannot be part of an HQ order, so start clean rather than silently
+        // changing its destination.
+        if ($this->cart->items() !== [] && (int) $this->cart->branchId() !== $branchId) {
             $this->cart->clear();
-            session()->flash('error', 'Your cart was for another branch, so it was emptied. An order can only come from one branch.');
         }
 
         $cartItems = $this->cart->items();
@@ -64,12 +54,12 @@ class OrderController extends Controller
         $productId = (int) ($request->product_id ?? 0);
 
         if ($productId > 0) {
-            $offer = $this->offer($branchId, $productId);
+            $offer = $this->offer($productId);
 
             if ($offer === null || $offer['available'] < 1) {
                 return redirect()
-                    ->route('customer.products.index', ['branch_id' => $branchId])
-                    ->with('error', 'That product is no longer available at this branch.');
+                    ->route('customer.products.index')
+                    ->with('error', 'That product is no longer available.');
             }
 
             // Coming from the details page the size is already chosen; without
@@ -147,16 +137,13 @@ class OrderController extends Controller
             'delivery_notes' => 'nullable|string',
         ]);
 
-        $branchId = (int) $validated['branch_id'];
-
+        // The shop may have been opened from any branch; the cart always
+        // belongs to the HQ order the customer is building.
+        $branchId = BranchAccess::HEAD_QUARTERS_ID;
         $branch = $this->supabase->find('branches', $branchId);
 
         if (!$branch) {
             abort(404);
-        }
-
-        if (!BranchAccess::canAccessOrders($branchId)) {
-            return back()->with('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
         }
 
         // The form also carries the lines already in the cart; only the product
@@ -168,10 +155,10 @@ class OrderController extends Controller
             return back()->withInput()->withErrors(['items' => 'Choose a product before adding it to your cart.']);
         }
 
-        $offer = $this->offer($branchId, (int) $item['product_id']);
+        $offer = $this->offer((int) $item['product_id']);
 
         if ($offer === null) {
-            return back()->withInput()->withErrors(['items' => 'That product is no longer available at this branch.']);
+            return back()->withInput()->withErrors(['items' => 'That product is no longer available.']);
         }
 
         // A size that sold out since the page loaded falls back to one that is
@@ -184,7 +171,7 @@ class OrderController extends Controller
         $available = $this->availableFor($offer, $volume);
 
         if ($available < 1) {
-            return back()->withInput()->withErrors(['items' => $offer['name'] . ' is out of stock at this branch.']);
+            return back()->withInput()->withErrors(['items' => $offer['name'] . ' is out of stock.']);
         }
 
         $this->cart->rememberContact([
@@ -210,7 +197,7 @@ class OrderController extends Controller
         ]);
 
         return redirect()
-            ->route('customer.products.index', ['branch_id' => $branchId])
+            ->route('customer.products.index')
             ->with('success', $offer['name'] . ' is in your cart. Pick another perfume, or check out when you are ready.');
     }
 
@@ -227,27 +214,65 @@ class OrderController extends Controller
     }
 
     /**
-     * What this branch can sell of one product: its sizes, stock and price.
-     * Packaging never reaches the customer — the branch packs whichever of its
-     * buckets fits the size that was ordered.
+     * In-stock rows for a set of products, wherever they are in the company.
+     *
+     * HQ rows come first so their price is used when the same product is
+     * stocked in more than one place. The rows themselves never reach the
+     * customer — only the resulting availability and price do.
      */
-    private function offer(int $branchId, int $productId): ?array
+    private function globalStockRows(array $productIds): array
     {
+        $ids = array_values(array_unique(array_map('intval', $productIds)));
+        if ($ids === []) {
+            return [];
+        }
+
         $rows = $this->supabase->query('branch_stock', [
             'select' => 'id,branch_id,product_id,quantity,selling_price,product:products(id,name,brand,category,images:product_images(*))',
-            'branch_id' => "eq.{$branchId}",
-            'product_id' => "eq.{$productId}",
-            'limit' => 1,
+            'product_id' => 'in.(' . implode(',', $ids) . ')',
         ]);
 
-        $stock = $rows[0] ?? null;
+        $rows = array_values(array_filter(
+            $rows,
+            fn ($row) => in_array((int) ($row['product_id'] ?? 0), $ids, true)
+                && (int) ($row['quantity'] ?? 0) > 0
+        ));
 
-        if (!$stock) {
+        usort($rows, fn ($a, $b) =>
+            ((int) ($b['branch_id'] ?? 0) === BranchAccess::HEAD_QUARTERS_ID)
+            <=> ((int) ($a['branch_id'] ?? 0) === BranchAccess::HEAD_QUARTERS_ID)
+        );
+
+        return $rows;
+    }
+
+    /**
+     * What the company can offer for one product, independent of where it is
+     * stocked. Every order is still recorded against Mikocheni HQ; other
+     * shelves simply decide whether the product can be offered at all.
+     * Packaging never reaches the customer — HQ packs whichever of its buckets
+     * fits the size that was ordered.
+     */
+    private function offer(int $productId): ?array
+    {
+        $rows = $this->globalStockRows([$productId]);
+        if ($rows === []) {
             return null;
         }
 
+        $stock = $rows[0];
+        $quantity = array_sum(array_map(fn ($row) => (int) ($row['quantity'] ?? 0), $rows));
+
+        $basePrice = 0.0;
+        foreach ($rows as $row) {
+            if ((float) ($row['selling_price'] ?? 0) > 0) {
+                $basePrice = (float) $row['selling_price'];
+                break;
+            }
+        }
+
         $product = $stock['product'] ?? [];
-        $buckets = $this->varieties->volumeBucketsForProducts($branchId, [$productId])[(string) $productId] ?? [];
+        $buckets = $this->varieties->volumeBucketsAcrossBranches([$productId])[(string) $productId] ?? [];
         $isVariety = ($product['category'] ?? '') === 'Oil Fragrance' && $buckets !== [];
 
         $image = null;
@@ -265,13 +290,15 @@ class OrderController extends Controller
             'image' => $image,
             'is_variety' => $isVariety,
             'buckets' => $buckets,
-            'base_price' => (float) ($stock['selling_price'] ?? 0),
-            // Without size tracking the branch's shelf count is the whole offer.
-            'available' => $isVariety ? (int) $buckets[0]['available'] : (int) ($stock['quantity'] ?? 0),
+            'base_price' => $basePrice,
+            // Without size tracking the combined shelf count is the offer.
+            'available' => $isVariety
+                ? array_sum(array_map(fn ($bucket) => (int) ($bucket['available'] ?? 0), $buckets))
+                : $quantity,
         ];
     }
 
-    /** Units of the chosen size the branch holds. */
+    /** Units of the chosen size available across the company. */
     private function availableFor(array $offer, int $volume): int
     {
         if (!$offer['is_variety']) {
@@ -287,7 +314,7 @@ class OrderController extends Controller
         return 0;
     }
 
-    /** What one unit of the chosen size costs (0 means "use the branch price"). */
+    /** What one unit of the chosen size costs (0 means "use the company price"). */
     private function unitPriceFor(array $offer, int $volume): float
     {
         if ($offer['is_variety']) {
@@ -306,7 +333,9 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'branch_id' => 'required',
+            // Accepted for older clients, but never used as the destination:
+            // every customer order is recorded against Mikocheni HQ.
+            'branch_id' => 'nullable',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
             'customer_email' => 'nullable|email',
@@ -320,15 +349,11 @@ class OrderController extends Controller
             'items.*.variant' => 'nullable|string|max:32',
         ]);
 
-        // The website and the public mobile endpoint both land here, so this is
-        // the one place that decides whether an order may be placed at all.
-        if (!BranchAccess::canAccessOrders((int) $validated['branch_id'])) {
-            return $this->orderProblem(
-                $request,
-                'branch_id',
-                'Orders are currently available only at MIKOCHENI BRANCH HQ.'
-            );
-        }
+        // The website and the public mobile endpoint both land here. The
+        // request's branch_id is deliberately ignored: HQ is the only order
+        // destination a customer can use, even when the product came off a
+        // shelf at another branch.
+        $branchId = BranchAccess::HEAD_QUARTERS_ID;
 
         try {
             // 1. Create or find customer. The phone number is the identity,
@@ -341,31 +366,45 @@ class OrderController extends Controller
 
             $customerId = $result['customer']['id'];
 
-            // 2. Fetch ALL stock for this branch in ONE query (instead of N)
-            $allStock = collect($this->supabase->query('branch_stock', [
-                'branch_id' => "eq.{$validated['branch_id']}",
-                'select' => 'product_id,quantity,selling_price,product:products(name)',
-            ]));
+            // 2. Fetch stock for the ordered products from EVERY branch in one
+            // query. Availability is company-wide; the order still belongs to
+            // HQ. Rows are merged per product so no source branch is exposed.
+            $itemProductIds = array_values(array_unique(array_map(fn ($i) => (int) ($i['product_id'] ?? 0), $validated['items'])));
             $stockMap = [];
-            foreach ($allStock as $s) {
-                $stockMap[$s['product_id']] = $s;
+            foreach ($this->globalStockRows($itemProductIds) as $s) {
+                $productId = (int) $s['product_id'];
+                if (!isset($stockMap[$productId])) {
+                    $stockMap[$productId] = [
+                        'product_id' => $productId,
+                        'quantity' => 0,
+                        'selling_price' => null,
+                        'product' => $s['product'] ?? [],
+                    ];
+                }
+                $stockMap[$productId]['quantity'] += (int) ($s['quantity'] ?? 0);
+                if ((float) ($stockMap[$productId]['selling_price'] ?? 0) <= 0
+                    && (float) ($s['selling_price'] ?? 0) > 0) {
+                    $stockMap[$productId]['selling_price'] = (float) $s['selling_price'];
+                }
             }
 
             // Product categories and per-variety stock/prices for the ordered
             // products, so an oil fragrance line can be priced and checked
             // against the exact bottling the customer picked.
-            $itemProductIds = array_values(array_unique(array_map(fn ($i) => (int) ($i['product_id'] ?? 0), $validated['items'])));
             $categoryMap = [];
             if ($itemProductIds) {
                 foreach ($this->supabase->query('products', [
                     'select' => 'id,category',
                     'id' => 'in.(' . implode(',', $itemProductIds) . ')',
                 ]) as $p) {
+                    if (!in_array((int) ($p['id'] ?? 0), $itemProductIds, true)) {
+                        continue;
+                    }
                     $categoryMap[(int) $p['id']] = $p['category'] ?? '';
                 }
             }
-            $varietyStock = $this->varieties->stockForProducts((int) $validated['branch_id'], $itemProductIds, fresh: true);
-            $varietyPrices = $this->varieties->pricesForProducts((int) $validated['branch_id'], $itemProductIds);
+            $varietyStock = $this->varieties->stockForProductsAcrossBranches($itemProductIds);
+            $varietyPrices = $this->varieties->pricesForProductsAcrossBranches($itemProductIds);
 
             // 3. Validate stock and calculate totals (no HTTP calls)
             $total = 0;
@@ -384,14 +423,14 @@ class OrderController extends Controller
                 $variant = trim((string) ($item['variant'] ?? ''));
 
                 // Price of the chosen size; 0 means "no size price", which
-                // falls back to the product's branch price below.
+                // falls back to the product's company-wide price below.
                 $varietyPrice = 0.0;
 
                 // A product bottled in several sizes has to say which one is
                 // being ordered, and enough of that size must exist. The
-                // packaging behind it is the branch's to choose, so the bucket
-                // to pack from is resolved here — a variant posted by an older
-                // client or a saved link is honoured when it fits the size.
+                // packaging behind it is HQ's to choose, so the bucket to pack
+                // from is resolved here — a variant posted by an older client
+                // or a saved link is honoured when it fits the size.
                 // Products stocked in before variety tracking have no buckets
                 // and are ordered as plain product lines.
                 if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
@@ -403,7 +442,7 @@ class OrderController extends Controller
                         );
                     }
 
-                    $pick = $this->varieties->resolveVariantForVolume((int) $validated['branch_id'], $productId, $volume);
+                    $pick = $this->varieties->resolveVariantForVolumeAcrossBranches($productId, $volume);
                     if ($pick === null) {
                         return $this->orderProblem(
                             $request,
@@ -435,7 +474,7 @@ class OrderController extends Controller
                 }
 
                 // The picked size carries its own price (50ml != 30ml);
-                // the product's branch price is only the fallback.
+                // the product's company-wide price is only the fallback.
                 $unitPrice = $varietyPrice > 0 ? $varietyPrice : (float) ($stock['selling_price'] ?? 0);
                 $lineTotal = $unitPrice * $quantity;
                 $total += $lineTotal;
@@ -456,9 +495,9 @@ class OrderController extends Controller
             // 5. Create order (1 HTTP call)
             $order = $this->supabase->insert('orders', [
                 'order_number' => $orderNumber,
-                'branch_id' => $validated['branch_id'],
+                'branch_id' => $branchId,
                 'customer_id' => $customerId,
-                // A placed order is held for customer care of this branch:
+                // A placed order is held for customer care at HQ:
                 // it is invisible to branch staff until care releases it.
                 'status' => \App\Services\OrderWorkflowService::CARE_STATUS,
                 'total' => $total,

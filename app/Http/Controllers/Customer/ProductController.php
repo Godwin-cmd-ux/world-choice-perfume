@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\CompanySettingService;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -58,8 +59,6 @@ class ProductController extends Controller
 
         $products = collect();
         $selectedBranch = null;
-        $showAllBranches = false;
-        $branchCounts = [];
 
         if ($request->branch_id) {
             // Get the selected branch
@@ -97,18 +96,12 @@ class ProductController extends Controller
             }
         } else {
             // All Branches — fetch all branch_stock (including 0 quantity)
-            $showAllBranches = true;
-
             $rawStock = $this->supabase->query('branch_stock', [
                 'select' => 'id,branch_id,product_id,quantity,selling_price,category,date_received,product:products(id,name,description,brand,category,sex_category,fundamental_ingredient,is_active,created_at,updated_at,images:product_images(*))',
                 'order' => 'created_at.desc',
             ]);
 
             $stockCollection = collect($rawStock);
-
-            // The same perfume is stocked at more than one branch, so
-            // "All branches" cannot quote a single price for it.
-            $branchCounts = $this->inStockBranchCounts($rawStock);
 
             // Merge in catalogue products that have no stock row anywhere
             $stockedIds = $stockCollection->pluck('product_id')->map(fn ($id) => (int) $id)->all();
@@ -134,6 +127,17 @@ class ProductController extends Controller
             $products = $this->applyFilters($stockCollection, $request);
         }
 
+        // Availability and sizes are company-wide: a product on any shelf is
+        // Available, without the customer being told which shelf that was.
+        $listedProductIds = $products->pluck('product_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $availableProductIds = $this->availableProductIds($listedProductIds);
+        $varietiesByProduct = $this->varieties->volumeBucketsAcrossBranches($listedProductIds);
+
         if ($request->expectsJson()) {
             // Mobile app: same data the view receives, as JSON. The heavy
             // variety buckets are left out of the listing — the detail
@@ -142,7 +146,7 @@ class ProductController extends Controller
                 'branches' => $branches,
                 'products' => $products,
                 'brands' => $availableBrands,
-                'branch_counts' => $branchCounts,
+                'available_product_ids' => $availableProductIds,
                 'selected_branch' => $selectedBranch,
             ]);
         }
@@ -166,70 +170,45 @@ class ProductController extends Controller
 
         return view('customer.products.index', [
             ...compact('branches', 'products', 'selectedBranch', 'availableBrands'),
-            // In-stock SIZES per branch so an Oil Fragrance card that is sold in
-            // several volumes does not advertise a single price. The
-            // box/logo/colour of a bottling is the branch's to pack, so it is
-            // collapsed away before the customer sees anything.
-            'varietiesByBranch' => $this->varietiesByBranch($products),
-            // A perfume stocked at more than one branch is listed per branch
-            // instead of being given one number for the whole country.
-            'branchCounts' => $branchCounts,
+            // In-stock SIZES across the whole company so an Oil Fragrance card
+            // that is bottled in several volumes does not advertise a single
+            // price. Packaging is collapsed away before the customer sees it.
+            'varietiesByProduct' => $varietiesByProduct,
+            'availableProductIds' => $availableProductIds,
             'heroVideoUrl' => $heroVideoUrl,
             'heroVideoType' => $heroVideoType,
         ]);
     }
 
     /**
-     * How many branches actually stock each product: [product_id => count].
-     * Out-of-stock rows are left out — a branch with nothing on the shelf is
-     * not one of the prices a customer can choose from.
+     * Which listed products are on a shelf somewhere in the company.
+     *
+     * A product stocked at a non-HQ branch still counts as Available to the
+     * customer; the order itself is always routed to Mikocheni HQ.
      *
      * @return array<int, int>
      */
-    private function inStockBranchCounts(array $rawStock): array
+    private function availableProductIds(array $productIds): array
     {
-        $counts = [];
-        foreach ($rawStock as $row) {
+        if ($productIds === []) {
+            return [];
+        }
+
+        $rows = $this->supabase->query('branch_stock', [
+            'select' => 'product_id,quantity',
+            'product_id' => 'in.(' . implode(',', $productIds) . ')',
+        ]);
+
+        $listedIds = array_fill_keys($productIds, true);
+        $available = [];
+        foreach ($rows as $row) {
             $productId = (int) ($row['product_id'] ?? 0);
-            $branchId = (int) ($row['branch_id'] ?? 0);
-            if ($productId <= 0 || $branchId <= 0 || (int) ($row['quantity'] ?? 0) <= 0) {
-                continue;
-            }
-            $counts[$productId] = ($counts[$productId] ?? 0) + 1;
-        }
-
-        return $counts;
-    }
-
-    /**
-     * Size picker data for every branch the listed cards point at.
-     *
-     * In "All branches" view each card links to the branch its own stock row
-     * belongs to, so the sizes have to be read per branch rather than once
-     * for the whole page. One entry per VOLUME — the packaging behind it is
-     * the branch's to choose, not the customer's.
-     *
-     * @return array<int, array<int, array>> [branch_id => [product_id => [sizes]]]
-     */
-    private function varietiesByBranch($products): array
-    {
-        $productIds = [];
-        foreach ($products as $stock) {
-            // Rows reach this point as arrays or objects depending on the
-            // branch view, so read them the same way the view does.
-            $branchId = (int) data_get($stock, 'branch_id');
-            $productId = (int) data_get($stock, 'product_id');
-            if ($branchId > 0 && $productId > 0) {
-                $productIds[$branchId][$productId] = true;
+            if (isset($listedIds[$productId]) && (int) ($row['quantity'] ?? 0) > 0) {
+                $available[$productId] = $productId;
             }
         }
 
-        $result = [];
-        foreach ($productIds as $branchId => $ids) {
-            $result[$branchId] = $this->varieties->volumeBucketsForProducts((int) $branchId, array_keys($ids));
-        }
-
-        return $result;
+        return array_values($available);
     }
 
     public function show(string $productId, Request $request)
@@ -241,59 +220,35 @@ class ProductController extends Controller
             abort(404);
         }
 
-        // Every active branch is offered, matching the shop listing.
-        $branches = collect($this->supabase->query('branches', [
-            'select' => '*',
-            'is_active' => 'eq.true',
-            'order' => 'name.asc',
-        ]))->map(fn ($b) => (object) $b)->values();
-
-        // Fetch branch stock for this product
+        // Stock is read only to answer one question: is this product on any
+        // shelf? Branch names, coordinates and quantities used to reach the
+        // customer here; none of them are part of the answer now.
         $rawStock = $this->supabase->query('branch_stock', [
-            // latitude/longitude ride along so the branch picker can offer
-            // "Twende Dukani" for the branches that really have stock.
-            'select' => '*, branch:branches(id,name,latitude,longitude), product:products(id,name)',
+            'select' => 'id,branch_id,product_id,quantity,selling_price',
             'product_id' => "eq.{$productId}",
         ]);
 
-        $branchStocks = collect($rawStock)->map(function ($item) {
-            // Restructure to match the expected format
-            return (object) [
-                'id' => $item['id'],
-                'branch_id' => $item['branch_id'],
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'selling_price' => $item['selling_price'],
-                'branch' => (object) ($item['branch'] ?? []),
-            ];
-        });
+        $inStockRows = collect($rawStock)
+            ->filter(fn ($row) => (int) ($row['quantity'] ?? 0) > 0)
+            // HQ first, so a price already used by HQ orders wins when the
+            // same product is priced differently at another branch.
+            ->sortByDesc(fn ($row) => (int) ($row['branch_id'] ?? 0) === BranchAccess::HEAD_QUARTERS_ID)
+            ->values();
 
-        // In-stock SIZES for this product at every branch it is stocked in.
-        // A product sold in several volumes has no single price, so the page
-        // lists each size with its own price and the customer orders the one
-        // they want. Box/logo/colour never reaches the customer — the branch
-        // packs whichever it has.
-        $varietiesByBranch = [];
-        foreach ($branchStocks->map(fn ($s) => (int) $s->branch_id)->filter()->unique() as $branchId) {
-            $varietiesByBranch[$branchId] = $this->varieties->volumeBucketsForProducts($branchId, [$productId])[(int) $productId] ?? [];
-        }
+        $isAvailable = $inStockRows->isNotEmpty();
 
-        // Get selected branch and price
-        $selectedBranch = null;
+        // Sizes from every shelf are merged into one company-wide list. The
+        // customer sees a volume and its price, never the branch behind it.
+        $varieties = $this->varieties->volumeBucketsAcrossBranches([$productId])[(string) $productId] ?? [];
+
         $price = null;
-
-        if ($request->branch_id) {
-            $selectedBranch = $this->supabase->find('branches', $request->branch_id);
-            if ($selectedBranch) {
-                $selectedBranch = (object) $selectedBranch;
-            }
-            if ($selectedBranch) {
-                $stockItem = $branchStocks->first(function ($s) use ($request) {
-                    return $s->branch_id == $request->branch_id && $s->quantity > 0;
-                });
-                $price = $stockItem?->selling_price;
+        foreach ($inStockRows as $row) {
+            if ((float) ($row['selling_price'] ?? 0) > 0) {
+                $price = (float) $row['selling_price'];
+                break;
             }
         }
+
         // Cast product to object for the view
         $product = (object) $product;
         if (isset($product->images) && is_array($product->images)) {
@@ -302,33 +257,27 @@ class ProductController extends Controller
             $product->images = collect($product->images)->map(fn ($img) => (object) $img);
         }
 
-        // Which branches actually stock it. A perfume on more than one
-        // branch's shelf is ordered from exactly one of them, so the page
-        // shows every branch's price and stock and lets the customer pick —
-        // whether or not they arrived with one branch already in mind.
-        $inStockBranches = $branchStocks->filter(fn ($s) => $s->quantity > 0)->values();
+        $orderBranchId = BranchAccess::HEAD_QUARTERS_ID;
 
         if ($request->expectsJson()) {
-            // Mobile app: product detail as JSON, same computed values the
-            // view uses (per-branch stock, prices, sizes).
+            // Mobile app: the same single Availability answer the website
+            // renders. No branch list, source stock or branch-keyed sizes.
             return response()->json([
                 'product' => $product,
-                'branches' => $branches,
-                'branch_stocks' => $branchStocks,
-                'selected_branch' => $selectedBranch,
+                'is_available' => $isAvailable,
+                'order_branch_id' => $orderBranchId,
                 'price' => $price,
-                'varieties' => $varietiesByBranch,
-                'in_stock_branch_count' => $inStockBranches->count(),
+                'varieties' => $varieties,
             ]);
         }
 
-        return view('customer.products.show', [
-            ...compact('product', 'branches', 'branchStocks', 'selectedBranch', 'price'),
-            'varietiesByBranch' => $varietiesByBranch,
-            'varieties' => $selectedBranch ? ($varietiesByBranch[(int) $selectedBranch->id] ?? []) : [],
-            'inStockBranches' => $inStockBranches,
-            'inStockBranchCount' => $inStockBranches->count(),
-        ]);
+        return view('customer.products.show', compact(
+            'product',
+            'isAvailable',
+            'orderBranchId',
+            'price',
+            'varieties'
+        ));
     }
 
     /**

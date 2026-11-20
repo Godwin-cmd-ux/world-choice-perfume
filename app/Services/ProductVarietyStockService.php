@@ -152,6 +152,138 @@ class ProductVarietyStockService
     }
 
     /**
+     * Customer-facing sizes for products stocked anywhere in the company.
+     *
+     * The customer no longer picks a branch: a product on any shelf is offered
+     * as Available, and the order is routed to Mikocheni HQ. Sizes from every
+     * branch are therefore merged into one volume list. Quantities are summed
+     * per volume and the first recorded price is used — neither reveals where
+     * the units came from.
+     *
+     * Returns [product_id => [['volume' => 50, 'label' => '50ml',
+     * 'available' => 7, 'price' => 45000.0], ...]].
+     */
+    public function volumeBucketsAcrossBranches(array $productIds): array
+    {
+        $rows = $this->fetchForProducts($productIds);
+        $stock = $this->mapRows($rows);
+        $prices = $this->mapPrices($rows);
+        $bottles = new BottleStockService($this->supabase);
+
+        $result = [];
+        foreach (array_unique(array_map('intval', $productIds)) as $pid) {
+            if ($pid <= 0 || empty($stock[$pid])) {
+                continue;
+            }
+
+            $volumes = [];
+            foreach ($stock[$pid] as $volume => $variantsInStock) {
+                $available = array_sum($variantsInStock);
+                if ($available <= 0) {
+                    continue;
+                }
+                $volume = (int) $volume;
+                $volumes[] = [
+                    'volume' => $volume,
+                    'label' => $bottles->volumeLabel($volume),
+                    'available' => $available,
+                    'price' => $this->firstPrice($bottles, $volume, $prices[$pid][$volume] ?? []),
+                ];
+            }
+
+            usort($volumes, fn ($a, $b) => $a['volume'] <=> $b['volume']);
+            if ($volumes !== []) {
+                $result[(string) $pid] = $volumes;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Per-product variety stock across every branch, for validating an order
+     * that is assigned to HQ but may be fulfilled from any shelf.
+     */
+    public function stockForProductsAcrossBranches(array $productIds): array
+    {
+        $stock = $this->mapRows($this->fetchForProducts($productIds));
+
+        return array_intersect_key(
+            $stock,
+            array_flip(array_map('intval', $productIds))
+        );
+    }
+
+    /**
+     * Per-product variety prices across every branch.
+     */
+    public function pricesForProductsAcrossBranches(array $productIds): array
+    {
+        $prices = $this->mapPrices($this->fetchForProducts($productIds));
+
+        return array_intersect_key(
+            $prices,
+            array_flip(array_map('intval', $productIds))
+        );
+    }
+
+    /**
+     * Pick a packaging for a size-only order from every branch at once.
+     *
+     * The branch is deliberately absent from the answer: the customer sees one
+     * company-wide catalogue, and HQ receives the order regardless of which
+     * shelf currently holds the chosen size.
+     */
+    public function resolveVariantForVolumeAcrossBranches(int $productId, int $volume): ?array
+    {
+        if ($productId <= 0 || $volume <= 0) {
+            return null;
+        }
+
+        $rows = array_values(array_filter(
+            $this->fetchForProducts([$productId]),
+            fn ($row) => (int) ($row['volume'] ?? 0) === $volume
+        ));
+
+        $bottles = new BottleStockService($this->supabase);
+        $rank = array_flip($bottles->variantBuckets($volume));
+
+        $available = 0;
+        $prices = [];
+        $best = null;
+
+        foreach ($rows as $row) {
+            $key = (string) ($row['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $prices[$key] = (float) ($row['selling_price'] ?? 0);
+
+            $quantity = (int) ($row['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                continue;
+            }
+            $available += $quantity;
+
+            if ($best === null
+                || $quantity > $best['quantity']
+                || ($quantity === $best['quantity'] && ($rank[$key] ?? 99) < ($rank[$best['variant']] ?? 99))) {
+                $best = ['variant' => $key, 'quantity' => $quantity];
+            }
+        }
+
+        if ($best === null || $available <= 0) {
+            return null;
+        }
+
+        $price = $this->firstPrice($bottles, $volume, [$best['variant'] => $prices[$best['variant']] ?? 0])
+            ?: $this->firstPrice($bottles, $volume, $prices);
+
+        return [
+            'variant' => $best['variant'],
+            'available' => $available,
+            'price' => $price,
+        ];
+    }
+
+    /**
      * Which packaging a volume-only order is packed from.
      *
      * The customer picks a size and the branch picks the packaging, so the
@@ -509,6 +641,31 @@ class ProductVarietyStockService
         ];
 
         return $fresh ? $this->supabase->queryFresh('branch_stock_varieties', $params) : $this->supabase->query('branch_stock_varieties', $params);
+    }
+
+    /**
+     * Variety rows for a set of products, regardless of branch.
+     *
+     * PostgREST handles the `in.` filter; the local filter keeps fakes and any
+     * backend that ignores it honest, so one product's data never leaks into
+     * another's answer.
+     */
+    private function fetchForProducts(array $productIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $productIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->supabase->query('branch_stock_varieties', [
+            'select' => 'branch_id,product_id,volume,variant,quantity,selling_price',
+            'product_id' => 'in.(' . implode(',', $ids) . ')',
+        ]);
+
+        return array_values(array_filter(
+            $rows,
+            fn ($row) => in_array((int) ($row['product_id'] ?? 0), $ids, true)
+        ));
     }
 
     /**

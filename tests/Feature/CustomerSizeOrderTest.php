@@ -9,21 +9,22 @@ use Tests\TestCase;
 /**
  * What a CUSTOMER is offered when a product is bottled in several sizes.
  *
- * Two rules are pinned here, end to end through the same endpoints the website
- * and the app use:
+ * Three rules are pinned here, end to end through the same endpoints the
+ * website and the app use:
  *
  *  1. Only volumes are choices. The box/logo/colour of a bottling is the
- *     branch's to pack and never changes the price (every 50ml of a product
- *     costs the same), so a customer must never see it — and an order that
- *     names only a size still has to be priced and packed correctly.
- *  2. A perfume stocked at more than one branch is ordered from exactly one of
- *     them, so every stocked branch's price and stock reaches the customer
- *     before they choose.
+ *     branch's to pack and never changes the price, so a customer must never
+ *     see it — and an order that names only a size still has to be priced and
+ *     packed correctly.
+ *  2. Availability is company-wide. A product on any shelf is Available, but
+ *     neither the source branch nor its stock count reaches the customer.
+ *  3. Every customer order is recorded against Mikocheni HQ (branch 10),
+ *     even when the chosen size currently exists only at another branch.
  *
  * PostgREST is faked at the HTTP layer instead of mocking SupabaseService,
  * because Customer\ProductController builds its own service instance. The fake
- * applies the `eq.` filters a real PostgREST would, so the assertions below see
- * the rows a branch-scoped query would really return.
+ * applies the `eq.` and `in.` filters a real PostgREST would, so the assertions
+ * below see the rows the queries would really return.
  */
 class CustomerSizeOrderTest extends TestCase
 {
@@ -48,7 +49,7 @@ class CustomerSizeOrderTest extends TestCase
      * One product, stocked at two branches, bottled in two sizes at the first
      * (with the 50ml split over two packagings) and one size at the second.
      *
-     * @param  int  $branchStockQuantity  the branch's aggregate shelf count
+     * @param  int  $branchStockQuantity  the HQ branch's aggregate shelf count
      */
     private function fakeSupabase(int $branchStockQuantity = 5, ?array &$writes = null): void
     {
@@ -95,14 +96,21 @@ class CustomerSizeOrderTest extends TestCase
             $rows = $tables[$table] ?? [];
             $rows = array_values(array_filter($rows, function ($row) use ($query) {
                 foreach ($query as $key => $value) {
-                    if (! is_string($value) || ! preg_match('/^eq\.(.*)$/', $value, $matches)) {
-                        continue; // select / order / limit / in.(...) are not equality filters
+                    if (! is_string($value)) {
+                        continue;
                     }
                     if (! array_key_exists($key, $row)) {
                         continue;
                     }
-                    if ((string) $row[$key] !== $matches[1]) {
+                    if (preg_match('/^eq\.(.*)$/', $value, $matches)
+                        && (string) $row[$key] !== $matches[1]) {
                         return false;
+                    }
+                    if (preg_match('/^in\.\((.*)\)$/', $value, $matches)) {
+                        $allowed = array_map('trim', explode(',', $matches[1]));
+                        if (! in_array((string) $row[$key], $allowed, true)) {
+                            return false;
+                        }
                     }
                 }
 
@@ -121,62 +129,65 @@ class CustomerSizeOrderTest extends TestCase
 
     /**
      * The app's product detail (and the website's, which shares the
-     * controller) must answer one option per SIZE — the two 50ml packagings
-     * are a single 50ml choice — while still listing every stocked branch.
+     * controller) answers one option per SIZE from every shelf, with one
+     * availability state and an HQ order destination — no branch list, source
+     * stock or branch-keyed sizes.
      */
-    public function test_the_product_api_offers_one_option_per_size_and_every_stocked_branch(): void
+    public function test_the_product_api_offers_company_wide_sizes_without_branch_details(): void
     {
         $this->fakeSupabase();
 
         $response = $this->getJson('/api/products/7');
 
         $response->assertOk();
-        $response->assertJsonPath('in_stock_branch_count', 2);
+        $response->assertJsonPath('is_available', true);
+        $response->assertJsonPath('order_branch_id', 10);
+        $response->assertJsonPath('price', 50000);
 
-        // Branch 10 (Mikocheni HQ) bottles it in 30ml and 50ml.
-        $this->assertCount(2, $response->json('varieties.10'));
-        $this->assertSame(30, $response->json('varieties.10.0.volume'));
-        $this->assertSame('30ml', $response->json('varieties.10.0.label'));
-        $this->assertSame(4, $response->json('varieties.10.0.available'));
-        $this->assertSame(30000.0, (float) $response->json('varieties.10.0.price'));
+        $this->assertCount(3, $response->json('varieties'));
+        $this->assertSame(30, $response->json('varieties.0.volume'));
+        $this->assertSame('30ml', $response->json('varieties.0.label'));
+        $this->assertSame(30000.0, (float) $response->json('varieties.0.price'));
 
-        $this->assertSame(50, $response->json('varieties.10.1.volume'));
-        // The whole size is available: 2 "with box + logo" plus 3 "without box".
-        $this->assertSame(5, $response->json('varieties.10.1.available'));
-        $this->assertSame(45000.0, (float) $response->json('varieties.10.1.price'));
+        // The two 50ml packagings are one 50ml choice, with their stock summed.
+        $this->assertSame(50, $response->json('varieties.1.volume'));
+        $this->assertSame(5, $response->json('varieties.1.available'));
+        $this->assertSame(45000.0, (float) $response->json('varieties.1.price'));
 
-        // The second branch's own price and size come through too.
-        $this->assertSame(100, $response->json('varieties.9.0.volume'));
-        $this->assertSame(1, $response->json('varieties.9.0.available'));
-        $this->assertSame(60000.0, (float) $response->json('varieties.9.0.price'));
+        // A size stocked only at Dodoma is still part of the one company-wide
+        // list, but its branch and quantity are not named.
+        $this->assertSame(100, $response->json('varieties.2.volume'));
+        $this->assertSame(60000.0, (float) $response->json('varieties.2.price'));
 
-        // Nothing about the packaging reaches the customer's payload.
+        $data = $response->json();
+        foreach (['branches', 'branch_stocks', 'selected_branch', 'in_stock_branch_count'] as $removed) {
+            $this->assertArrayNotHasKey($removed, $data);
+        }
+
         $payload = json_encode($response->json('varieties'));
         $this->assertStringNotContainsString('box', $payload);
         $this->assertStringNotContainsString('variant', $payload);
         $this->assertStringNotContainsString('no_box', $payload);
-
-        // The branches the customer picks between carry their own numbers.
-        $this->assertSame(50000, (int) $response->json('branch_stocks.0.selling_price'));
-        $this->assertSame(4, (int) $response->json('branch_stocks.1.quantity'));
+        $this->assertStringNotContainsString('branch', $payload);
     }
 
     /**
-     * The website's order form is the other customer surface: it has to offer
-     * the sizes the branch stocks, pre-select the one that was clicked, and
-     * never mention the packaging behind it.
+     * The website's order form is the other customer surface: it still asks
+     * for a size, pre-selects the one that was clicked, and never mentions the
+     * packaging behind it.
      */
     public function test_the_website_order_form_asks_for_a_size_only(): void
     {
         $this->fakeSupabase();
 
-        $response = $this->get('/orders/create?branch_id=10&product_id=7&volume=50');
+        $response = $this->get('/orders/create?branch_id=9&product_id=7&volume=50');
 
         $response->assertOk();
         $response->assertSee('Reef 33');
         $response->assertSee('50ml');
         $response->assertSee('30ml');
-        // The clicked size's own price and its whole-size availability.
+        // A stale branch_id in the link cannot move the order away from HQ.
+        $response->assertSee('name="branch_id" value="10"', false);
         $response->assertSee('45,000');
         $response->assertSee('5 in stock');
         // The size is what gets posted.
@@ -190,25 +201,27 @@ class CustomerSizeOrderTest extends TestCase
     }
 
     /**
-     * The website's product page has to show what each branch offers before the
-     * customer commits to one — including when they arrived from a branch that
-     * does not stock it.
+     * The website's product page gives one company-wide availability answer
+     * and sends every order to HQ, without naming a source branch.
      */
-    public function test_the_website_product_page_lists_every_stocked_branch_with_its_price_and_availability(): void
+    public function test_the_website_product_page_shows_one_availability_and_hq_order_links(): void
     {
         $this->fakeSupabase();
 
         $response = $this->get('/products/7');
 
         $response->assertOk();
-        $response->assertSee('Choose a branch');
-        $response->assertSee('Mikocheni HQ');
-        $response->assertSee('Dodoma');
-        // Each option carries that branch's own price and availability — the
-        // actual quantities stay internal.
-        $response->assertSee('from TZS 30,000');
-        $response->assertSee('from TZS 60,000');
         $response->assertSee('Available');
+        $response->assertDontSee('Out of Stock');
+        $response->assertDontSee('Choose a branch');
+        $response->assertDontSee('Mikocheni HQ');
+        $response->assertDontSee('Dodoma');
+        $response->assertDontSee('from TZS');
+        // One order destination, with a size option for each company-wide size.
+        $response->assertSee('branch_id=10');
+        $response->assertSee('volume=30');
+        $response->assertSee('volume=50');
+        $response->assertSee('volume=100');
         $response->assertDontSee('5 in stock');
         $response->assertDontSee('4 in stock');
         $response->assertDontSee('With Box');
@@ -218,7 +231,7 @@ class CustomerSizeOrderTest extends TestCase
     // --------------------------------------------------------------- orders
 
     /**
-     * A size-only order is priced by that size and packed from a bucket the
+     * A size-only order is priced by that size and packed from a bucket a
      * branch really holds, without the customer ever naming packaging.
      */
     public function test_a_size_only_order_is_priced_by_size_and_packed_from_a_real_bucket(): void
@@ -235,14 +248,15 @@ class CustomerSizeOrderTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertSame(90000.0, (float) $response->json('order.total'));
+        $this->assertSame(10, (int) ($writes['orders'][0]['branch_id'] ?? 0));
 
         $line = $writes['order_items'][0] ?? null;
         $this->assertNotNull($line, 'the order line was written');
         $this->assertSame(50, (int) $line['volume']);
         $this->assertSame(45000.0, (float) $line['unit_price']);
         $this->assertSame(90000.0, (float) $line['total']);
-        // The branch is told which packaging to reach for: the bucket holding
-        // the most of that size (3 without box beats 2 with box + logo).
+        // HQ is told which packaging to reach for: the bucket holding the most
+        // of that size (3 without box beats 2 with box + logo).
         $this->assertSame('no_box', $line['variant']);
     }
 
@@ -292,12 +306,17 @@ class CustomerSizeOrderTest extends TestCase
 
         $fits->assertStatus(201);
         $this->assertSame(225000.0, (float) $fits->json('order.total'));
+        $this->assertSame(10, (int) ($writes['orders'][0]['branch_id'] ?? 0));
     }
 
-    /** A non-HQ branch can browse this perfume, but cannot place an order. */
-    public function test_an_order_from_a_non_hq_branch_is_refused(): void
+    /**
+     * A browser or older app can still send a non-HQ branch id: it is ignored,
+     * and a size held only by that branch is accepted as an HQ order.
+     */
+    public function test_a_non_hq_branch_id_is_ignored_and_the_order_is_placed_for_hq(): void
     {
-        $this->fakeSupabase();
+        $writes = [];
+        $this->fakeSupabase(writes: $writes);
 
         $response = $this->postJson('/api/orders', [
             'branch_id' => 9,
@@ -306,7 +325,9 @@ class CustomerSizeOrderTest extends TestCase
             'items' => [['product_id' => 7, 'quantity' => 1, 'volume' => 100]],
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonPath('errors.branch_id.0', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
+        $response->assertStatus(201);
+        $this->assertSame(60000.0, (float) $response->json('order.total'));
+        $this->assertSame(10, (int) ($writes['orders'][0]['branch_id'] ?? 0));
+        $this->assertSame('box_logo_black', $writes['order_items'][0]['variant'] ?? null);
     }
 }

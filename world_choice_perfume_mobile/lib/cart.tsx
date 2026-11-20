@@ -1,10 +1,10 @@
 /**
  * The app's shopping cart.
  *
- * An order always belongs to ONE branch — that is how the website's checkout
- * works (one branch_id + a list of items) and how stock is tracked. The cart
- * therefore holds one branch at a time: adding something from another branch
- * is rejected with `branch-conflict` so the screen can offer to start fresh.
+ * Every customer order belongs to Mikocheni HQ, even when the product was on a
+ * shelf somewhere else. The cart therefore has one destination: a source branch
+ * is never stored, shown or used to split the basket. Carts saved by an older
+ * build are normalised to HQ when they are restored.
  *
  * The cart survives app restarts (AsyncStorage), so a customer can browse,
  * close the app and still check out later.
@@ -16,20 +16,35 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import { CUSTOMER_ORDER_BRANCH_ID } from './api';
 
 const STORAGE_KEY = 'wcp_cart_v1';
+const ORDER_BRANCH_NAME = 'Mikocheni HQ';
+
+/** Rebuild a line with HQ as its only destination, including lines saved by an
+ *  older build that still carried a source branch id in the key. */
+function asHqItem(item: CartItem): CartItem {
+  const suffix = item.key.includes('-') ? item.key.slice(item.key.indexOf('-') + 1) : item.key;
+
+  return {
+    ...item,
+    key: `${CUSTOMER_ORDER_BRANCH_ID}-${suffix}`,
+    branchId: CUSTOMER_ORDER_BRANCH_ID,
+    branchName: ORDER_BRANCH_NAME,
+  };
+}
 
 export interface CartItem {
-  /** Stable identity: branch + product + chosen bottling. */
+  /** Stable identity: HQ + product + chosen bottling. */
   key: string;
   productId: number | string;
   productName: string;
   brand?: string | null;
   image?: string | null;
+  /** Always HQ; kept on the line so the checkout payload is unambiguous. */
   branchId: number | string;
   branchName: string;
   quantity: number;
@@ -38,24 +53,22 @@ export interface CartItem {
   volume?: number;
   variant?: string;
   varietyLabel?: string;
-  /** How many units the branch had when it was added (clamps quantity). */
+  /** How many units were available when it was added (clamps quantity). */
   available?: number;
 }
 
-export type AddResult = 'added' | 'branch-conflict';
+export type AddResult = 'added';
 
 interface CartValue {
   items: CartItem[];
-  branchId: number | string | null;
-  branchName: string | null;
   count: number;
   subtotal: number;
   ready: boolean;
-  /** `replace: true` discards a cart from another branch and starts fresh. */
+  /** `replace: true` replaces the line rather than stacking quantities. */
   addItem: (item: CartItem, options?: { replace?: boolean }) => AddResult;
   /**
    * Park one line at an exact quantity: a line already holding this
-   * product+branch+size takes the new quantity instead of stacking on top of
+   * product+size takes the new quantity instead of stacking on top of
    * it. The product screen owns its own line, so re-opening a perfume that is
    * already in the cart must not silently double it.
    */
@@ -84,12 +97,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
 
-  // Read synchronously from an event handler without stale closures.
-  const itemsRef = useRef<CartItem[]>(items);
-  useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-
   // Restore the saved cart once, on mount.
   useEffect(() => {
     let active = true;
@@ -100,9 +107,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const parsed: unknown = JSON.parse(raw);
           if (Array.isArray(parsed)) {
             setItems(
-              (parsed as CartItem[]).filter(
-                (item) => item && item.productId != null && item.branchId != null,
-              ),
+              (parsed as CartItem[])
+                .filter((item) => item && item.productId != null)
+                .map(asHqItem),
             );
           }
         }
@@ -125,12 +132,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, [items, ready]);
 
-  const addItem = useCallback((item: CartItem, options?: { replace?: boolean }): AddResult => {
+  const addItem = useCallback((raw: CartItem, options?: { replace?: boolean }): AddResult => {
+    const item = asHqItem(raw);
     const replace = options?.replace ?? false;
-    const current = itemsRef.current;
-    if (!replace && current.length > 0 && String(current[0].branchId) !== String(item.branchId)) {
-      return 'branch-conflict';
-    }
 
     setItems((list) => {
       const base = replace ? [] : list;
@@ -153,12 +157,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return 'added';
   }, []);
 
-  const putItem = useCallback((item: CartItem, options?: { replace?: boolean }): AddResult => {
+  const putItem = useCallback((raw: CartItem, options?: { replace?: boolean }): AddResult => {
+    const item = asHqItem(raw);
     const replace = options?.replace ?? false;
-    const current = itemsRef.current;
-    if (!replace && current.length > 0 && String(current[0].branchId) !== String(item.branchId)) {
-      return 'branch-conflict';
-    }
 
     setItems((list) => {
       const base = replace ? [] : list;
@@ -188,8 +189,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     return {
       items,
-      branchId: items[0]?.branchId ?? null,
-      branchName: items[0]?.branchName ?? null,
       count,
       subtotal,
       ready,

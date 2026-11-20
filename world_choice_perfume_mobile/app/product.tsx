@@ -2,29 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CartButton } from '../components/CartButton';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Card, ErrorView, GoldButton, LoadingView, OutlineButton } from '../components/ui';
-import { errorMessage, fetchProduct, type ProductDetailPayload } from '../lib/api';
+import {
+  CUSTOMER_ORDER_BRANCH_ID,
+  errorMessage,
+  fetchProduct,
+  type ProductDetailPayload,
+} from '../lib/api';
 import { useCart } from '../lib/cart';
 import { formatMoney } from '../lib/format';
 import { COLORS, RADIUS } from '../lib/theme';
 
 /**
  * Product details — GET /api/products/{id} (Customer\ProductController@show):
- * description plus the real per-branch stock, prices and sizes the website
- * shows, so a customer knows where to find the fragrance — and, at the bottom,
- * the same "add to cart" choice the website's order form offers (branch, size,
- * quantity) feeding the in-app cart.
- *
- * A perfume stocked at more than one branch is ordered from exactly one of
- * them, so the branch options carry that branch's price and stock and adding to
- * the cart from another branch starts a fresh cart (lib/cart).
- *
- * Only sizes are ever offered: box/logo/colour is the branch's to pack and
- * never changes the price.
+ * one company-wide Availability answer plus a flat list of the sizes a product
+ * is bottled in. Neither the source branch, its stock count nor the packaging
+ * behind a size is shown; every order is directed to Mikocheni HQ.
  */
 const SEX_LABELS: Record<string, string> = {
   male: "Men's",
@@ -36,7 +33,7 @@ const SEX_LABELS: Record<string, string> = {
 type Status = 'loading' | 'error' | 'ready';
 
 export default function ProductScreen() {
-  const params = useLocalSearchParams<{ id?: string; branch_id?: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
   const id = params.id ?? '';
   const { items, count: cartCount, putItem } = useCart();
 
@@ -44,52 +41,30 @@ export default function ProductScreen() {
   const [data, setData] = useState<ProductDetailPayload | null>(null);
   const [error, setError] = useState('');
 
-  // Ordering state: which branch, which size, how many.
-  const [branchId, setBranchId] = useState<string>(params.branch_id ?? '');
+  // Ordering state: which size, and how many. There is no branch choice.
   const [size, setSize] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   const load = useCallback(async () => {
     setStatus('loading');
     try {
-      const payload = await fetchProduct(id, params.branch_id);
+      const payload = await fetchProduct(id);
       setData(payload);
       setStatus('ready');
     } catch (e) {
       setError(errorMessage(e));
       setStatus('error');
     }
-  }, [id, params.branch_id]);
+  }, [id]);
 
   useEffect(() => {
     if (id) load();
   }, [load, id]);
 
-  // Branches that actually have this product on the shelf.
-  const stockedBranches = useMemo(
-    () => (data?.branch_stocks ?? []).filter((stock) => (stock.quantity ?? 0) > 0),
-    [data],
-  );
+  // The detail endpoint answers a flat company-wide size list.
+  const sizes = useMemo(() => data?.varieties ?? [], [data]);
 
-  // Default to the branch the catalogue came from, else the first stocked one.
-  useEffect(() => {
-    if (stockedBranches.length === 0) return;
-    const ids = stockedBranches.map((stock) => String(stock.branch_id));
-    if (!ids.includes(branchId)) setBranchId(ids[0]);
-  }, [stockedBranches, branchId]);
-
-  const selectedStock =
-    stockedBranches.find((stock) => String(stock.branch_id) === branchId) ?? null;
-
-  // Sizes in stock at the chosen branch (empty for plain products).
-  // GET /api/products/{id} answers `varieties[branchId]` with THIS product's
-  // own size list — the endpoint loads one product at a time — so the branch
-  // level is already the array. (It used to be read as
-  // varieties[branchId][productId], which always resolved to undefined: the
-  // picker never rendered and checkout then rejected the order.)
-  const sizes = useMemo(() => data?.varieties?.[branchId] ?? [], [data, branchId]);
-
-  // Keep the size pick valid (defaults to the smallest one in stock).
+  // Keep the size pick valid (defaults to the smallest size in stock).
   useEffect(() => {
     if (sizes.length === 0) {
       if (size !== null) setSize(null);
@@ -105,14 +80,15 @@ export default function ProductScreen() {
     [sizes, size],
   );
 
-  const branchPrice = Number(selectedStock?.selling_price ?? 0);
-  const unitPrice = picked && picked.price > 0 ? picked.price : branchPrice;
-  const available = picked ? picked.available : (selectedStock?.quantity ?? 0);
-  const orderable = selectedStock != null && available > 0;
+  const unitPrice = picked && picked.price > 0 ? picked.price : Number(data?.price ?? 0);
+  // Stock is still used to clamp the stepper, never displayed as a quantity.
+  const available = picked?.available ?? (data?.is_available ? 99 : 0);
+  const orderable = Boolean(data?.is_available)
+    && (sizes.length === 0 || (picked?.available ?? 0) > 0);
   const productImage = (data?.product.images ?? []).map((img) => img?.image_url).find(Boolean) ?? null;
 
-  // The one cart line this card edits: branch + product + bottling.
-  const cartKey = `${branchId}-${id}-${picked ? picked.volume : 'plain'}`;
+  // HQ + product + chosen size is the whole identity of this cart line.
+  const cartKey = `${CUSTOMER_ORDER_BRANCH_ID}-${id}-${picked ? picked.volume : 'plain'}`;
   const inCart = useMemo(
     () => items.find((item) => item.key === cartKey) ?? null,
     [items, cartKey],
@@ -128,8 +104,7 @@ export default function ProductScreen() {
     setQuantity(inCart ? inCart.quantity : 1);
   }, [cartKey, inCart]);
 
-  // Switching branch or bottling can lower what is available — never leave the
-  // stepper above it.
+  // A size can sell out while the page is open — never leave the stepper above it.
   useEffect(() => {
     if (available > 0 && quantity > available) setQuantity(available);
   }, [available, quantity]);
@@ -140,46 +115,24 @@ export default function ProductScreen() {
    */
   const parkItem = (after: 'cart' | 'shop') => {
     const product = data?.product;
-    if (!orderable || !product || !selectedStock) return;
+    if (!orderable || !product) return;
 
-    const item = {
+    putItem({
       key: cartKey,
       productId: id,
       productName: product.name ?? 'Unnamed product',
       brand: product.brand ?? null,
       image: productImage,
-      branchId: selectedStock.branch_id ?? branchId,
-      branchName: selectedStock.branch?.name ?? 'Branch',
+      branchId: CUSTOMER_ORDER_BRANCH_ID,
+      branchName: 'Mikocheni HQ',
       quantity,
       unitPrice,
+      available,
       volume: picked?.volume,
       varietyLabel: picked?.label,
-      available,
-    };
+    });
 
-    const go = () => router.push(after === 'cart' ? '/cart' : '/shop');
-
-    const result = putItem(item);
-    if (result === 'branch-conflict') {
-      Alert.alert(
-        'Start a new cart?',
-        'Your cart already has items from another branch. An order can only be for one branch.',
-        [
-          { text: 'Keep my cart', style: 'cancel' },
-          {
-            text: 'Start new',
-            style: 'destructive',
-            onPress: () => {
-              putItem(item, { replace: true });
-              go();
-            },
-          },
-        ],
-      );
-      return;
-    }
-
-    go();
+    router.push(after === 'cart' ? '/cart' : '/shop');
   };
 
   const body = () => {
@@ -224,86 +177,24 @@ export default function ProductScreen() {
           ) : null}
         </View>
 
-        {orderable ? (
-          <View style={styles.priceCard}>
-            <View>
-              <Text style={styles.priceLabel}>
-                {selectedStock?.branch?.name ? `Price at ${selectedStock.branch.name}` : 'Price'}
-              </Text>
-              <Text style={styles.price}>
-                {unitPrice > 0 ? formatMoney(unitPrice) : 'See options below'}
-              </Text>
-            </View>
-            <Ionicons name="pricetag-outline" size={22} color={COLORS.gold} />
+        <View style={styles.priceCard}>
+          <View>
+            <Text style={styles.priceLabel}>Availability</Text>
+            <Text style={styles.price}>{orderable ? 'Available' : 'Currently out of stock'}</Text>
           </View>
-        ) : (
-          <View style={styles.priceCard}>
-            <View>
-              <Text style={styles.priceLabel}>Availability</Text>
-              <Text style={styles.price}>
-                {data.in_stock_branch_count > 0
-                  ? `In ${data.in_stock_branch_count} branch${data.in_stock_branch_count === 1 ? '' : 'es'}`
-                  : 'Currently out of stock'}
-              </Text>
-            </View>
-            <Ionicons name="storefront-outline" size={22} color={COLORS.gold} />
-          </View>
-        )}
+          <Ionicons
+            name={orderable ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+            size={22}
+            color={COLORS.gold}
+          />
+        </View>
 
         {/* Order controls — the same choices the website's order form asks for. */}
         <Card style={styles.block}>
           <Text style={styles.blockTitle}>Order this item</Text>
 
-          {stockedBranches.length === 0 ? (
-            <Text style={styles.paragraph}>
-              No branch currently has this in stock. Please check back soon or find a branch below.
-            </Text>
-          ) : (
+          {orderable ? (
             <>
-              {stockedBranches.length > 1 ? (
-                <>
-                  <Text style={styles.fieldLabel}>
-                    Branch · {stockedBranches.length} stock this
-                  </Text>
-                  <View style={styles.chipWrap}>
-                    {stockedBranches.map((stock, index) => {
-                      const value = String(stock.branch_id);
-                      const active = value === branchId;
-                      const sizesHere = data.varieties?.[value] ?? [];
-                      // Cheapest size at this branch, so each option carries
-                      // its own price as well as its own stock.
-                      const fromPrice = sizesHere
-                        .map((option) =>
-                          option.price > 0 ? option.price : Number(stock.selling_price ?? 0),
-                        )
-                        .filter((price) => price > 0)
-                        .sort((a, b) => a - b)[0];
-                      return (
-                        <Pressable
-                          key={String(stock.id ?? `${value}-${index}`)}
-                          onPress={() => setBranchId(value)}
-                          style={[styles.chip, styles.branchChip, active && styles.chipActive]}
-                          accessibilityRole="button"
-                        >
-                          <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
-                            {stock.branch?.name ?? 'Branch'}
-                          </Text>
-                          <Text style={[styles.chipSub, active && styles.chipTextActive]}>
-                            {fromPrice ? `from ${formatMoney(fromPrice)} · ` : ''}
-                            Available
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.branchHint}>
-                  At {selectedStock?.branch?.name ?? 'this branch'} ·{' '}
-                  Available
-                </Text>
-              )}
-
               {sizes.length > 0 ? (
                 <>
                   <Text style={styles.fieldLabel}>Size</Text>
@@ -321,8 +212,7 @@ export default function ProductScreen() {
                             {option.label}
                           </Text>
                           <Text style={[styles.chipSub, active && styles.chipTextActive]}>
-                            {option.price > 0 ? formatMoney(option.price) : 'Price at branch'} ·{' '}
-                            {option.available > 0 ? 'Available' : 'Out of Stock'}
+                            {option.price > 0 ? formatMoney(option.price) : 'See total'}
                           </Text>
                         </Pressable>
                       );
@@ -370,6 +260,10 @@ export default function ProductScreen() {
                 </View>
               </View>
             </>
+          ) : (
+            <Text style={styles.paragraph}>
+              This item is currently out of stock. Please check back soon.
+            </Text>
           )}
         </Card>
 
@@ -379,46 +273,6 @@ export default function ProductScreen() {
             <Text style={styles.paragraph}>{product.description}</Text>
           </Card>
         ) : null}
-
-        {/* Per-branch stock, prices and sizes — the website's data. */}
-        <Card style={styles.block}>
-          <Text style={styles.blockTitle}>Where to find it</Text>
-          {stockedBranches.length === 0 ? (
-            <Text style={styles.paragraph}>No branch currently has this in stock.</Text>
-          ) : (
-            stockedBranches.map((stock, index) => {
-              const sizesHere = data.varieties?.[String(stock.branch_id)] ?? [];
-              return (
-                <View
-                  key={String(stock.id ?? `${String(stock.branch_id)}-${index}`)}
-                  style={styles.branchBlock}
-                >
-                  <View style={styles.branchRow}>
-                    <View style={styles.branchInfo}>
-                      <Text style={styles.branchName}>{stock.branch?.name ?? 'Branch'}</Text>
-                      {stock.selling_price != null && stock.selling_price !== '' ? (
-                        <Text style={styles.branchPrice}>{formatMoney(stock.selling_price)}</Text>
-                      ) : null}
-                    </View>
-                    <View style={styles.stockPill}>
-                      <Text style={styles.stockPillText}>Available</Text>
-                    </View>
-                  </View>
-
-                  {sizesHere.map((option) => (
-                    <View key={option.volume} style={styles.varietyRow}>
-                      <Text style={styles.varietyLabel}>{option.label}</Text>
-                      <Text style={styles.varietyPrice}>
-                        {option.price > 0 ? formatMoney(option.price) : '—'}
-                        {option.available > 0 ? ' · Available' : ' · Out of Stock'}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })
-          )}
-        </Card>
       </ScrollView>
     );
   };
@@ -427,31 +281,22 @@ export default function ProductScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title="Product" subtitle="Shopping" right={<CartButton />} />
       {body()}
-      <View style={styles.footerBar}>
-        {orderable ? (
-          <>
-            <GoldButton
-              label={unitPrice > 0 ? `Place Order · ${formatMoney(unitPrice * quantity)}` : 'Place Order'}
-              icon="checkmark-circle-outline"
-              onPress={() => parkItem('cart')}
-              style={styles.footerButton}
-            />
-            <OutlineButton
-              label={cartCount > 0 ? `Choose More Products · ${cartCount} in cart` : 'Choose More Products'}
-              icon="bag-add-outline"
-              onPress={() => parkItem('shop')}
-              style={styles.footerButton}
-            />
-          </>
-        ) : (
-          <OutlineButton
-            label="Find a Branch"
-            icon="navigate-outline"
-            onPress={() => router.push('/branches')}
+      {data?.is_available && orderable ? (
+        <View style={styles.footerBar}>
+          <GoldButton
+            label={unitPrice > 0 ? `Place Order · ${formatMoney(unitPrice * quantity)}` : 'Place Order'}
+            icon="checkmark-circle-outline"
+            onPress={() => parkItem('cart')}
             style={styles.footerButton}
           />
-        )}
-      </View>
+          <OutlineButton
+            label={cartCount > 0 ? `Choose More Products · ${cartCount} in cart` : 'Choose More Products'}
+            icon="bag-add-outline"
+            onPress={() => parkItem('shop')}
+            style={styles.footerButton}
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -557,11 +402,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: 6,
   },
-  branchHint: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    marginTop: 4,
-  },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -578,10 +418,6 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   varietyChip: {
-    alignItems: 'flex-start',
-    borderRadius: RADIUS.md,
-  },
-  branchChip: {
     alignItems: 'flex-start',
     borderRadius: RADIUS.md,
   },
@@ -641,60 +477,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   pressed: { opacity: 0.8 },
-  branchBlock: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 10,
-    marginTop: 6,
-    gap: 6,
-  },
-  branchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  branchInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  branchName: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  branchPrice: {
-    color: COLORS.gold,
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  stockPill: {
-    backgroundColor: COLORS.goldSoft,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  stockPillText: {
-    color: COLORS.goldBright,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  varietyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-    paddingVertical: 3,
-  },
-  varietyLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    flexShrink: 1,
-  },
-  varietyPrice: {
-    color: COLORS.text,
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
   footerBar: {
     paddingHorizontal: 18,
     paddingTop: 10,

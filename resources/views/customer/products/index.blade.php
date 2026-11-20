@@ -86,7 +86,7 @@
                     <span class="text-gray-600 mx-1">·</span>
                     <span class="text-gold-400 font-semibold">TZS {{ number_format($wcpCart->subtotal()) }}</span>
                 </p>
-                <p class="text-[11px] text-gray-500">From {{ $wcpCart->branchName() }} — keep shopping or check out when ready.</p>
+                <p class="text-[11px] text-gray-500">Keep shopping or check out when ready.</p>
             </div>
         </div>
         <a href="{{ route('customer.orders.create', ['branch_id' => $wcpCart->branchId()]) }}"
@@ -130,18 +130,10 @@
                                     <i class="fas fa-globe mr-2"></i> All Branches
                                 </a>
                                 @foreach($branches as $branch)
-                                    <div class="relative">
-                                        <a href="{{ route('customer.products.index', array_merge(request()->except('branch_id'), ['branch_id' => $branch->id])) }}"
-                                           class="block px-4 py-2.5 pr-12 rounded-lg text-sm transition {{ $selectedBranch && $selectedBranch->id === $branch->id ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
-                                            <i class="fas fa-map-marker-alt mr-2 text-xs"></i> {{ $branch->name }}
-                                        </a>
-                                        @if($branch->latitude && $branch->longitude)
-                                            <a href="{{ route('customer.twende-dukani', $branch->id) }}"
-                                               class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gold-500/10 border border-gold-500/20 text-gold-400 text-[10px] font-bold rounded-md hover:bg-gold-500/20 transition" title="Twende Dukani">
-                                                <i class="fas fa-walking"></i>
-                                            </a>
-                                        @endif
-                                    </div>
+                                    <a href="{{ route('customer.products.index', array_merge(request()->except('branch_id'), ['branch_id' => $branch->id])) }}"
+                                       class="block px-4 py-2.5 rounded-lg text-sm transition {{ $selectedBranch && $selectedBranch->id === $branch->id ? 'bg-gold-500/10 text-gold-400 font-medium' : 'text-gray-400 hover:bg-dark-700 hover:text-white' }}">
+                                        <i class="fas fa-map-marker-alt mr-2 text-xs"></i> {{ $branch->name }}
+                                    </a>
                                 @endforeach
                             </div>
                         </div>
@@ -300,19 +292,14 @@
                             @foreach($products as $stock)
                                 @php
                                     // Sizes the customer can pick on the details page.
-                                    // A product stocked in several volumes has no single
-                                    // price, so the card says so instead of quoting one
-                                    // that may not apply to their choice. Packaging is
-                                    // never offered to a customer — the branch packs it.
-                                    $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
+                                    // Availability is company-wide, so neither the
+                                    // source branch nor how many branches stock it is
+                                    // shown on the card.
+                                    $cardVarieties = $varietiesByProduct[(int) $stock->product_id] ?? [];
                                     $cardOptionCount = count($cardVarieties);
-                                    // This grid mixes branches, and a perfume that is
-                                    // stocked at more than one branch is priced per
-                                    // branch, so it gets no single number either.
-                                    $cardBranchCount = $branchCounts[(int) $stock->product_id] ?? 0;
-                                    $cardDependsOnBranch = $cardBranchCount > 1;
+                                    $cardAvailable = in_array((int) $stock->product_id, $availableProductIds, true);
                                 @endphp
-                                <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $stock->branch_id]) }}"
+                                <a href="{{ route('customer.products.show', ['product' => $stock->product_id]) }}"
                                    class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                     <!-- Product Image -->
                                     <div class="relative aspect-[4/5] sm:aspect-auto sm:h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
@@ -325,8 +312,8 @@
                                                 <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                             </div>
                                         @endif
-                                        <!-- Availability: stock counts stay internal; the shop shows the state. -->
-                                        @if($stock->quantity <= 0)
+                                        <!-- Availability is one company-wide state, never a source or a count. -->
+                                        @if(! $cardAvailable)
                                             <span class="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                                 Out of Stock
                                             </span>
@@ -358,19 +345,11 @@
 
                                         <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                             <div>
-                                                @if($stock->quantity <= 0)
+                                                @if(! $cardAvailable)
                                                     <p class="text-sm font-semibold text-red-400">Out of Stock</p>
-                                                @elseif($cardOptionCount > 0 && $cardDependsOnBranch)
-                                                    {{-- Priced per branch and per size: the
-                                                         details page lists both. --}}
-                                                    <p class="text-sm font-bold text-gold-400">Depends on branch and size</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} · {{ $cardBranchCount }} branches</p>
                                                 @elseif($cardOptionCount > 0)
                                                     <p class="text-sm font-bold text-gold-400">Depends on size</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} available</p>
-                                                @elseif($cardDependsOnBranch)
-                                                    <p class="text-sm font-bold text-gold-400">Depends on branch</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardBranchCount }} branches</p>
+                                                    <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }}</p>
                                                 @else
                                                     <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                                 @endif
@@ -403,14 +382,14 @@
                     <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                         @foreach($products as $stock)
                             @php
-                                // One branch only, so the card can quote that
-                                // branch's price unless the perfume is bottled
-                                // in several sizes there. One option per size —
-                                // the packaging is the branch's to choose.
-                                $cardVarieties = $varietiesByBranch[(int) ($stock->branch_id ?? 0)][(int) $stock->product_id] ?? [];
+                                // Sizes are the only product choice; the
+                                // availability shown below is company-wide and
+                                // never names the branch that supplied it.
+                                $cardVarieties = $varietiesByProduct[(int) $stock->product_id] ?? [];
                                 $cardOptionCount = count($cardVarieties);
+                                $cardAvailable = in_array((int) $stock->product_id, $availableProductIds, true);
                             @endphp
-                            <a href="{{ route('customer.products.show', ['product' => $stock->product_id, 'branch_id' => $selectedBranch->id]) }}"
+                            <a href="{{ route('customer.products.show', ['product' => $stock->product_id]) }}"
                                class="group bg-dark-800/50 border border-dark-600 rounded-2xl overflow-hidden card-hover">
                                 <!-- Product Image -->
                                 <div class="relative aspect-[4/5] sm:aspect-auto sm:h-56 bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center overflow-hidden">
@@ -423,8 +402,8 @@
                                             <p class="text-xs text-gray-600">{{ $stock->product->name }}</p>
                                         </div>
                                     @endif
-                                    <!-- Availability: the sex/category badge owns the top-right corner. -->
-                                    @if($stock->quantity <= 0)
+                                    <!-- Availability is one company-wide state, never a source or a count. -->
+                                    @if(! $cardAvailable)
                                         <span class="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full shadow-lg shadow-red-900/50">
                                             Out of Stock
                                         </span>
@@ -449,11 +428,11 @@
 
                                     <div class="flex items-end justify-between mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-dark-600">
                                         <div>
-                                            @if($stock->quantity <= 0)
+                                            @if(! $cardAvailable)
                                                 <p class="text-sm font-semibold text-red-400">Out of Stock</p>
                                             @elseif($cardOptionCount > 0)
                                                 <p class="text-sm font-bold text-gold-400">Depends on size</p>
-                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }} available</p>
+                                                <p class="text-[10px] text-gray-500 mt-1">{{ $cardOptionCount }} size{{ $cardOptionCount === 1 ? '' : 's' }}</p>
                                             @else
                                                 <p class="text-base sm:text-2xl font-bold text-gold-400">TZS {{ number_format($stock->selling_price) }}</p>
                                             @endif

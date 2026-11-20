@@ -24,7 +24,8 @@ import { COLORS, RADIUS } from '../../lib/theme';
 /**
  * SHOPPING — the mobile shop, wired to the same GET /api/products endpoint
  * the website shop uses (Customer\ProductController@index), so search,
- * category, brand and branch filters behave exactly like the website.
+ * category and brand filters behave exactly like the website. Availability is
+ * company-wide; no branch picker decides where an order goes.
  */
 const SEX_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -70,16 +71,14 @@ function ChipRow({
 
 function ProductCard({
   item,
-  multiBranch,
+  available,
   onPress,
 }: {
   item: StockItem;
-  multiBranch: boolean;
+  available: boolean;
   onPress: () => void;
 }) {
   const image = (item.product.images ?? []).map((img) => img?.image_url).find(Boolean);
-  const outOfStock = (item.quantity ?? 0) <= 0;
-  const price = item.selling_price;
 
   return (
     <Pressable
@@ -96,11 +95,11 @@ function ProductCard({
             <Ionicons name="sparkles-outline" size={26} color={COLORS.textMuted} />
           </View>
         )}
-        {outOfStock ? (
+        {available ? null : (
           <View style={styles.stockBadge}>
             <Text style={styles.stockBadgeText}>Out of Stock</Text>
           </View>
-        ) : null}
+        )}
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>
@@ -111,13 +110,9 @@ function ProductCard({
             {item.product.brand}
           </Text>
         ) : null}
-        {multiBranch ? (
-          <Text style={styles.cardBranches}>Available at multiple branches</Text>
-        ) : price != null && price !== '' ? (
-          <Text style={styles.cardPrice}>{formatMoney(price)}</Text>
-        ) : (
-          <Text style={styles.cardHint}>View for details</Text>
-        )}
+        <Text style={[styles.cardAvailability, available && styles.cardAvailable]}>
+          {available ? 'Available' : 'Currently out of stock'}
+        </Text>
       </View>
     </Pressable>
   );
@@ -127,7 +122,7 @@ export default function ShopScreen() {
   const params = useLocalSearchParams<{ sex_category?: string; brand?: string }>();
   // "Choose More Products" lands here — keep the basket in sight so the
   // customer can check out after browsing another perfume.
-  const { count: cartCount, subtotal: cartSubtotal, branchName: cartBranch } = useCart();
+  const { count: cartCount, subtotal: cartSubtotal } = useCart();
 
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<ProductsPayload | null>(null);
@@ -136,7 +131,6 @@ export default function ShopScreen() {
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [branchId, setBranchId] = useState('all');
   const [sex, setSex] = useState(() => params.sex_category ?? 'all');
   const [brand, setBrand] = useState(() => params.brand ?? 'all');
 
@@ -167,7 +161,6 @@ export default function ShopScreen() {
         const payload = await fetchProducts({
           search: debouncedSearch || undefined,
           sex_category: sex !== 'all' ? sex : undefined,
-          branch_id: branchId !== 'all' ? branchId : undefined,
           brand: brand !== 'all' ? brand : undefined,
         });
         setData(payload);
@@ -179,17 +172,13 @@ export default function ShopScreen() {
         setRefreshing(false);
       }
     },
-    [debouncedSearch, sex, branchId, brand],
+    [debouncedSearch, sex, brand],
   );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const branchOptions = [
-    { value: 'all', label: 'All Branches' },
-    ...(data?.branches ?? []).map((b) => ({ value: String(b.id), label: b.name })),
-  ];
   const brandOptions = [
     { value: 'all', label: 'All Brands' },
     ...(data?.brands ?? []).map((b) => ({ value: b, label: b })),
@@ -213,7 +202,7 @@ export default function ShopScreen() {
               : 'No products are currently available'
           }
           hint={
-            debouncedSearch || sex !== 'all' || brand !== 'all' || branchId !== 'all'
+            debouncedSearch || sex !== 'all' || brand !== 'all'
               ? 'Try a different search or clear some filters.'
               : 'Please check back soon.'
           }
@@ -237,29 +226,21 @@ export default function ShopScreen() {
         <Text style={styles.count}>
           <Text style={styles.countStrong}>{items.length}</Text>{' '}
           {items.length === 1 ? 'product' : 'products'}
-          {data.selected_branch ? ` at ${data.selected_branch.name}` : ''}
         </Text>
         <View style={styles.grid}>
-          {items.map((item, index) => {
-            const count = data.branch_counts[String(item.product_id)] ?? 0;
-            const multiBranch = branchId === 'all' && count > 1;
-            return (
-              <ProductCard
-                key={`${String(item.product_id)}-${String(item.id ?? index)}`}
-                item={item}
-                multiBranch={multiBranch}
-                onPress={() =>
-                  router.push({
-                    pathname: '/product',
-                    params: {
-                      id: String(item.product_id),
-                      ...(branchId !== 'all' ? { branch_id: branchId } : {}),
-                    },
-                  })
-                }
-              />
-            );
-          })}
+          {items.map((item, index) => (
+            <ProductCard
+              key={`${String(item.product_id)}-${String(item.id ?? index)}`}
+              item={item}
+              available={data.available_product_ids.includes(Number(item.product_id))}
+              onPress={() =>
+                router.push({
+                  pathname: '/product',
+                  params: { id: String(item.product_id) },
+                })
+              }
+            />
+          ))}
         </View>
       </ScrollView>
     );
@@ -289,7 +270,6 @@ export default function ShopScreen() {
           ) : null}
         </View>
 
-        <ChipRow options={branchOptions} value={branchId} onChange={setBranchId} />
         <ChipRow options={SEX_OPTIONS} value={sex} onChange={setSex} />
         <ChipRow options={brandOptions} value={brand} onChange={setBrand} />
       </View>
@@ -307,7 +287,7 @@ export default function ShopScreen() {
               {cartCount} {cartCount === 1 ? 'item' : 'items'} · {formatMoney(cartSubtotal)}
             </Text>
             <Text style={styles.cartStripMeta} numberOfLines={1}>
-              {cartBranch ? `From ${cartBranch}` : 'Ready to check out'}
+              Ready to check out
             </Text>
           </View>
           <Text style={styles.cartStripCta}>Checkout</Text>
@@ -475,21 +455,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 11.5,
   },
-  cardPrice: {
-    color: COLORS.gold,
-    fontSize: 14.5,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  cardBranches: {
-    color: COLORS.gold,
+  cardAvailability: {
+    color: COLORS.textMuted,
     fontSize: 11.5,
     fontWeight: '600',
     marginTop: 2,
   },
-  cardHint: {
-    color: COLORS.textMuted,
-    fontSize: 11.5,
-    marginTop: 2,
+  cardAvailable: {
+    color: COLORS.gold,
   },
 });
