@@ -7,7 +7,7 @@ import { Banner } from '../../../components/authkit';
 import { ConfirmDialog, GroupLabel, useAsyncData } from '../../../components/adminkit';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
 import { fetchSmScope, type SmScope } from '../../../lib/smApi';
-import { staffSession } from '../../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../../lib/staffSession';
 
 /**
  * "More" — the mobile counterpart of the website sidebar's rest for Stock
@@ -30,11 +30,14 @@ export default function SmMore() {
 
   const tools: { icon: keyof typeof Ionicons.glyphMap; title: string; hint: string; path: string }[] = [
     { icon: 'receipt-outline', title: 'Sales', hint: 'Your sales record + new sale', path: '/sm/sales' },
-    { icon: 'list-outline', title: 'Orders', hint: 'Pending · Picked · Served', path: '/sm/orders' },
     { icon: 'pricetags-outline', title: 'Products', hint: 'Product catalogue CRUD', path: '/sm/products' },
     { icon: 'time-outline', title: 'Movements', hint: 'Stock movement history', path: '/sm/movements' },
     { icon: 'alert-circle-outline', title: 'Low Stock', hint: 'Products at or below 5', path: '/sm/low-stock' },
   ];
+
+  if (canUseOrderModule()) {
+    tools.splice(1, 0, { icon: 'list-outline', title: 'Orders', hint: 'Pending · Picked · Served', path: '/sm/orders' });
+  }
 
   if (!productsOnly) {
     tools.push(

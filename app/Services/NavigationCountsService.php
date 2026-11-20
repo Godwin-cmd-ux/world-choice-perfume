@@ -94,7 +94,7 @@ class NavigationCountsService
         }
 
         try {
-            return match ($user->role) {
+            $counts = match ($user->role) {
                 'super_admin' => $this->forSuperAdmin($counts),
                 'customer_care' => $this->forCustomerCare($counts, $user),
                 'seller' => $this->forSeller($counts, $user),
@@ -104,6 +104,16 @@ class NavigationCountsService
                 'graphic_designer' => $this->forGraphicDesigner($counts, $user),
                 default => $counts,
             };
+
+            // Orders are a Mikocheni-only module: no order badge outside HQ.
+            if (! \App\Support\BranchAccess::canAccessOrders(
+                $user->branch_id === null ? null : (int) $user->branch_id,
+                (string) $user->role
+            )) {
+                $counts['orders'] = 0;
+            }
+
+            return $counts;
         } catch (Throwable $e) {
             // A badge must never take a page down; the next poll tries again.
             Log::warning('Navigation counts failed: '.$e->getMessage());

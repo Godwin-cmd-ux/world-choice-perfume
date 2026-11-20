@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { BaSidebar } from '../../components/basidebar';
 import { COLORS } from '../../lib/theme';
-import { staffSession } from '../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../lib/staffSession';
 
 /**
  * Root of the Branch Admin module.
@@ -23,6 +23,12 @@ function useBranchAdminGuard() {
     const identity = staffSession.getIdentity();
     if (!identity || identity.role !== 'branch_admin' || !staffSession.getSessionToken()) {
       router.replace('/staff');
+      return;
+    }
+
+    // Orders are a Mikocheni HQ module; a deep link must not bypass the menu.
+    if (pathname.includes('/orders') && !canUseOrderModule(identity)) {
+      router.replace('/ba');
     }
   }, [pathname]);
 }

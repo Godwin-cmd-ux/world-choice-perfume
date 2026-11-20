@@ -8,7 +8,7 @@ import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { cashierMonitor } from '../../../lib/cashierMonitor';
 import { fetchCashierDashboard } from '../../../lib/cashierApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
-import { staffSession } from '../../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../../lib/staffSession';
 import { CASHIER_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 import { cashierMenu } from '../../../components/cashiersidebar';
 
@@ -21,6 +21,7 @@ import { cashierMenu } from '../../../components/cashiersidebar';
  * website's read-only banner and an Exit action.
  */
 export default function CashierDashboard() {
+  const ordersAvailable = canUseOrderModule();
   const monitor = useSyncExternalStore(cashierMonitor.subscribe, cashierMonitor.get, cashierMonitor.get);
 
   const { data, error, loading, sessionExpired, reload } = useAsyncData(
@@ -83,17 +84,21 @@ export default function CashierDashboard() {
           <StatGrid>
             <StatTile label="Today's Sales" value={formatMoney(data.todaySales)} tone="gold" />
             <StatTile label="Transactions" value={data.todayTransactions} tone="info" />
-            <StatTile
-              label="Pending Orders"
-              value={data.pendingOrders}
-              tone={data.pendingOrders > 0 ? 'warning' : 'success'}
-            />
-            <StatTile
-              label="My Orders"
-              value={data.myAssignedOrders}
-              tone={data.myAssignedOrders > 0 ? 'warning' : 'success'}
-              hint="in progress"
-            />
+            {ordersAvailable ? (
+              <>
+                <StatTile
+                  label="Pending Orders"
+                  value={data.pendingOrders}
+                  tone={data.pendingOrders > 0 ? 'warning' : 'success'}
+                />
+                <StatTile
+                  label="My Orders"
+                  value={data.myAssignedOrders}
+                  tone={data.myAssignedOrders > 0 ? 'warning' : 'success'}
+                  hint="in progress"
+                />
+              </>
+            ) : null}
             <StatTile label="Branch Day Sales" value={formatMoney((data.dailySummary.daily_sales as number) ?? 0)} tone="success" />
             <StatTile label="Branch Day Expenses" value={formatMoney((data.dailySummary.daily_expenses as number) ?? 0)} tone="danger" />
           </StatGrid>
@@ -103,7 +108,7 @@ export default function CashierDashboard() {
               <GroupLabel>Quick actions</GroupLabel>
               <View style={styles.quickRow}>
                 <QuickAction icon="cart-outline" label="New Sale" onPress={() => router.push('/cashier/sale-new')} />
-                <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/cashier/(tabs)/orders')} />
+                {ordersAvailable ? <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/cashier/(tabs)/orders')} /> : null}
                 <QuickAction icon="cash-outline" label="Record Expense" onPress={() => router.push('/cashier/expense-new')} />
                 <QuickAction icon="ellipsis-horizontal" label="More" onPress={() => router.push('/cashier/(tabs)/more')} />
               </View>

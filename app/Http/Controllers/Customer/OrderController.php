@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\CustomerOrderCart;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
+use App\Support\BranchAccess;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -29,6 +30,13 @@ class OrderController extends Controller
 
         if (!$branchId) {
             return redirect()->route('customer.products.index')->with('error', 'Please select a branch first.');
+        }
+
+        // Orders are a Mikocheni HQ module: other branches can still browse the
+        // catalogue, but they cannot start an order here.
+        if (!BranchAccess::canAccessOrders($branchId)) {
+            return redirect()->route('customer.products.index', ['branch_id' => $branchId])
+                ->with('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
         }
 
         $branch = $this->supabase->find('branches', $branchId);
@@ -145,6 +153,10 @@ class OrderController extends Controller
 
         if (!$branch) {
             abort(404);
+        }
+
+        if (!BranchAccess::canAccessOrders($branchId)) {
+            return back()->with('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
         }
 
         // The form also carries the lines already in the cart; only the product
@@ -307,6 +319,16 @@ class OrderController extends Controller
             'items.*.volume' => 'nullable|integer',
             'items.*.variant' => 'nullable|string|max:32',
         ]);
+
+        // The website and the public mobile endpoint both land here, so this is
+        // the one place that decides whether an order may be placed at all.
+        if (!BranchAccess::canAccessOrders((int) $validated['branch_id'])) {
+            return $this->orderProblem(
+                $request,
+                'branch_id',
+                'Orders are currently available only at MIKOCHENI BRANCH HQ.'
+            );
+        }
 
         try {
             // 1. Create or find customer. The phone number is the identity,
@@ -544,9 +566,12 @@ class OrderController extends Controller
 
         // Fetch orders for this customer. Oldest first so the list reads
         // as a history rather than jumping around between visits.
+        // Tracking is an HQ-module surface too: only Mikocheni orders are
+        // exposed, even when the same phone placed orders at other branches.
         $rawOrders = $this->supabase->query('orders', [
             'select' => '*, branch:branches(name), items:order_items(*, product:products(name)), notes:order_notes(*)',
             'customer_id' => "eq.{$customer['id']}",
+            'branch_id' => 'eq.'.BranchAccess::HEAD_QUARTERS_ID,
             'order' => 'created_at.asc',
             'limit' => 10,
         ]);

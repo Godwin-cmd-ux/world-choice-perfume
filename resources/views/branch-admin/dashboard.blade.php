@@ -3,6 +3,9 @@
 
 @section('header', 'Branch Dashboard')
 @section('content')
+@php
+    $ordersAvailable = \App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role);
+@endphp
 
 @php
     $daily = $dailySummary ?? [];
@@ -28,14 +31,16 @@
            class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow transition">
             <i class="fas fa-plus"></i> New Sale
         </a>
+        @if($ordersAvailable)
         <a href="{{ route('branch-admin.orders.index', ['tab' => 'pending']) }}"
            class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition">
             <i class="fas fa-clipboard-list"></i> Orders
         </a>
+        @endif
     </div>
 </div>
 
-@if(($pendingOrders ?? 0) > 0)
+@if($ordersAvailable && ($pendingOrders ?? 0) > 0)
     <a href="{{ route('branch-admin.orders.index', ['tab' => 'pending']) }}"
        class="block mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl px-5 py-4 hover:from-amber-100 hover:to-orange-100 transition flex items-center justify-between gap-3 shadow-sm">
         <span class="flex items-center gap-3">
@@ -100,6 +105,7 @@
         <p class="text-xs text-gray-400 mt-1">Paid sales recorded so far</p>
     </div>
 
+    @if($ordersAvailable)
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition duration-200">
         <div class="flex items-start justify-between mb-4">
             <div class="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center">
@@ -113,6 +119,7 @@
         <p class="text-2xl font-bold text-gray-800 mt-0.5">{{ $pendingOrders ?? 0 }}</p>
         <p class="text-xs text-gray-400 mt-1">Waiting to be processed</p>
     </div>
+    @endif
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition duration-200">
         <div class="flex items-start justify-between mb-4">
@@ -195,10 +202,12 @@
     <p class="text-sm text-yellow-800 flex-1 min-w-[200px]">
         <strong>{{ $lowStock }}</strong> product{{ $lowStock === 1 ? ' has' : 's have' }} low stock (5 or fewer units).
     </p>
+    @if($ordersAvailable)
     <a href="{{ route('branch-admin.orders.index') }}"
        class="text-sm font-semibold bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition">
         Review orders
     </a>
+    @endif
 </div>
 @endif
 

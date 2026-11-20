@@ -22,12 +22,14 @@
             <i class="fas fa-receipt w-5 text-center"></i>
             <span>Sales</span>
         </a>
+        @if(\App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role))
         <a href="{{ route('branch-admin.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.orders.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-shopping-bag w-5 text-center"></i>
             <span>Orders</span>
             @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-amber-500'])
         </a>
+        @endif
         <a href="{{ route('branch-admin.staffs.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('branch-admin.staffs.*') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-users w-5 text-center"></i>

@@ -103,7 +103,7 @@ class MobilePlaceOrderApiTest extends TestCase
         $this->app->instance(SupabaseService::class, $supabase);
 
         $response = $this->postJson('/api/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 2]],
@@ -115,7 +115,21 @@ class MobilePlaceOrderApiTest extends TestCase
         $response->assertJsonPath('order.status', 'awaiting_care');
         $response->assertJsonPath('order.total', 100000);
         $this->assertStringStartsWith('ORD-', $response->json('order.order_number'));
-        $this->assertSame(3, (int) $capturedOrder['branch_id']);
+        $this->assertSame(10, (int) $capturedOrder['branch_id']);
         $this->assertSame(55, (int) $capturedOrder['customer_id']);
+    }
+
+    /** Other branches can browse the shop, but cannot place an order. */
+    public function test_a_non_hq_branch_cannot_place_an_order(): void
+    {
+        $response = $this->postJson('/api/orders', [
+            'branch_id' => 3,
+            'customer_name' => 'Amina',
+            'customer_phone' => '0712345678',
+            'items' => [['product_id' => 7, 'quantity' => 2]],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('errors.branch_id.0', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
     }
 }

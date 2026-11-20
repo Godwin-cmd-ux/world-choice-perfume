@@ -29,9 +29,9 @@ class CustomerSizeOrderTest extends TestCase
 {
     /** @var array<int, array<string, mixed>> */
     private const VARIETY_ROWS = [
-        ['id' => 1, 'branch_id' => 3, 'product_id' => 7, 'volume' => 50, 'variant' => 'box_logo_yellow', 'quantity' => 2, 'selling_price' => 45000],
-        ['id' => 2, 'branch_id' => 3, 'product_id' => 7, 'volume' => 50, 'variant' => 'no_box', 'quantity' => 3, 'selling_price' => 45000],
-        ['id' => 3, 'branch_id' => 3, 'product_id' => 7, 'volume' => 30, 'variant' => 'plain', 'quantity' => 4, 'selling_price' => 30000],
+        ['id' => 1, 'branch_id' => 10, 'product_id' => 7, 'volume' => 50, 'variant' => 'box_logo_yellow', 'quantity' => 2, 'selling_price' => 45000],
+        ['id' => 2, 'branch_id' => 10, 'product_id' => 7, 'volume' => 50, 'variant' => 'no_box', 'quantity' => 3, 'selling_price' => 45000],
+        ['id' => 3, 'branch_id' => 10, 'product_id' => 7, 'volume' => 30, 'variant' => 'plain', 'quantity' => 4, 'selling_price' => 30000],
         ['id' => 4, 'branch_id' => 9, 'product_id' => 7, 'volume' => 100, 'variant' => 'box_logo_black', 'quantity' => 1, 'selling_price' => 60000],
     ];
 
@@ -58,12 +58,12 @@ class CustomerSizeOrderTest extends TestCase
         $tables = [
             'products' => [$product],
             'branches' => [
-                ['id' => 3, 'name' => 'Kariakoo', 'address' => 'Kariakoo Market', 'latitude' => -6.8, 'longitude' => 39.2],
-                ['id' => 9, 'name' => 'Mikocheni', 'address' => 'Mikocheni B', 'latitude' => null, 'longitude' => null],
+                ['id' => 10, 'name' => 'Mikocheni HQ', 'address' => 'Mikocheni', 'latitude' => -6.8, 'longitude' => 39.2],
+                ['id' => 9, 'name' => 'Dodoma', 'address' => 'Dodoma', 'latitude' => null, 'longitude' => null],
             ],
             'branch_stock' => [
-                ['id' => 11, 'branch_id' => 3, 'product_id' => 7, 'quantity' => $branchStockQuantity, 'selling_price' => 50000, 'branch' => ['id' => 3, 'name' => 'Kariakoo'], 'product' => $product],
-                ['id' => 12, 'branch_id' => 9, 'product_id' => 7, 'quantity' => 4, 'selling_price' => 47000, 'branch' => ['id' => 9, 'name' => 'Mikocheni'], 'product' => $product],
+                ['id' => 11, 'branch_id' => 10, 'product_id' => 7, 'quantity' => $branchStockQuantity, 'selling_price' => 50000, 'branch' => ['id' => 10, 'name' => 'Mikocheni HQ'], 'product' => $product],
+                ['id' => 12, 'branch_id' => 9, 'product_id' => 7, 'quantity' => 4, 'selling_price' => 47000, 'branch' => ['id' => 9, 'name' => 'Dodoma'], 'product' => $product],
             ],
             'branch_stock_varieties' => self::VARIETY_ROWS,
             'customers' => [],
@@ -133,17 +133,17 @@ class CustomerSizeOrderTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('in_stock_branch_count', 2);
 
-        // Branch 3 bottles it in 30ml and 50ml.
-        $this->assertCount(2, $response->json('varieties.3'));
-        $this->assertSame(30, $response->json('varieties.3.0.volume'));
-        $this->assertSame('30ml', $response->json('varieties.3.0.label'));
-        $this->assertSame(4, $response->json('varieties.3.0.available'));
-        $this->assertSame(30000.0, (float) $response->json('varieties.3.0.price'));
+        // Branch 10 (Mikocheni HQ) bottles it in 30ml and 50ml.
+        $this->assertCount(2, $response->json('varieties.10'));
+        $this->assertSame(30, $response->json('varieties.10.0.volume'));
+        $this->assertSame('30ml', $response->json('varieties.10.0.label'));
+        $this->assertSame(4, $response->json('varieties.10.0.available'));
+        $this->assertSame(30000.0, (float) $response->json('varieties.10.0.price'));
 
-        $this->assertSame(50, $response->json('varieties.3.1.volume'));
+        $this->assertSame(50, $response->json('varieties.10.1.volume'));
         // The whole size is available: 2 "with box + logo" plus 3 "without box".
-        $this->assertSame(5, $response->json('varieties.3.1.available'));
-        $this->assertSame(45000.0, (float) $response->json('varieties.3.1.price'));
+        $this->assertSame(5, $response->json('varieties.10.1.available'));
+        $this->assertSame(45000.0, (float) $response->json('varieties.10.1.price'));
 
         // The second branch's own price and size come through too.
         $this->assertSame(100, $response->json('varieties.9.0.volume'));
@@ -170,7 +170,7 @@ class CustomerSizeOrderTest extends TestCase
     {
         $this->fakeSupabase();
 
-        $response = $this->get('/orders/create?branch_id=3&product_id=7&volume=50');
+        $response = $this->get('/orders/create?branch_id=10&product_id=7&volume=50');
 
         $response->assertOk();
         $response->assertSee('Reef 33');
@@ -202,8 +202,8 @@ class CustomerSizeOrderTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Choose a branch');
-        $response->assertSee('Kariakoo');
-        $response->assertSee('Mikocheni');
+        $response->assertSee('Mikocheni HQ');
+        $response->assertSee('Dodoma');
         // Each option carries that branch's own price and availability — the
         // actual quantities stay internal.
         $response->assertSee('from TZS 30,000');
@@ -227,7 +227,7 @@ class CustomerSizeOrderTest extends TestCase
         $this->fakeSupabase(branchStockQuantity: 5, writes: $writes);
 
         $response = $this->postJson('/api/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 2, 'volume' => 50]],
@@ -252,7 +252,7 @@ class CustomerSizeOrderTest extends TestCase
         $this->fakeSupabase();
 
         $response = $this->postJson('/api/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 1]],
@@ -271,7 +271,7 @@ class CustomerSizeOrderTest extends TestCase
         $this->fakeSupabase(branchStockQuantity: 10);
 
         $tooMany = $this->postJson('/api/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 6, 'volume' => 50]],
@@ -284,7 +284,7 @@ class CustomerSizeOrderTest extends TestCase
         $this->fakeSupabase(branchStockQuantity: 10, writes: $writes);
 
         $fits = $this->postJson('/api/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [['product_id' => 7, 'quantity' => 5, 'volume' => 50]],
@@ -292,5 +292,21 @@ class CustomerSizeOrderTest extends TestCase
 
         $fits->assertStatus(201);
         $this->assertSame(225000.0, (float) $fits->json('order.total'));
+    }
+
+    /** A non-HQ branch can browse this perfume, but cannot place an order. */
+    public function test_an_order_from_a_non_hq_branch_is_refused(): void
+    {
+        $this->fakeSupabase();
+
+        $response = $this->postJson('/api/orders', [
+            'branch_id' => 9,
+            'customer_name' => 'Amina',
+            'customer_phone' => '0712345678',
+            'items' => [['product_id' => 7, 'quantity' => 1, 'volume' => 100]],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('errors.branch_id.0', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
     }
 }

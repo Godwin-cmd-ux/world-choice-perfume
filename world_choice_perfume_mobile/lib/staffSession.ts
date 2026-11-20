@@ -97,3 +97,17 @@ export function roleInfo(role?: string | null): { label: string; path: string } 
   if (role && STAFF_ROLES[role]) return STAFF_ROLES[role];
   return { label: 'Staff', path: '/login' };
 }
+
+/** The Orders module belongs to the Mikocheni Head Quarters branch alone. */
+export const HQ_BRANCH_ID = 10;
+
+/**
+ * UI convenience only — the API re-checks this on every order request.
+ * Super Admin keeps the company-wide view from every role's module.
+ */
+export function canUseOrderModule(
+  identity: StaffIdentity | null = staffSession.getIdentity(),
+): boolean {
+  if (identity?.role === 'super_admin') return true;
+  return Number(identity?.branch?.id) === HQ_BRANCH_ID;
+}

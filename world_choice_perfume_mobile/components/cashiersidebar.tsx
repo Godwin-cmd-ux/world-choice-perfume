@@ -28,7 +28,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fetchCashierScope, type CashierScope } from '../lib/cashierApi';
 import { cashierMonitor } from '../lib/cashierMonitor';
-import { staffSession } from '../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../lib/staffSession';
 import { CASHIER_ACCENT, RADIUS } from '../lib/theme';
 import { useAsyncData } from './adminkit';
 
@@ -192,7 +192,7 @@ export function CashierSidebar() {
             ) : null}
 
             <View style={styles.nav}>
-              {MAIN_ITEMS.map(renderItem)}
+              {(canUseOrderModule() ? MAIN_ITEMS : MAIN_ITEMS.filter((item) => item.href !== '/cashier/orders')).map(renderItem)}
               {isMonitor ? HQ_ITEMS.map(renderItem) : null}
 
               <View style={styles.divider} />

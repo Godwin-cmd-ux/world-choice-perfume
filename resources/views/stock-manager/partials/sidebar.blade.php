@@ -47,12 +47,14 @@
             <span>Sales</span>
         </a>
 
+        @if(\App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role))
         <a href="{{ route('stock-manager.orders.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.orders.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
             <i class="fas fa-clipboard-list w-5 text-center"></i>
             <span>Orders</span>
             @include('partials.nav-badge', ['key' => 'orders', 'class' => 'bg-emerald-500'])
         </a>
+        @endif
 
         <a href="{{ route('stock-manager.products.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 {{ request()->routeIs('stock-manager.products.*') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">

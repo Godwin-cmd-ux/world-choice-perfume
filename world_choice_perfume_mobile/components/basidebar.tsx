@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname, type Href } from 'expo-router';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { staffSession } from '../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../lib/staffSession';
 import { BA_ACCENT, RADIUS } from '../lib/theme';
 
 /* ------------------------------------------------------------------ *
@@ -143,7 +143,7 @@ export function BaSidebar() {
             </View>
 
             <View style={styles.nav}>
-              {MAIN_ITEMS.map(renderItem)}
+              {(canUseOrderModule() ? MAIN_ITEMS : MAIN_ITEMS.filter((item) => item.href !== '/ba/orders')).map(renderItem)}
 
               <View style={styles.divider} />
               <Text style={styles.groupLabel}>Account</Text>

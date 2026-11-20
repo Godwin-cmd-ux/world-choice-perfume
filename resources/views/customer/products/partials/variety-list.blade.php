@@ -10,6 +10,9 @@
       $branchId      the branch these prices belong to
       $fallbackPrice used when a size has no price of its own
       $product       the product being ordered
+
+    The order button is shown only at the Mikocheni HQ branch; other branches
+    still see the sizes and prices, but cannot start an order here.
 --}}
 <div class="space-y-2">
     @foreach($buckets as $bucket)
@@ -29,14 +32,16 @@
             </div>
             <div class="flex items-center gap-3">
                 <p class="text-base font-bold text-gold-400">TZS {{ number_format($bucketPrice) }}</p>
-                <a href="{{ route('customer.orders.create', [
-                    'product_id' => $product->id,
-                    'branch_id' => $branchId,
-                    'volume' => $bucket['volume'],
-                ]) }}"
-                   class="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-xs font-semibold rounded-lg hover:from-gold-400 hover:to-gold-500 transition">
-                    <i class="fas fa-shopping-cart mr-1"></i> Order Now
-                </a>
+                @if(\App\Support\BranchAccess::canAccessOrders((int) $branchId))
+                    <a href="{{ route('customer.orders.create', [
+                        'product_id' => $product->id,
+                        'branch_id' => $branchId,
+                        'volume' => $bucket['volume'],
+                    ]) }}"
+                       class="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-xs font-semibold rounded-lg hover:from-gold-400 hover:to-gold-500 transition">
+                        <i class="fas fa-shopping-cart mr-1"></i> Order Now
+                    </a>
+                @endif
             </div>
         </div>
     @endforeach

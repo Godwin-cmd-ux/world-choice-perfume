@@ -30,9 +30,9 @@ class CustomerOrderCartTest extends TestCase
 {
     /** @var array<int, array<string, mixed>> */
     private const VARIETY_ROWS = [
-        ['id' => 1, 'branch_id' => 3, 'product_id' => 7, 'volume' => 50, 'variant' => 'box_logo_yellow', 'quantity' => 2, 'selling_price' => 45000],
-        ['id' => 2, 'branch_id' => 3, 'product_id' => 7, 'volume' => 50, 'variant' => 'no_box', 'quantity' => 3, 'selling_price' => 45000],
-        ['id' => 3, 'branch_id' => 3, 'product_id' => 7, 'volume' => 30, 'variant' => 'plain', 'quantity' => 4, 'selling_price' => 30000],
+        ['id' => 1, 'branch_id' => 10, 'product_id' => 7, 'volume' => 50, 'variant' => 'box_logo_yellow', 'quantity' => 2, 'selling_price' => 45000],
+        ['id' => 2, 'branch_id' => 10, 'product_id' => 7, 'volume' => 50, 'variant' => 'no_box', 'quantity' => 3, 'selling_price' => 45000],
+        ['id' => 3, 'branch_id' => 10, 'product_id' => 7, 'volume' => 30, 'variant' => 'plain', 'quantity' => 4, 'selling_price' => 30000],
     ];
 
     protected function setUp(): void
@@ -57,12 +57,13 @@ class CustomerOrderCartTest extends TestCase
         $tables = [
             'products' => [$reef, $oud, $unasked],
             'branches' => [
+                ['id' => 10, 'name' => 'Mikocheni HQ', 'address' => 'Mikocheni', 'latitude' => -6.8, 'longitude' => 39.2],
                 ['id' => 3, 'name' => 'Kariakoo', 'address' => 'Kariakoo Market', 'latitude' => -6.8, 'longitude' => 39.2],
             ],
             'branch_stock' => [
-                ['id' => 11, 'branch_id' => 3, 'product_id' => 7, 'quantity' => 5, 'selling_price' => 50000, 'product' => $reef],
-                ['id' => 12, 'branch_id' => 3, 'product_id' => 8, 'quantity' => 4, 'selling_price' => 65000, 'product' => $oud],
-                ['id' => 13, 'branch_id' => 3, 'product_id' => 9, 'quantity' => 4, 'selling_price' => 70000, 'product' => $unasked],
+                ['id' => 11, 'branch_id' => 10, 'product_id' => 7, 'quantity' => 5, 'selling_price' => 50000, 'product' => $reef],
+                ['id' => 12, 'branch_id' => 10, 'product_id' => 8, 'quantity' => 4, 'selling_price' => 65000, 'product' => $oud],
+                ['id' => 13, 'branch_id' => 10, 'product_id' => 9, 'quantity' => 4, 'selling_price' => 70000, 'product' => $unasked],
             ],
             'branch_stock_varieties' => self::VARIETY_ROWS,
             'customers' => [],
@@ -120,7 +121,7 @@ class CustomerOrderCartTest extends TestCase
         $this->fakeSupabase();
 
         $response = $this->post('/orders/cart', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'current_index' => 0,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
@@ -129,7 +130,7 @@ class CustomerOrderCartTest extends TestCase
             ],
         ]);
 
-        $response->assertRedirect(route('customer.products.index', ['branch_id' => 3]));
+        $response->assertRedirect(route('customer.products.index', ['branch_id' => 10]));
         $response->assertSessionHas('success');
 
         $cart = session('customer_order_cart');
@@ -142,12 +143,12 @@ class CustomerOrderCartTest extends TestCase
         $this->assertSame('Amina', session('customer_order_contact.name'));
 
         // The shop now carries the order in progress and its checkout link.
-        $shop = $this->get('/products?branch_id=3');
+        $shop = $this->get('/products?branch_id=10');
 
         $shop->assertOk();
         $shop->assertSee('in your order');
         $shop->assertSee('90,000');
-        $shop->assertSee(route('customer.orders.create', ['branch_id' => 3]), false);
+        $shop->assertSee(route('customer.orders.create', ['branch_id' => 10]), false);
     }
 
     public function test_the_order_page_shows_only_the_picked_perfume_and_the_cart(): void
@@ -156,13 +157,13 @@ class CustomerOrderCartTest extends TestCase
 
         // A first perfume is parked in the cart...
         $this->post('/orders/cart', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'current_index' => 0,
             'items' => [['product_id' => 8, 'quantity' => 1, 'volume' => 0]],
         ])->assertSessionHasNoErrors();
 
         // ...then the customer taps "Order Now" on a second one.
-        $response = $this->get('/orders/create?branch_id=3&product_id=7&volume=50');
+        $response = $this->get('/orders/create?branch_id=10&product_id=7&volume=50');
 
         $response->assertOk();
         $response->assertSee('Reef 33');
@@ -189,14 +190,14 @@ class CustomerOrderCartTest extends TestCase
         $this->fakeSupabase($writes);
 
         $this->post('/orders/cart', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'current_index' => 0,
             'items' => [['product_id' => 8, 'quantity' => 1, 'volume' => 0]],
         ]);
 
         // What the page posts: the cart line, then the product card.
         $response = $this->post('/orders', [
-            'branch_id' => 3,
+            'branch_id' => 10,
             'customer_name' => 'Amina',
             'customer_phone' => '0712345678',
             'items' => [
@@ -214,5 +215,38 @@ class CustomerOrderCartTest extends TestCase
 
         // The order now holds everything, so nothing is left waiting.
         $this->assertArrayNotHasKey('customer_order_cart', session()->all());
+    }
+
+    /** Other branches keep browsing the shop, but cannot start an order. */
+    public function test_a_non_hq_branch_cannot_use_the_order_flow(): void
+    {
+        $writes = [];
+        $this->fakeSupabase($writes);
+
+        $create = $this->get('/orders/create?branch_id=3&product_id=7&volume=50');
+
+        $create->assertRedirect(route('customer.products.index', ['branch_id' => 3]));
+        $create->assertSessionHas('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
+
+        $cart = $this->post('/orders/cart', [
+            'branch_id' => 3,
+            'current_index' => 0,
+            'items' => [['product_id' => 7, 'quantity' => 2, 'volume' => 50]],
+        ]);
+
+        $cart->assertRedirect();
+        $cart->assertSessionHas('error', 'Orders are currently available only at MIKOCHENI BRANCH HQ.');
+        $this->assertEmpty(session('customer_order_cart', []));
+
+        $store = $this->post('/orders', [
+            'branch_id' => 3,
+            'customer_name' => 'Amina',
+            'customer_phone' => '0712345678',
+            'items' => [['product_id' => 7, 'quantity' => 2, 'volume' => 50]],
+        ]);
+
+        $store->assertRedirect();
+        $store->assertSessionHasErrors(['branch_id' => 'Orders are currently available only at MIKOCHENI BRANCH HQ.']);
+        $this->assertArrayNotHasKey('orders', $writes);
     }
 }

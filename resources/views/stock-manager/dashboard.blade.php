@@ -3,7 +3,10 @@
 @section('header', 'Stock Manager Dashboard')
 
 @section('content')
-@if(($pendingOrders ?? 0) > 0 && !($inCrossBranch ?? false))
+@php
+    $ordersAvailable = \App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role);
+@endphp
+@if($ordersAvailable && ($pendingOrders ?? 0) > 0 && !($inCrossBranch ?? false))
     <a href="{{ route('stock-manager.orders.index', ['status' => 'pending']) }}" class="block mb-8 bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 hover:bg-amber-100 transition flex items-center justify-between gap-3">
         <span class="flex items-center gap-3">
             <span class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center"><i class="fas fa-clock"></i></span>
@@ -113,6 +116,7 @@
     </div>
 </div>
 
+@if($ordersAvailable)
 {{-- Orders Summary (sales figures are intentionally not shown here) --}}
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
@@ -138,6 +142,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Bottle Stock Breakdown --}}
 @unless($isProductsOnly ?? false)

@@ -30,7 +30,7 @@ import { router, usePathname, type Href } from 'expo-router';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fetchSmScope, type SmScope } from '../lib/smApi';
-import { staffSession } from '../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../lib/staffSession';
 import { SM_ACCENT, RADIUS } from '../lib/theme';
 import { useAsyncData } from './adminkit';
 
@@ -211,7 +211,7 @@ export function SmSidebar() {
               <View style={styles.group}>
                 <Text style={styles.groupLabel}>Stock Management</Text>
               </View>
-              {STOCK_ITEMS.map(renderItem)}
+              {(canUseOrderModule() ? STOCK_ITEMS : STOCK_ITEMS.filter((item) => item.href !== '/sm/orders')).map(renderItem)}
               {canMonitor ? renderItem(CROSS_BRANCH_ITEM) : null}
               {!productsOnly ? BOTTLE_ITEMS.map(renderItem) : null}
 

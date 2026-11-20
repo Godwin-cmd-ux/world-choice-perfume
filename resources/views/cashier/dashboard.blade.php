@@ -4,7 +4,10 @@
 @section('header', 'Cashier Dashboard')
 @section('content')
 @include('cashier.partials.cross-branch-banner')
-@if(($pendingOrders ?? 0) > 0)
+@php
+    $ordersAvailable = \App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role);
+@endphp
+@if($ordersAvailable && ($pendingOrders ?? 0) > 0)
     <a href="{{ route('cashier.orders.index', ['status' => 'pending']) }}" class="block mb-8 bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 hover:bg-amber-100 transition flex items-center justify-between gap-3">
         <span class="flex items-center gap-3">
             <span class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center"><i class="fas fa-clock"></i></span>
@@ -44,12 +47,14 @@
             <div><p class="text-2xl font-bold">{{ $todayTransactions }}</p><p class="text-sm text-gray-500">Transactions</p></div>
         </div>
     </div>
+    @if($ordersAvailable)
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center"><i class="fas fa-clock text-amber-700 text-xl"></i></div>
             <div><p class="text-2xl font-bold">{{ $myAssignedOrders }}</p><p class="text-sm text-gray-500">My Orders</p></div>
         </div>
     </div>
+    @endif
     @unless($inCrossBranch)
         <div class="bg-white rounded-xl shadow p-6">
             <a href="{{ route('cashier.sales.create') }}" style="background-color: #F89A1E;" class="block w-full h-full  hover:opacity-90 text-white rounded-xl flex items-center justify-center gap-2 font-semibold transition">

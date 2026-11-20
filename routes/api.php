@@ -363,11 +363,13 @@ Route::middleware(EnsureStaffSessionApi::class.':stock_manager')->prefix('sm')->
     Route::post('/sales', [SmSalesController::class, 'store']);
     Route::get('/sales/{sale}', [SmSalesController::class, 'show']);
 
-    // Orders (three tabs: pending queue / picked / served).
-    Route::get('/orders', [SmOrderController::class, 'index']);
-    Route::get('/orders/{order}', [SmOrderController::class, 'show']);
-    Route::post('/orders/{order}/status', [SmOrderController::class, 'updateStatus']);
-    Route::post('/orders/{order}/personal-name', [SmOrderController::class, 'personalName']);
+    // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+    Route::middleware('orders.branch')->group(function () {
+        Route::get('/orders', [SmOrderController::class, 'index']);
+        Route::get('/orders/{order}', [SmOrderController::class, 'show']);
+        Route::post('/orders/{order}/status', [SmOrderController::class, 'updateStatus']);
+        Route::post('/orders/{order}/personal-name', [SmOrderController::class, 'personalName']);
+    });
 
     // Product catalogue management.
     Route::get('/products', [SmProductController::class, 'index']);
@@ -418,12 +420,14 @@ Route::middleware(EnsureStaffSessionApi::class.':customer_care')->prefix('care')
     Route::post('/sales', [CcSalesController::class, 'store']);
     Route::get('/sales/{sale}', [CcSalesController::class, 'show']);
 
-    // Orders (three tabs: pending queue / picked / served).
-    Route::get('/orders', [CcOrderController::class, 'index']);
-    Route::get('/orders/{order}', [CcOrderController::class, 'show']);
-    Route::post('/orders/{order}/decide', [CcOrderController::class, 'decide']);
-    Route::post('/orders/{order}/status', [CcOrderController::class, 'updateStatus']);
-    Route::post('/orders/{order}/personal-name', [CcOrderController::class, 'personalName']);
+    // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+    Route::middleware('orders.branch')->group(function () {
+        Route::get('/orders', [CcOrderController::class, 'index']);
+        Route::get('/orders/{order}', [CcOrderController::class, 'show']);
+        Route::post('/orders/{order}/decide', [CcOrderController::class, 'decide']);
+        Route::post('/orders/{order}/status', [CcOrderController::class, 'updateStatus']);
+        Route::post('/orders/{order}/personal-name', [CcOrderController::class, 'personalName']);
+    });
 
     // Inquiries — Head Quarters-Mikocheni customer care only (assertHq).
     Route::get('/inquiries', [CcInquiryController::class, 'index']);
@@ -486,11 +490,13 @@ Route::middleware(EnsureStaffSessionApi::class.':branch_admin')->prefix('ba')->g
     Route::post('/sales', [BaSalesController::class, 'store']);
     Route::get('/sales/{sale}', [BaSalesController::class, 'show']);
 
-    // Orders (supervisory: the whole branch's queue, read-only visibility).
-    Route::get('/orders', [BaOrderController::class, 'index']);
-    Route::get('/orders/{order}', [BaOrderController::class, 'show']);
-    Route::post('/orders/{order}/status', [BaOrderController::class, 'updateStatus']);
-    Route::post('/orders/{order}/personal-name', [BaOrderController::class, 'personalName']);
+    // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+    Route::middleware('orders.branch')->group(function () {
+        Route::get('/orders', [BaOrderController::class, 'index']);
+        Route::get('/orders/{order}', [BaOrderController::class, 'show']);
+        Route::post('/orders/{order}/status', [BaOrderController::class, 'updateStatus']);
+        Route::post('/orders/{order}/personal-name', [BaOrderController::class, 'personalName']);
+    });
 
     // Expenses (view-only; cashiers commit them).
     Route::get('/expenses', [BaExpenseController::class, 'index']);
@@ -538,11 +544,13 @@ Route::middleware(EnsureStaffSessionApi::class.':seller')->prefix('seller')->gro
     Route::post('/sales', [SeSalesController::class, 'store']);
     Route::get('/sales/{sale}', [SeSalesController::class, 'show']);
 
-    // Orders (isolated queue: shared pending, personal picked/completed).
-    Route::get('/orders', [SeOrderController::class, 'index']);
-    Route::get('/orders/{order}', [SeOrderController::class, 'show']);
-    Route::post('/orders/{order}/status', [SeOrderController::class, 'updateStatus']);
-    Route::post('/orders/{order}/personal-name', [SeOrderController::class, 'personalName']);
+    // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+    Route::middleware('orders.branch')->group(function () {
+        Route::get('/orders', [SeOrderController::class, 'index']);
+        Route::get('/orders/{order}', [SeOrderController::class, 'show']);
+        Route::post('/orders/{order}/status', [SeOrderController::class, 'updateStatus']);
+        Route::post('/orders/{order}/personal-name', [SeOrderController::class, 'personalName']);
+    });
 
     // Shared profile / password (same ProfileController twins as the rest).
     Route::get('/profile', [AdminSettingsController::class, 'profile']);
@@ -587,12 +595,14 @@ Route::middleware(EnsureStaffSessionApi::class.':cashier,super_admin')->prefix('
     Route::get('/expenses', [CaExpenseController::class, 'index']);
     Route::post('/expenses', [CaExpenseController::class, 'store']);
 
-    // Orders (isolated queue; dedicated pick/serve, note required).
-    Route::get('/orders', [CaOrderController::class, 'index']);
-    Route::get('/orders/{order}', [CaOrderController::class, 'show']);
-    Route::post('/orders/{order}/pick', [CaOrderController::class, 'pick']);
-    Route::post('/orders/{order}/serve', [CaOrderController::class, 'serve']);
-    Route::post('/orders/{order}/personal-name', [CaOrderController::class, 'personalName']);
+    // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+    Route::middleware('orders.branch')->group(function () {
+        Route::get('/orders', [CaOrderController::class, 'index']);
+        Route::get('/orders/{order}', [CaOrderController::class, 'show']);
+        Route::post('/orders/{order}/pick', [CaOrderController::class, 'pick']);
+        Route::post('/orders/{order}/serve', [CaOrderController::class, 'serve']);
+        Route::post('/orders/{order}/personal-name', [CaOrderController::class, 'personalName']);
+    });
 
     // HQ-only monitoring (HQ cashier / Super Admin — 403 otherwise).
     Route::get('/cross-branch', [CaCrossBranchController::class, 'crossBranch']);

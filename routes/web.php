@@ -368,11 +368,13 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show');
 
-        // Orders
-        Route::get('/orders', [App\Http\Controllers\BranchAdmin\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/status', [App\Http\Controllers\BranchAdmin\OrderController::class, 'updateStatus'])->name('orders.update-status');
-        Route::post('/orders/{order}/personal-name', [App\Http\Controllers\BranchAdmin\OrderController::class, 'personalName'])->name('orders.personal-name');
+        // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+        Route::middleware('orders.branch')->group(function () {
+            Route::get('/orders', [App\Http\Controllers\BranchAdmin\OrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [App\Http\Controllers\BranchAdmin\OrderController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/status', [App\Http\Controllers\BranchAdmin\OrderController::class, 'updateStatus'])->name('orders.update-status');
+            Route::post('/orders/{order}/personal-name', [App\Http\Controllers\BranchAdmin\OrderController::class, 'personalName'])->name('orders.personal-name');
+        });
 
         // Expenses (view only — cashier commits expenses)
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
@@ -449,12 +451,14 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
             Route::get('/product-performance', [$cashierReports, 'productPerformance'])->name('product-performance');
         });
 
-        // Orders
-        Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [App\Http\Controllers\Cashier\OrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/pick', [App\Http\Controllers\Cashier\OrderController::class, 'pick'])->name('orders.pick');
-        Route::post('/orders/{order}/serve', [App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
-        Route::post('/orders/{order}/personal-name', [App\Http\Controllers\Cashier\OrderController::class, 'personalName'])->name('orders.personal-name');
+        // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+        Route::middleware('orders.branch')->group(function () {
+            Route::get('/orders', [App\Http\Controllers\Cashier\OrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [App\Http\Controllers\Cashier\OrderController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/pick', [App\Http\Controllers\Cashier\OrderController::class, 'pick'])->name('orders.pick');
+            Route::post('/orders/{order}/serve', [App\Http\Controllers\Cashier\OrderController::class, 'serve'])->name('orders.serve');
+            Route::post('/orders/{order}/personal-name', [App\Http\Controllers\Cashier\OrderController::class, 'personalName'])->name('orders.personal-name');
+        });
     });
 
     // ========================
@@ -473,11 +477,13 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [$selSale, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
 
-        // Orders
-        Route::get('/orders', [$selOrder, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [$selOrder, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/status', [$selOrder, 'updateStatus'])->name('orders.update-status');
-        Route::post('/orders/{order}/personal-name', [$selOrder, 'personalName'])->name('orders.personal-name');
+        // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+        Route::middleware('orders.branch')->group(function () use ($selOrder) {
+            Route::get('/orders', [$selOrder, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [$selOrder, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/status', [$selOrder, 'updateStatus'])->name('orders.update-status');
+            Route::post('/orders/{order}/personal-name', [$selOrder, 'personalName'])->name('orders.personal-name');
+        });
     });
 
     // ========================
@@ -510,14 +516,16 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
-        // Orders
-        Route::get('/orders', [App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
-        // Customer care's own decision on a held order: allow it to the branch
-        // (pending) or trash it (failed). Branch staff get no such route.
-        Route::post('/orders/{order}/decide', [App\Http\Controllers\CustomerCare\OrderController::class, 'decide'])->name('orders.decide');
-        Route::post('/orders/{order}/status', [App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
-        Route::post('/orders/{order}/personal-name', [App\Http\Controllers\CustomerCare\OrderController::class, 'personalName'])->name('orders.personal-name');
+        // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
+        Route::middleware('orders.branch')->group(function () {
+            Route::get('/orders', [App\Http\Controllers\CustomerCare\OrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [App\Http\Controllers\CustomerCare\OrderController::class, 'show'])->name('orders.show');
+            // Customer care's own decision on a held order: allow it to the branch
+            // (pending) or trash it (failed). Branch staff get no such route.
+            Route::post('/orders/{order}/decide', [App\Http\Controllers\CustomerCare\OrderController::class, 'decide'])->name('orders.decide');
+            Route::post('/orders/{order}/status', [App\Http\Controllers\CustomerCare\OrderController::class, 'updateStatus'])->name('orders.update-status');
+            Route::post('/orders/{order}/personal-name', [App\Http\Controllers\CustomerCare\OrderController::class, 'personalName'])->name('orders.personal-name');
+        });
 
         // Inquiries — Head Quarters-Mikocheni customer care only
         Route::middleware('customer-care.hq')->group(function () {
@@ -677,12 +685,14 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
 
-        // Orders
+        // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
         $smOrder = App\Http\Controllers\StockManager\OrderController::class;
-        Route::get('/orders', [$smOrder, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [$smOrder, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/status', [$smOrder, 'updateStatus'])->name('orders.update-status');
-        Route::post('/orders/{order}/personal-name', [$smOrder, 'personalName'])->name('orders.personal-name');
+        Route::middleware('orders.branch')->group(function () use ($smOrder) {
+            Route::get('/orders', [$smOrder, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [$smOrder, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/status', [$smOrder, 'updateStatus'])->name('orders.update-status');
+            Route::post('/orders/{order}/personal-name', [$smOrder, 'personalName'])->name('orders.personal-name');
+        });
 
         $pmc = App\Http\Controllers\StockManager\ProductController::class;
         Route::get('/products', [$pmc, 'index'])->name('products.index');

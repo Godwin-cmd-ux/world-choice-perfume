@@ -8,7 +8,7 @@ import { AdminPage, BusyOverlay, DataCard, GroupLabel, StatGrid, StatTile, useAs
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchBaDashboard } from '../../../lib/baApi';
 import { formatMoney } from '../../../lib/format';
-import { staffSession } from '../../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../../lib/staffSession';
 import { BA_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 
 /**
@@ -18,6 +18,7 @@ import { BA_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
  * this admin's own branch, exactly like the Blade page.
  */
 export default function BaDashboard() {
+  const ordersAvailable = canUseOrderModule();
   const { data, error, loading, sessionExpired, reload } = useAsyncData(() => fetchBaDashboard(), []);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -64,11 +65,13 @@ export default function BaDashboard() {
           <StatGrid>
             <StatTile label="Today's Sales" value={formatMoney(data.todaySales)} tone="gold" />
             <StatTile label="Transactions" value={data.todayTransactions} tone="info" />
-            <StatTile
-              label="Pending Orders"
-              value={data.pendingOrders}
-              tone={data.pendingOrders > 0 ? 'warning' : 'success'}
-            />
+            {ordersAvailable ? (
+              <StatTile
+                label="Pending Orders"
+                value={data.pendingOrders}
+                tone={data.pendingOrders > 0 ? 'warning' : 'success'}
+              />
+            ) : null}
             <StatTile label="Low Stock" value={data.lowStock} tone={data.lowStock > 0 ? 'danger' : 'success'} hint="≤ 5 units" />
             <StatTile label="Stock Value" value={formatMoney(data.totalStockValue)} tone="info" />
             <StatTile label="Month Revenue" value={formatMoney(financials.revenue ?? 0)} tone="success" />
@@ -77,7 +80,7 @@ export default function BaDashboard() {
           <GroupLabel right={<Text style={styles.muted}>{formatMoney(financials.expenses ?? 0)} spent</Text>}>Quick actions</GroupLabel>
           <View style={styles.quickRow}>
             <QuickAction icon="cart-outline" label="New Sale" onPress={() => router.push('/ba/sale-new')} />
-            <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/ba/(tabs)/orders')} />
+            {ordersAvailable ? <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/ba/(tabs)/orders')} /> : null}
             <QuickAction icon="people-outline" label="Staffs" onPress={() => router.push('/ba/staff')} />
             <QuickAction icon="cash-outline" label="Expenses" onPress={() => router.push('/ba/expenses')} />
           </View>

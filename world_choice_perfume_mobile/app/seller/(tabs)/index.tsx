@@ -7,7 +7,7 @@ import { AdminPage, BusyOverlay, DataCard, GroupLabel, StatGrid, StatTile, useAs
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchSellerDashboard } from '../../../lib/sellerApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
-import { staffSession } from '../../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../../lib/staffSession';
 import { COLORS, RADIUS, SELLER_ACCENT } from '../../../lib/theme';
 import { sellerMenu } from '../../../components/sellersidebar';
 
@@ -19,6 +19,7 @@ import { sellerMenu } from '../../../components/sellersidebar';
  * signed-in seller.
  */
 export default function SellerDashboard() {
+  const ordersAvailable = canUseOrderModule();
   const { data, error, loading, sessionExpired, reload } = useAsyncData(() => fetchSellerDashboard(), []);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -66,11 +67,13 @@ export default function SellerDashboard() {
             <StatTile label="Today's Sales" value={formatMoney(data.todayTotal)} tone="gold" />
             <StatTile label="Today's Count" value={data.mySales.filter((s) => (s.created_at ?? '').slice(0, 10) === new Date().toISOString().slice(0, 10)).length} tone="info" />
             <StatTile label="My Sales" value={formatMoney(data.totalSales)} tone="success" hint={`${data.totalTransactions} transactions`} />
-            <StatTile
-              label="Pending Orders"
-              value={data.pendingOrders}
-              tone={data.pendingOrders > 0 ? 'warning' : 'success'}
-            />
+            {ordersAvailable ? (
+              <StatTile
+                label="Pending Orders"
+                value={data.pendingOrders}
+                tone={data.pendingOrders > 0 ? 'warning' : 'success'}
+              />
+            ) : null}
             <StatTile label="Products In Stock" value={data.products.length} tone="info" />
             <StatTile label="Branch Day Sales" value={formatMoney((data.dailySummary.daily_sales as number) ?? 0)} tone="gold" />
           </StatGrid>
@@ -78,7 +81,7 @@ export default function SellerDashboard() {
           <GroupLabel>Quick actions</GroupLabel>
           <View style={styles.quickRow}>
             <QuickAction icon="cart-outline" label="New Sale" onPress={() => router.push('/seller/sale-new')} />
-            <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/seller/(tabs)/orders')} />
+            {ordersAvailable ? <QuickAction icon="clipboard-outline" label="Order Queue" onPress={() => router.push('/seller/(tabs)/orders')} /> : null}
             <QuickAction icon="receipt-outline" label="My Sales" onPress={() => router.push('/seller/(tabs)/sales')} />
             <QuickAction icon="person-outline" label="Account" onPress={() => router.push('/seller/(tabs)/account')} />
           </View>

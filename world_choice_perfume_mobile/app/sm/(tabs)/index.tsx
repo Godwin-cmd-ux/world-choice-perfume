@@ -8,6 +8,7 @@ import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchSmDashboard, type SmDashboardPayload } from '../../../lib/smApi';
 import { COLORS, SM_ACCENT, RADIUS } from '../../../lib/theme';
 import { SmMenuButton } from '../../../components/smsidebar';
+import { canUseOrderModule } from '../../../lib/staffSession';
 
 /**
  * Stock Manager dashboard — the mobile twin of stock-manager/dashboard.blade.php:
@@ -18,6 +19,7 @@ import { SmMenuButton } from '../../../components/smsidebar';
  * products-only stock manager sees.
  */
 export default function SmDashboard() {
+  const ordersAvailable = canUseOrderModule();
   // Screens draw edge-to-edge, so the page keeps its own header clear of the status bar.
   const insets = useSafeAreaInsets();
   const { data, error, loading, refreshing, sessionExpired, reload, refresh } = useAsyncData<SmDashboardPayload>(
@@ -83,9 +85,13 @@ export default function SmDashboard() {
           />
           <StatTile label="My Sales Today" value={data.mySalesTodayCount} tone="success" />
           <StatTile label="Sales Value (Today)" value={formatMoney(data.mySalesTodayTotal)} tone="gold" />
-          <StatTile label="Pending Orders" value={data.pendingOrders} tone={data.pendingOrders > 0 ? 'warning' : 'success'} />
-          <StatTile label="Open Orders" value={data.openOrders} />
-          <StatTile label="Orders Today" value={data.ordersToday} tone="info" />
+          {ordersAvailable ? (
+            <>
+              <StatTile label="Pending Orders" value={data.pendingOrders} tone={data.pendingOrders > 0 ? 'warning' : 'success'} />
+              <StatTile label="Open Orders" value={data.openOrders} />
+              <StatTile label="Orders Today" value={data.ordersToday} tone="info" />
+            </>
+          ) : null}
           {!productsOnly ? <StatTile label="Bottles" value={data.totalBottles} /> : null}
           {!productsOnly ? <StatTile label="Oil Fragrances" value={data.totalOilFragrances} /> : null}
         </StatGrid>
@@ -96,7 +102,7 @@ export default function SmDashboard() {
           <QuickLink icon="cube-outline" label="Product Stock" path="/sm/(tabs)/stock" />
           <QuickLink icon="swap-horizontal-outline" label="Transfers" path="/sm/(tabs)/transfers" />
           <QuickLink icon="receipt-outline" label="Sales" path="/sm/sales" />
-          <QuickLink icon="list-outline" label="Orders" path="/sm/orders" />
+          {ordersAvailable ? <QuickLink icon="list-outline" label="Orders" path="/sm/orders" /> : null}
           <QuickLink icon="alert-circle-outline" label="Low Stock" path="/sm/low-stock" />
           <QuickLink icon="time-outline" label="Movements" path="/sm/movements" />
           {!productsOnly ? <QuickLink icon="cube-outline" label="Bottles" path="/sm/bottle-stock" /> : null}

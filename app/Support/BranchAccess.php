@@ -45,6 +45,23 @@ class BranchAccess
         return [self::KINONDONI, self::HEAD_QUARTERS];
     }
 
+    /**
+     * The Orders module belongs to the Mikocheni Head Quarters branch alone.
+     *
+     * Super Admin keeps the company-wide view in every role's module, so it is
+     * exempt. Everyone else — including a brand-new branch — gets orders only
+     * when their own branch is the HQ row (id 10). Keyed on the id, like the
+     * other HQ capabilities, so renaming the branch does not revoke it.
+     */
+    public static function canAccessOrders(?int $branchId, ?string $role = null): bool
+    {
+        if ($role === 'super_admin') {
+            return true;
+        }
+
+        return $branchId !== null && $branchId === self::HEAD_QUARTERS_ID;
+    }
+
     /** The same comparison the scopes use, so a guard cannot disagree with them. */
     public static function normalise(string $name): string
     {

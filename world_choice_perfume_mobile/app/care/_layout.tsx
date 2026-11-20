@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { CareSidebar } from '../../components/caresidebar';
 import { COLORS } from '../../lib/theme';
-import { staffSession } from '../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../lib/staffSession';
 
 /**
  * Root of the Customer Care module.
@@ -23,6 +23,12 @@ function useCustomerCareGuard() {
     const identity = staffSession.getIdentity();
     if (!identity || identity.role !== 'customer_care' || !staffSession.getSessionToken()) {
       router.replace('/staff');
+      return;
+    }
+
+    // Orders are a Mikocheni HQ module; a deep link must not bypass the menu.
+    if ((pathname.includes('/orders') || pathname.includes('order-detail')) && !canUseOrderModule(identity)) {
+      router.replace('/care');
     }
   }, [pathname]);
 }

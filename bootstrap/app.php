@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'cashier-cross-branch.access' => \App\Http\Middleware\EnsureCashierCrossBranchAccess::class,
             'cashier-cross-branch.readonly' => \App\Http\Middleware\EnsureCashierCrossBranchReadOnly::class,
             'customer-care.hq' => \App\Http\Middleware\EnsureHeadQuarterCustomerCare::class,
+            'orders.branch' => \App\Http\Middleware\EnsureOrderModuleAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

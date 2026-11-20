@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SmSidebar } from '../../components/smsidebar';
 import { COLORS } from '../../lib/theme';
-import { staffSession } from '../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../lib/staffSession';
 
 /**
  * Root of the Stock Manager module.
@@ -23,6 +23,12 @@ function useStockManagerGuard() {
     const identity = staffSession.getIdentity();
     if (!identity || identity.role !== 'stock_manager' || !staffSession.getSessionToken()) {
       router.replace('/staff');
+      return;
+    }
+
+    // Orders are a Mikocheni HQ module; a deep link must not bypass the menu.
+    if (pathname.includes('/orders') && !canUseOrderModule(identity)) {
+      router.replace('/sm');
     }
   }, [pathname]);
 }

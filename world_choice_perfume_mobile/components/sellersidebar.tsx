@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname, type Href } from 'expo-router';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { staffSession } from '../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../lib/staffSession';
 import { RADIUS, SELLER_ACCENT } from '../lib/theme';
 
 /* ------------------------------------------------------------------ *
@@ -140,7 +140,7 @@ export function SellerSidebar() {
             </View>
 
             <View style={styles.nav}>
-              {MAIN_ITEMS.map(renderItem)}
+              {(canUseOrderModule() ? MAIN_ITEMS : MAIN_ITEMS.filter((item) => item.href !== '/seller/orders')).map(renderItem)}
 
               <View style={styles.divider} />
               <Text style={styles.groupLabel}>Account</Text>

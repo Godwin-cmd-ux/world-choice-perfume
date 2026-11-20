@@ -1,10 +1,13 @@
 @extends('layouts.app')
+@php
+    $ordersAvailable = \App\Support\BranchAccess::canAccessOrders(auth()->user()->branch_id, auth()->user()->role);
+@endphp
 @section('title', 'Customer Care Dashboard')
 @section('header', 'Customer Care Dashboard')
-@section('subtitle', 'Sales • Orders • Clients'.($isHq ? ' • Inquiries • Mails' : ''))
+@section('subtitle', 'Sales'.($ordersAvailable ? ' • Orders' : '').' • Clients'.($isHq ? ' • Inquiries • Mails' : ''))
 @section('content')
 
-@if(($pendingOrders ?? 0) > 0)
+@if($ordersAvailable && ($pendingOrders ?? 0) > 0)
     <a href="{{ route('customer-care.orders.index', ['status' => 'pending']) }}" class="block mb-8 bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 hover:bg-amber-100 transition flex items-center justify-between gap-3">
         <span class="flex items-center gap-3">
             <span class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center"><i class="fas fa-clock"></i></span>
@@ -37,6 +40,7 @@
         </div>
     </div>
 
+    @if($ordersAvailable)
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -54,6 +58,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <div class="bg-white rounded-xl shadow p-6">
         <div class="flex items-center justify-between">
@@ -210,6 +215,7 @@
         </div>
     </div>
 
+    @if($ordersAvailable)
     {{-- Orders panel --}}
     <div class="bg-white rounded-xl shadow overflow-hidden">
         <div class="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-3">
@@ -259,6 +265,7 @@
             </table>
         </div>
     </div>
+    @endif
 
     {{-- Clients panel --}}
     <div class="bg-white rounded-xl shadow overflow-hidden">

@@ -114,10 +114,12 @@
                                     @else
                                         <div class="flex flex-wrap items-center justify-between gap-3">
                                             <p class="text-lg font-bold text-gold-400">TZS {{ number_format($bs->selling_price) }}</p>
-                                            <a href="{{ route('customer.orders.create', ['product_id' => $product->id, 'branch_id' => $bs->branch_id]) }}"
-                                               class="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-xs font-semibold rounded-lg hover:from-gold-400 hover:to-gold-500 transition">
-                                                <i class="fas fa-shopping-cart mr-1"></i> Order Now
-                                            </a>
+                                            @if(\App\Support\BranchAccess::canAccessOrders((int) $bs->branch_id))
+                                                <a href="{{ route('customer.orders.create', ['product_id' => $product->id, 'branch_id' => $bs->branch_id]) }}"
+                                                   class="px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 text-xs font-semibold rounded-lg hover:from-gold-400 hover:to-gold-500 transition">
+                                                    <i class="fas fa-shopping-cart mr-1"></i> Order Now
+                                                </a>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
@@ -143,10 +145,12 @@
                             <div class="flex flex-wrap items-end justify-between gap-4">
                                 <p class="font-display text-4xl font-bold text-gold-400 mt-1">TZS {{ number_format($price) }}</p>
                                 <div class="flex flex-col gap-2 sm:flex-row">
-                                    <a href="{{ route('customer.orders.create', ['product_id' => $product->id, 'branch_id' => $selectedBranch->id]) }}"
-                                       class="px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition-all duration-300 shadow-lg shadow-gold-500/25 text-center">
-                                        <i class="fas fa-shopping-cart mr-2"></i> Order Now
-                                    </a>
+                                    @if(\App\Support\BranchAccess::canAccessOrders((int) $selectedBranch->id))
+                                        <a href="{{ route('customer.orders.create', ['product_id' => $product->id, 'branch_id' => $selectedBranch->id]) }}"
+                                           class="px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-dark-900 font-semibold rounded-xl hover:from-gold-400 hover:to-gold-500 transition-all duration-300 shadow-lg shadow-gold-500/25 text-center">
+                                            <i class="fas fa-shopping-cart mr-2"></i> Order Now
+                                        </a>
+                                    @endif
                                     @if($selectedBranch->latitude && $selectedBranch->longitude)
                                         <a href="{{ route('customer.twende-dukani', $selectedBranch->id) }}"
                                            class="px-8 py-3 bg-dark-800 border border-gold-500/30 text-gold-400 font-semibold rounded-xl hover:bg-dark-700 transition text-center text-sm">

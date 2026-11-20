@@ -19,7 +19,7 @@ import { router, usePathname, type Href } from 'expo-router';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fetchCcScope } from '../lib/careApi';
-import { staffSession } from '../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../lib/staffSession';
 import { CC_ACCENT, RADIUS } from '../lib/theme';
 import { useAsyncData } from './adminkit';
 
@@ -152,7 +152,7 @@ export function CareSidebar() {
             </View>
 
             <View style={styles.nav}>
-              {MAIN_ITEMS.map(renderItem)}
+              {(canUseOrderModule() ? MAIN_ITEMS : MAIN_ITEMS.filter((item) => item.href !== '/care/orders')).map(renderItem)}
 
               {isHq ? (
                 <View style={styles.hqGroup}>

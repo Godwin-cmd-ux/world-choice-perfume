@@ -8,7 +8,7 @@ import { careMenu } from '../../../components/caresidebar';
 import { EmptyView, ErrorView, LoadingView } from '../../../components/ui';
 import { fetchCcDashboard, type CcSale } from '../../../lib/careApi';
 import { formatDateTime, formatMoney } from '../../../lib/format';
-import { staffSession } from '../../../lib/staffSession';
+import { canUseOrderModule, staffSession } from '../../../lib/staffSession';
 import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
 
 /**
@@ -20,6 +20,7 @@ import { CC_ACCENT, COLORS, RADIUS } from '../../../lib/theme';
  * mails. Quick actions stay because a phone has no sidebar to jump from.
  */
 export default function CareDashboard() {
+  const ordersAvailable = canUseOrderModule();
   const { data, error, loading, sessionExpired, reload } = useAsyncData(() => fetchCcDashboard(), []);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -91,7 +92,7 @@ export default function CareDashboard() {
         <ErrorView message={error} onRetry={reload} />
       ) : data ? (
         <>
-          {data.pendingOrders > 0 ? (
+          {ordersAvailable && data.pendingOrders > 0 ? (
             <Pressable
               onPress={() => router.push('/care/(tabs)/orders')}
               style={({ pressed }) => [styles.pending, pressed && { opacity: 0.75 }]}
@@ -113,8 +114,12 @@ export default function CareDashboard() {
           <StatGrid>
             <StatTile label="Today's Revenue" value={formatMoney(data.todayRevenue)} tone="gold" />
             <StatTile label="Total Sales" value={data.totalSalesCount} hint={formatMoney(data.totalRevenue)} tone="success" />
-            <StatTile label="Total Orders" value={orders.length} hint={formatMoney(data.ordersTotal)} tone="info" />
-            <StatTile label="Pending Orders" value={data.pendingOrders} tone={data.pendingOrders > 0 ? 'warning' : 'info'} />
+            {ordersAvailable ? (
+              <>
+                <StatTile label="Total Orders" value={orders.length} hint={formatMoney(data.ordersTotal)} tone="info" />
+                <StatTile label="Pending Orders" value={data.pendingOrders} tone={data.pendingOrders > 0 ? 'warning' : 'info'} />
+              </>
+            ) : null}
             <StatTile label="Total Clients" value={data.clientsTotal} hint={`${data.clientsWithPhone} with phone`} tone="info" />
             {isHq ? (
               <>
@@ -138,7 +143,7 @@ export default function CareDashboard() {
           <View style={styles.quickRow}>
             <QuickAction icon="cart-outline" label="New Sale" onPress={() => router.push('/care/sale-new')} />
             <QuickAction icon="person-add-outline" label="New Client" onPress={() => router.push('/care/customer-new')} />
-            <QuickAction icon="swap-horizontal-outline" label="Orders" onPress={() => router.push('/care/(tabs)/orders')} />
+            {ordersAvailable ? <QuickAction icon="swap-horizontal-outline" label="Orders" onPress={() => router.push('/care/(tabs)/orders')} /> : null}
             {isHq ? (
               <QuickAction icon="mail-outline" label="info@ Mail" onPress={() => router.push('/care/mails')} />
             ) : null}
@@ -171,29 +176,33 @@ export default function CareDashboard() {
             })
           )}
 
-          <GroupLabel right={<Text style={styles.muted}>{formatMoney(data.ordersTotal)}</Text>}>Orders</GroupLabel>
-          {orders.length === 0 ? (
-            <DataCard title="No orders yet" subtitle="Customer orders land here" />
-          ) : (
-            orders.slice(0, 5).map((o) => {
-              const id = String(o.id ?? '');
-              const status = String(o.status ?? 'pending');
-              return (
-                <DataCard
-                  key={id}
-                  title={String(o.order_number ?? `Order #${id}`)}
-                  subtitle={String((o.customer as { name?: string } | undefined)?.name ?? '—')}
-                  badge={status}
-                  badgeTone={statusTone(status)}
-                  lines={[
-                    `${formatMoney(Number(o.total ?? 0))} · ${itemsLabel(o.items)}`,
-                    formatDateTime(o.created_at as string | null),
-                  ]}
-                  onPress={() => router.push({ pathname: '/care/order-detail', params: { id } })}
-                />
-              );
-            })
-          )}
+          {ordersAvailable ? (
+            <>
+              <GroupLabel right={<Text style={styles.muted}>{formatMoney(data.ordersTotal)}</Text>}>Orders</GroupLabel>
+              {orders.length === 0 ? (
+                <DataCard title="No orders yet" subtitle="Customer orders land here" />
+              ) : (
+                orders.slice(0, 5).map((o) => {
+                  const id = String(o.id ?? '');
+                  const status = String(o.status ?? 'pending');
+                  return (
+                    <DataCard
+                      key={id}
+                      title={String(o.order_number ?? `Order #${id}`)}
+                      subtitle={String((o.customer as { name?: string } | undefined)?.name ?? '—')}
+                      badge={status}
+                      badgeTone={statusTone(status)}
+                      lines={[
+                        `${formatMoney(Number(o.total ?? 0))} · ${itemsLabel(o.items)}`,
+                        formatDateTime(o.created_at as string | null),
+                      ]}
+                      onPress={() => router.push({ pathname: '/care/order-detail', params: { id } })}
+                    />
+                  );
+                })
+              )}
+            </>
+          ) : null}
 
           <GroupLabel right={<Text style={styles.muted}>{data.clientsWithPhone} with phone</Text>}>Clients</GroupLabel>
           {clients.length === 0 ? (
