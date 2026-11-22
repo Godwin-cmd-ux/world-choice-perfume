@@ -5,7 +5,7 @@
 @section('content')
 <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <form method="POST" action="{{ route('stock-manager.products.store') }}" enctype="multipart/form-data">
+        <form id="product-create-form" method="POST" action="{{ route('stock-manager.products.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="space-y-4">
@@ -95,12 +95,24 @@
             <div class="flex gap-3 mt-6">
                 <a href="{{ route('stock-manager.products.index') }}"
                     class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 text-sm font-medium">Cancel</a>
-                <button type="submit"
-                    class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium">
+                <button id="create-product-button" type="submit"
+                    class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed">
                     <i class="fas fa-save mr-1"></i> Create Product
                 </button>
             </div>
         </form>
     </div>
 </div>
+@push('scripts')
+<script>
+    // One click, one product. A second click while Cloudinary uploads and the
+    // POST is in flight would otherwise create the same product again.
+    document.getElementById('product-create-form')?.addEventListener('submit', function () {
+        const button = document.getElementById('create-product-button');
+        if (!button || button.disabled) return;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...';
+    });
+</script>
+@endpush
 @endsection

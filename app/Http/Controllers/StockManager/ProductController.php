@@ -4,7 +4,6 @@ namespace App\Http\Controllers\StockManager;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\ProductImage;
 use App\Services\AuditService;
 use App\Services\CloudinaryService;
 use App\Services\SupabaseService;
@@ -96,7 +95,9 @@ class ProductController extends Controller
 
         $category = $validated['category'];
 
-        // Create product in Supabase
+        // SupabaseService writes to the same products table in both modes.
+        // There is no second Eloquent copy to keep in sync: the old mirror here
+        // created a second, visible product row on the live site.
         $product = $this->supabase->insert('products', [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -108,18 +109,6 @@ class ProductController extends Controller
             'created_at' => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
         ]);
-
-        // Eloquent mirror — only needed when the row above went to Supabase.
-        // In local mode that insert already wrote to the table Product reads,
-        // so mirroring it here would store the product twice.
-        $localProduct = $this->supabase->isRemote() ? Product::create([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'brand' => $validated['brand'] ?? null,
-            'category' => $category,
-            'sex_category' => $validated['sex_category'] ?? null,
-            'fundamental_ingredient' => $validated['fundamental_ingredient'] ?? null,
-        ]) : null;
 
         // Upload images to Cloudinary
         if ($request->hasFile('images')) {
@@ -134,14 +123,6 @@ class ProductController extends Controller
                         'created_at' => now()->toIso8601String(),
                         'updated_at' => now()->toIso8601String(),
                     ]);
-                    // Also in SQLite
-                    if ($localProduct) {
-                        ProductImage::create([
-                            'product_id' => $localProduct->id,
-                            'image_url' => $url,
-                            'sort_order' => $index,
-                        ]);
-                    }
                 }
             }
         }
