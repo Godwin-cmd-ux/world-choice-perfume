@@ -174,9 +174,11 @@ class StockManagerDashboardTest extends TestCase
         $response->assertOk();
 
         // The category has to be preselected as well, or the product list is
-        // filtered down to nothing and the choice is lost.
+        // filtered down to nothing and the choice is lost. The product picker
+        // is now a hidden id plus a searchable text box, not a plain <select>.
         $response->assertSee('<option value="Brand Perfume" selected>', false);
-        $response->assertSee('<option value="1" data-category="Brand Perfume" selected>', false);
+        $response->assertSee('<input type="hidden" name="product_id" id="product_id" value="1">', false);
+        $response->assertSee('id="product_search" value="Reef 33 — Reef"', false);
     }
 
     public function test_the_dashboard_sales_card_counts_only_this_managers_own_sales(): void
