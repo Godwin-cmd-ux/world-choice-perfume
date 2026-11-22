@@ -20,6 +20,7 @@ class NavigationCountsRouteTest extends TestCase
         $this->assertSame(['transfers'], $counts->keysForRoute('stock-manager.stock-transfers.incoming'));
         $this->assertSame(['returns'], $counts->keysForRoute('stock-manager.stock-transfers.returns'));
         $this->assertSame(['returns'], $counts->keysForRoute('stock-manager.returned-stock.index'));
+        $this->assertSame(['notifications'], $counts->keysForRoute('stock-manager.notifications.index'));
         $this->assertSame(['news'], $counts->keysForRoute('graphic-designer.news.index'));
         $this->assertSame([], $counts->keysForRoute('customer-care.customers.index'));
         $this->assertSame([], $counts->keysForRoute('customer-care.customers.loyal'));
@@ -37,6 +38,11 @@ class NavigationCountsRouteTest extends TestCase
         $this->assertSame(
             ['orders', 'inquiries', 'mails', 'news', 'sales'],
             $counts->keysForRoute('customer-care.dashboard')
+        );
+
+        $this->assertSame(
+            ['orders', 'sales', 'transfers', 'returns', 'notifications'],
+            $counts->keysForRoute('stock-manager.dashboard')
         );
 
         $this->assertSame(['sales'], $counts->keysForRoute('super-admin.daily-sales'));

@@ -42,7 +42,7 @@ class NavigationCountsService
         'cashier.dashboard' => ['orders', 'sales', 'expenses'],
         'cashier.daily-sales-overview' => ['sales'],
         'branch-admin.dashboard' => ['orders', 'sales', 'staff', 'expenses'],
-        'stock-manager.dashboard' => ['orders', 'sales', 'transfers', 'returns'],
+        'stock-manager.dashboard' => ['orders', 'sales', 'transfers', 'returns', 'notifications'],
         'stock-manager.stock-transfers.returns' => ['returns'],
         'graphic-designer.dashboard' => ['news'],
     ];
@@ -70,6 +70,7 @@ class NavigationCountsService
         'branch-admin.expenses.' => ['expenses'],
         'stock-manager.orders.' => ['orders'],
         'stock-manager.sales.' => ['sales'],
+        'stock-manager.notifications.' => ['notifications'],
         'stock-manager.stock-transfers.' => ['transfers'],
         'stock-manager.returned-stock.' => ['returns'],
         'graphic-designer.news.' => ['news'],
@@ -284,6 +285,10 @@ class NavigationCountsService
         $branchId = $this->stockBranchId($user);
         $scope = new StockManagerScope($this->supabase);
 
+        // Stock alerts are generated for the stock manager's badge as well as
+        // the Super Admin feed, scoped to the branch this manager is viewing.
+        (new StockNotificationService($this->supabase))->sync();
+
         $counts['orders'] = $this->count('orders', [
             'branch_id' => 'eq.'.$branchId,
             'status' => 'eq.pending',
@@ -310,6 +315,13 @@ class NavigationCountsService
         if ($scope->isKinondoniStockManager()) {
             $counts['returns'] = $this->pendingDamageReports($branchId);
         }
+
+        // Only this branch's unread stock alerts count down the bell badge.
+        $counts['notifications'] = $this->count('admin_notifications', [
+            'type' => 'eq.' . StockNotificationService::TYPE,
+            'branch_id' => 'eq.' . $branchId,
+            'is_read' => 'eq.false',
+        ]);
 
         return $counts;
     }

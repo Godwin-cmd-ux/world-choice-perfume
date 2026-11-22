@@ -17,6 +17,7 @@ use App\Http\Controllers\GraphicDesigner\BrandsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Seller\SellerController;
 use App\Http\Controllers\StockManager\BottleAccessoriesController;
+use App\Http\Controllers\StockManager\NotificationController as StockManagerNotificationController;
 use App\Http\Controllers\StockManager\StockManagerController;
 use App\Http\Controllers\StockManager\StockTransferController;
 use App\Http\Controllers\SuperAdmin\BackupController;
@@ -610,6 +611,12 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         });
 
         Route::get('/dashboard', [$smc, 'dashboard'])->name('dashboard');
+
+        // Notifications — stock alerts for the manager's current branch.
+        $smn = StockManagerNotificationController::class;
+        Route::get('/notifications', [$smn, 'index'])->name('notifications.index');
+        Route::post('/notifications/mark-all-read', [$smn, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::post('/notifications/{notification}/mark-read', [$smn, 'markRead'])->name('notifications.mark-read');
 
         // Product Stock
         Route::get('/product-stock', [$smc, 'productStock'])->name('product-stock');
