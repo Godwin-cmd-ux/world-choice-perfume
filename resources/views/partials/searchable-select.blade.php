@@ -1,6 +1,7 @@
 {{-- Searchable dropdown select component --}}
 @php
     $selectedValue = $selected ?? old($name, '');
+    $isRequired = $required ?? true;
     $selectedLabel = '';
     if ($selectedValue !== '') {
         foreach ($options as $opt) {
@@ -13,7 +14,7 @@
 @endphp
 
 <div class="relative" data-searchable-select>
-    <input type="hidden" name="{{ $name }}" value="{{ $selectedValue }}" data-ss-hidden required>
+    <input type="hidden" name="{{ $name }}" value="{{ $selectedValue }}" data-ss-hidden {{ $isRequired ? 'required' : '' }}>
 
     <button type="button" data-ss-trigger
         class="w-full flex items-center justify-between gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-left focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 {{ $selectedLabel ? 'text-gray-800' : 'text-gray-400' }}">
@@ -105,10 +106,12 @@
         var search = e.target.closest('[data-ss-search]');
         if (!search) return;
         var box = search.closest('[data-searchable-select]');
-        var q = search.value.toLowerCase().trim();
+        // Split on whitespace so typing "ocean blue" still finds "Blue Ocean".
+        var terms = search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
         box.querySelectorAll('[data-ss-option]').forEach(function (o) {
             var hay = o.getAttribute('data-ss-search') || '';
-            o.style.display = (!q || hay.indexOf(q) !== -1) ? '' : 'none';
+            var matches = terms.every(function (term) { return hay.indexOf(term) !== -1; });
+            o.style.display = matches ? '' : 'none';
         });
     });
 

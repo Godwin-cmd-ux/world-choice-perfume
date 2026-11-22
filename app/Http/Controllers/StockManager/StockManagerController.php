@@ -42,6 +42,64 @@ class StockManagerController extends Controller
     }
 
     /**
+     * Mirror a manual product quantity correction on the bottle stock that
+     * product was bottled from.
+     *
+     * $delta is the change in the PRODUCT quantity: positive means more
+     * bottles are consumed, negative means bottles are returned to the exact
+     * volume/variant bucket they came from.
+     */
+    private function adjustBottleStockForVariety(
+        int $branchId,
+        int $volume,
+        string $variant,
+        int $delta,
+        string $productLabel
+    ): void {
+        if ($delta === 0 || $volume <= 0 || $variant === '') {
+            return;
+        }
+
+        $sourceBranchId = $this->bottleSourceBranchId($branchId);
+        $actor = (string) $this->performingUserId();
+
+        if ($delta > 0) {
+            $this->bottles->deduct(
+                $sourceBranchId,
+                $volume,
+                $delta,
+                "Manual stock increase for {$productLabel}",
+                $actor,
+                $variant
+            );
+
+            return;
+        }
+
+        $this->bottles->restock(
+            $sourceBranchId,
+            $volume,
+            -$delta,
+            "Manual stock reduction for {$productLabel}",
+            $actor,
+            $variant
+        );
+    }
+
+    /**
+     * Bottles must be available before a manual increase is written, just as
+     * they are for a normal oil-fragrance stock entry.
+     */
+    private function hasBottlesForVariety(int $branchId, int $volume, string $variant, int $quantity): bool
+    {
+        return $this->bottles->availableVariantQuantity(
+            $this->bottleSourceBranchId($branchId),
+            $volume,
+            $variant
+        ) >= $quantity;
+    }
+
+    /**
      * The id a sale carries as cashier_id when this user commits it.
      *
      * Sales are stamped with the Supabase id, falling back to the local one,
@@ -773,17 +831,13 @@ class StockManagerController extends Controller
         $oldPrice = $stock['selling_price'] ?? 0;
         $newPrice = $validated['selling_price'];
 
-        $this->supabase->update('branch_stock', [
-            'quantity' => $newQty,
-            'buying_cost' => $newCost,
-            'selling_price' => $newPrice,
-            'updated_at' => now()->toIso8601String(),
-        ], ['id' => $stockId]);
+        // Plan the variety and bottle changes before writing anything. An
+        // increase must have enough empty bottles, exactly like a normal oil
+        // fragrance stock entry, otherwise the whole edit is rejected.
+        $product = null;
+        $varietyService = null;
+        $bucketAdjustments = [];
 
-        // Keep the per-product variety breakdown in sync with the manual
-        // quantity change, so "Reef 33 — 30ml box-logo-yellow" counts stay
-        // consistent with the product's total. The difference is applied to
-        // the largest buckets (the manager did not state a variety here).
         if ($newQty != $oldQty) {
             $product = $this->supabase->findOne('products', ['id' => $stock['product_id']]);
             if (($product['category'] ?? '') === 'Oil Fragrance') {
@@ -796,6 +850,7 @@ class StockManagerController extends Controller
                         break;
                     }
                 }
+
                 if ($hasRecords) {
                     $delta = $newQty - $oldQty;
                     // Flatten to [volume => variant => qty], largest first.
@@ -808,10 +863,28 @@ class StockManagerController extends Controller
                         }
                     }
                     usort($flat, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+
                     if ($delta > 0) {
                         // Increase: add the whole difference to the largest bucket.
                         if (!empty($flat)) {
-                            $varietyService->adjust($branchId, (int) $stock['product_id'], (int) $flat[0]['volume'], (string) $flat[0]['variant'], $delta);
+                            $bucket = $flat[0];
+                            if (!$this->hasBottlesForVariety($branchId, (int) $bucket['volume'], (string) $bucket['variant'], $delta)) {
+                                $available = $this->bottles->availableVariantQuantity(
+                                    $this->bottleSourceBranchId($branchId),
+                                    (int) $bucket['volume'],
+                                    (string) $bucket['variant']
+                                );
+
+                                return back()->withErrors([
+                                    'quantity' => "Insufficient bottle stock for {$bucket['volume']}ml ("
+                                        . $this->bottles->variantLabel((string) $bucket['variant'], (int) $bucket['volume']) . "). Available: {$available}.",
+                                ])->withInput();
+                            }
+                            $bucketAdjustments[] = [
+                                'volume' => (int) $bucket['volume'],
+                                'variant' => (string) $bucket['variant'],
+                                'delta' => $delta,
+                            ];
                         }
                     } else {
                         // Decrease: reduce largest buckets first until consumed.
@@ -821,11 +894,44 @@ class StockManagerController extends Controller
                                 break;
                             }
                             $take = min((int) $bucket['qty'], $remaining);
-                            $varietyService->adjust($branchId, (int) $stock['product_id'], (int) $bucket['volume'], (string) $bucket['variant'], -$take);
+                            $bucketAdjustments[] = [
+                                'volume' => (int) $bucket['volume'],
+                                'variant' => (string) $bucket['variant'],
+                                'delta' => -$take,
+                            ];
                             $remaining -= $take;
                         }
                     }
                 }
+            }
+        }
+
+        $this->supabase->update('branch_stock', [
+            'quantity' => $newQty,
+            'buying_cost' => $newCost,
+            'selling_price' => $newPrice,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $stockId]);
+
+        // Keep the per-product variety breakdown AND the bottles that product
+        // was bottled from in sync with the manual quantity change.
+        if (!empty($bucketAdjustments)) {
+            $productLabel = (string) ($product['name'] ?? ('Product #' . $stock['product_id']));
+            foreach ($bucketAdjustments as $adjustment) {
+                $varietyService->adjust(
+                    $branchId,
+                    (int) $stock['product_id'],
+                    $adjustment['volume'],
+                    $adjustment['variant'],
+                    $adjustment['delta']
+                );
+                $this->adjustBottleStockForVariety(
+                    $branchId,
+                    $adjustment['volume'],
+                    $adjustment['variant'],
+                    $adjustment['delta'],
+                    $productLabel
+                );
             }
         }
 
@@ -908,9 +1014,40 @@ class StockManagerController extends Controller
         $newCost = (float) $validated['unit_cost'];
         $productId = (int) $bucket['product_id'];
         $label = $varietyService->pickLabel((int) $bucket['volume'], (string) $bucket['variant']);
+        $volume = (int) $bucket['volume'];
+        $variant = (string) $bucket['variant'];
+        $product = $this->supabase->findOne('products', ['id' => $productId], 'id,name,category');
+        $isBottledProduct = ($product['category'] ?? '') === 'Oil Fragrance' && $volume > 0 && $variant !== '';
+        $quantityDelta = $newQty - $oldQty;
+
+        // A manual increase of a bottled product consumes more empty bottles,
+        // so check the exact bucket before writing anything.
+        if ($isBottledProduct && $quantityDelta > 0 && !$this->hasBottlesForVariety($branchId, $volume, $variant, $quantityDelta)) {
+            $available = $this->bottles->availableVariantQuantity(
+                $this->bottleSourceBranchId($branchId),
+                $volume,
+                $variant
+            );
+
+            return back()->withErrors([
+                'quantity' => "Insufficient bottle stock for {$volume}ml ({$this->bottles->variantLabel($variant, $volume)}). Available: {$available}.",
+            ])->withInput();
+        }
 
         $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice);
-        $varietyService->syncAggregateQuantity($branchId, $productId, $newQty - $oldQty);
+        $varietyService->syncAggregateQuantity($branchId, $productId, $quantityDelta);
+
+        // Reduce -> return the bottles to this exact variety; increase ->
+        // deduct them, mirroring the original stock-in bottling.
+        if ($isBottledProduct) {
+            $this->adjustBottleStockForVariety(
+                $branchId,
+                $volume,
+                $variant,
+                $quantityDelta,
+                (string) ($product['name'] ?? ('Product #' . $productId))
+            );
+        }
 
         // Unit cost is kept on the product's branch_stock row, so editing it
         // from any variety updates the cost used for that product's profit.

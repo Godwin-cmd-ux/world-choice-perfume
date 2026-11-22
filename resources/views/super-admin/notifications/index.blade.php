@@ -34,6 +34,7 @@
             <option value="product_deactivated" {{ request('type') === 'product_deactivated' ? 'selected' : '' }}>Product Deactivated</option>
             <option value="content_deleted" {{ request('type') === 'content_deleted' ? 'selected' : '' }}>Content Deleted</option>
             <option value="returned_stock" {{ request('type') === 'returned_stock' ? 'selected' : '' }}>Returned Stock (Lost / Broken)</option>
+            <option value="stock_alert" {{ request('type') === 'stock_alert' ? 'selected' : '' }}>Stock Alert</option>
         </select>
         <input type="date" name="date_from" value="{{ request('date_from') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="From">
         <input type="date" name="date_to" value="{{ request('date_to') }}" class="px-3 py-2 border rounded-lg text-sm" placeholder="To">
@@ -81,6 +82,7 @@
                                     'product_deactivated' => ['label' => 'Product Off', 'class' => 'bg-slate-100 text-slate-800'],
                                     'content_deleted' => ['label' => 'Content Deleted', 'class' => 'bg-rose-100 text-rose-800'],
                                     'returned_stock' => ['label' => 'Returned Stock', 'class' => 'bg-red-100 text-red-800'],
+                                    'stock_alert' => ['label' => 'Stock Alert', 'class' => 'bg-rose-100 text-rose-800'],
                                 ];
                                 $typeInfo = $typeLabels[$n->type ?? ''] ?? ['label' => ucfirst($n->type ?? 'unknown'), 'class' => 'bg-gray-100 text-gray-800'];
                             @endphp

@@ -162,6 +162,7 @@
         <p>This report was generated automatically. For inquiries, call +255 710 603 637</p>
     </div>
     @include('partials.toast')
+    @include('partials.number-input-wheel')
     @stack('scripts')
     @include('partials.live-search')
     @include('partials.live-updates')

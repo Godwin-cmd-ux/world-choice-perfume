@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\StockNotificationService;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,11 @@ class NotificationController extends Controller
 
     public function index(Request $request)
     {
+        // Bring the stock-admin feed up to date before listing it, so a brand
+        // product at two, a bottle variety under 100 and an oil under 2 are
+        // present as soon as the notification page is opened.
+        (new StockNotificationService($this->supabase))->sync();
+
         $params = [
             'select' => '*',
             'order' => 'created_at.desc',

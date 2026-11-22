@@ -125,6 +125,7 @@
         </div>
     </div>
     @include('partials.toast')
+    @include('partials.number-input-wheel')
     @stack('scripts')
     @include('partials.live-search')
     @include('partials.live-updates')

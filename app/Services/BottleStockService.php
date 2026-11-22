@@ -246,6 +246,90 @@ class BottleStockService
     }
 
     /**
+     * Bottles currently available in one exact volume/variant bucket.
+     */
+    public function availableVariantQuantity(int $branchId, int $volume, string $variant): int
+    {
+        if (!in_array($volume, self::VOLUMES, true) || $variant === '') {
+            return 0;
+        }
+
+        $rows = $this->supabase->queryFresh('bottle_stock', [
+            'branch_id' => "eq.{$branchId}",
+            'volume' => "eq.{$this->volumeLabel($volume)}",
+            'variant' => "eq.{$variant}",
+        ]);
+
+        $total = 0;
+        foreach ($rows as $row) {
+            $total += (int) ($row['quantity'] ?? 0);
+        }
+
+        return $total;
+    }
+
+    /**
+     * Return bottles to an existing variant bucket, recording a stock_in
+     * movement. Used when a product quantity is edited downwards: the bottles
+     * consumed by that stock are no longer used, so they go back to the same
+     * bucket they came from.
+     *
+     * Returns the new bucket quantity, or null when no matching bucket exists.
+     */
+    public function restock(int $branchId, int $volume, int $quantity, string $reason, ?string $performedBy = null, string $variant = ''): ?int
+    {
+        if ($quantity <= 0 || !in_array($volume, self::VOLUMES, true)) {
+            return null;
+        }
+
+        $label = $this->volumeLabel($volume);
+        $rows = $this->supabase->queryFresh('bottle_stock', [
+            'branch_id' => "eq.{$branchId}",
+            'volume' => "eq.{$label}",
+        ]);
+
+        $target = null;
+        foreach ($rows as $row) {
+            $rowVariant = (string) ($row['variant'] ?? self::VARIANT_PLAIN);
+            if ($variant !== '' && $rowVariant !== $variant) {
+                continue;
+            }
+            $target = $row;
+            break;
+        }
+
+        if (!$target) {
+            return null;
+        }
+
+        $newQty = (int) ($target['quantity'] ?? 0) + $quantity;
+
+        $this->supabase->update('bottle_stock', [
+            'quantity' => $newQty,
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $target['id']]);
+
+        $movement = [
+            'branch_id' => $branchId,
+            'volume' => $label,
+            'type' => 'stock_in',
+            'quantity' => $quantity,
+            'reason' => $reason,
+            'performed_by' => $performedBy,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ];
+
+        if ($this->supabase->tableHasColumn('bottle_stock_movements', 'variant')) {
+            $movement['variant'] = (string) ($target['variant'] ?? self::VARIANT_PLAIN);
+        }
+
+        $this->supabase->insert('bottle_stock_movements', $movement);
+
+        return $newQty;
+    }
+
+    /**
      * Get or create the product record used to sell empty bottles on a receipt.
      */
     public function findOrCreateEmptyBottleProduct(int $volume): ?array

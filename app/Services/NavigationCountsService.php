@@ -171,6 +171,10 @@ class NavigationCountsService
 
     private function forSuperAdmin(array $counts): array
     {
+        // Stock alerts are generated here as well as on the notification page
+        // so the unread badge grows on every role's next count refresh.
+        (new StockNotificationService($this->supabase))->sync();
+
         // Only orders the branch can actually work: awaiting_care belongs to
         // customer care, and picking an order moves it out of pending, which
         // is what makes this badge count down.

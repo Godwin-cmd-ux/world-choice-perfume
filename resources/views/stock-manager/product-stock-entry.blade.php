@@ -29,27 +29,35 @@
                     <option value="Brand Perfume" {{ old('category', $preselectCategory ?? null) == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
                 </select>
                 <p class="text-[11px] text-gray-400 mt-1">
-                    <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products will be listed below.
+                    <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products are searchable below.
                 </p>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4 relative" data-product-picker>
+                @php
+                    $selectedProductId = old('product_id', $preselectProductId ?? '');
+                    $selectedProductLabel = '';
+                    foreach ($products as $productOption) {
+                        if ((string) $productOption->id === (string) $selectedProductId) {
+                            $selectedProductLabel = $productOption->name . ' — ' . $productOption->brand;
+                            break;
+                        }
+                    }
+                @endphp
                 <label class="block text-sm font-medium text-gray-700 mb-1">Product *</label>
-                <select name="product_id" id="product_id" required onchange="onProductChange()"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                    @if(old('category', $preselectCategory ?? null))
-                        <option value="">Select Product</option>
-                        @foreach($products as $product)
-                            @if($product->category === old('category', $preselectCategory ?? null))
-                                <option value="{{ $product->id }}" data-category="{{ $product->category }}" {{ old('product_id', $preselectProductId ?? null) == $product->id ? 'selected' : '' }}>
-                                    {{ $product->name }} — {{ $product->brand }}
-                                </option>
-                            @endif
-                        @endforeach
-                    @else
-                        <option value="">Select a Category First</option>
-                    @endif
-                </select>
+                <input type="hidden" name="product_id" id="product_id" value="{{ $selectedProductId }}">
+                <input type="text" id="product_search" value="{{ $selectedProductLabel }}"
+                    placeholder="Type a product name or brand…" autocomplete="off" required
+                    class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    oninput="onProductSearch()" onfocus="renderProductSuggestions()" onkeydown="onProductSearchKey(event)">
+                <i class="fas fa-search absolute right-3 top-9 text-gray-400 text-sm pointer-events-none"></i>
+                <div id="product_suggestions"
+                    class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                    <ul id="product_suggestions_list" class="max-h-64 overflow-y-auto py-1"></ul>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>Type to search — spaces are allowed. Pick the resembling product from the suggestions.
+                </p>
             </div>
 
             <div class="mb-4">
@@ -58,15 +66,9 @@
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             </div>
 
-            <div class="flex items-start justify-between mb-3" data-lines-header>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Item Lines *</label>
-                    <p class="text-[11px] text-gray-400">Record the same product in another volume or quantity — one line per volume.</p>
-                </div>
-                <button type="button" onclick="addItemLine()"
-                    class="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap">
-                    <i class="fas fa-plus mr-1"></i>Add Item Line
-                </button>
+            <div class="mb-3" data-lines-header>
+                <label class="block text-sm font-medium text-gray-700">Item Lines *</label>
+                <p class="text-[11px] text-gray-400">Record the same product in another volume or quantity — one line per volume.</p>
             </div>
 
             @if(isset($bottleVariantsBranchName))
@@ -76,6 +78,14 @@
             @endif
 
             <div id="item-lines"></div>
+
+            {{-- The add button sits after the last item line, not above it. --}}
+            <div class="mt-1" data-lines-footer>
+                <button type="button" onclick="addItemLine()"
+                    class="border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium">
+                    <i class="fas fa-plus mr-1"></i>Add Item Line
+                </button>
+            </div>
 
             <div class="flex gap-3 mt-6">
                 <button type="submit" style="background-color: #F89A1E;" class="hover:opacity-90 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
@@ -160,6 +170,17 @@
     </div>
 </template>
 
+@push('styles')
+<style>
+    /* Each item line carries its own accent so adjacent lines are easy to tell
+       apart without changing what the line means. */
+    .item-line.line-tone-0 { border-left: 4px solid #10b981; background: #f0fdf4; }
+    .item-line.line-tone-1 { border-left: 4px solid #3b82f6; background: #eff6ff; }
+    .item-line.line-tone-2 { border-left: 4px solid #f59e0b; background: #fffbeb; }
+    .item-line.line-tone-3 { border-left: 4px solid #8b5cf6; background: #f5f3ff; }
+</style>
+@endpush
+
 @push('scripts')
 <script>
 const allProducts = @json($products ?? []);
@@ -189,9 +210,9 @@ function isOilFragrance() {
 }
 
 function onCategoryChange() {
-    const productSelect = document.getElementById('product_id');
-    productSelect.value = '';
-    filterProducts();
+    document.getElementById('product_id').value = '';
+    document.getElementById('product_search').value = '';
+    hideProductSuggestions();
 
     if (!isOilFragrance()) {
         collapseToSingleLine();
@@ -204,30 +225,103 @@ function onCategoryChange() {
     updateItemLineControls();
 }
 
-function filterProducts() {
+function hideProductSuggestions() {
+    const box = document.getElementById('product_suggestions');
+    if (box) {
+        box.classList.add('hidden');
+    }
+}
+
+function matchingProducts() {
     const category = currentCategory();
-    const productSelect = document.getElementById('product_id');
-    productSelect.innerHTML = '';
-
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = category ? 'Select Product' : 'Select a Category First';
-    productSelect.appendChild(placeholder);
-
     if (!category) {
+        return [];
+    }
+
+    // Spaces are kept as separate search terms, so "reef 33" finds
+    // "Reef 33" just as easily as a single word does.
+    const terms = (document.getElementById('product_search').value || '')
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    return (allProducts || []).filter(function (p) {
+        if ((p.category || '') !== category) {
+            return false;
+        }
+        const haystack = ((p.name || '') + ' ' + (p.brand || '')).toLowerCase();
+        return terms.every(function (term) { return haystack.indexOf(term) !== -1; });
+    }).slice(0, 10);
+}
+
+function renderProductSuggestions() {
+    const list = document.getElementById('product_suggestions_list');
+    const box = document.getElementById('product_suggestions');
+    if (!list || !box) {
         return;
     }
 
-    (allProducts || []).forEach(p => {
-        if ((p.category || '') !== category) {
-            return;
-        }
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.dataset.category = p.category;
-        opt.textContent = p.name + ' — ' + p.brand;
-        productSelect.appendChild(opt);
+    list.innerHTML = '';
+
+    if (!currentCategory()) {
+        const li = document.createElement('li');
+        li.innerHTML = '<p class="px-4 py-2 text-xs text-gray-400">Choose a category first to see products.</p>';
+        list.appendChild(li);
+        box.classList.remove('hidden');
+        return;
+    }
+
+    const matches = matchingProducts();
+    if (!matches.length) {
+        const li = document.createElement('li');
+        li.innerHTML = '<p class="px-4 py-2 text-xs text-gray-400">No resembling product found.</p>';
+        list.appendChild(li);
+        box.classList.remove('hidden');
+        return;
+    }
+
+    matches.forEach(function (p) {
+        const label = p.name + ' — ' + p.brand;
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800';
+        button.textContent = label;
+        // Keep the input focused until the click is handled, then select.
+        button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+        button.addEventListener('click', function () { selectProduct(p.id, label); });
+        li.appendChild(button);
+        list.appendChild(li);
     });
+
+    box.classList.remove('hidden');
+}
+
+function selectProduct(productId, label) {
+    document.getElementById('product_id').value = productId;
+    document.getElementById('product_search').value = label;
+    hideProductSuggestions();
+    onProductChange();
+}
+
+function onProductSearch() {
+    // A new search invalidates the previous pick until a suggestion is chosen.
+    document.getElementById('product_id').value = '';
+    renderProductSuggestions();
+}
+
+function onProductSearchKey(event) {
+    if (event.key === 'Escape') {
+        hideProductSuggestions();
+        return;
+    }
+    if (event.key === 'Enter') {
+        const first = document.querySelector('#product_suggestions_list button');
+        if (first) {
+            event.preventDefault();
+            first.click();
+        }
+    }
 }
 
 function onProductChange() {
@@ -317,8 +411,12 @@ function removeItemLine(button) {
 // so both disappear for brand perfume.
 function updateItemLineControls() {
     const linesHeader = document.querySelector('[data-lines-header]');
+    const linesFooter = document.querySelector('[data-lines-footer]');
     if (linesHeader) {
         linesHeader.classList.toggle('hidden', !isOilFragrance());
+    }
+    if (linesFooter) {
+        linesFooter.classList.toggle('hidden', !isOilFragrance());
     }
 
     document.querySelectorAll('#item-lines [data-item-line]').forEach(function (line) {
@@ -350,6 +448,10 @@ function renumberLines() {
         if (remove) {
             remove.classList.toggle('hidden', lines.length === 1);
         }
+
+        // Cycle a small set of accents so neighbouring lines look different.
+        line.classList.remove('line-tone-0', 'line-tone-1', 'line-tone-2', 'line-tone-3');
+        line.classList.add('line-tone-' + (i % 4));
     });
 }
 
@@ -415,15 +517,23 @@ function hideVariantField(line) {
     if (variantSelect) variantSelect.removeAttribute('required');
 }
 
-// Rebuild the product list from the chosen category, then restore the
-// previously submitted product and item lines after a validation error.
+// Restore the previously submitted product and item lines after a validation
+// error, then keep the suggestion list tied to the category/product picker.
 (function init () {
-    filterProducts();
-
-    const productId = @json(old('product_id', $preselectProductId ?? null)) || '';
+    const productId = String(@json(old('product_id', $preselectProductId ?? null)) || '');
     if (productId) {
         document.getElementById('product_id').value = productId;
+        const picked = (allProducts || []).find(function (p) { return String(p.id) === productId; });
+        if (picked) {
+            document.getElementById('product_search').value = picked.name + ' — ' + picked.brand;
+        }
     }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-product-picker]')) {
+            hideProductSuggestions();
+        }
+    });
 
     if (Array.isArray(oldItems) && oldItems.length) {
         oldItems.forEach(function (item) {

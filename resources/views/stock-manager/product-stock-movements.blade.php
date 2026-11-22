@@ -3,17 +3,30 @@
 @section('header', 'Product Stock Movements')
 
 @section('content')
+@php
+    $productOptions = array_merge(
+        [['value' => '', 'label' => 'All Products']],
+        collect($products)->map(function ($product) {
+            $label = $product->name;
+            if (!empty($product->brand)) {
+                $label .= ' — ' . $product->brand;
+            }
+            return ['value' => (string) $product->id, 'label' => $label];
+        })->all()
+    );
+@endphp
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="p-4 border-b border-gray-200 bg-gray-50">
         <form method="GET" class="flex gap-4 items-end">
             <div class="flex-1">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Product</label>
-                <select name="product_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="">All Products</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}" {{ request('product_id') == $product->id ? 'selected' : '' }}>{{ $product->name }}</option>
-                    @endforeach
-                </select>
+                @include('partials.searchable-select', [
+                    'name' => 'product_id',
+                    'placeholder' => 'All Products',
+                    'selected' => request('product_id'),
+                    'required' => false,
+                    'options' => $productOptions,
+                ])
             </div>
             <div class="flex-1">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
