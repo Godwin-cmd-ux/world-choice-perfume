@@ -51,15 +51,13 @@ class SalesController extends Controller
 
         $sales = $this->supabase->query('sales', $params);
 
-        // Apply date filters in PHP
-        if ($request->date_from) {
-            $from = $request->date_from;
-            $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) >= $from);
-        }
-        if ($request->date_to) {
-            $to = $request->date_to;
-            $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) <= $to);
-        }
+        // Default to today so the page doesn't show past-day sales unless filtered.
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->toDateString();
+        $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
+        $request->merge(['date_from' => $dateFrom, 'date_to' => $dateTo]);
+
+        $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) >= $dateFrom);
+        $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) <= $dateTo);
 
         $sales = array_values($sales);
         $totalSales = array_sum(array_map(fn($s) => $s['total'] ?? 0, $sales));

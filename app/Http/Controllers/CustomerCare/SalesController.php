@@ -41,6 +41,13 @@ class SalesController extends Controller
             'limit' => 50,
         ]));
 
+        // Default to today so the page doesn't show past-day sales unless filtered.
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->toDateString();
+        $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
+        $request->merge(['date_from' => $dateFrom, 'date_to' => $dateTo]);
+        $sales = $sales->filter(fn ($s) => substr($s['created_at'] ?? '', 0, 10) >= $dateFrom
+            && substr($s['created_at'] ?? '', 0, 10) <= $dateTo)->values();
+
         // PHP-side joins (PostgREST expansions return 0 rows)
         $branchIds = $sales->pluck('branch_id')->filter()->unique()->values()->toArray();
         $customerIds = $sales->pluck('customer_id')->filter()->unique()->values()->toArray();
