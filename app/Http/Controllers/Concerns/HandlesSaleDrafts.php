@@ -204,8 +204,8 @@ trait HandlesSaleDrafts
             ->map(fn ($i) => [
                 'product_id' => (int) $i['product_id'],
                 'quantity' => (int) ($i['quantity'] ?? 1),
-                'custom_price' => $i['custom_price'] ?? null,
-                'discount_price' => $i['discount_price'] ?? null,
+                'custom_price' => null,
+                'discount_price' => null,
                 'volume' => !empty($i['volume']) ? (int) $i['volume'] : null,
                 'variant' => $i['variant'] ?? null,
             ])
@@ -320,17 +320,8 @@ trait HandlesSaleDrafts
             }
 
             foreach ($items as $item) {
-                // Mirrors the pricing rules of the sale forms: wholesale uses
-                // the custom price, retail the manual discount.
+                // Selling price is fixed to the stock manager's set price.
                 $unit = 0.0;
-
-                if ($saleType === 'wholesale' && $item['custom_price'] !== null && $item['custom_price'] !== '') {
-                    $unit = (float) $item['custom_price'];
-                } elseif ($saleType === 'retail' && ($item['discount_price'] ?? null) !== null && ($item['discount_price'] ?? '') !== '') {
-                    $unit = (float) $item['discount_price'];
-                } elseif ($item['custom_price'] !== null && $item['custom_price'] !== '') {
-                    $unit = (float) $item['custom_price'];
-                }
 
                 if ($unit <= 0 && !empty($item['volume']) && !empty($item['variant'])) {
                     $unit = $this->varieties->priceFor(

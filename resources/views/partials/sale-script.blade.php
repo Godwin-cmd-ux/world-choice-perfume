@@ -17,7 +17,7 @@
         document.getElementById('tab-retail').className = type === 'retail' ? accentActive() : accentIdle();
         document.getElementById('tab-wholesale').className = type === 'wholesale' ? accentActive() : accentIdle();
         document.getElementById('sale-type-hint').innerHTML =
-            '<i class="fas fa-info-circle mr-1"></i> Custom prices allowed';
+            '<i class="fas fa-info-circle mr-1"></i> Selling price is set by the stock manager';
 
         // Empty bottles are never sold in retail mode
         const bottleCard = document.getElementById('empty-bottles-card');
@@ -26,13 +26,12 @@
             if (type !== 'wholesale') resetBottles();
         }
 
-        @if (!empty($hasDiscount))
-        document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.toggle('hidden', type !== 'wholesale'));
-        document.querySelectorAll('.cart-discount-price').forEach(el => el.classList.toggle('hidden', type !== 'retail'));
-        @else
-        // Price customization is available on retail AND wholesale
-        document.querySelectorAll('.cart-custom-price').forEach(el => el.classList.remove('hidden'));
-        @endif
+        // Selling prices are fixed to the stock manager's set price.
+        document.querySelectorAll('.cart-custom-price, .cart-discount-price').forEach(el => {
+            el.value = '';
+            el.classList.add('hidden');
+            el.disabled = true;
+        });
         // The picker only lists what this sale type sells: retail keeps oil
         // fragrance from 50ml up, wholesale keeps oil fragrance only.
         filterProducts();
@@ -410,15 +409,8 @@
                 '<input type="hidden" class="cart-qty-hidden" value="1">' +
             '</td>' +
             '<td class="px-3 py-2">' +
-                '<span class="cart-unit-price text-sm block"></span>' +
-                @if (!empty($hasDiscount))
-                '<input type="number" step="0.01" min="0" class="cart-discount-price hidden mt-1 w-28 px-2 py-1 border border-dashed rounded text-xs" placeholder="Custom price">' +
-                @endif
-                @if (empty($hasDiscount))
-                '<input type="number" step="0.01" min="0" class="cart-custom-price mt-1 w-28 px-2 py-1 border rounded text-xs" placeholder="Custom price">' +
-                @else
-                '<input type="number" step="0.01" min="0" class="cart-custom-price hidden mt-1 w-28 px-2 py-1 border rounded text-xs" placeholder="Custom price">' +
-                @endif
+                '<span class="cart-unit-price text-sm block font-medium text-gray-700"></span>' +
+                '<span class="text-[10px] text-gray-400">Set by stock manager</span>' +
             '</td>' +
             '<td class="px-3 py-2 text-center whitespace-nowrap">' +
                 '<div class="inline-flex items-center border rounded-lg">' +
@@ -435,26 +427,7 @@
         cart.appendChild(tr);
         document.getElementById('cart-empty').classList.add('hidden');
 
-        // Show the line's own default price so it is obvious what a variety
-        // sells for before anything is overridden.
-        if (price > 0) {
-            const priceInput = tr.querySelector('.cart-custom-price');
-            if (priceInput) {
-                priceInput.value = '';
-                priceInput.placeholder = 'Default ' + Number(price).toLocaleString();
-            }
-        }
-
-        const custom = tr.querySelector('.cart-custom-price');
-        custom.addEventListener('input', calculateTotal);
-        @if (!empty($hasDiscount))
-        custom.classList.toggle('hidden', document.getElementById('sale_type').value !== 'wholesale');
-        @endif
-        @if (!empty($hasDiscount))
-        const discount = tr.querySelector('.cart-discount-price');
-        discount.addEventListener('input', calculateTotal);
-        discount.classList.toggle('hidden', document.getElementById('sale_type').value !== 'retail');
-        @endif
+        // Price is fixed to the stock manager's set selling price.
 
         reindex();
         calculateTotal();
@@ -548,18 +521,8 @@
             // bottling, each at its own price.
             const price = parseFloat(row.dataset.unitPrice || 0);
             const qty = parseInt(row.querySelector('.cart-qty-hidden').value || 0);
-            const custom = row.querySelector('.cart-custom-price');
-            let unit = price;
-            @if (!empty($hasDiscount))
-            if (isWholesale && custom && !custom.classList.contains('hidden') && custom.value) unit = parseFloat(custom.value) || price;
-            @else
-            // Custom price applies on both retail and wholesale
-            if (custom && custom.value) unit = parseFloat(custom.value) || price;
-            @endif
-            @if (!empty($hasDiscount))
-            const discount = row.querySelector('.cart-discount-price');
-            if (isRetail && discount && !discount.classList.contains('hidden') && discount.value) unit = parseFloat(discount.value) || price;
-            @endif
+            // Selling price is fixed to the stock manager's set price.
+            const unit = price;
             const lt = unit * qty;
             row.querySelector('.cart-line-total').textContent = formatMoney(lt);
             row.querySelector('.cart-unit-price').textContent = unit.toLocaleString();
@@ -859,17 +822,7 @@
             row.querySelector('.cart-qty').textContent = qty;
             row.querySelector('.cart-qty-hidden').value = qty;
 
-            const price = row.querySelector('.cart-custom-price');
-            if (price && item.custom_price !== null && item.custom_price !== undefined && item.custom_price !== '') {
-                price.value = item.custom_price;
-            }
-
-            // A manual retail discount (stock manager forms) is part of the
-            // parked sale too, or the resumed total would change.
-            const discount = row.querySelector('.cart-discount-price');
-            if (discount && item.discount_price !== null && item.discount_price !== undefined && item.discount_price !== '') {
-                discount.value = item.discount_price;
-            }
+            // Selling price is fixed to the stock manager's set price.
         });
 
         (draft.empty_bottles || []).forEach(function (bottle, i) {
