@@ -172,6 +172,7 @@ class SmProductStockController extends SmBaseController
         $validated = $request->validate([
             'product_id' => 'required',
             'quantity' => 'required|integer|min:1',
+            'unit_cost' => 'nullable|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'variety_price' => 'nullable|numeric|min:0',
             'category' => 'required|in:Oil Fragrance,Brand Perfume',
@@ -215,6 +216,7 @@ class SmProductStockController extends SmBaseController
 
         $varietyPrice = (float) ($validated['variety_price'] ?? 0);
         $effectivePrice = (float) $validated['selling_price'];
+        $unitCost = (float) ($validated['unit_cost'] ?? 0);
         if ($category === 'Oil Fragrance' && $bottleVolume && $varietyPrice > 0) {
             $effectivePrice = $varietyPrice;
         }
@@ -226,14 +228,18 @@ class SmProductStockController extends SmBaseController
 
         if ($existing) {
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
-            $this->supabase->update('branch_stock', [
+            $update = [
                 'quantity' => $newQty,
                 'selling_price' => $effectivePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => $this->performingUserId($request),
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
+            ];
+            if ($unitCost > 0) {
+                $update['buying_cost'] = $unitCost;
+            }
+            $this->supabase->update('branch_stock', $update, ['id' => $existing['id']]);
 
             if ((float) ($existing['selling_price'] ?? 0) !== (float) $effectivePrice) {
                 (new AuditService)->recordCriticalAction(
@@ -253,6 +259,7 @@ class SmProductStockController extends SmBaseController
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $validated['quantity'],
+                'buying_cost' => $unitCost,
                 'selling_price' => $effectivePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
@@ -292,7 +299,8 @@ class SmProductStockController extends SmBaseController
                 (int) $bottleVolume,
                 (string) $variant,
                 (int) $validated['quantity'],
-                $effectivePrice
+                $effectivePrice,
+                $unitCost
             );
         }
 
@@ -300,7 +308,7 @@ class SmProductStockController extends SmBaseController
     }
 
     /** Increment (or create) the per-product variety row for this branch. */
-    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity, ?float $unitPrice = null): void
+    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity, ?float $unitPrice = null, ?float $buyingCost = null): void
     {
         if ($quantity <= 0) {
             return;
@@ -314,6 +322,7 @@ class SmProductStockController extends SmBaseController
         ]);
 
         $price = ($unitPrice !== null && $unitPrice > 0) ? round($unitPrice, 2) : null;
+        $cost = ($buyingCost !== null && $buyingCost >= 0) ? round($buyingCost, 2) : null;
 
         if ($existing) {
             $update = [
@@ -322,6 +331,9 @@ class SmProductStockController extends SmBaseController
             ];
             if ($price !== null) {
                 $update['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $update['buying_cost'] = $cost;
             }
             $this->supabase->update('branch_stock_varieties', $update, ['id' => $existing['id']]);
         } else {
@@ -336,6 +348,9 @@ class SmProductStockController extends SmBaseController
             ];
             if ($price !== null) {
                 $row['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $row['buying_cost'] = $cost;
             }
             $this->supabase->insert('branch_stock_varieties', $row);
         }
@@ -508,6 +523,7 @@ class SmProductStockController extends SmBaseController
         $validated = $request->validate([
             'quantity' => 'required|integer|min:0',
             'selling_price' => 'required|numeric|min:0',
+            'unit_cost' => 'nullable|numeric|min:0',
         ]);
 
         $branchId = $this->ownBranchId($request);
@@ -523,10 +539,12 @@ class SmProductStockController extends SmBaseController
         $newQty = (int) $validated['quantity'];
         $oldPrice = (float) ($bucket['selling_price'] ?? 0);
         $newPrice = (float) $validated['selling_price'];
+        $oldCost = (float) ($bucket['buying_cost'] ?? 0);
+        $newCost = array_key_exists('unit_cost', $validated) ? (float) $validated['unit_cost'] : $oldCost;
         $productId = (int) $bucket['product_id'];
         $label = $varietyService->pickLabel((int) $bucket['volume'], (string) $bucket['variant']);
 
-        $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice);
+        $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice, $newCost);
         $varietyService->syncAggregateQuantity($branchId, $productId, $newQty - $oldQty);
 
         if ($newQty !== $oldQty) {

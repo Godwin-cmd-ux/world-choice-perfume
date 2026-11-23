@@ -398,6 +398,8 @@ class StockManagerController extends Controller
             if (!empty($buckets)) {
                 foreach ($buckets as $bucket) {
                     $sellingPrice = $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0);
+                    $bucketCost = (float) ($bucket['buying_cost'] ?? 0);
+                    $effectiveCost = $bucketCost > 0 ? $bucketCost : $unitCost;
 
                     $rows[] = [
                         'kind' => 'variety',
@@ -409,8 +411,8 @@ class StockManagerController extends Controller
                         // 50ml can be priced differently from 30ml; fall back
                         // to the product price when the bucket has none.
                         'selling_price' => $sellingPrice,
-                        'unit_cost' => $unitCost,
-                        'unit_profit' => $sellingPrice - $unitCost,
+                        'unit_cost' => $effectiveCost,
+                        'unit_profit' => $sellingPrice - $effectiveCost,
                         'category' => $category,
                         'date_received' => $stock->date_received ?? null,
                         'variety' => $bucket,
@@ -716,7 +718,8 @@ class StockManagerController extends Controller
                     (int) $line['bottle_volume'],
                     (string) $line['variant'],
                     (int) $line['quantity'],
-                    $line['selling_price']
+                    $line['selling_price'],
+                    $line['unit_cost']
                 );
             }
         }
@@ -728,7 +731,7 @@ class StockManagerController extends Controller
      * Increment (or create) the per-product variety row in
      * branch_stock_varieties for the given branch.
      */
-    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity, ?float $unitPrice = null): void
+    private function addProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $quantity, ?float $unitPrice = null, ?float $buyingCost = null): void
     {
         if ($quantity <= 0) {
             return;
@@ -742,6 +745,7 @@ class StockManagerController extends Controller
         ]);
 
         $price = ($unitPrice !== null && $unitPrice > 0) ? round($unitPrice, 2) : null;
+        $cost = ($buyingCost !== null && $buyingCost >= 0) ? round($buyingCost, 2) : null;
 
         if ($existing) {
             $update = [
@@ -750,6 +754,9 @@ class StockManagerController extends Controller
             ];
             if ($price !== null) {
                 $update['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $update['buying_cost'] = $cost;
             }
             $this->supabase->update('branch_stock_varieties', $update, ['id' => $existing['id']]);
         } else {
@@ -764,6 +771,9 @@ class StockManagerController extends Controller
             ];
             if ($price !== null) {
                 $row['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $row['buying_cost'] = $cost;
             }
             $this->supabase->insert('branch_stock_varieties', $row);
         }
@@ -1034,7 +1044,7 @@ class StockManagerController extends Controller
             ])->withInput();
         }
 
-        $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice);
+        $varietyService->updateRow((int) $bucket['id'], $newQty, $newPrice, $newCost);
         $varietyService->syncAggregateQuantity($branchId, $productId, $quantityDelta);
 
         // Reduce -> return the bottles to this exact variety; increase ->
@@ -1049,19 +1059,7 @@ class StockManagerController extends Controller
             );
         }
 
-        // Unit cost is kept on the product's branch_stock row, so editing it
-        // from any variety updates the cost used for that product's profit.
-        $parentStock = $this->supabase->findOne('branch_stock', [
-            'branch_id' => $branchId,
-            'product_id' => $productId,
-        ]);
-
-        if ($parentStock) {
-            $this->supabase->update('branch_stock', [
-                'buying_cost' => $newCost,
-                'updated_at' => now()->toIso8601String(),
-            ], ['id' => $parentStock['id']]);
-        }
+        // Unit cost is stored per variety so 50ml/100ml can differ independently.
 
         if ($newQty !== $oldQty) {
             $this->supabase->insert('stock_movements', [

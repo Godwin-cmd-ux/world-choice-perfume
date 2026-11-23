@@ -830,7 +830,7 @@ class StockTransferController extends Controller
      * Increment (positive) or decrement (negative) the per-product variety
      * bucket in branch_stock_varieties for a branch.
      */
-    private function adjustProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $delta): void
+    private function adjustProductVarietyStock(int $branchId, int $productId, int $volume, string $variant, int $delta, ?float $unitPrice = null, ?float $buyingCost = null): void
     {
         if ($delta === 0) {
             return;
@@ -843,13 +843,23 @@ class StockTransferController extends Controller
             'variant' => $variant,
         ]);
 
+        $price = ($unitPrice !== null && $unitPrice > 0) ? round($unitPrice, 2) : null;
+        $cost = ($buyingCost !== null && $buyingCost >= 0) ? round($buyingCost, 2) : null;
+
         if ($existing) {
-            $this->supabase->update('branch_stock_varieties', [
+            $update = [
                 'quantity' => max(((int) ($existing['quantity'] ?? 0)) + $delta, 0),
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
+            ];
+            if ($price !== null) {
+                $update['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $update['buying_cost'] = $cost;
+            }
+            $this->supabase->update('branch_stock_varieties', $update, ['id' => $existing['id']]);
         } elseif ($delta > 0) {
-            $this->supabase->insert('branch_stock_varieties', [
+            $row = [
                 'branch_id' => $branchId,
                 'product_id' => $productId,
                 'volume' => $volume,
@@ -857,7 +867,14 @@ class StockTransferController extends Controller
                 'quantity' => $delta,
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($price !== null) {
+                $row['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $row['buying_cost'] = $cost;
+            }
+            $this->supabase->insert('branch_stock_varieties', $row);
         }
     }
 
@@ -1347,24 +1364,30 @@ class StockTransferController extends Controller
             $inVolume = (int) ($item['volume'] ?? 0);
             $inVariant = (string) ($item['variant'] ?? '');
             if ($inVolume > 0 && $inVariant !== '') {
-                $this->adjustProductVarietyStock($branchId, $productId, $inVolume, $inVariant, $qty);
+                $inPrice = (float) ($item['variety_unit_price'] ?? 0);
+                $inCost = (float) ($item['unit_cost'] ?? 0);
+                $this->adjustProductVarietyStock($branchId, $productId, $inVolume, $inVariant, $qty, $inPrice > 0 ? $inPrice : null, $inCost);
 
                 // The receiving branch inherits the sending branch's
-                // per-variety selling price (50ml ≠ 30ml) until it sets
-                // its own price for that bottling.
-                $inPrice = (float) ($item['variety_unit_price'] ?? 0);
-                if ($inPrice > 0) {
+                // per-variety price/cost until it sets its own for that bottling.
+                if ($inPrice > 0 || $inCost > 0) {
                     $bucket = $this->supabase->findOne('branch_stock_varieties', [
                         'branch_id' => $branchId,
                         'product_id' => $productId,
                         'volume' => $inVolume,
                         'variant' => $inVariant,
                     ]);
-                    if ($bucket && (float) ($bucket['selling_price'] ?? 0) <= 0) {
-                        $this->supabase->update('branch_stock_varieties', [
-                            'selling_price' => round($inPrice, 2),
-                            'updated_at' => $now,
-                        ], ['id' => $bucket['id']]);
+                    if ($bucket) {
+                        $update = ['updated_at' => $now];
+                        if ($inPrice > 0 && (float) ($bucket['selling_price'] ?? 0) <= 0) {
+                            $update['selling_price'] = round($inPrice, 2);
+                        }
+                        if ($inCost > 0 && (float) ($bucket['buying_cost'] ?? 0) <= 0) {
+                            $update['buying_cost'] = round($inCost, 2);
+                        }
+                        if (count($update) > 1) {
+                            $this->supabase->update('branch_stock_varieties', $update, ['id' => $bucket['id']]);
+                        }
                     }
                 }
             }
@@ -1754,7 +1777,9 @@ class StockTransferController extends Controller
             $volume = (int) ($item['volume'] ?? 0);
             $variant = (string) ($item['variant'] ?? '');
             if ($volume > 0 && $variant !== '') {
-                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, $qty);
+                $inPrice = (float) ($item['variety_unit_price'] ?? 0);
+                $inCost = (float) ($item['unit_cost'] ?? 0);
+                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, $qty, $inPrice > 0 ? $inPrice : null, $inCost);
             }
 
             $this->supabase->insert('stock_movements', [

@@ -138,7 +138,7 @@
             <input type="number" name="items[__INDEX__][unit_cost]" data-field="unit_cost" required min="0" step="0.01"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
             <p class="text-[11px] text-gray-400 mt-1">
-                <i class="fas fa-info-circle mr-1"></i>What this product costs you per unit — profit is calculated from this.
+                <i class="fas fa-info-circle mr-1"></i>What this line/variety costs you per unit — each variety keeps its own cost.
             </p>
         </div>
 

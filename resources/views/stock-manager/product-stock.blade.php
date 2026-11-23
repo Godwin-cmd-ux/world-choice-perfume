@@ -140,7 +140,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Unit Cost (TZS)</label>
                     <input type="text" inputmode="decimal" name="unit_cost" id="editStockCost" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 no-spinner">
-                    <p class="text-[11px] text-gray-400 mt-1">Used to calculate this product's profit.</p>
+                    <p class="text-[11px] text-gray-400 mt-1">Used to calculate this line/variety's profit.</p>
                 </div>
 
                 <div>

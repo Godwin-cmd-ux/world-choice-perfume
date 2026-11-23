@@ -56,6 +56,7 @@ class ProductVarietyStockService
         $rows = $this->fetch($branchId, false);
         $stock = $this->mapRows($rows);
         $priceMap = $this->mapPrices($rows);
+        $costMap = $this->mapCosts($rows);
         $bottles = new BottleStockService($this->supabase);
 
         $result = [];
@@ -80,6 +81,7 @@ class ProductVarietyStockService
                         'label' => $bottles->variantLabel($key, (int) $v),
                         'available' => $qty,
                         'price' => (float) ($priceMap[$pid][(int) $v][$key] ?? 0),
+                        'buying_cost' => (float) ($costMap[$pid][(int) $v][$key] ?? 0),
                     ];
                 }
                 if (empty($variants)) {
@@ -426,6 +428,7 @@ class ProductVarietyStockService
                 'variant' => $variant,
                 'quantity' => $quantity,
                 'selling_price' => (float) ($r['selling_price'] ?? 0),
+                'buying_cost' => (float) ($r['buying_cost'] ?? 0),
                 'label' => $this->pickLabel($volume, $variant),
             ];
         }
@@ -455,10 +458,10 @@ class ProductVarietyStockService
     }
 
     /**
-     * Set one bucket's quantity and selling price. $price is ignored when
-     * null/0 so a caller that only corrects the count leaves the price be.
+     * Set one bucket's quantity, selling price, and buying cost.
+     * Null/zero price leaves the price be; null cost leaves it be.
      */
-    public function updateRow(int $varietyId, int $quantity, ?float $price = null): void
+    public function updateRow(int $varietyId, int $quantity, ?float $price = null, ?float $buyingCost = null): void
     {
         $update = [
             'quantity' => max($quantity, 0),
@@ -466,6 +469,9 @@ class ProductVarietyStockService
         ];
         if ($price !== null && $price > 0) {
             $update['selling_price'] = round($price, 2);
+        }
+        if ($buyingCost !== null && $buyingCost >= 0) {
+            $update['buying_cost'] = round($buyingCost, 2);
         }
         $this->supabase->update('branch_stock_varieties', $update, ['id' => $varietyId]);
     }
@@ -527,10 +533,11 @@ class ProductVarietyStockService
     /**
      * Increment (positive) or decrement (negative) the matching
      * variety bucket. Creates the row when incrementing from nothing.
-     * $unitPrice (when > 0) sets the per-variety selling price — used
-     * at stock-in so e.g. 50ml can be priced differently from 30ml.
+     * $unitPrice (when > 0) sets the per-variety selling price, and
+     * $buyingCost (when >= 0) sets the per-variety unit cost so each
+     * variety keeps its own cost.
      */
-    public function adjust(int $branchId, int $productId, int $volume, string $variant, int $delta, ?float $unitPrice = null): void
+    public function adjust(int $branchId, int $productId, int $volume, string $variant, int $delta, ?float $unitPrice = null, ?float $buyingCost = null): void
     {
         if ($delta === 0 || $volume <= 0 || $variant === '') {
             return;
@@ -544,6 +551,7 @@ class ProductVarietyStockService
         ]);
 
         $price = ($unitPrice !== null && $unitPrice > 0) ? round($unitPrice, 2) : null;
+        $cost = ($buyingCost !== null && $buyingCost >= 0) ? round($buyingCost, 2) : null;
 
         if ($existing) {
             $update = [
@@ -552,6 +560,9 @@ class ProductVarietyStockService
             ];
             if ($price !== null) {
                 $update['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $update['buying_cost'] = $cost;
             }
             $this->supabase->update('branch_stock_varieties', $update, ['id' => $existing['id']]);
         } elseif ($delta > 0) {
@@ -566,6 +577,9 @@ class ProductVarietyStockService
             ];
             if ($price !== null) {
                 $row['selling_price'] = $price;
+            }
+            if ($cost !== null) {
+                $row['buying_cost'] = $cost;
             }
             $this->supabase->insert('branch_stock_varieties', $row);
         }
@@ -633,10 +647,36 @@ class ProductVarietyStockService
         return (float) ($rows[0]['selling_price'] ?? 0);
     }
 
+    /**
+     * Unit cost for the product's exact variety bucket.
+     */
+    public function costFor(int $branchId, int $productId, int $volume, string $variant, bool $fresh = false): float
+    {
+        $rows = $fresh
+            ? $this->supabase->queryFresh('branch_stock_varieties', [
+                'select' => 'buying_cost',
+                'branch_id' => "eq.{$branchId}",
+                'product_id' => "eq.{$productId}",
+                'volume' => "eq.{$volume}",
+                'variant' => "eq.{$variant}",
+                'limit' => 1,
+            ])
+            : $this->supabase->query('branch_stock_varieties', [
+                'select' => 'buying_cost',
+                'branch_id' => "eq.{$branchId}",
+                'product_id' => "eq.{$productId}",
+                'volume' => "eq.{$volume}",
+                'variant' => "eq.{$variant}",
+                'limit' => 1,
+            ]);
+
+        return (float) ($rows[0]['buying_cost'] ?? 0);
+    }
+
     private function fetch(int $branchId, bool $fresh): array
     {
         $params = [
-            'select' => 'product_id,volume,variant,quantity,selling_price',
+            'select' => 'product_id,volume,variant,quantity,selling_price,buying_cost',
             'branch_id' => "eq.{$branchId}",
         ];
 
@@ -658,7 +698,7 @@ class ProductVarietyStockService
         }
 
         $rows = $this->supabase->query('branch_stock_varieties', [
-            'select' => 'branch_id,product_id,volume,variant,quantity,selling_price',
+            'select' => 'branch_id,product_id,volume,variant,quantity,selling_price,buying_cost',
             'product_id' => 'in.(' . implode(',', $ids) . ')',
         ]);
 
@@ -675,7 +715,7 @@ class ProductVarietyStockService
     private function fetchRows(int $branchId): array
     {
         return $this->supabase->query('branch_stock_varieties', [
-            'select' => 'id,product_id,volume,variant,quantity,selling_price',
+            'select' => 'id,product_id,volume,variant,quantity,selling_price,buying_cost',
             'branch_id' => "eq.{$branchId}",
         ]);
     }
@@ -715,6 +755,39 @@ class ProductVarietyStockService
             $map[$pid][$volume][$variant] = (float) ($r['selling_price'] ?? 0);
         }
         return $map;
+    }
+
+    /**
+     * [product_id => [volume => [variant => buying_cost]]] from raw rows.
+     */
+    private function mapCosts(array $rows): array
+    {
+        $map = [];
+        foreach ($rows as $r) {
+            $pid = (int) ($r['product_id'] ?? 0);
+            $volume = (int) ($r['volume'] ?? 0);
+            if ($pid <= 0 || $volume <= 0) {
+                continue;
+            }
+            $variant = (string) ($r['variant'] ?? BottleStockService::VARIANT_PLAIN);
+            $map[$pid][$volume][$variant] = (float) ($r['buying_cost'] ?? 0);
+        }
+        return $map;
+    }
+
+    /**
+     * Per-product unit cost breakdown for stock pages.
+     */
+    public function costsForProducts(int $branchId, array $productIds): array
+    {
+        $costs = $this->mapCosts($this->fetch($branchId, false));
+        $result = [];
+        foreach (array_unique(array_map('intval', $productIds)) as $pid) {
+            if ($pid > 0 && isset($costs[$pid])) {
+                $result[$pid] = $costs[$pid];
+            }
+        }
+        return $result;
     }
 
     /**

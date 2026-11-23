@@ -142,12 +142,19 @@ trait SmSalesSupport
                 ];
             }
 
+            $unitCost = ($pickVolume > 0 && $pickVariant !== '')
+                ? $varieties->costFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
+                : 0.0;
+            if ($unitCost <= 0) {
+                $unitCost = (float) ($stock['buying_cost'] ?? 0);
+            }
+
             $saleItems[] = [
                 'sale_id' => null,
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
                 'unit_price' => $unitPrice,
-                'unit_cost' => (float) ($stock['buying_cost'] ?? 0),
+                'unit_cost' => $unitCost,
                 'total' => $lineTotal,
                 'volume' => $pickVolume > 0 ? $pickVolume : null,
                 'variant' => $pickVolume > 0 ? $pickVariant : null,
