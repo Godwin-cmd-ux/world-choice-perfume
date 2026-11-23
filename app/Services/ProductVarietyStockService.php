@@ -652,23 +652,22 @@ class ProductVarietyStockService
      */
     public function costFor(int $branchId, int $productId, int $volume, string $variant, bool $fresh = false): float
     {
-        $rows = $fresh
-            ? $this->supabase->queryFresh('branch_stock_varieties', [
-                'select' => 'buying_cost',
-                'branch_id' => "eq.{$branchId}",
-                'product_id' => "eq.{$productId}",
-                'volume' => "eq.{$volume}",
-                'variant' => "eq.{$variant}",
-                'limit' => 1,
-            ])
-            : $this->supabase->query('branch_stock_varieties', [
-                'select' => 'buying_cost',
-                'branch_id' => "eq.{$branchId}",
-                'product_id' => "eq.{$productId}",
-                'volume' => "eq.{$volume}",
-                'variant' => "eq.{$variant}",
-                'limit' => 1,
-            ]);
+        $params = [
+            'select' => 'buying_cost',
+            'branch_id' => "eq.{$branchId}",
+            'product_id' => "eq.{$productId}",
+            'volume' => "eq.{$volume}",
+            'variant' => "eq.{$variant}",
+            'limit' => 1,
+        ];
+
+        try {
+            $rows = $fresh
+                ? $this->supabase->queryFresh('branch_stock_varieties', $params)
+                : $this->supabase->query('branch_stock_varieties', $params);
+        } catch (\Throwable $e) {
+            return 0.0;
+        }
 
         return (float) ($rows[0]['buying_cost'] ?? 0);
     }
@@ -680,7 +679,12 @@ class ProductVarietyStockService
             'branch_id' => "eq.{$branchId}",
         ];
 
-        return $fresh ? $this->supabase->queryFresh('branch_stock_varieties', $params) : $this->supabase->query('branch_stock_varieties', $params);
+        try {
+            return $fresh ? $this->supabase->queryFresh('branch_stock_varieties', $params) : $this->supabase->query('branch_stock_varieties', $params);
+        } catch (\Throwable $e) {
+            $params['select'] = 'product_id,volume,variant,quantity,selling_price';
+            return $fresh ? $this->supabase->queryFresh('branch_stock_varieties', $params) : $this->supabase->query('branch_stock_varieties', $params);
+        }
     }
 
     /**
@@ -697,10 +701,17 @@ class ProductVarietyStockService
             return [];
         }
 
-        $rows = $this->supabase->query('branch_stock_varieties', [
+        $params = [
             'select' => 'branch_id,product_id,volume,variant,quantity,selling_price,buying_cost',
             'product_id' => 'in.(' . implode(',', $ids) . ')',
-        ]);
+        ];
+
+        try {
+            $rows = $this->supabase->query('branch_stock_varieties', $params);
+        } catch (\Throwable $e) {
+            $params['select'] = 'branch_id,product_id,volume,variant,quantity,selling_price';
+            $rows = $this->supabase->query('branch_stock_varieties', $params);
+        }
 
         return array_values(array_filter(
             $rows,
@@ -714,10 +725,17 @@ class ProductVarietyStockService
      */
     private function fetchRows(int $branchId): array
     {
-        return $this->supabase->query('branch_stock_varieties', [
+        $params = [
             'select' => 'id,product_id,volume,variant,quantity,selling_price,buying_cost',
             'branch_id' => "eq.{$branchId}",
-        ]);
+        ];
+
+        try {
+            return $this->supabase->query('branch_stock_varieties', $params);
+        } catch (\Throwable $e) {
+            $params['select'] = 'id,product_id,volume,variant,quantity,selling_price';
+            return $this->supabase->query('branch_stock_varieties', $params);
+        }
     }
 
     private function mapRows(array $rows): array
