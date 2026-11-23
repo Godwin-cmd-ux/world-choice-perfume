@@ -112,15 +112,35 @@ trait SmSalesSupport
                 }
             }
 
-            // Selling price is fixed to the stock manager's set price.
+            // A custom price is honoured on both sale types — the website's
+            // Customer Care store prices this way for retail and wholesale.
+            // Retail discounts go through discount_price below (Stock Manager).
+            // A picked variety carries its own price, with the branch price as fallback.
             $varietyUnitPrice = $pickVolume > 0 && $pickVariant !== ''
                 ? $varieties->priceFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
                 : 0.0;
-            $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
+            if (! empty($item['custom_price'])) {
+                $unitPrice = $item['custom_price'];
+                $priceOverridden = true;
+            } elseif ($validated['sale_type'] === 'retail' && ! empty($item['discount_price'])) {
+                $unitPrice = $item['discount_price'];
+            } else {
+                $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
+            }
 
             $lineTotal = $unitPrice * $item['quantity'];
             $subtotal += $lineTotal;
             $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];
+
+            if ($validated['sale_type'] === 'retail' && ! empty($item['discount_price'])) {
+                $discountDetails[] = [
+                    'product_id' => $item['product_id'],
+                    'product_name' => $stock['product']['name'] ?? ('Product #'.$item['product_id']),
+                    'quantity' => (int) $item['quantity'],
+                    'original_price' => (float) ($stock['selling_price'] ?? 0),
+                    'discount_price' => (float) $item['discount_price'],
+                ];
+            }
 
             $saleItems[] = [
                 'sale_id' => null,

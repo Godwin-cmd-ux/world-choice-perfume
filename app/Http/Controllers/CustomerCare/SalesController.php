@@ -284,11 +284,18 @@ class SalesController extends Controller
                     }
                 }
 
-                // Selling price is fixed to the stock manager's set price.
+                // Price customization: honor custom price on both retail and wholesale.
+                // A picked variety carries its own selling price (50ml != 30ml);
+                // the product's branch price is only the fallback.
                 $varietyUnitPrice = $pickVolume > 0 && $pickVariant !== ''
                     ? $this->varieties->priceFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
                     : 0.0;
-                $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
+                $unitPrice = !empty($item['custom_price'])
+                    ? $item['custom_price']
+                    : ($varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0));
+                if (!empty($item['custom_price'])) {
+                    $priceOverridden = true;
+                }
                 $lineTotal = $unitPrice * $item['quantity'];
                 $subtotal += $lineTotal;
                 $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];

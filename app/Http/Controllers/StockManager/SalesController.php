@@ -283,15 +283,35 @@ class SalesController extends Controller
                     }
                 }
 
-                // Selling price is fixed to the stock manager's set price.
+                // Price logic:
+                // Wholesale: use custom_price if provided, else selling_price
+                // Retail: use discount_price if provided (manual discount), else selling_price
+                // A picked variety carries its own selling price (50ml ≠ 30ml);
+                // the product's branch price is only the fallback.
                 $varietyUnitPrice = $pickVolume > 0 && $pickVariant !== ''
                     ? $this->varieties->priceFor($branchId, (int) $item['product_id'], $pickVolume, $pickVariant)
                     : 0.0;
-                $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
+                if ($validated['sale_type'] === 'wholesale' && !empty($item['custom_price'])) {
+                    $unitPrice = $item['custom_price'];
+                } elseif ($validated['sale_type'] === 'retail' && !empty($item['discount_price'])) {
+                    $unitPrice = $item['discount_price'];
+                } else {
+                    $unitPrice = $varietyUnitPrice > 0 ? $varietyUnitPrice : ($stock['selling_price'] ?? 0);
+                }
 
                 $lineTotal = $unitPrice * $item['quantity'];
                 $subtotal += $lineTotal;
                 $newQty = ($stock['quantity'] ?? 0) - $item['quantity'];
+
+                if ($validated['sale_type'] === 'retail' && !empty($item['discount_price'])) {
+                    $discountDetails[] = [
+                        'product_id' => $item['product_id'],
+                        'product_name' => $stock['product']['name'] ?? ('Product #' . $item['product_id']),
+                        'quantity' => (int) $item['quantity'],
+                        'original_price' => (float) ($stock['selling_price'] ?? 0),
+                        'discount_price' => (float) $item['discount_price'],
+                    ];
+                }
 
                 $saleItems[] = [
                     'sale_id' => null,
