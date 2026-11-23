@@ -630,8 +630,11 @@ class StockManagerController extends Controller
 
         $totalQuantity = array_sum(array_column($lines, 'quantity'));
 
-        // The aggregate row holds a single price and cost; the last line wins,
-        // exactly as recording the lines one after another would have left it.
+        // Oil fragrance varieties each carry their own unit cost/selling price.
+        // Do not mix them into the aggregate branch_stock cost/price.
+        $hasVarietyLines = $category === 'Oil Fragrance'
+            && collect($lines)->contains(fn ($line) => !empty($line['bottle_volume']));
+
         $lastLine = end($lines);
         $aggregatePrice = $lastLine['selling_price'];
         $aggregateCost = $lastLine['unit_cost'];
@@ -643,17 +646,20 @@ class StockManagerController extends Controller
 
         if ($existing) {
             $newQty = ($existing['quantity'] ?? 0) + $totalQuantity;
-            $this->supabase->update('branch_stock', [
+            $update = [
                 'quantity' => $newQty,
-                'buying_cost' => $aggregateCost,
-                'selling_price' => $aggregatePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => $this->performingUserId(),
                 'updated_at' => now()->toIso8601String(),
-            ], ['id' => $existing['id']]);
+            ];
+            if (!$hasVarietyLines) {
+                $update['buying_cost'] = $aggregateCost;
+                $update['selling_price'] = $aggregatePrice;
+            }
+            $this->supabase->update('branch_stock', $update, ['id' => $existing['id']]);
 
-            if ((float) ($existing['selling_price'] ?? 0) !== (float) $aggregatePrice) {
+            if (!$hasVarietyLines && (float) ($existing['selling_price'] ?? 0) !== (float) $aggregatePrice) {
                 (new \App\Services\AuditService())->recordCriticalAction(
                     'price_customization',
                     'price_change_stock_in',
@@ -667,18 +673,24 @@ class StockManagerController extends Controller
                 );
             }
         } else {
-            $this->supabase->insert('branch_stock', [
+            $insert = [
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $totalQuantity,
-                'buying_cost' => $aggregateCost,
-                'selling_price' => $aggregatePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => $this->performingUserId(),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($hasVarietyLines) {
+                $insert['buying_cost'] = 0;
+                $insert['selling_price'] = 0;
+            } else {
+                $insert['buying_cost'] = $aggregateCost;
+                $insert['selling_price'] = $aggregatePrice;
+            }
+            $this->supabase->insert('branch_stock', $insert);
         }
 
         // One movement, bottle deduction and variety bucket per line, so each

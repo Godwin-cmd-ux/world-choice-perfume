@@ -221,6 +221,8 @@ class SmProductStockController extends SmBaseController
             $effectivePrice = $varietyPrice;
         }
 
+        $hasVarietyLine = $category === 'Oil Fragrance' && !empty($bottleVolume);
+
         $existing = $this->supabase->findOne('branch_stock', [
             'branch_id' => $branchId,
             'product_id' => $validated['product_id'],
@@ -230,18 +232,20 @@ class SmProductStockController extends SmBaseController
             $newQty = ($existing['quantity'] ?? 0) + $validated['quantity'];
             $update = [
                 'quantity' => $newQty,
-                'selling_price' => $effectivePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => $this->performingUserId($request),
                 'updated_at' => now()->toIso8601String(),
             ];
-            if ($unitCost > 0) {
-                $update['buying_cost'] = $unitCost;
+            if (!$hasVarietyLine) {
+                $update['selling_price'] = $effectivePrice;
+                if ($unitCost > 0) {
+                    $update['buying_cost'] = $unitCost;
+                }
             }
             $this->supabase->update('branch_stock', $update, ['id' => $existing['id']]);
 
-            if ((float) ($existing['selling_price'] ?? 0) !== (float) $effectivePrice) {
+            if (!$hasVarietyLine && (float) ($existing['selling_price'] ?? 0) !== (float) $effectivePrice) {
                 (new AuditService)->recordCriticalAction(
                     'price_customization',
                     'price_change_stock_in',
@@ -255,18 +259,24 @@ class SmProductStockController extends SmBaseController
                 );
             }
         } else {
-            $this->supabase->insert('branch_stock', [
+            $insert = [
                 'branch_id' => $branchId,
                 'product_id' => $validated['product_id'],
                 'quantity' => $validated['quantity'],
-                'buying_cost' => $unitCost,
-                'selling_price' => $effectivePrice,
                 'category' => $category,
                 'date_received' => $validated['date_received'],
                 'entered_by' => $this->performingUserId($request),
                 'created_at' => now()->toIso8601String(),
                 'updated_at' => now()->toIso8601String(),
-            ]);
+            ];
+            if ($hasVarietyLine) {
+                $insert['buying_cost'] = 0;
+                $insert['selling_price'] = 0;
+            } else {
+                $insert['buying_cost'] = $unitCost;
+                $insert['selling_price'] = $effectivePrice;
+            }
+            $this->supabase->insert('branch_stock', $insert);
         }
 
         $this->supabase->insert('stock_movements', [
