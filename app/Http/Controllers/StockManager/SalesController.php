@@ -226,10 +226,13 @@ class SalesController extends Controller
 
             $saleNumber = 'SALE-' . date('YmdHis') . '-' . strtoupper(substr(uniqid(), -4));
 
-            // 2. Fetch ALL stock for this branch in ONE query
+            // 2. Fetch ALL stock for this branch in ONE query. The product's
+            // category is essential here: it is what tells the loop below that
+            // an oil fragrance line must be priced and deducted from its chosen
+            // variety bucket, not from the product-level price.
             $allStock = collect($this->supabase->query('branch_stock', [
                 'branch_id' => "eq.{$branchId}",
-                'select' => 'id,product_id,quantity,selling_price,buying_cost,product:products(id,name)',
+                'select' => 'id,product_id,quantity,selling_price,buying_cost,product:products(id,name,category)',
             ]));
 
             $stockMap = [];

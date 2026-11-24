@@ -64,10 +64,12 @@ trait SmSalesSupport
 
         $saleNumber = 'SALE-'.date('YmdHis').'-'.strtoupper(substr(uniqid(), -4));
 
-        // 2. ALL stock for this branch in ONE query.
+        // 2. ALL stock for this branch in ONE query. The product's category is
+        // what marks an oil fragrance line below as variety-priced and
+        // variety-deducted; without it the pick is silently ignored.
         $allStock = collect($this->supabase->query('branch_stock', [
             'branch_id' => "eq.{$branchId}",
-            'select' => 'id,product_id,quantity,selling_price,buying_cost,product:products(id,name)',
+            'select' => 'id,product_id,quantity,selling_price,buying_cost,product:products(id,name,category)',
         ]));
 
         $stockMap = [];
