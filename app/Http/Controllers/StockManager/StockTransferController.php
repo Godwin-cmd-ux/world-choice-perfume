@@ -1366,7 +1366,7 @@ class StockTransferController extends Controller
             if ($inVolume > 0 && $inVariant !== '') {
                 $inPrice = (float) ($item['variety_unit_price'] ?? 0);
                 $inCost = (float) ($item['unit_cost'] ?? 0);
-                $this->adjustProductVarietyStock($branchId, $productId, $inVolume, $inVariant, $qty, $inPrice > 0 ? $inPrice : null, $inCost);
+                $this->adjustProductVarietyStock($branchId, $productId, $inVolume, $inVariant, $qty, $inPrice > 0 ? $inPrice : null, $inCost > 0 ? $inCost : null);
 
                 // The receiving branch inherits the sending branch's
                 // per-variety price/cost until it sets its own for that bottling.
@@ -1779,7 +1779,7 @@ class StockTransferController extends Controller
             if ($volume > 0 && $variant !== '') {
                 $inPrice = (float) ($item['variety_unit_price'] ?? 0);
                 $inCost = (float) ($item['unit_cost'] ?? 0);
-                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, $qty, $inPrice > 0 ? $inPrice : null, $inCost);
+                $this->adjustProductVarietyStock($branchId, $productId, $volume, $variant, $qty, $inPrice > 0 ? $inPrice : null, $inCost > 0 ? $inCost : null);
             }
 
             $this->supabase->insert('stock_movements', [

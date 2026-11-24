@@ -448,7 +448,7 @@ class ProductVarietyStockService
     public function findRow(int $branchId, int $varietyId): ?array
     {
         $rows = $this->supabase->query('branch_stock_varieties', [
-            'select' => 'id,product_id,volume,variant,quantity,selling_price',
+            'select' => 'id,product_id,volume,variant,quantity,selling_price,buying_cost',
             'id' => "eq.{$varietyId}",
             'branch_id' => "eq.{$branchId}",
             'limit' => 1,

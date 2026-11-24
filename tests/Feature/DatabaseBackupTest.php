@@ -194,7 +194,7 @@ class DatabaseBackupTest extends TestCase
         $this->assertSame(self::DATE, $row['stamp']);
         $this->assertSame('4ftdshm54xvhks/backup_' . self::DATE, $row['folder']);
         $this->assertSame(1, $row['rows_count']);
-        $this->assertSame(45, $row['tables_count']);
+        $this->assertSame($this->schemaTableCount(), $row['tables_count']);
         $this->assertStringEndsWith('/seed_' . self::DATE . '.sql', (string) $row['seed_url']);
         $this->assertStringEndsWith('/schema_' . self::DATE . '.sql', (string) $row['schema_url']);
         $this->assertGreaterThan(0, $row['seed_bytes']);
@@ -291,9 +291,10 @@ class DatabaseBackupTest extends TestCase
 
         $tables = $this->backups($this->supabaseWith([]))->tables();
 
-        $this->assertCount(45, $tables, 'the table list must follow SYSTEM_SCHEMA.sql');
+        $this->assertCount($this->schemaTableCount(), $tables, 'the table list must follow SYSTEM_SCHEMA.sql');
         $this->assertArrayHasKey('sales', $tables);
         $this->assertArrayHasKey('info_email_attachments', $tables);
+        $this->assertArrayHasKey('sale_drafts', $tables);
         // the log of the backups is itself part of the database, so it is dumped
         $this->assertArrayHasKey('backups', $tables);
 
@@ -359,5 +360,10 @@ class DatabaseBackupTest extends TestCase
         $response->assertStatus(500);
         $response->assertJsonPath('status', 'error');
         $this->assertStringContainsString('Invalid Signature', (string) $response->json('message'));
+    }
+
+    private function schemaTableCount(): int
+    {
+        return preg_match_all('/^CREATE TABLE public\./m', (string) file_get_contents(base_path('SYSTEM_SCHEMA.sql')));
     }
 }

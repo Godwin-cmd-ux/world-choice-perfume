@@ -398,8 +398,10 @@ class StockManagerController extends Controller
             if (!empty($buckets)) {
                 foreach ($buckets as $bucket) {
                     $sellingPrice = $bucket['selling_price'] > 0 ? $bucket['selling_price'] : (float) ($stock->selling_price ?? 0);
-                    $bucketCost = (float) ($bucket['buying_cost'] ?? 0);
-                    $effectiveCost = $bucketCost > 0 ? $bucketCost : $unitCost;
+                    // Each volume keeps its own cost; the product-level cost is
+                    // never borrowed, otherwise one volume's cost would appear
+                    // on all the others.
+                    $effectiveCost = (float) ($bucket['buying_cost'] ?? 0);
 
                     $rows[] = [
                         'kind' => 'variety',

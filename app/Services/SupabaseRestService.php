@@ -631,7 +631,7 @@ class SupabaseRestService
                 'branch_id','name','volume','quantity','created_at','updated_at',
             ],
             'branch_stock_varieties' => [
-                'branch_id','product_id','volume','variant','quantity','selling_price','created_at','updated_at',
+                'branch_id','product_id','volume','variant','quantity','selling_price','buying_cost','created_at','updated_at',
             ],
             'bottle_stock_movements' => [
                 'branch_id','volume','variant','type','quantity','reason','performed_by',

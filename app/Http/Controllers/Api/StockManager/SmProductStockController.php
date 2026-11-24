@@ -310,7 +310,8 @@ class SmProductStockController extends SmBaseController
                 (string) $variant,
                 (int) $validated['quantity'],
                 $effectivePrice,
-                $unitCost
+                // No cost on the line must not wipe the variety's stored cost.
+                $unitCost > 0 ? $unitCost : null
             );
         }
 
