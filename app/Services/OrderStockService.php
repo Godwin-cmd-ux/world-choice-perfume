@@ -193,7 +193,7 @@ class OrderStockService
 
             // Empty the bottling the customer chose first, then the other
             // buckets of the same product until the sold units are covered.
-            if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
+            if (!empty($varietyStock[$productId])) {
                 $this->deductVarieties(
                     $branchId,
                     $productId,

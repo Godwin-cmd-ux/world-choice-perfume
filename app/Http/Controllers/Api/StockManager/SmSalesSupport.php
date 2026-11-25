@@ -101,7 +101,7 @@ trait SmSalesSupport
             $isOil = ($stock['product']['category'] ?? '') === 'Oil Fragrance';
             $pickVolume = 0;
             $pickVariant = '';
-            if ($isOil && ! empty($varietyStock[(int) $item['product_id']])) {
+            if (! empty($varietyStock[(int) $item['product_id']])) {
                 $pickVolume = (int) ($item['volume'] ?? 0);
                 $pickVariant = trim((string) ($item['variant'] ?? ''));
                 if ($pickVolume <= 0 || $pickVariant === '') {

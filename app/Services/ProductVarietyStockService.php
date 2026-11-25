@@ -71,16 +71,29 @@ class ProductVarietyStockService
                     continue; // This product has none of this volume.
                 }
                 $variants = [];
+                $volumePrices = $priceMap[$pid][(int) $v] ?? [];
                 foreach ($bottles->variantBuckets((int) $v) as $key) {
                     $qty = (int) ($variantsInStock[$key] ?? 0);
                     if ($qty <= 0) {
                         continue; // Variety has no stock.
                     }
+                    $price = (float) ($volumePrices[$key] ?? 0);
+                    if ($price <= 0) {
+                        $price = $this->firstPrice($bottles, (int) $v, $volumePrices);
+                    }
+                    if ($price <= 0) {
+                        foreach (($priceMap[$pid] ?? []) as $otherVolumePrices) {
+                            $price = $this->firstPrice($bottles, (int) $v, $otherVolumePrices);
+                            if ($price > 0) {
+                                break;
+                            }
+                        }
+                    }
                     $variants[] = [
                         'key' => $key,
                         'label' => $bottles->variantLabel($key, (int) $v),
                         'available' => $qty,
-                        'price' => (float) ($priceMap[$pid][(int) $v][$key] ?? 0),
+                        'price' => $price,
                         'buying_cost' => (float) ($costMap[$pid][(int) $v][$key] ?? 0),
                     ];
                 }

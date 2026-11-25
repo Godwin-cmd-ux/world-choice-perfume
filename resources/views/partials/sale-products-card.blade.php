@@ -7,10 +7,12 @@
     $saleRows = [];
     foreach ($products as $stock) {
         $name = (string) ($stock->product->name ?? '');
-        $category = (string) ($stock->product->category ?? '');
+        $productCategory = (string) ($stock->product->category ?? '');
+        $stockCategory = (string) ($stock->category ?? $productCategory);
+        $category = $stockCategory !== '' ? $stockCategory : $productCategory;
         $buckets = $productVarieties[$stock->product_id] ?? [];
 
-        if ($category === 'Oil Fragrance' && !empty($buckets)) {
+        if (!empty($buckets)) {
             foreach ($buckets as $vol) {
                 foreach ($vol['variants'] as $v) {
                     $price = (float) ($v['price'] ?? 0);

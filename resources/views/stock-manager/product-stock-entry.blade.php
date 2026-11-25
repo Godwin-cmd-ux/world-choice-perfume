@@ -487,16 +487,8 @@ function syncBottleVolumeOptions(line) {
 }
 
 function applyMeasuredBrandCost(line) {
-    if (!isMeasuredBrandPerfume()) return;
-    const productId = String(document.getElementById('product_id').value || '');
-    if (!productId) return;
-    const brandCost = parseFloat(brandPerfumeUnitCosts[productId] || 0);
-    const measuredCost = Math.round((brandCost * 0.10) * 100) / 100;
-    const costInput = line.querySelector('[data-field="unit_cost"]');
-    if (costInput) {
-        costInput.value = measuredCost.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-        costInput.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+    // Measured Brand perfume uses its own unit cost entered by the stock manager.
+    return;
 }
 
 function toggleBottleVolume(line, preselectVariant) {
@@ -525,8 +517,7 @@ function toggleBottleVolume(line, preselectVariant) {
             priceHint.classList.remove('hidden');
         }
         hideVariantField(line);
-        if (costInput) costInput.readOnly = true;
-        applyMeasuredBrandCost(line);
+        if (costInput) costInput.readOnly = false;
     } else {
         if (priceHint) {
             priceHint.innerHTML = '<i class="fas fa-tag mr-1"></i>This is the selling price of the <strong>specific volume and variety</strong> picked on this line (e.g. 50ml sells differently from 30ml).';

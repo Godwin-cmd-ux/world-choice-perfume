@@ -433,7 +433,7 @@ class OrderController extends Controller
                 // or a saved link is honoured when it fits the size.
                 // Products stocked in before variety tracking have no buckets
                 // and are ordered as plain product lines.
-                if (($categoryMap[$productId] ?? '') === 'Oil Fragrance' && !empty($varietyStock[$productId])) {
+                if (!empty($varietyStock[$productId])) {
                     if ($volume <= 0) {
                         return $this->orderProblem(
                             $request,

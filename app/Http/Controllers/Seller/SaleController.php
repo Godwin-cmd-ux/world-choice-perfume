@@ -89,6 +89,7 @@ class SaleController extends Controller
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
                 'selling_price' => $item['selling_price'],
+                'category' => $item['category'] ?? ($item['product']['category'] ?? ''),
                 'product' => (object) array_merge($item['product'] ?? [], [
                     'images' => collect($item['product']['images'] ?? []),
                 ]),
@@ -215,7 +216,7 @@ class SaleController extends Controller
                 // bottling is sold, and enough of that exact bucket must exist.
                 $pickVolume = 0;
                 $pickVariant = '';
-                if (($categoryMap[(int) $item['product_id']] ?? '') === 'Oil Fragrance' && !empty($varietyStock[(int) $item['product_id']])) {
+                if (!empty($varietyStock[(int) $item['product_id']])) {
                     $pickVolume = (int) ($item['volume'] ?? 0);
                     $pickVariant = trim((string) ($item['variant'] ?? ''));
                     if ($pickVolume <= 0 || $pickVariant === '') {

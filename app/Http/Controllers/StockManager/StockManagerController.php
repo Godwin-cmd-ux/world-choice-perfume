@@ -594,16 +594,7 @@ class StockManagerController extends Controller
             ? $this->bottles->variantStock($bottleSourceBranchId)
             : [];
 
-        $measuredUnitCost = null;
-        if ($category === 'Measured Brand perfume') {
-            $brandStock = $this->supabase->findOne('branch_stock', [
-                'branch_id' => $branchId,
-                'product_id' => $validated['product_id'],
-                'category' => 'Brand Perfume',
-            ]);
-            $brandCost = (float) ($brandStock['buying_cost'] ?? 0);
-            $measuredUnitCost = round($brandCost * 0.10, 2);
-        }
+        // Measured Brand perfume unit cost/selling price are entered by the stock manager.
 
         // Resolve every line before writing anything, so a line that cannot be
         // bottled leaves the whole entry unrecorded instead of half saved.
@@ -663,9 +654,6 @@ class StockManagerController extends Controller
             }
 
             $unitCost = (float) $item['unit_cost'];
-            if ($category === 'Measured Brand perfume' && $measuredUnitCost !== null) {
-                $unitCost = $measuredUnitCost;
-            }
 
             $lines[] = [
                 'quantity' => $quantity,

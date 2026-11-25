@@ -236,14 +236,7 @@ class SmProductStockController extends SmBaseController
         if ($category === 'Oil Fragrance' && $bottleVolume && $varietyPrice > 0) {
             $effectivePrice = $varietyPrice;
         }
-        if ($category === 'Measured Brand perfume') {
-            $brandStock = $this->supabase->findOne('branch_stock', [
-                'branch_id' => $branchId,
-                'product_id' => $validated['product_id'],
-                'category' => 'Brand Perfume',
-            ]);
-            $unitCost = round(((float) ($brandStock['buying_cost'] ?? 0)) * 0.10, 2);
-        }
+        // Measured Brand perfume unit cost/selling price are entered by the stock manager.
 
         $hasVarietyLine = in_array($category, ['Oil Fragrance', 'Measured Brand perfume'], true) && !empty($bottleVolume);
 

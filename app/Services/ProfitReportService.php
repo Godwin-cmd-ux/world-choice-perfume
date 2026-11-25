@@ -138,6 +138,25 @@ class ProfitReportService
 
         $stocks = $this->supabase->query('branch_stock', $params);
 
+        $varietyService = new ProductVarietyStockService($this->supabase);
+        $productIdsByBranch = [];
+        foreach ($stocks as $stock) {
+            $bid = (int) ($stock['branch_id'] ?? 0);
+            $pid = (int) ($stock['product_id'] ?? 0);
+            if ($bid > 0 && $pid > 0) {
+                $productIdsByBranch[$bid][$pid] = $pid;
+            }
+        }
+        $bucketsByBranchProduct = [];
+        foreach ($productIdsByBranch as $bid => $pids) {
+            foreach ($varietyService->listForProducts((int) $bid, array_values($pids)) as $bucket) {
+                $pid = (int) ($bucket['product_id'] ?? 0);
+                if ($pid > 0) {
+                    $bucketsByBranchProduct[$bid . ':' . $pid][] = $bucket;
+                }
+            }
+        }
+
         $rows = [];
         $productIds = [];
 
@@ -147,20 +166,51 @@ class ProfitReportService
                 continue;
             }
 
-            $quantity = (int) ($stock['quantity'] ?? 0);
-            $unitCost = (float) ($stock['buying_cost'] ?? 0);
-            $sellingPrice = (float) ($stock['selling_price'] ?? 0);
-            $unitProfit = $sellingPrice - $unitCost;
-
             $productId = (string) ($stock['product_id'] ?? '');
             $productIds[$productId] = true;
+            $branchName = $stock['branch']['name'] ?? 'Unknown branch';
+            $category = $stock['category'] ?? ($product['category'] ?? null);
+            $unitCost = (float) ($stock['buying_cost'] ?? 0);
+            $sellingPrice = (float) ($stock['selling_price'] ?? 0);
+            $bid = (int) ($stock['branch_id'] ?? 0);
+            $pidInt = (int) ($stock['product_id'] ?? 0);
+            $buckets = $bucketsByBranchProduct[$bid . ':' . $pidInt] ?? [];
+
+            if (!empty($buckets)) {
+                foreach ($buckets as $bucket) {
+                    $bucketQty = (int) ($bucket['quantity'] ?? 0);
+                    $bucketPrice = (float) ($bucket['selling_price'] ?? 0) > 0 ? (float) $bucket['selling_price'] : $sellingPrice;
+                    $bucketCost = (float) ($bucket['buying_cost'] ?? 0) > 0 ? (float) $bucket['buying_cost'] : $unitCost;
+                    $unitProfit = $bucketPrice - $bucketCost;
+
+                    $rows[] = [
+                        'product_id' => $productId,
+                        'product' => ($product['name'] ?? 'Unknown product') . ' - ' . ($bucket['label'] ?? ''),
+                        'brand' => $product['brand'] ?? null,
+                        'category' => $category,
+                        'branch' => $branchName,
+                        'quantity' => $bucketQty,
+                        'unit_cost' => $bucketCost,
+                        'selling_price' => $bucketPrice,
+                        'unit_profit' => $unitProfit,
+                        'stock_cost' => $bucketQty * $bucketCost,
+                        'stock_value' => $bucketQty * $bucketPrice,
+                        'potential_profit' => $bucketQty * $unitProfit,
+                        'margin' => $bucketPrice > 0 ? round($unitProfit / $bucketPrice * 100, 1) : 0.0,
+                    ];
+                }
+                continue;
+            }
+
+            $quantity = (int) ($stock['quantity'] ?? 0);
+            $unitProfit = $sellingPrice - $unitCost;
 
             $rows[] = [
                 'product_id' => $productId,
                 'product' => $product['name'] ?? 'Unknown product',
                 'brand' => $product['brand'] ?? null,
-                'category' => $stock['category'] ?? ($product['category'] ?? null),
-                'branch' => $stock['branch']['name'] ?? 'Unknown branch',
+                'category' => $category,
+                'branch' => $branchName,
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
                 'selling_price' => $sellingPrice,
