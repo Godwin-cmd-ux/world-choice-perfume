@@ -36,7 +36,7 @@ class SmBottleStockController extends SmBaseController
 
         // Per-volume totals plus a per-record variant label, exactly like the
         // website's bottleMap / variantLabelMap.
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
+        $volumes = ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'];
         $bottleMap = [];
         $variantLabelMap = [];
         foreach ($records as $b) {
@@ -163,7 +163,7 @@ class SmBottleStockController extends SmBaseController
         $branchId = $this->ownBranchId($request);
 
         $validated = $request->validate([
-            'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
+            'volume' => 'required|in:6ml,10ml,12ml,30ml,50ml,100ml',
             'quantity' => 'required|integer|min:1',
             'reason' => 'nullable|string|max:255',
             'has_box' => 'nullable|in:yes,no',
@@ -174,8 +174,13 @@ class SmBottleStockController extends SmBaseController
         $volume = $this->bottles->parseVolume((string) $validated['volume']);
         $hasBox = $hasLogo = $logoColor = null;
 
+        // 10ml: fixed With Box + With Logo, no color variation.
         // 30/50/100ml carry the box/logo/color detail flow; 6ml and 12ml do not.
-        if ($this->bottles->volumeHasDetails($volume)) {
+        if ($volume === 10) {
+            $hasBox = 'yes';
+            $hasLogo = 'yes';
+            $logoColor = null;
+        } elseif ($this->bottles->volumeHasDetails($volume)) {
             $hasBox = $validated['has_box'] ?? null;
 
             if ($hasBox === 'yes') {
@@ -304,7 +309,7 @@ class SmBottleStockController extends SmBaseController
         $branchId = $this->ownBranchId($request);
 
         return response()->json([
-            'volumes' => ['6ml', '12ml', '30ml', '50ml', '100ml'],
+            'volumes' => ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'],
             'bottleVariants' => $this->bottles->variantStock($branchId),
         ]);
     }
@@ -318,7 +323,7 @@ class SmBottleStockController extends SmBaseController
         $branchId = $this->ownBranchId($request);
 
         $validated = $request->validate([
-            'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
+            'volume' => 'required|in:6ml,10ml,12ml,30ml,50ml,100ml',
             'quantity' => 'required|integer|min:1',
             'reason' => 'nullable|string|max:255',
             'variant' => 'nullable|string|max:32',
@@ -398,7 +403,7 @@ class SmBottleStockController extends SmBaseController
 
         return response()->json([
             'movements' => $movements,
-            'volumes' => ['6ml', '12ml', '30ml', '50ml', '100ml'],
+            'volumes' => ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'],
             'scope' => $this->scopePayload($request),
         ]);
     }

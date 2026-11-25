@@ -27,6 +27,7 @@
                          list, so the product below resolves without a second choice. --}}
                     <option value="Oil Fragrance" {{ old('category', $preselectCategory ?? null) == 'Oil Fragrance' ? 'selected' : '' }}>Oil Fragrance</option>
                     <option value="Brand Perfume" {{ old('category', $preselectCategory ?? null) == 'Brand Perfume' ? 'selected' : '' }}>Brand Perfume</option>
+                    <option value="Measured Brand perfume" {{ old('category', $preselectCategory ?? null) == 'Measured Brand perfume' ? 'selected' : '' }}>Measured Brand perfume</option>
                 </select>
                 <p class="text-[11px] text-gray-400 mt-1">
                     <i class="fas fa-info-circle mr-1"></i>Choose a category first — only its products are searchable below.
@@ -116,11 +117,12 @@
             <select name="items[__INDEX__][bottle_volume]" data-field="bottle_volume"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                 <option value="">Select Bottle Volume</option>
-                <option value="6">6ml</option>
-                <option value="12">12ml</option>
-                <option value="30">30ml</option>
-                <option value="50">50ml</option>
-                <option value="100">100ml</option>
+                <option value="6" data-cat="oil">6ml</option>
+                <option value="10" data-cat="measured">10ml</option>
+                <option value="12" data-cat="oil">12ml</option>
+                <option value="30" data-cat="oil">30ml</option>
+                <option value="50" data-cat="oil">50ml</option>
+                <option value="100" data-cat="oil">100ml</option>
             </select>
             <p class="text-[11px] text-gray-400 mt-1">
                 <i class="fas fa-info-circle mr-1"></i>Selected volume bottles will be auto-outstocked by the quantity entered on this line.
@@ -186,7 +188,9 @@
 const allProducts = @json($products ?? []);
 const bottleVariants = @json($bottleVariants ?? []);
 const oldItems = @json(array_values((array) old('items', [])));
+const brandPerfumeUnitCosts = @json($brandPerfumeUnitCosts ?? []);
 const VARIANT_LABELS = {
+    box_logo: 'With Box · With Logo',
     box_logo_yellow: 'With Box · With Logo · Yellow',
     box_logo_black: 'With Box · With Logo · Black',
     box_nologo_black: 'With Box · No Logo · Black',
@@ -195,7 +199,7 @@ const VARIANT_LABELS = {
     plain: 'Plain (no details)'
 };
 const DETAIL_VOLUMES = ['30', '50', '100'];
-const VARIANT_KEYS = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+const VARIANT_KEYS = ['box_logo', 'box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
 
 let lineCounter = 0;
 
@@ -203,10 +207,23 @@ function currentCategory() {
     return document.getElementById('category-select').value;
 }
 
+function isMeasuredBrandPerfume() {
+    return currentCategory() === 'Measured Brand perfume';
+}
+
 // Several item lines are only meaningful for oil fragrance, where the same
-// product is bottled in different volumes. Brand perfume stays on one line.
+// product is bottled in different volumes. Brand perfume and Measured Brand
+// perfume stay on one line.
 function isOilFragrance() {
     return currentCategory() === 'Oil Fragrance';
+}
+
+function supportsMultipleLines() {
+    return isOilFragrance();
+}
+
+function usesBottleVolume() {
+    return isOilFragrance() || isMeasuredBrandPerfume();
 }
 
 function onCategoryChange() {
@@ -238,6 +255,8 @@ function matchingProducts() {
         return [];
     }
 
+    const productCategory = category === 'Measured Brand perfume' ? 'Brand Perfume' : category;
+
     // Spaces are kept as separate search terms, so "reef 33" finds
     // "Reef 33" just as easily as a single word does.
     const terms = (document.getElementById('product_search').value || '')
@@ -246,7 +265,7 @@ function matchingProducts() {
         .filter(Boolean);
 
     return (allProducts || []).filter(function (p) {
-        if ((p.category || '') !== category) {
+        if ((p.category || '') !== productCategory) {
             return false;
         }
         const haystack = ((p.name || '') + ' ' + (p.brand || '')).toLowerCase();
@@ -455,21 +474,70 @@ function renumberLines() {
     });
 }
 
+function syncBottleVolumeOptions(line) {
+    const volumeSelect = line.querySelector('[data-field="bottle_volume"]');
+    const cat = currentCategory();
+    Array.from(volumeSelect.options).forEach(function (opt) {
+        if (!opt.value) return;
+        const optCat = opt.getAttribute('data-cat');
+        const show = (cat === 'Oil Fragrance' && optCat === 'oil') || (cat === 'Measured Brand perfume' && optCat === 'measured');
+        opt.hidden = !show;
+        opt.disabled = !show;
+    });
+}
+
+function applyMeasuredBrandCost(line) {
+    if (!isMeasuredBrandPerfume()) return;
+    const productId = String(document.getElementById('product_id').value || '');
+    if (!productId) return;
+    const brandCost = parseFloat(brandPerfumeUnitCosts[productId] || 0);
+    const measuredCost = Math.round((brandCost * 0.10) * 100) / 100;
+    const costInput = line.querySelector('[data-field="unit_cost"]');
+    if (costInput) {
+        costInput.value = measuredCost.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+        costInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
 function toggleBottleVolume(line, preselectVariant) {
     const volumeField = line.querySelector('.bottle-volume-field');
     const volumeSelect = line.querySelector('[data-field="bottle_volume"]');
     const priceHint = line.querySelector('.variety-price-hint');
 
-    if (currentCategory() === 'Oil Fragrance') {
+    syncBottleVolumeOptions(line);
+
+    const costInput = line.querySelector('[data-field="unit_cost"]');
+
+    if (isOilFragrance()) {
         volumeField.classList.remove('hidden');
         volumeSelect.setAttribute('required', 'required');
+        volumeSelect.disabled = false;
+        if (volumeSelect.value === '10') volumeSelect.value = '';
         if (priceHint) priceHint.classList.remove('hidden');
+        if (costInput) costInput.readOnly = false;
+    } else if (isMeasuredBrandPerfume()) {
+        volumeField.classList.remove('hidden');
+        volumeSelect.setAttribute('required', 'required');
+        volumeSelect.value = '10';
+        volumeSelect.disabled = false;
+        if (priceHint) {
+            priceHint.innerHTML = '<i class="fas fa-tag mr-1"></i>This is the selling price for the <strong>10ml measured bottle</strong>.';
+            priceHint.classList.remove('hidden');
+        }
+        hideVariantField(line);
+        if (costInput) costInput.readOnly = true;
+        applyMeasuredBrandCost(line);
     } else {
-        if (priceHint) priceHint.classList.add('hidden');
+        if (priceHint) {
+            priceHint.innerHTML = '<i class="fas fa-tag mr-1"></i>This is the selling price of the <strong>specific volume and variety</strong> picked on this line (e.g. 50ml sells differently from 30ml).';
+            priceHint.classList.add('hidden');
+        }
         volumeField.classList.add('hidden');
         volumeSelect.removeAttribute('required');
+        volumeSelect.disabled = false;
         volumeSelect.value = '';
         hideVariantField(line);
+        if (costInput) costInput.readOnly = false;
     }
 
     refreshVariantOptions(line, preselectVariant || '');

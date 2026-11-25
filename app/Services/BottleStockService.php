@@ -4,10 +4,10 @@ namespace App\Services;
 
 class BottleStockService
 {
-    public const VOLUMES = [6, 12, 30, 50, 100];
+    public const VOLUMES = [6, 10, 12, 30, 50, 100];
 
-    // Volumes that carry box/logo/color details (30ml, 50ml, 100ml).
-    public const DETAIL_VOLUMES = [30, 50, 100];
+    // Volumes that carry box/logo/color details (10ml fixed box+logo, 30ml/50ml/100ml configurable).
+    public const DETAIL_VOLUMES = [10, 30, 50, 100];
 
     // Variant buckets per volume (>= 30ml only).
     public const VARIANT_BOX_LOGO_YELLOW = 'box_logo_yellow';
@@ -16,6 +16,8 @@ class BottleStockService
     public const VARIANT_BOX_NOLOGO_WHITE = 'box_nologo_white';
     public const VARIANT_NO_BOX = 'no_box';
     public const VARIANT_PLAIN = 'plain';
+    // 10ml: fixed box + logo, no color variation.
+    public const VARIANT_BOX_LOGO = 'box_logo';
 
     public const VARIANT_DETAILS = [
         self::VARIANT_BOX_LOGO_YELLOW,
@@ -60,6 +62,10 @@ class BottleStockService
             return [self::VARIANT_PLAIN];
         }
 
+        if ($volume === 10) {
+            return [self::VARIANT_BOX_LOGO];
+        }
+
         return array_merge(self::VARIANT_DETAILS, [self::VARIANT_NO_BOX, self::VARIANT_PLAIN]);
     }
 
@@ -70,12 +76,17 @@ class BottleStockService
      *   Without Box  -> no_box
      *   With Box + With Logo   -> box_logo_{yellow|black}
      *   With Box + No Logo     -> box_nologo_{black|white}
+     * 10ml: fixed With Box + With Logo, no color variation.
      * 6/12ml always resolve to plain (no details).
      */
     public function variantKey(int $volume, ?string $hasBox, ?string $hasLogo = null, ?string $logoColor = null): string
     {
         if (!$this->volumeHasDetails($volume)) {
             return self::VARIANT_PLAIN;
+        }
+
+        if ($volume === 10) {
+            return self::VARIANT_BOX_LOGO;
         }
 
         if ($hasBox === 'no') {
@@ -102,6 +113,7 @@ class BottleStockService
         return match ($variant) {
             self::VARIANT_BOX_LOGO_YELLOW => 'With Box · With Logo · Yellow',
             self::VARIANT_BOX_LOGO_BLACK  => 'With Box · With Logo · Black',
+            self::VARIANT_BOX_LOGO => 'With Box · With Logo',
             self::VARIANT_BOX_NOLOGO_BLACK => 'With Box · No Logo · Black',
             self::VARIANT_BOX_NOLOGO_WHITE => 'With Box · No Logo · White',
             self::VARIANT_NO_BOX => 'Without Box',
@@ -118,6 +130,7 @@ class BottleStockService
         return match ($variant) {
             self::VARIANT_BOX_LOGO_YELLOW => ['has_box' => 'yes', 'has_logo' => 'yes', 'logo_color' => 'yellow', 'box_color' => null],
             self::VARIANT_BOX_LOGO_BLACK  => ['has_box' => 'yes', 'has_logo' => 'yes', 'logo_color' => 'black', 'box_color' => null],
+            self::VARIANT_BOX_LOGO => ['has_box' => 'yes', 'has_logo' => 'yes', 'logo_color' => null, 'box_color' => null],
             self::VARIANT_BOX_NOLOGO_BLACK => ['has_box' => 'yes', 'has_logo' => 'no', 'logo_color' => null, 'box_color' => 'black'],
             self::VARIANT_BOX_NOLOGO_WHITE => ['has_box' => 'yes', 'has_logo' => 'no', 'logo_color' => null, 'box_color' => 'white'],
             self::VARIANT_NO_BOX => ['has_box' => 'no', 'has_logo' => null, 'logo_color' => null, 'box_color' => null],

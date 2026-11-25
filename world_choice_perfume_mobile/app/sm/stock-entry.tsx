@@ -13,7 +13,7 @@ import {
 import { COLORS, SM_ACCENT, RADIUS } from '../../lib/theme';
 import { smMenu } from '../../components/smsidebar';
 
-const CATEGORIES = ['Brand Perfume', 'Oil Fragrance'] as const;
+const CATEGORIES = ['Brand Perfume', 'Oil Fragrance', 'Measured Brand perfume'] as const;
 const DETAIL_VOLUMES = [30, 50, 100];
 
 /**
@@ -46,18 +46,22 @@ export default function SmStockEntry() {
   const products = useMemo(() => form?.products ?? [], [form]);
   const [productSearch, setProductSearch] = useState('');
   const filteredProducts = useMemo(() => {
+    const productCategory = category === 'Measured Brand perfume' ? 'Brand Perfume' : category;
+    const byCategory = products.filter((p) => (p.category ?? '') === productCategory);
     const q = productSearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
+    if (!q) return byCategory;
+    return byCategory.filter(
       (p) => p.name.toLowerCase().includes(q) || (p.brand ?? '').toLowerCase().includes(q),
     );
-  }, [products, productSearch]);
+  }, [products, productSearch, category]);
 
   const selectedProduct = products.find((p) => String(p.id) === productId) ?? null;
 
   // Availability map for the chosen oil bottle volume/variety.
   const variantStock = form?.bottleVariants ?? {};
-  const volumeOptions = Object.keys(variantStock).sort((a, b) => Number(a) - Number(b));
+  const volumeOptions = Object.keys(variantStock)
+    .filter((v) => !(category === 'Oil Fragrance' && v === '10'))
+    .sort((a, b) => Number(a) - Number(b));
   const variantsForVolume = bottleVolume ? (variantStock[bottleVolume] ?? {}) : {};
   const needsDetails = bottleVolume ? DETAIL_VOLUMES.includes(Number(bottleVolume)) : false;
   const available = bottleVolume && bottleVariant ? (variantsForVolume[bottleVariant] ?? 0) : 0;
@@ -73,8 +77,8 @@ export default function SmStockEntry() {
         selling_price: Number(price),
         variety_price: varietyPrice ? Number(varietyPrice) : undefined,
         category,
-        bottle_volume: category === 'Oil Fragrance' && bottleVolume ? Number(bottleVolume) : undefined,
-        bottle_variant: category === 'Oil Fragrance' && bottleVariant ? bottleVariant : undefined,
+        bottle_volume: (category === 'Oil Fragrance' || category === 'Measured Brand perfume') && bottleVolume ? Number(bottleVolume) : undefined,
+        bottle_variant: (category === 'Oil Fragrance' || category === 'Measured Brand perfume') && bottleVariant ? bottleVariant : undefined,
         date_received: dateReceived,
       });
       router.back();
@@ -100,7 +104,15 @@ export default function SmStockEntry() {
             key={c}
             onPress={() => {
               setCategory(c);
+              setProductId('');
+              setProductSearch('');
               if (c === 'Brand Perfume') {
+                setBottleVolume('');
+                setBottleVariant('');
+              } else if (c === 'Measured Brand perfume') {
+                setBottleVolume('10');
+                setBottleVariant('box_logo');
+              } else {
                 setBottleVolume('');
                 setBottleVariant('');
               }
@@ -231,6 +243,16 @@ export default function SmStockEntry() {
           ) : bottleVolume ? (
             <Text style={styles.availability}>Available plain {bottleVolume}ml: {variantStock[bottleVolume]?.plain ?? 0}</Text>
           ) : null}
+        </>
+      ) : null}
+
+      {category === 'Measured Brand perfume' ? (
+        <>
+          <GroupLabel>Bottle (10ml, With Box · With Logo)</GroupLabel>
+          <Text style={styles.availability}>
+            Available 10ml: {(variantStock['10']?.box_logo ?? 0)}
+          </Text>
+          {fieldErrors.bottle_volume ? <Banner kind="error" message={fieldErrors.bottle_volume} /> : null}
         </>
       ) : null}
 

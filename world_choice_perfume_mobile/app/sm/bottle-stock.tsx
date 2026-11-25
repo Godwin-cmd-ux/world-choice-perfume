@@ -191,13 +191,15 @@ export default function SmBottleStock() {
             <>
               <GroupLabel>Stock in bottles</GroupLabel>
               <ChipRow>
-                {(data?.volumes ?? ['6ml', '12ml', '30ml', '50ml', '100ml']).map((v) => (
+                {(data?.volumes ?? ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml']).map((v) => (
                   <Chip key={v} label={v} active={volume === v} onPress={() => setVolume(v)} />
                 ))}
               </ChipRow>
               <AuthField label="Quantity" value={quantity} onChangeText={setQuantity} placeholder="e.g. 100" icon="layers-outline" keyboardType="number-pad" error={fieldErrors.quantity} />
               <AuthField label="Reason (optional)" value={reason} onChangeText={setReason} placeholder="Delivery, purchase…" icon="document-text-outline" error={fieldErrors.reason} />
-              {[30, 50, 100].includes(Number(volume)) ? (
+              {Number(volume) === 10 ? (
+                <Text style={styles.label}>10ml bottles come with Box and Logo (no color variation).</Text>
+              ) : [30, 50, 100].includes(Number(volume)) ? (
                 <>
                   <Text style={styles.label}>Has box?</Text>
                   <ChipRow>
@@ -260,7 +262,7 @@ export default function SmBottleStock() {
             <>
               <GroupLabel>Record broken bottles</GroupLabel>
               <ChipRow>
-                {(data?.volumes ?? ['6ml', '12ml', '30ml', '50ml', '100ml']).map((v) => (
+                {(data?.volumes ?? ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml']).map((v) => (
                   <Chip key={v} label={v} active={brokenVolume === v} onPress={() => setBrokenVolume(v)} />
                 ))}
               </ChipRow>

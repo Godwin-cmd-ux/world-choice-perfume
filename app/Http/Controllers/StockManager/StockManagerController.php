@@ -516,10 +516,27 @@ class StockManagerController extends Controller
             }
         }
 
+        $branchId = auth()->user()->branch_id;
+
+        // Measured Brand perfume uses 10ml bottles and unit cost = 10% of the
+        // Brand Perfume unit cost for the same product.
+        $brandPerfumeUnitCosts = [];
+        $brandStocks = $this->supabase->query('branch_stock', [
+            'branch_id' => "eq.{$branchId}",
+            'category' => 'eq.Brand Perfume',
+            'select' => 'product_id,buying_cost',
+        ]);
+        foreach ($brandStocks as $bs) {
+            $pid = (string) ($bs['product_id'] ?? '');
+            if ($pid !== '') {
+                $brandPerfumeUnitCosts[$pid] = (float) ($bs['buying_cost'] ?? 0);
+            }
+        }
+
         // Oil fragrance entries consume empty bottles from the manager's own
         // branch. Head Quarters bottles with its own bottle stock, so the
         // variety dropdown reflects this branch's availability.
-        $bottleBranchId = $this->bottleSourceBranchId(auth()->user()->branch_id);
+        $bottleBranchId = $this->bottleSourceBranchId($branchId);
 
         return view('stock-manager.product-stock-entry', [
             'products' => collect($products)->map(fn($p) => (object) $p),
@@ -527,6 +544,7 @@ class StockManagerController extends Controller
             'preselectCategory' => $preselect['category'] ?? null,
             'bottleVariants' => $this->bottles->variantStock($bottleBranchId),
             'bottleVariantsBranchName' => $this->scope->branchName($bottleBranchId),
+            'brandPerfumeUnitCosts' => $brandPerfumeUnitCosts,
         ]);
     }
 
@@ -542,14 +560,14 @@ class StockManagerController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required',
-            'category' => 'required|in:Oil Fragrance,Brand Perfume',
+            'category' => 'required|in:Oil Fragrance,Brand Perfume,Measured Brand perfume',
             'date_received' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.selling_price' => 'required|numeric|min:0',
             'items.*.variety_price' => 'nullable|numeric|min:0',
-            'items.*.bottle_volume' => 'nullable|integer|in:6,12,30,50,100',
+            'items.*.bottle_volume' => 'nullable|integer|in:6,10,12,30,50,100',
             'items.*.bottle_variant' => 'nullable|string|max:32',
         ]);
 
@@ -557,17 +575,35 @@ class StockManagerController extends Controller
         $category = $validated['category'];
 
         // Item lines exist for oil fragrance only, where one product is bottled
-        // in several volumes. Brand perfume is always a single entry.
-        if ($category === 'Brand Perfume' && count($validated['items']) > 1) {
-            return back()->withErrors(['items' => 'Brand Perfume entries can only have one item line.'])->withInput();
+        // in several volumes. Brand perfume and Measured Brand perfume are single entries.
+        if (in_array($category, ['Brand Perfume', 'Measured Brand perfume'], true) && count($validated['items']) > 1) {
+            return back()->withErrors(['items' => $category . ' entries can only have one item line.'])->withInput();
+        }
+
+        if ($category === 'Measured Brand perfume') {
+            $product = $this->supabase->find('products', $validated['product_id']);
+            if (!$product || ($product['category'] ?? '') !== 'Brand Perfume') {
+                return back()->withErrors(['product_id' => 'Measured Brand perfume can only be added for Brand Perfume products.'])->withInput();
+            }
         }
 
         // Empty bottles always come from this branch's own bottle stock.
         $bottleSourceBranchId = $this->bottleSourceBranchId($branchId);
 
-        $variantStock = $category === 'Oil Fragrance'
+        $variantStock = in_array($category, ['Oil Fragrance', 'Measured Brand perfume'], true)
             ? $this->bottles->variantStock($bottleSourceBranchId)
             : [];
+
+        $measuredUnitCost = null;
+        if ($category === 'Measured Brand perfume') {
+            $brandStock = $this->supabase->findOne('branch_stock', [
+                'branch_id' => $branchId,
+                'product_id' => $validated['product_id'],
+                'category' => 'Brand Perfume',
+            ]);
+            $brandCost = (float) ($brandStock['buying_cost'] ?? 0);
+            $measuredUnitCost = round($brandCost * 0.10, 2);
+        }
 
         // Resolve every line before writing anything, so a line that cannot be
         // bottled leaves the whole entry unrecorded instead of half saved.
@@ -581,8 +617,7 @@ class StockManagerController extends Controller
                 : null;
             $variant = null;
 
-            // Oil fragrance lines consume empty bottles: require the volume and
-            // make sure enough of that volume is in stock before recording.
+            // Oil fragrance and Measured Brand perfume lines consume empty bottles.
             if ($category === 'Oil Fragrance') {
                 if (empty($bottleVolume)) {
                     return back()->withErrors(['items.' . $index . '.bottle_volume' => 'Bottle volume is required for Oil Fragrance entries.'])->withInput();
@@ -598,7 +633,12 @@ class StockManagerController extends Controller
                 } else {
                     $variant = 'plain';
                 }
+            } elseif ($category === 'Measured Brand perfume') {
+                $bottleVolume = 10;
+                $variant = \App\Services\BottleStockService::VARIANT_BOX_LOGO;
+            }
 
+            if (in_array($category, ['Oil Fragrance', 'Measured Brand perfume'], true) && $bottleVolume) {
                 // Two lines can bottle the same volume and variety; their demand
                 // adds up against the single bucket they both draw from.
                 $bucketKey = $bottleVolume . '|' . $variant;
@@ -606,8 +646,9 @@ class StockManagerController extends Controller
 
                 $available = $variantStock[$bottleVolume][$variant] ?? 0;
                 if ($available < $bottleDemand[$bucketKey]) {
+                    $field = $category === 'Measured Brand perfume' ? 'items.' . $index . '.bottle_volume' : 'items.' . $index . '.bottle_variant';
                     return back()->withErrors([
-                        'items.' . $index . '.bottle_variant' => "Insufficient bottle stock for {$bottleVolume}ml ({$this->bottles->variantLabel($variant, $bottleVolume)}). Available: {$available}.",
+                        $field => "Insufficient bottle stock for {$bottleVolume}ml ({$this->bottles->variantLabel($variant, $bottleVolume)}). Available: {$available}.",
                     ])->withInput();
                 }
             }
@@ -621,9 +662,14 @@ class StockManagerController extends Controller
                 $effectivePrice = $varietyPrice;
             }
 
+            $unitCost = (float) $item['unit_cost'];
+            if ($category === 'Measured Brand perfume' && $measuredUnitCost !== null) {
+                $unitCost = $measuredUnitCost;
+            }
+
             $lines[] = [
                 'quantity' => $quantity,
-                'unit_cost' => (float) $item['unit_cost'],
+                'unit_cost' => $unitCost,
                 'bottle_volume' => $bottleVolume,
                 'variant' => $variant,
                 'selling_price' => $effectivePrice,
@@ -632,9 +678,9 @@ class StockManagerController extends Controller
 
         $totalQuantity = array_sum(array_column($lines, 'quantity'));
 
-        // Oil fragrance varieties each carry their own unit cost/selling price.
+        // Bottled varieties each carry their own unit cost/selling price.
         // Do not mix them into the aggregate branch_stock cost/price.
-        $hasVarietyLines = $category === 'Oil Fragrance'
+        $hasVarietyLines = in_array($category, ['Oil Fragrance', 'Measured Brand perfume'], true)
             && collect($lines)->contains(fn ($line) => !empty($line['bottle_volume']));
 
         $lastLine = end($lines);
@@ -713,12 +759,16 @@ class StockManagerController extends Controller
 
             // Auto-outstock empty bottles used to bottle this line, from the
             // exact variety bucket chosen on the form.
-            if ($category === 'Oil Fragrance' && $line['bottle_volume']) {
+            if (in_array($category, ['Oil Fragrance', 'Measured Brand perfume'], true) && $line['bottle_volume']) {
+                $reason = $category === 'Measured Brand perfume'
+                    ? 'Auto outstock for measured brand perfume stock entry'
+                    : 'Auto outstock for oil fragrance stock entry';
+
                 $this->bottles->deduct(
                     $bottleSourceBranchId,
                     (int) $line['bottle_volume'],
                     (int) $line['quantity'],
-                    'Auto outstock for oil fragrance stock entry',
+                    $reason,
                     (string) $this->performingUserId(),
                     (string) $line['variant']
                 );
@@ -864,7 +914,8 @@ class StockManagerController extends Controller
 
         if ($newQty != $oldQty) {
             $product = $this->supabase->findOne('products', ['id' => $stock['product_id']]);
-            if (($product['category'] ?? '') === 'Oil Fragrance') {
+            $isBottledStock = ($product['category'] ?? '') === 'Oil Fragrance' || ($stock['category'] ?? '') === 'Measured Brand perfume';
+            if ($isBottledStock) {
                 $varietyService = new \App\Services\ProductVarietyStockService($this->supabase);
                 $buckets = $varietyService->stockFor($branchId, (int) $stock['product_id']);
                 $hasRecords = false;
@@ -1041,7 +1092,7 @@ class StockManagerController extends Controller
         $volume = (int) $bucket['volume'];
         $variant = (string) $bucket['variant'];
         $product = $this->supabase->findOne('products', ['id' => $productId], 'id,name,category');
-        $isBottledProduct = ($product['category'] ?? '') === 'Oil Fragrance' && $volume > 0 && $variant !== '';
+        $isBottledProduct = $volume > 0 && $variant !== '';
         $quantityDelta = $newQty - $oldQty;
 
         // A manual increase of a bottled product consumes more empty bottles,
@@ -1240,7 +1291,7 @@ class StockManagerController extends Controller
 
         $bottles = array_values($bottles);
 
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
+        $volumes = ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'];
         $bottleMap = [];
         $variantLabelMap = [];
         foreach ($bottles as $b) {
@@ -1361,7 +1412,7 @@ class StockManagerController extends Controller
 
         if ($request->isMethod('post')) {
             $validated = $request->validate([
-                'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
+                'volume' => 'required|in:6ml,10ml,12ml,30ml,50ml,100ml',
                 'quantity' => 'required|integer|min:1',
                 'reason' => 'nullable|string|max:255',
                 'has_box' => 'nullable|in:yes,no',
@@ -1372,9 +1423,14 @@ class StockManagerController extends Controller
             $volume = $this->bottles->parseVolume((string) $validated['volume']);
             $hasBox = $hasLogo = $logoColor = null;
 
+            // 10ml: fixed With Box + With Logo, no color variation.
             // 30/50/100ml: With Box -> (With Logo -> Yellow/Black | No Logo -> Black/White),
             // otherwise Without Box. 6ml and 12ml neglect the details flow.
-            if ($this->bottles->volumeHasDetails($volume)) {
+            if ($volume === 10) {
+                $hasBox = 'yes';
+                $hasLogo = 'yes';
+                $logoColor = null;
+            } elseif ($this->bottles->volumeHasDetails($volume)) {
                 $hasBox = $validated['has_box'] ?? null;
 
                 if ($hasBox === 'yes') {
@@ -1502,7 +1558,7 @@ class StockManagerController extends Controller
             return redirect()->route('stock-manager.bottle-stock')->with('success', 'Bottle stock added successfully.');
         }
 
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
+        $volumes = ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-stock-in', ['volumes' => $volumes]);
     }
 
@@ -1512,7 +1568,7 @@ class StockManagerController extends Controller
 
         if ($request->isMethod('post')) {
             $validated = $request->validate([
-                'volume' => 'required|in:6ml,12ml,30ml,50ml,100ml',
+                'volume' => 'required|in:6ml,10ml,12ml,30ml,50ml,100ml',
                 'quantity' => 'required|integer|min:1',
                 'reason' => 'nullable|string|max:255',
                 'variant' => 'nullable|string|max:32',
@@ -1569,7 +1625,7 @@ class StockManagerController extends Controller
             return redirect()->route('stock-manager.bottle-stock')->with('success', 'Broken bottles recorded.');
         }
 
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
+        $volumes = ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-broken', [
             'volumes' => $volumes,
             'bottleVariants' => $this->bottles->variantStock($branchId),
@@ -1596,7 +1652,7 @@ class StockManagerController extends Controller
 
         $movements = $this->loadMovementsWithUser('bottle_stock_movements', $branchId, 50, $params);
 
-        $volumes = ['6ml', '12ml', '30ml', '50ml', '100ml'];
+        $volumes = ['6ml', '10ml', '12ml', '30ml', '50ml', '100ml'];
         return view('stock-manager.bottle-movements', [
             'movements' => $movements,
             'volumes' => $volumes,

@@ -65,9 +65,10 @@
 
 @push('scripts')
 <script>
-const DETAIL_VOLUMES = ['30ml', '50ml', '100ml'];
+const DETAIL_VOLUMES = ['10ml', '30ml', '50ml', '100ml'];
 const BROKEN_VARIANTS = @json($bottleVariants ?? []);
 const BROKEN_LABELS = {
+    'box_logo': 'With Box · With Logo',
     'box_logo_yellow': 'With Box · With Logo · Yellow',
     'box_logo_black': 'With Box · With Logo · Black',
     'box_nologo_black': 'With Box · No Logo · Black',
@@ -90,7 +91,7 @@ function refreshBrokenVariants() {
     }
     const buckets = BROKEN_VARIANTS[vol.replace('ml', '')] || {};
     let html = '<option value="">Any available variant</option>';
-    const keys = ['box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
+    const keys = ['box_logo', 'box_logo_yellow', 'box_logo_black', 'box_nologo_black', 'box_nologo_white', 'no_box', 'plain'];
     keys.forEach(k => {
         const q = buckets[k] || 0;
         if (q > 0) {

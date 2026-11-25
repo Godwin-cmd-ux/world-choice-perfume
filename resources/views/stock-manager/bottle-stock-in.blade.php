@@ -27,7 +27,7 @@
                         <option value="{{ $volume }}" {{ old('volume') === $volume ? 'selected' : '' }}>{{ $volume }}</option>
                     @endforeach
                 </select>
-                <p class="text-xs text-gray-400 mt-1">30ml, 50ml &amp; 100ml bottles are tracked by box, logo and color details. 6ml &amp; 12ml bottles are recorded without those details.</p>
+                <p class="text-xs text-gray-400 mt-1">10ml bottles come with box and logo (no color variation). 30ml, 50ml &amp; 100ml bottles are tracked by box, logo and color details. 6ml &amp; 12ml bottles are recorded without those details.</p>
                 @error('volume')
                     <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                 @enderror
@@ -43,8 +43,12 @@
                 @enderror
             </div>
 
-            {{-- Details cascade (30ml / 50ml / 100ml) --}}
+            {{-- Details (10ml fixed box+logo, 30ml / 50ml / 100ml configurable) --}}
             <div id="details-section" class="hidden">
+                <div id="fixed-10ml-note" class="hidden mb-4 px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+                    <i class="fas fa-box mr-1"></i> 10ml bottles come with <strong>Box</strong> and <strong>Logo</strong> (no color variation).
+                </div>
+                <div id="box-logo-cascade">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Bottle Box *</label>
                     <div class="flex gap-3">
@@ -106,6 +110,7 @@
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+                </div>
             </div>
 
             <div class="mb-6">
@@ -130,10 +135,13 @@
 @push('scripts')
 <script>
 const DETAIL_VOLUMES = ['30ml', '50ml', '100ml'];
+const FIXED_DETAIL_VOLUMES = ['10ml'];
 const volumeSelect = document.getElementById('volume');
 const detailsSection = document.getElementById('details-section');
 const logoSection = document.getElementById('logo-section');
 const colorSection = document.getElementById('color-section');
+const fixed10mlNote = document.getElementById('fixed-10ml-note');
+const boxLogoCascade = document.getElementById('box-logo-cascade');
 
 function syncOption(input) {
     document.querySelectorAll(`input[name="${input.name}"]`).forEach(radio => {
@@ -161,9 +169,24 @@ function clearGroup(name) {
 }
 
 function updateCascade() {
-    const showDetails = DETAIL_VOLUMES.includes(volumeSelect.value);
+    const vol = volumeSelect.value;
+    const isFixed10 = FIXED_DETAIL_VOLUMES.includes(vol);
+    const showDetails = isFixed10 || DETAIL_VOLUMES.includes(vol);
     detailsSection.classList.toggle('hidden', !showDetails);
+
+    if (fixed10mlNote) fixed10mlNote.classList.toggle('hidden', !isFixed10);
+    if (boxLogoCascade) boxLogoCascade.classList.toggle('hidden', isFixed10);
+
     if (!showDetails) {
+        clearGroup('has_box');
+        clearGroup('has_logo');
+        clearGroup('logo_color');
+        logoSection.classList.add('hidden');
+        colorSection.classList.add('hidden');
+        return;
+    }
+
+    if (isFixed10) {
         clearGroup('has_box');
         clearGroup('has_logo');
         clearGroup('logo_color');
