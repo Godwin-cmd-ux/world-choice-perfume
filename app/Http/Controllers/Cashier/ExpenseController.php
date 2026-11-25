@@ -114,4 +114,97 @@ class ExpenseController extends Controller
 
         return redirect()->route('cashier.expenses.index')->with('success', 'Expense recorded successfully.');
     }
+
+    public function edit($expenseId)
+    {
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('cashier.expenses.index')
+                ->with('error', 'Expenses cannot be edited while monitoring another branch. Exit the branch to make changes.');
+        }
+
+        $expense = $this->findBranchExpense($expenseId);
+        if (!$expense) {
+            abort(404);
+        }
+
+        return view('cashier.expenses.edit', ['expense' => (object) $expense]);
+    }
+
+    public function update(Request $request, $expenseId)
+    {
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('cashier.expenses.index')
+                ->with('error', 'Expenses cannot be edited while monitoring another branch. Exit the branch to make changes.');
+        }
+
+        $expense = $this->findBranchExpense($expenseId);
+        if (!$expense) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'category' => 'required|in:electricity,water,transport,cleaning,packaging,other',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'required|string|min:10',
+        ]);
+
+        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
+
+        $this->supabase->update('expenses', [
+            'category' => $validated['category'],
+            'amount' => $validated['amount'],
+            'description' => $validated['description'],
+            'updated_at' => now()->toIso8601String(),
+        ], ['id' => $expenseId]);
+
+        $this->supabase->insert('audit_logs', [
+            'user_id' => $supabaseUserId,
+            'action' => 'expense_updated',
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        return redirect()->route('cashier.expenses.index')->with('success', 'Expense updated successfully.');
+    }
+
+    public function destroy($expenseId)
+    {
+        if ($this->scope->inCrossBranchMode()) {
+            return redirect()->route('cashier.expenses.index')
+                ->with('error', 'Expenses cannot be deleted while monitoring another branch. Exit the branch to make changes.');
+        }
+
+        $expense = $this->findBranchExpense($expenseId);
+        if (!$expense) {
+            abort(404);
+        }
+
+        $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
+
+        $this->supabase->delete('expenses', ['id' => $expenseId]);
+
+        $this->supabase->insert('audit_logs', [
+            'user_id' => $supabaseUserId,
+            'action' => 'expense_deleted',
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        return redirect()->route('cashier.expenses.index')->with('success', 'Expense deleted successfully.');
+    }
+
+    private function findBranchExpense($expenseId): ?array
+    {
+        $branchId = $this->scope->activeBranchId();
+        $expense = $this->supabase->find('expenses', $expenseId);
+        if (!$expense) {
+            return null;
+        }
+
+        if ((string) ($expense['branch_id'] ?? '') !== (string) $branchId) {
+            return null;
+        }
+
+        return $expense;
+    }
 }

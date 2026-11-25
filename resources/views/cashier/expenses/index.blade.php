@@ -41,6 +41,9 @@
                 <th class="text-left px-4">Entered By</th>
                 <th class="text-left px-4">Description</th>
                 <th class="text-left px-4">Date</th>
+                @unless($inCrossBranch)
+                    <th class="text-right px-4">Actions</th>
+                @endunless
             </tr></thead>
             <tbody>
                 @forelse($expenses as $expense)
@@ -52,9 +55,25 @@
                         <td class="px-4 text-gray-700 font-medium">{{ $expense->user?->name ?? '—' }}</td>
                         <td class="px-4 text-gray-500 max-w-xs truncate">{{ $expense->description }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
+                        @unless($inCrossBranch)
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ route('cashier.expenses.edit', $expense->id) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </a>
+                                    <form method="POST" action="{{ route('cashier.expenses.destroy', $expense->id) }}" onsubmit="return confirm('Delete this expense? This action cannot be undone.');" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">
+                                            <i class="fas fa-trash mr-1"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        @endunless
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No expenses recorded for {{ strtolower($rangeLabel) }}</td></tr>
+                    <tr><td colspan="{{ $inCrossBranch ? 5 : 6 }}" class="py-8 text-center text-gray-400">No expenses recorded for {{ strtolower($rangeLabel) }}</td></tr>
                 @endforelse
             </tbody>
         </table>
