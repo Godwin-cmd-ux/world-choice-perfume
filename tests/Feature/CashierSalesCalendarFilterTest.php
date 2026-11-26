@@ -36,6 +36,32 @@ class CashierSalesCalendarFilterTest extends TestCase
         $this->assertSalesWindow($urls, BusinessDay::localRangeFilter('2026-11-01', '2026-11-15'));
     }
 
+    public function test_picking_a_from_date_shows_every_sale_of_that_day(): void
+    {
+        $urls = [];
+        $this->fakeSales($urls);
+
+        $response = $this->get('/cashier/sales?date_from=2026-11-10');
+
+        $response->assertOk();
+        $response->assertSee('Nov 10, 2026');
+        $response->assertSee('value="2026-11-10"', false);
+        $this->assertSalesWindow($urls, BusinessDay::localRangeFilter('2026-11-10', '2026-11-10'));
+        $this->assertListLimit($urls, 1000);
+    }
+
+    public function test_picking_a_to_date_alone_also_filters_that_day(): void
+    {
+        $urls = [];
+        $this->fakeSales($urls);
+
+        $response = $this->get('/cashier/sales?date_to=2026-11-10');
+
+        $response->assertOk();
+        $this->assertSalesWindow($urls, BusinessDay::localRangeFilter('2026-11-10', '2026-11-10'));
+        $this->assertListLimit($urls, 1000);
+    }
+
     public function test_without_dates_the_window_is_today(): void
     {
         $urls = [];
@@ -46,6 +72,7 @@ class CashierSalesCalendarFilterTest extends TestCase
         $response->assertOk();
         $response->assertSee('Today (');
         $this->assertSalesWindow($urls, BusinessDay::dayFilter());
+        $this->assertListLimit($urls, 50);
     }
 
     public function test_all_dates_removes_the_window_and_labels_the_list(): void
@@ -70,6 +97,14 @@ class CashierSalesCalendarFilterTest extends TestCase
 
         foreach ($salesUrls as $url) {
             $this->assertStringContainsString('created_at=' . $window, $url);
+        }
+    }
+
+    /** @param  array<int, string>  $urls */
+    private function assertListLimit(array $urls, int $limit): void
+    {
+        foreach ($this->salesUrls($urls) as $url) {
+            $this->assertStringContainsString('limit=' . $limit, $url);
         }
     }
 

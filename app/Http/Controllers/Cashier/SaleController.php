@@ -9,6 +9,7 @@ use App\Services\CashierScope;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
 use App\Support\BusinessDay;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
@@ -41,10 +42,28 @@ class SaleController extends Controller
         $hasFrom = $request->filled('date_from');
         $hasTo = $request->filled('date_to');
 
-        // With no dates picked the page stays on today, matching the other
-        // cashier lists. A single bound leaves the other side of the range open.
-        $dateFrom = $hasFrom ? $request->date_from : ($hasTo || $showAll ? '' : $today);
-        $dateTo = $hasTo ? $request->date_to : ($hasFrom || $showAll ? '' : $today);
+        // One picked calendar date means that whole day; two dates mean a range.
+        // With none picked the page stays on today, like the other cashier lists.
+        if ($hasFrom && $hasTo) {
+            $dateFrom = $request->date_from;
+            $dateTo = $request->date_to;
+        } elseif ($hasFrom) {
+            $dateFrom = $dateTo = $request->date_from;
+        } elseif ($hasTo) {
+            $dateFrom = $dateTo = $request->date_to;
+        } elseif ($showAll) {
+            $dateFrom = $dateTo = '';
+        } else {
+            $dateFrom = $dateTo = $today;
+        }
+
+        // Inputs stay blank until a date is actually picked so choosing just
+        // one calendar date is never read as a range ending today.
+        $filterFrom = $hasFrom ? $request->date_from : '';
+        $filterTo = $hasTo ? $request->date_to : '';
+
+        // A picked day can hold more rows than the short default list.
+        $limit = ($hasFrom || $hasTo || $showAll) ? 1000 : ($inCrossBranch ? 100 : 50);
 
         if ($inCrossBranch) {
             // Cross-branch: show all sales for the monitored branch
@@ -52,14 +71,14 @@ class SaleController extends Controller
             $params = $filters + [
                 'select' => '*, cashier:users(id,name), items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
                 'order' => 'created_at.desc',
-                'limit' => 100,
+                'limit' => $limit,
             ];
         } else {
             $filters = ['cashier_id' => "eq.{$supabaseUserId}"];
             $params = $filters + [
                 'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
                 'order' => 'created_at.desc',
-                'limit' => 50,
+                'limit' => $limit,
             ];
         }
 
@@ -106,10 +125,16 @@ class SaleController extends Controller
             'activeBranchName' => $this->scope->activeBranchName(),
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+            'filterFrom' => $filterFrom,
+            'filterTo' => $filterTo,
             'showAll' => $showAll,
             'rangeLabel' => $showAll
                 ? 'All dates'
-                : BusinessDay::localRangeLabel($hasFrom ? $dateFrom : null, $hasTo ? $dateTo : null),
+                : (!$hasFrom && !$hasTo
+                    ? BusinessDay::localRangeLabel(null, null)
+                    : ($dateFrom === $dateTo
+                        ? Carbon::parse($dateFrom)->format('M d, Y')
+                        : BusinessDay::localRangeLabel($dateFrom, $dateTo))),
             'presets' => [
                 'today' => $today,
                 'last7' => BusinessDay::now()->subDays(6)->toDateString(),

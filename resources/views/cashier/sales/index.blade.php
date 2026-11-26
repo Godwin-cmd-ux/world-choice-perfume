@@ -26,17 +26,18 @@
     <form method="GET" class="flex gap-3 items-end flex-wrap mt-4">
         <div>
             <label for="sale-date-from" class="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">From</label>
-            <input type="date" id="sale-date-from" name="date_from" value="{{ $dateFrom }}" class="px-3 py-2 border rounded-lg text-sm">
+            <input type="date" id="sale-date-from" name="date_from" value="{{ $filterFrom }}" class="px-3 py-2 border rounded-lg text-sm">
         </div>
         <div>
             <label for="sale-date-to" class="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">To</label>
-            <input type="date" id="sale-date-to" name="date_to" value="{{ $dateTo }}" class="px-3 py-2 border rounded-lg text-sm">
+            <input type="date" id="sale-date-to" name="date_to" value="{{ $filterTo }}" class="px-3 py-2 border rounded-lg text-sm">
         </div>
         <button type="submit" style="background-color: #F89A1E;" class="text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-calendar mr-1"></i> Filter</button>
         @if(!$showAll && ($dateFrom !== $presets['today'] || $dateTo !== $presets['today']))
             <a href="{{ route('cashier.sales.index') }}" class="text-gray-500 text-sm px-3 py-2">Reset</a>
         @endif
     </form>
+    <p class="text-xs text-gray-400 mt-2">Pick one date to see every sale on that day, or pick both for a range.</p>
     <div class="flex flex-wrap items-center gap-2 mt-3">
         <span class="text-xs text-gray-400">Quick ranges:</span>
         <a href="{{ route('cashier.sales.index') }}" class="{{ $presetClass(!$showAll && $dateFrom === $presets['today'] && $dateTo === $presets['today']) }}">Today</a>
