@@ -39,7 +39,7 @@ class NavigationCountsService
         'super-admin.daily-sales' => ['sales'],
         'customer-care.dashboard' => ['orders', 'inquiries', 'mails', 'news', 'sales'],
         'seller.dashboard' => ['orders', 'sales'],
-        'cashier.dashboard' => ['orders', 'sales', 'expenses'],
+        'cashier.dashboard' => ['orders', 'sales'],
         'cashier.daily-sales-overview' => ['sales'],
         'branch-admin.dashboard' => ['orders', 'sales', 'staff', 'expenses'],
         'stock-manager.dashboard' => ['orders', 'sales', 'transfers', 'returns', 'notifications'],
@@ -63,7 +63,6 @@ class NavigationCountsService
         'seller.sales.' => ['sales'],
         'cashier.orders.' => ['orders'],
         'cashier.sales.' => ['sales'],
-        'cashier.expenses.' => ['expenses'],
         'branch-admin.orders.' => ['orders'],
         'branch-admin.sales.' => ['sales'],
         'branch-admin.staffs.' => ['staff'],
@@ -255,7 +254,6 @@ class NavigationCountsService
         ]);
 
         $counts['sales'] = $this->countToday('sales', ['branch_id' => 'eq.'.$branchId]);
-        $counts['expenses'] = $this->countToday('expenses', ['branch_id' => 'eq.'.$branchId]);
 
         return $counts;
     }
