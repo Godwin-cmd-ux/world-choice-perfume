@@ -5,10 +5,6 @@
 
 @section('content')
 @include('cashier.partials.cross-branch-banner')
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-    <p class="text-sm text-gray-500">Total Expenses <span class="text-xs text-gray-400">({{ $rangeLabel }})</span>: <strong class="text-lg text-red-600">TZS {{ number_format($totalExpenses) }}</strong></p>
-    <p class="text-xs text-gray-400 mt-1">Resets to zero every day at midnight.</p>
-</div>
 
 <div class="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
     <form method="GET" class="flex gap-3 items-end flex-wrap">

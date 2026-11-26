@@ -22,10 +22,8 @@ class ExpenseController extends Controller
     /**
      * Cashier sees all expenses for their own branch (or monitored branch in cross-branch mode).
      *
-     * The total is a running figure for the current business day: with no date
-     * filter applied the window is today only, so it starts at zero after
-     * midnight and climbs as expenses are recorded. Picking a date range
-     * replaces the window with that range.
+     * With no date filter applied the window is today only; picking a date
+     * range replaces that window.
      */
     public function index(Request $request)
     {
@@ -43,11 +41,6 @@ class ExpenseController extends Controller
             $params['category'] = "eq.{$request->category}";
         }
 
-        // Total over every expense in the window — not just the page of rows
-        // below it, which is capped for display.
-        $windowTotal = $this->supabase->query('expenses', $params + ['select' => 'amount']);
-        $totalExpenses = array_sum(array_map(fn ($e) => (float) ($e['amount'] ?? 0), $windowTotal));
-
         $listParams = $params + [
             'select' => '*, user:users(id,name)',
             'order' => 'created_at.desc',
@@ -60,7 +53,7 @@ class ExpenseController extends Controller
                 return (object) $e;
             });
 
-        return view('cashier.expenses.index', compact('expenses', 'totalExpenses') + [
+        return view('cashier.expenses.index', compact('expenses') + [
             'rangeLabel' => BusinessDay::localRangeLabel($request->date_from, $request->date_to),
             'inCrossBranch' => $inCrossBranch,
             'activeBranchName' => $this->scope->activeBranchName(),
