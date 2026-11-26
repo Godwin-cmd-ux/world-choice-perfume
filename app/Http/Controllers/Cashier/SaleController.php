@@ -8,6 +8,7 @@ use App\Services\BottleStockService;
 use App\Services\CashierScope;
 use App\Services\ProductVarietyStockService;
 use App\Services\SupabaseService;
+use App\Support\BusinessDay;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
@@ -35,34 +36,48 @@ class SaleController extends Controller
         $inCrossBranch = $this->scope->inCrossBranchMode();
         $activeBranchId = $this->scope->activeBranchId();
 
+        $today = BusinessDay::now()->toDateString();
+        $showAll = $request->boolean('all');
+        $hasFrom = $request->filled('date_from');
+        $hasTo = $request->filled('date_to');
+
+        // With no dates picked the page stays on today, matching the other
+        // cashier lists. A single bound leaves the other side of the range open.
+        $dateFrom = $hasFrom ? $request->date_from : ($hasTo || $showAll ? '' : $today);
+        $dateTo = $hasTo ? $request->date_to : ($hasFrom || $showAll ? '' : $today);
+
         if ($inCrossBranch) {
             // Cross-branch: show all sales for the monitored branch
-            $params = [
+            $filters = ['branch_id' => "eq.{$activeBranchId}"];
+            $params = $filters + [
                 'select' => '*, cashier:users(id,name), items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
-                'branch_id' => "eq.{$activeBranchId}",
                 'order' => 'created_at.desc',
                 'limit' => 100,
             ];
         } else {
-            $params = [
+            $filters = ['cashier_id' => "eq.{$supabaseUserId}"];
+            $params = $filters + [
                 'select' => '*, items:sale_items(*, product:products(id,name,brand)), customer:customers(id,name,phone)',
-                'cashier_id' => "eq.{$supabaseUserId}",
                 'order' => 'created_at.desc',
                 'limit' => 50,
             ];
         }
 
+        if (!$showAll) {
+            // Dates come from the calendar inputs on the shop clock, so the
+            // range is converted to UTC before it reaches the query.
+            $window = BusinessDay::localRangeFilter($dateFrom, $dateTo);
+            $filters['created_at'] = $window;
+            $params['created_at'] = $window;
+        }
+
         $sales = $this->supabase->query('sales', $params);
 
-        // Default to today so the page doesn't show past-day sales unless filtered.
-        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->toDateString();
-        $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
-        $request->merge(['date_from' => $dateFrom, 'date_to' => $dateTo]);
+        // Total over every sale in the window — not just the capped rows below.
+        $windowSales = $this->supabase->query('sales', ['select' => 'total'] + $filters);
+        $totalSales = array_sum(array_map(fn ($s) => (float) ($s['total'] ?? 0), $windowSales));
 
-        $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) >= $dateFrom);
-        $sales = array_filter($sales, fn($s) => substr($s['created_at'] ?? '', 0, 10) <= $dateTo);
-
-        $sales = collect(array_values($sales))->map(function ($s) {
+        $sales = collect($sales)->map(function ($s) {
             if (isset($s['customer']) && is_array($s['customer'])) $s['customer'] = (object) $s['customer'];
             if (isset($s['items'])) {
                 $s['items'] = collect($s['items'])->map(function ($item) {
@@ -86,9 +101,20 @@ class SaleController extends Controller
         }
         $drafts = collect($this->supabase->query('sale_drafts', $draftParams));
 
-        return view('cashier.sales.index', compact('sales', 'drafts') + [
+        return view('cashier.sales.index', compact('sales', 'drafts', 'totalSales') + [
             'inCrossBranch' => $inCrossBranch,
             'activeBranchName' => $this->scope->activeBranchName(),
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'showAll' => $showAll,
+            'rangeLabel' => $showAll
+                ? 'All dates'
+                : BusinessDay::localRangeLabel($hasFrom ? $dateFrom : null, $hasTo ? $dateTo : null),
+            'presets' => [
+                'today' => $today,
+                'last7' => BusinessDay::now()->subDays(6)->toDateString(),
+                'month' => BusinessDay::now()->startOfMonth()->toDateString(),
+            ],
         ]);
     }
 
