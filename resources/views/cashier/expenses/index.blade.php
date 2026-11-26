@@ -41,9 +41,7 @@
                 <th class="text-left px-4">Entered By</th>
                 <th class="text-left px-4">Description</th>
                 <th class="text-left px-4">Date</th>
-                @unless($inCrossBranch)
-                    <th class="text-right px-4">Actions</th>
-                @endunless
+                <th class="text-right px-4">Actions</th>
             </tr></thead>
             <tbody>
                 @forelse($expenses as $expense)
@@ -55,9 +53,12 @@
                         <td class="px-4 text-gray-700 font-medium">{{ $expense->user?->name ?? '—' }}</td>
                         <td class="px-4 text-gray-500 max-w-xs truncate">{{ $expense->description }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($expense->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y') }}</td>
-                        @unless($inCrossBranch)
-                            <td class="px-4 py-3">
-                                <div class="flex items-center justify-end gap-2">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ route('cashier.expenses.show', $expense->id) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
+                                    <i class="fas fa-eye mr-1"></i> View
+                                </a>
+                                @unless($inCrossBranch)
                                     <a href="{{ route('cashier.expenses.edit', $expense->id) }}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200">
                                         <i class="fas fa-edit mr-1"></i> Edit
                                     </a>
@@ -68,12 +69,12 @@
                                             <i class="fas fa-trash mr-1"></i> Delete
                                         </button>
                                     </form>
-                                </div>
-                            </td>
-                        @endunless
+                                @endunless
+                            </div>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ $inCrossBranch ? 5 : 6 }}" class="py-8 text-center text-gray-400">No expenses recorded for {{ strtolower($rangeLabel) }}</td></tr>
+                    <tr><td colspan="6" class="py-8 text-center text-gray-400">No expenses recorded for {{ strtolower($rangeLabel) }}</td></tr>
                 @endforelse
             </tbody>
         </table>

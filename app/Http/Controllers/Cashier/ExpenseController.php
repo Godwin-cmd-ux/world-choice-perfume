@@ -68,6 +68,28 @@ class ExpenseController extends Controller
     }
 
     /**
+     * Cashier views the details of an expense from their active branch.
+     */
+    public function show($expenseId)
+    {
+        $expense = $this->findBranchExpense(
+            $expenseId,
+            '*, user:users(id,name), branch:branches(id,name)'
+        );
+        if (!$expense) {
+            abort(404);
+        }
+
+        if (isset($expense['user']) && is_array($expense['user'])) $expense['user'] = (object) $expense['user'];
+        if (isset($expense['branch']) && is_array($expense['branch'])) $expense['branch'] = (object) $expense['branch'];
+
+        return view('cashier.expenses.show', ['expense' => (object) $expense] + [
+            'inCrossBranch' => $this->scope->inCrossBranchMode(),
+            'activeBranchName' => $this->scope->activeBranchName(),
+        ]);
+    }
+
+    /**
      * Cashier can record a new expense for their branch.
      */
     public function create()
@@ -193,10 +215,10 @@ class ExpenseController extends Controller
         return redirect()->route('cashier.expenses.index')->with('success', 'Expense deleted successfully.');
     }
 
-    private function findBranchExpense($expenseId): ?array
+    private function findBranchExpense($expenseId, string $select = '*'): ?array
     {
         $branchId = $this->scope->activeBranchId();
-        $expense = $this->supabase->find('expenses', $expenseId);
+        $expense = $this->supabase->find('expenses', $expenseId, $select);
         if (!$expense) {
             return null;
         }
