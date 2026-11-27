@@ -79,7 +79,16 @@
                         </td>
                         <td class="px-4 text-right font-bold text-green-700">TZS {{ number_format($sale->total) }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
-                        <td class="px-4 text-center"><a href="{{ route('cashier.sales.show', $sale->id) }}" class="text-blue-600 hover:underline"><i class="fas fa-eye"></i></a></td>
+                        <td class="px-4 text-center">
+                            <div class="inline-flex items-center justify-center gap-3">
+                                <a href="{{ route('cashier.sales.show', $sale->id) }}" class="text-blue-600 hover:underline" title="View sale"><i class="fas fa-eye"></i></a>
+                                @include('partials.sale-change-actions', [
+                                    'sale' => $sale,
+                                    'editRoute' => 'cashier.sales.edit',
+                                    'destroyRoute' => 'cashier.sales.destroy',
+                                ])
+                            </div>
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="py-8 text-center text-gray-400">No sales for {{ strtolower($rangeLabel) }}</td></tr>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cashier;
 
+use App\Http\Controllers\Concerns\HandlesSaleCorrections;
 use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 class SaleController extends Controller
 {
     use HandlesSaleDrafts;
+    use HandlesSaleCorrections;
 
     private SupabaseService $supabase;
     private BottleStockService $bottles;
@@ -104,6 +106,7 @@ class SaleController extends Controller
                     return (object) $item;
                 });
             }
+            $s['can_correct'] = $this->saleCanBeCorrected($s);
             return (object) $s;
         });
 
@@ -629,5 +632,24 @@ class SaleController extends Controller
             'inCrossBranch' => $inCrossBranch,
             'activeBranchName' => $this->scope->activeBranchName(),
         ]);
+    }
+
+    protected function saleCorrectionScope(): array
+    {
+        return [
+            'cashier_id' => auth()->user()->supabase_id ?? auth()->id(),
+            'read_only' => $this->scope->inCrossBranchMode(),
+        ];
+    }
+
+    protected function saleCorrectionRoutes(): array
+    {
+        return [
+            'index' => 'cashier.sales.index',
+            'edit' => 'cashier.sales.edit',
+            'update' => 'cashier.sales.update',
+            'destroy' => 'cashier.sales.destroy',
+            'layout' => 'layouts.app',
+        ];
     }
 }

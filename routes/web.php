@@ -367,6 +367,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales/draft', [SalesController::class, 'saveDraft'])->name('sales.draft');
         Route::delete('/sales/draft/{draft}', [SalesController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
+        // Same-day correction of a completed sale.
+        Route::get('/sales/{sale}/edit', [SalesController::class, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [SalesController::class, 'updateSale'])->name('sales.update');
+        Route::delete('/sales/{sale}', [SalesController::class, 'destroySale'])->name('sales.destroy');
         Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show');
 
         // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
@@ -431,6 +435,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales/draft', [SaleController::class, 'saveDraft'])->name('sales.draft');
         Route::delete('/sales/draft/{draft}', [SaleController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
+        // Same-day correction of a completed sale.
+        Route::get('/sales/{sale}/edit', [SaleController::class, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [SaleController::class, 'updateSale'])->name('sales.update');
+        Route::delete('/sales/{sale}', [SaleController::class, 'destroySale'])->name('sales.destroy');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
 
         // Expenses (cashier commits expenses; sees all branch expenses)
@@ -480,6 +488,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales/draft', [$selSale, 'saveDraft'])->name('sales.draft');
         Route::delete('/sales/draft/{draft}', [$selSale, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [$selSale, 'store'])->name('sales.store');
+        // Same-day correction of a completed sale.
+        Route::get('/sales/{sale}/edit', [$selSale, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [$selSale, 'updateSale'])->name('sales.update');
+        Route::delete('/sales/{sale}', [$selSale, 'destroySale'])->name('sales.destroy');
         Route::get('/sales/{sale}', [$selSale, 'show'])->name('sales.show');
 
         // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
@@ -519,6 +531,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales/draft', [App\Http\Controllers\CustomerCare\SalesController::class, 'saveDraft'])->name('sales.draft');
         Route::delete('/sales/draft/{draft}', [App\Http\Controllers\CustomerCare\SalesController::class, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [App\Http\Controllers\CustomerCare\SalesController::class, 'store'])->name('sales.store');
+        // Same-day correction of a completed sale.
+        Route::get('/sales/{sale}/edit', [App\Http\Controllers\CustomerCare\SalesController::class, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'updateSale'])->name('sales.update');
+        Route::delete('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'destroySale'])->name('sales.destroy');
         Route::get('/sales/{sale}', [App\Http\Controllers\CustomerCare\SalesController::class, 'show'])->name('sales.show');
 
         // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).
@@ -694,6 +710,10 @@ Route::middleware(['auth', 'cashier.approved'])->group(function () {
         Route::post('/sales/draft', [$smSales, 'saveDraft'])->name('sales.draft');
         Route::delete('/sales/draft/{draft}', [$smSales, 'deleteDraft'])->name('sales.draft.destroy');
         Route::post('/sales', [$smSales, 'store'])->name('sales.store');
+        // Same-day correction of a completed sale.
+        Route::get('/sales/{sale}/edit', [$smSales, 'editSale'])->name('sales.edit');
+        Route::put('/sales/{sale}', [$smSales, 'updateSale'])->name('sales.update');
+        Route::delete('/sales/{sale}', [$smSales, 'destroySale'])->name('sales.destroy');
         Route::get('/sales/{sale}', [$smSales, 'show'])->name('sales.show');
 
         // Orders — Mikocheni HQ only (Super Admin keeps the company-wide view).

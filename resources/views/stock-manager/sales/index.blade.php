@@ -71,7 +71,14 @@
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale->total) }}</td>
                         <td class="px-4 text-gray-500 text-xs">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') }}</td>
                         <td class="px-4 text-center">
-                            <a href="{{ route('stock-manager.sales.show', $sale->id) }}" class="text-emerald-600 hover:text-emerald-800"><i class="fas fa-eye"></i></a>
+                            <div class="inline-flex items-center justify-center gap-3">
+                                <a href="{{ route('stock-manager.sales.show', $sale->id) }}" class="text-emerald-600 hover:text-emerald-800" title="View sale"><i class="fas fa-eye"></i></a>
+                                @include('partials.sale-change-actions', [
+                                    'sale' => $sale,
+                                    'editRoute' => 'stock-manager.sales.edit',
+                                    'destroyRoute' => 'stock-manager.sales.destroy',
+                                ])
+                            </div>
                         </td>
                     </tr>
                 @empty

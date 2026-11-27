@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\StockManager;
 
+use App\Http\Controllers\Concerns\HandlesSaleCorrections;
 use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 class SalesController extends Controller
 {
     use HandlesSaleDrafts;
+    use HandlesSaleCorrections;
 
     private SupabaseService $supabase;
     private BottleStockService $bottles;
@@ -70,6 +72,7 @@ class SalesController extends Controller
                     return (object) $item;
                 });
             }
+            $s['can_correct'] = $this->saleCanBeCorrected($s);
             return (object) $s;
         });
 
@@ -609,5 +612,25 @@ class SalesController extends Controller
         }
 
         return view('stock-manager.sales.show', ['sale' => (object) $sale]);
+    }
+
+    protected function saleCorrectionScope(): array
+    {
+        return [
+            'branch_id' => $this->scope->activeBranchId(),
+            'cashier_id' => $this->ownCashierId(),
+            'read_only' => $this->scope->inCrossBranchMode(),
+        ];
+    }
+
+    protected function saleCorrectionRoutes(): array
+    {
+        return [
+            'index' => 'stock-manager.sales.index',
+            'edit' => 'stock-manager.sales.edit',
+            'update' => 'stock-manager.sales.update',
+            'destroy' => 'stock-manager.sales.destroy',
+            'layout' => 'stock-manager.layouts.app',
+        ];
     }
 }

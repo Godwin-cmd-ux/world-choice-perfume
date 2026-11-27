@@ -18,6 +18,8 @@
             <option value="order_placed" {{ ($type ?? '') === 'order_placed' ? 'selected' : '' }}>Order Placed</option>
             <option value="returned_stock" {{ ($type ?? '') === 'returned_stock' ? 'selected' : '' }}>Returned Stock (Lost / Broken)</option>
             <option value="stock_alert" {{ ($type ?? '') === 'stock_alert' ? 'selected' : '' }}>Stock Alert</option>
+            <option value="sale_edited" {{ ($type ?? '') === 'sale_edited' ? 'selected' : '' }}>Sale Edited</option>
+            <option value="sale_deleted" {{ ($type ?? '') === 'sale_deleted' ? 'selected' : '' }}>Sale Deleted</option>
         </select>
         <input type="date" name="date_from" value="{{ $date_from ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">
         <input type="date" name="date_to" value="{{ $date_to ?? '' }}" class="px-3 py-2 border rounded-lg text-sm">
@@ -69,6 +71,8 @@
                                     'price_customization' => 'bg-purple-100 text-purple-800',
                                     'order_placed' => 'bg-blue-100 text-blue-800',
                                     'stock_alert' => 'bg-rose-100 text-rose-800',
+                                    'sale_edited' => 'bg-blue-100 text-blue-800',
+                                    'sale_deleted' => 'bg-red-100 text-red-800',
                                 ];
                             @endphp
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $typeLabels[$n->type ?? ''] ?? 'bg-gray-100 text-gray-600' }}">

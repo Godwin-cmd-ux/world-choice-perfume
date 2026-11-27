@@ -20,6 +20,8 @@ const TYPES = [
   { key: 'order', label: 'Orders' },
   { key: 'stock', label: 'Stock' },
   { key: 'system', label: 'System' },
+  { key: 'sale_edited', label: 'Sale Edits' },
+  { key: 'sale_deleted', label: 'Sale Deletions' },
 ];
 
 /**

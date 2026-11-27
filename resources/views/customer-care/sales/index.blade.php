@@ -32,6 +32,7 @@
                 <th class="text-left px-4">Status</th>
                 <th class="text-left px-4">Branch</th>
                 <th class="text-left px-4">Date</th>
+                <th class="text-center px-4">Action</th>
             </tr></thead>
             <tbody>
                 @forelse($sales as $sale)
@@ -61,9 +62,19 @@
                         </td>
                         <td class="px-4 text-gray-500">{{ $sale->branch?->name ?? '—' }}</td>
                         <td class="px-4 text-gray-500">{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, Y H:i') }}</td>
+                        <td class="px-4 text-center">
+                            <div class="inline-flex items-center justify-center gap-3">
+                                <a href="{{ route('customer-care.sales.show', $sale->id) }}" class="text-blue-600 hover:underline" title="View sale"><i class="fas fa-eye"></i></a>
+                                @include('partials.sale-change-actions', [
+                                    'sale' => $sale,
+                                    'editRoute' => 'customer-care.sales.edit',
+                                    'destroyRoute' => 'customer-care.sales.destroy',
+                                ])
+                            </div>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No sales recorded</td></tr>
+                    <tr><td colspan="8" class="py-8 text-center text-gray-400">No sales recorded</td></tr>
                 @endforelse
             </tbody>
         </table>

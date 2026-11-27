@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CustomerCare;
 
+use App\Http\Controllers\Concerns\HandlesSaleCorrections;
 use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CustomerCare\Concerns\ResolvesClientRecords;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 class SalesController extends Controller
 {
     use HandlesSaleDrafts;
+    use HandlesSaleCorrections;
     use ResolvesClientRecords;
 
     private SupabaseService $supabase;
@@ -97,6 +99,7 @@ class SalesController extends Controller
             $s['cashier'] = isset($s['cashier_id']) && isset($cashiers[$s['cashier_id']])
                 ? (object) ['id' => $s['cashier_id'], 'name' => $cashiers[$s['cashier_id']]]
                 : null;
+            $s['can_correct'] = $this->saleCanBeCorrected($s);
             return (object) $s;
         });
 
@@ -583,5 +586,24 @@ class SalesController extends Controller
             'sale' => (object) $sale,
             'isLoyal' => $this->loyalIdsFor([(int) ($sale['customer_id'] ?? 0)]) !== [],
         ]);
+    }
+
+    protected function saleCorrectionScope(): array
+    {
+        return [
+            'branch_id' => auth()->user()->branch_id,
+            'read_only' => false,
+        ];
+    }
+
+    protected function saleCorrectionRoutes(): array
+    {
+        return [
+            'index' => 'customer-care.sales.index',
+            'edit' => 'customer-care.sales.edit',
+            'update' => 'customer-care.sales.update',
+            'destroy' => 'customer-care.sales.destroy',
+            'layout' => 'layouts.app',
+        ];
     }
 }

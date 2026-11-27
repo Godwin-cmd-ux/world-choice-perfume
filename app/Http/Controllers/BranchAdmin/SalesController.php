@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\BranchAdmin;
 
+use App\Http\Controllers\Concerns\HandlesSaleCorrections;
 use App\Http\Controllers\Concerns\HandlesSaleDrafts;
 use App\Http\Controllers\Controller;
 use App\Services\BottleStockService;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 class SalesController extends Controller
 {
     use HandlesSaleDrafts;
+    use HandlesSaleCorrections;
 
     private SupabaseService $supabase;
     private BottleStockService $bottles;
@@ -71,6 +73,7 @@ class SalesController extends Controller
                     return (object) $item;
                 });
             }
+            $s['can_correct'] = $this->saleCanBeCorrected($s);
             return (object) $s;
         });
 
@@ -549,5 +552,24 @@ $supabaseUserId = auth()->user()->supabase_id ?? auth()->id();
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Sale failed: ' . $e->getMessage()])->withInput();
         }
+    }
+
+    protected function saleCorrectionScope(): array
+    {
+        return [
+            'branch_id' => auth()->user()->branch_id,
+            'read_only' => false,
+        ];
+    }
+
+    protected function saleCorrectionRoutes(): array
+    {
+        return [
+            'index' => 'branch-admin.sales.index',
+            'edit' => 'branch-admin.sales.edit',
+            'update' => 'branch-admin.sales.update',
+            'destroy' => 'branch-admin.sales.destroy',
+            'layout' => 'layouts.app',
+        ];
     }
 }

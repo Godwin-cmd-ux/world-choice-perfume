@@ -38,6 +38,7 @@
                     <th class="text-left px-4">Type</th>
                     <th class="text-right px-4">Total</th>
                     <th class="text-left px-4">Date</th>
+                    <th class="text-center px-4">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,9 +63,19 @@
                         <td class="px-4"><span class="px-2 py-0.5 rounded-full text-xs {{ ($sale->sale_type ?? '') === 'wholesale' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">{{ ucfirst($sale->sale_type ?? 'retail') }}</span></td>
                         <td class="px-4 text-right font-medium">TZS {{ number_format($sale->total ?? 0) }}</td>
                         <td class="px-4 text-gray-500 text-xs">{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->setTimezone('Africa/Dar_es_Salaam')->format('M d, H:i') : '—' }}</td>
+                        <td class="px-4 text-center">
+                            <div class="inline-flex items-center justify-center gap-3">
+                                <a href="{{ route('seller.sales.show', $sale->id) }}" class="text-cyan-700 hover:underline" title="View sale"><i class="fas fa-eye"></i></a>
+                                @include('partials.sale-change-actions', [
+                                    'sale' => $sale,
+                                    'editRoute' => 'seller.sales.edit',
+                                    'destroyRoute' => 'seller.sales.destroy',
+                                ])
+                            </div>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="py-12 text-center text-gray-400"><i class="fas fa-receipt text-3xl mb-2 block"></i>No sales found</td></tr>
+                    <tr><td colspan="7" class="py-12 text-center text-gray-400"><i class="fas fa-receipt text-3xl mb-2 block"></i>No sales found</td></tr>
                 @endforelse
             </tbody>
         </table>
